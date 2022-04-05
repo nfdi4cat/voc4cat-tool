@@ -14,7 +14,7 @@ The installation requires internet access since we install VocExcel directly fro
 Preconditions:
  * git
  * Python (3.8 or newer)
-   - The instructions below assume that the [launcher](https://docs.python.org/3.10/using/windows.html#python-launcher-for-windows) is also installed. The launcher is included by default in installers from [python.org](https://www.python.org/downloads/)
+   - The instructions below assume that the [launcher](https://docs.python.org/3.10/using/windows.html#python-launcher-for-windows) is also installed. The launcher is included by default in Windows installers from [python.org](https://www.python.org/downloads/)
   
 ## Installation steps:
 
