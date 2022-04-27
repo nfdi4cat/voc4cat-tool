@@ -12,9 +12,11 @@ from pathlib import Path
 
 from vocexcel.convert import main
 from vocexcel.utils import EXCEL_FILE_ENDINGS
+from vocexcel.models import ORGANISATIONS
 
 __version__ = "0.1.0"
 
+ORGANISATIONS['NFDI4Cat'] = "http://example.org/nfdi4cat/"
 
 def run_vocexcel(args=None):
     main(args)
@@ -44,7 +46,7 @@ def wrapper(args=None):
 
     if args_wrapper.version:
         print(f"{__version__}")
-    elif args_wrapper.file_to_preprocess:
+    elif args_wrapper and args_wrapper.file_to_preprocess:
         if not args_wrapper.file_to_preprocess.suffix.lower().endswith(
             tuple(EXCEL_FILE_ENDINGS)
         ):
@@ -54,6 +56,10 @@ def wrapper(args=None):
             print(f"Processing file {args_wrapper.file_to_preprocess}")
             print("\nCalling VocExcel")
             main(args)
+    else:
+        print("\nCalling VocExcel")
+        # We add a dummy since vocexcel must be called with a filename.
+        main(args.insert(1, "."))
 
     return args_wrapper
 
