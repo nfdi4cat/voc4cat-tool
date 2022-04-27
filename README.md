@@ -32,7 +32,7 @@ Create a virtual environment in a local subfolder ".venv" (Note that the command
 
 Activate the virtual environment (This is again for windows).
 
-`.venv/scripts/activate.bat` (cmd) or `.venv/scripts/Activate.ps1` (powershell)
+`.venv\scripts\activate.bat` (cmd) or `.venv\scripts\Activate.ps1` (powershell)
 
 Update the packages in the virtual environment.
 
