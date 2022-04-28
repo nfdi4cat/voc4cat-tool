@@ -6,7 +6,6 @@ The new commands be may be run either before or after VocExcel.
 Copyright (c) 2022 David Linke (ORCID: 0000-0002-5898-1820)
 """
 import argparse
-from bdb import set_trace
 import os
 import sys
 from pathlib import Path
