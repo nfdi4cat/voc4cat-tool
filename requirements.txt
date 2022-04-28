@@ -2,9 +2,9 @@
 # ...using the master branch
 #vocexcel @ git+https://github.com/nfdi4cat/VocExcel.git@master
 # ...and how to use a git branch, e.g. named "nfdi4cat-dev"?
-vocexcel @ https://github.com/nfdi4cat/VocExcel.git@nfdi4cat-dev
+vocexcel @ git+https://github.com/nfdi4cat/VocExcel.git@nfdi4cat-dev
 # ...and how to use a specific tag, e.g. named "v0.3.0"?
-#vocexcel @ https://github.com/nfdi4cat/VocExcel.git@v0.3.0#egg=vocexcel
+#vocexcel @ git+https://github.com/nfdi4cat/VocExcel.git@v0.3.0#egg=vocexcel
 # ...and how to use a specific commit?
 #vocexcel @ git+https://github.com/nfdi4cat/VocExcel.git@5cbae28b2d
 colorama==0.4.4; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.5.0")

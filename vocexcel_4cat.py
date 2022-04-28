@@ -72,8 +72,9 @@ def add_IRI(fpath):
                 else:
                     break
 
-    # save updated Excel-file under new name
-    wb.save("%s_i.%s" % tuple(str(fpath).rsplit(".", 1)))
+    output_fnanme = "%s_i.%s" % tuple(str(fpath).rsplit(".", 1))
+    wb.save(output_fnanme)
+    print(f"Saved updated file as {output_fnanme}")
 
 
 def add_related(fpath):
@@ -129,8 +130,9 @@ def add_related(fpath):
                 else:
                     break
 
-    # save updated Excel-file under new name
-    wb.save("%s_r.%s" % tuple(str(fpath).rsplit(".", 1)))
+    output_fnanme = "%s_r.%s" % tuple(str(fpath).rsplit(".", 1))
+    wb.save(output_fnanme)
+    print(f"Saved updated file as {output_fnanme}")
 
 
 def run_vocexcel(args=None):
@@ -173,6 +175,11 @@ def wrapper(args=None):
 
     args_wrapper = parser.parse_args()
 
+    if len(sys.argv) == 1:
+        # show help if no args are given
+        parser.print_help()
+        parser.exit()
+
     if args_wrapper.version:
         print(f"{__version__}")
     elif args_wrapper.addIRI:
@@ -180,13 +187,13 @@ def wrapper(args=None):
             print(f"Processing file {args_wrapper.file_to_preprocess}")
             add_IRI(args_wrapper.file_to_preprocess)
         else:
-            sys.exit()
+            parser.exit()
     elif args_wrapper.add_related:
         if is_excel_file_available(args_wrapper.file_to_preprocess):
             print(f"Processing file {args_wrapper.file_to_preprocess}")
             add_related(args_wrapper.file_to_preprocess)
         else:
-            sys.exit()
+            parser.exit()
     elif args_wrapper and args_wrapper.file_to_preprocess:
         if is_excel_file_available(args_wrapper.file_to_preprocess):
             print(f"Processing file {args_wrapper.file_to_preprocess}")
@@ -194,7 +201,7 @@ def wrapper(args=None):
             main(args)
         else:
             print("Files for preprocessing must end with .xlsx (Excel).")
-            sys.exit()
+            parser.exit()
     else:
         print("\nCalling VocExcel")
         # We add a dummy since vocexcel must be called with a filename.
