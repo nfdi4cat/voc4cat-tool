@@ -1,0 +1,1201 @@
+@prefix cs: <http://example.org/nfdi4cat/photo> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<http://example.org/nfdi4cat/photo/absorption> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "The process of one material (absorbate) being retained by another (absorbent); this may be the physical solution of a gas, liquid, or solid in a liquid, attachement of molecules of a gas, vapour, liquid, or dissolved substance to a solid surface by physical forces; etc. In spectrometry, absorption of light at characteristic wavelengths or bands of wavelengths is used to identify the chemical nature of molecules, atoms or ions and to measure the concentration of these species. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Absorption"@en .
+
+<http://example.org/nfdi4cat/photo/area-of-deposited-film> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/dimensions-of-deposited-film> ;
+    skos:definition "The area of the substrate covered by the deposited photocatalyst."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Area of deposited film"@en .
+
+<http://example.org/nfdi4cat/photo/atomic-force-microscopy> a skos:Concept ;
+    skos:altLabel "AFM"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "Atomic force microscopy (AFM) is a type of scanning probe microscopy (SPM), with demonstrated resolution on the order of fractions of a nanometer, more than 1000 times better than the optical diffraction limit. The information is gathered by \"feeling\" or \"touching\" the surface with a mechanical probe. Piezoelectric elements that facilitate tiny but accurate and precise movements on (electronic) command enable precise scanning."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Atomic force microscopy"@en .
+
+<http://example.org/nfdi4cat/photo/bandgap-energy> a skos:Concept ;
+    skos:altLabel "Energy bandgap; Eg"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "The energy difference between the bottom of the conduction band and the top of the valence band in a semiconductor or an insulator."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Bandgap energy"@en .
+
+<http://example.org/nfdi4cat/photo/batch-mode> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/operation-mode> ;
+    skos:definition "A mode under which the CO2 photoreduction experiment is performed. Under batch conditions, the reactants fill the reaction chamber in advance, and the products of the photoreaction accumulate over time."@en,
+        "Operation mode in which the reaction chamber is filled with the (reactant) gas(es) up to a certain pressure, and the photoreaction products acummulate over time."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Batch mode"@en .
+
+<http://example.org/nfdi4cat/photo/blank-measurements> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> ;
+    skos:definition "Measurements performed under a humidified inert gas atmosphre without the presence of CO2 but otherwise under the same conditions as a CO2 photoreduction experiment. These measurements provide an indirect proof of the origin of the carbon-containing products, as no products should be observed in the absence of CO2."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Blank measurements"@en .
+
+<http://example.org/nfdi4cat/photo/borosilicate-glass> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/glass-substrate> ;
+    skos:definition "A type of glass with silica and boron trioxide as the main glass-forming constituents. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Borosilicate glass"@en .
+
+<http://example.org/nfdi4cat/photo/brunauer-emmett-teller-surface-area-analysis> a skos:Concept ;
+    skos:altLabel "BET"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "The study of physical adsorption of gas molecules on a solid surface for the calculation of the specific surface area of materials."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Brunauer-Emmett-Teller surface area analysis"@en .
+
+<http://example.org/nfdi4cat/photo/calibration-of-gas-chromatograph> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/gas-chromatography> ;
+    skos:definition "A process in which gaseous substances of known purity and concentration are introduced to the gas chromatograph and the respective area and retention time of the resulting peaks are identified. This process when concluded, allows for the calculation of concentrations of products and intermediates of the photoreaction."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Calibration of gas chromatograph"@en .
+
+<http://example.org/nfdi4cat/photo/calibration-of-mass-spectrometer> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/mass-spectrometry> ;
+    skos:definition "A process in which gaseous substances of known purity and concentration are introduced to the mass spectrometer and the respective mass-to-charge ratios are identified. This process when concluded, allows for the calculation of concentrations of products and intermediates of the photoreaction."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Calibration of mass spectrometer"@en .
+
+<http://example.org/nfdi4cat/photo/ceramic-substrate> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/material-of-substrate> ;
+    skos:definition "A  surface made of a ceramic material (e.g., alumina) serving as a substrate for the deposition of a photocatalyst."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Ceramic substrate"@en .
+
+<http://example.org/nfdi4cat/photo/charge-photogeneration> a skos:Concept ;
+    skos:altLabel "Photogenerated charges; Charge photo-generation; Electron excitation; Electron-hole pair;"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "The generation of electron - hole pairs in a semiconductor as a result of light absorption of sufficient energy to overcome the bandgap energy. Electrons (negative charge) get excited to the conduction band, while holes (positive charge) remain in the valence band. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Charge photogeneration"@en .
+
+<http://example.org/nfdi4cat/photo/charge-recombination> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "The reverse of charge separation. The recombination of electrons and holes without them having enough time to reduce and oxidize (respectively) the adsorbed reactants, leads to lower efficiencies in CO2 photoreduction."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Charge recombination"@en .
+
+<http://example.org/nfdi4cat/photo/charge-separation> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "A process in which, under the influence of a suitable driving force (e.g., provided by photoexcitation), electronic charge moves in a direction that increases the difference in local charges between donor and acceptor sites."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Charge separation"@en .
+
+<http://example.org/nfdi4cat/photo/co2-photoreduction-measurement> a skos:Concept ;
+    skos:altLabel "Carbon dioxide photoreduction measurement; Photocatalytic CO2 reduction measurement; Photocatalytic carbon dioxide reduction measurement"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> ;
+    skos:definition "A single measurement of a CO2 photoreduction experiment performed either in flow or in batch mode. The measurement involves the collection of a gaseous sample, and its analysis employing an appropriate product identification method. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "CO2 photoreduction measurement"@en .
+
+<http://example.org/nfdi4cat/photo/collection-of-publications-of-interest> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/literature-research> ;
+    skos:definition "Filtering of literature research to include only the most relevant sources of information for the application / experiment / catalysts of interest."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Collection of publications of interest"@en .
+
+<http://example.org/nfdi4cat/photo/concentration-of-reactants> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/reactants> ;
+    skos:definition "Concentration of the reactants (e.g., CO2 and H2O) used in the photocatalytic CO2 reduction experiments"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Concentration of reactants"@en .
+
+<http://example.org/nfdi4cat/photo/conduction-band> a skos:Concept ;
+    skos:altLabel "CB"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "A vacant or only partially occupied set of many closely spaced electronic levels resulting from an array of a large number of atoms forming a system in which the electrons can move freely or nearly so. This term is usually used to describe the properties of metals and semiconductors."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Conduction band"@en .
+
+<http://example.org/nfdi4cat/photo/crystallinity> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "The presence of three-dimensional order in the level of atomic dimensions."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Crystallinity"@en .
+
+<http://example.org/nfdi4cat/photo/current-of-operation-of-the-light-source> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/light-source> ;
+    skos:definition "The value of current (usually in A or mA) used to operate the selected light source."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Current of operation of the light source"@en .
+
+<http://example.org/nfdi4cat/photo/cyclic-voltammetry> a skos:Concept ;
+    skos:altLabel "CV"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "A technique used to study the electrochemical properties of an analyte in solution or of a molecule that is adsorbed onto the electrode. In a cyclic voltammetry experiment, the working electrode potential is ramped linearly versus time. The current at the working electrode us plotted versus the applied voltage to give the cyclic votammogram trace."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Cyclic Voltammetry"@en .
+
+<http://example.org/nfdi4cat/photo/diameter-of-optical-window> a skos:Concept ;
+    skos:altLabel "Diameter of window; Window diameter"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/dimensions-of-optical-window> ;
+    skos:definition "Diameter of the optical window allowing the incoming light to enter the reaction chamber and interact with the photocatalyst."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Diameter of optical window"@en .
+
+<http://example.org/nfdi4cat/photo/dielectric-barrier-discharge-ionization-detector> a skos:Concept ;
+    skos:altLabel "BID"@en ;
+    skos:definition "Detector incorporating Ionization via a new dielectric barrier discharge He plasma."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Dielectric-Barrier Discharge Ionization Detector"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/differential-scanning-calorimetry> a skos:Concept ;
+    skos:altLabel "DSC"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "A technique in which the difference in energy inputs into a substance (and/or its reaction product(s)) and a reference material is measured as a function of temperature whilst the substance and reference material are subjected to a controlled temperature programme."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Differential scanning calorimetry"@en .
+
+<http://example.org/nfdi4cat/photo/dimensions-of-reaction-chamber> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/reaction-chamber> ;
+    skos:definition "Height, width and depth (in cubic- or rectangular- shaped reaction chambers) or diameter and height (in cylindrer - shaped reaction chambers)"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Dimensions of reaction chamber"@en .
+
+<http://example.org/nfdi4cat/photo/dimensions-of-substrate> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/substrate> ;
+    skos:definition "The diamensions (area / thickness / diameter) of the substrate."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Dimensions of substrate"@en .
+
+<http://example.org/nfdi4cat/photo/distance-of-light-source-from-the-reaction-chamber-sample> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/light-source> ;
+    skos:definition "The distance of the light source from the reaction chamber and the photocatalyst."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Distance of light source from the reaction chamber / sample "@en .
+
+<http://example.org/nfdi4cat/photo/doctor-blading> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/deposition-technique> ;
+    skos:definition "A tape-casting method used to deposit thin films of a photocatalyst onto the surface of a substrate."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Doctor blading"@en .
+
+<http://example.org/nfdi4cat/photo/doping> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "The action of adding a small amount of foreign atoms to form a solid solution in the lattice of a non-metallic catalyst."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Doping"@en .
+
+<http://example.org/nfdi4cat/photo/duration-of-steps> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/synthesis-steps> ;
+    skos:definition "Duration of each synthesis step needed to synthesize the desired photocatalyst."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Duration of steps"@en .
+
+<http://example.org/nfdi4cat/photo/dwelling-time> a skos:Concept ;
+    skos:altLabel "Soaking time"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/calcination-steps> ;
+    skos:definition "Time (usually in h) for which a desired temperature is held."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Dwelling time"@en .
+
+<http://example.org/nfdi4cat/photo/electron-energy-loss-spectroscopy> a skos:Concept ;
+    skos:altLabel "EELS"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "Any technique in which an electron transparent specimen is bombarded with a finely focused electron beam and the energy distribution of the transmitted electrons is measured. This energy spectrum contains features corresponding to discrete losses of energy of the transmitted electrons due to excitation of electronic or plasmon states and provides information on the identity (and in some cases) chemical bonding of the elements in the sample."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Electron energy loss spectroscopy"@en .
+
+<http://example.org/nfdi4cat/photo/electron-transfer> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "The transfer of an electron from one molecular entity to another, or between two localized sites in the same molecular entity."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Electron transfer"@en .
+
+<http://example.org/nfdi4cat/photo/equipment-for-controlling-and-monitoring-operation-temperature> a skos:Concept ;
+    skos:altLabel "Temperature controller; Temperature gauge; Temperature monitor; Heating device; Cooling device"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/range-of-operation-temperature> ;
+    skos:definition "Equipment used for controlling and/or monitoring the temperature in various parts of a photoreactor. This can include hot plates, heating elements and cryostats. Light sources in operation can also affect the temperature in the reaction chamber."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Equipment for controlling and monitoring operation temperature"@en .
+
+<http://example.org/nfdi4cat/photo/equipment-used-for-synthesis> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/synthesis-steps> ;
+    skos:definition "Equipment used in each step of the synthesis of the photocatalysts. The equipment can incude (but not limited to): crucibles, pH meters, condensers, volumetric cylinders, centrifuges, test tubes, flasks, beakers, mechanical shakers, pipettes, syringes, magenetic stirrers, heating plates, fitlers, funnels and digital balances."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Equipment used for synthesis"@en .
+
+<http://example.org/nfdi4cat/photo/equipped-detectors-of-mass-spectrometer> a skos:Concept ;
+    skos:definition "Detectors of the mass spectrometer used to identify the reaction products and intemediates."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Equipped detectors of mass spectrometer"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/evaluation-of-products-formed> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> ;
+    skos:definition "Calculation of the concentration of the products formed in a CO2 photoreduction experiment. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Evaluation of products formed"@en .
+
+<http://example.org/nfdi4cat/photo/excited-state> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "State of a system with energy higher than that if the ground state. This term is most commonly used to characterize a molecule  in one of its electonically excited states, but can also refer to vibrational and/or rotational excitation in the electronic ground state."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Excited state"@en .
+
+<http://example.org/nfdi4cat/photo/fermi-level> a skos:Concept ;
+    skos:altLabel "EF"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "The chemical potential of electrons in a solid (metals, semiconductors or insulators) or in an electrolyte solution."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Fermi level"@en .
+
+<http://example.org/nfdi4cat/photo/final-temperature> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/calcination-steps> ;
+    skos:definition "Final temperature of the calcination step."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Final temperature"@en .
+
+<http://example.org/nfdi4cat/photo/flame-ionization-detector> a skos:Concept ;
+    skos:altLabel "FID"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/equipped-detectors-of-gas-chromatograph> ;
+    skos:definition "The gases emerging from the column are fed into a hydrogen flame across which an electrical potential is placed. Certain molecules ionize easily in the flame and the current produced is proportional to the instantaneous flow rate of the eluted component. The detector is relatively insensitive to inorganic molecules and is most used for organic compounds. Concentrations below 1 ppmv are easily detected. The linear dynamic range is between 10E3 and 10E5."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Flame Ionization Detector"@en .
+
+<http://example.org/nfdi4cat/photo/flow-mode> a skos:Concept ;
+    skos:altLabel "Continuous flow mode"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/operation-mode> ;
+    skos:definition "A mode under which the CO2 photoreduction experiment is performed. Under flow conditions, a continuous flow of reactants is supplied to the reaction chamber and the formed products are removed and identified by an appropriate technique."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Flow mode"@en .
+
+<http://example.org/nfdi4cat/photo/flow-rate-of-gas-used-for-calcination> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/gaseous-enviroment> ;
+    skos:definition "The flow of gas (usually in ml min-1) used in the calcination steps during synthesis"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Flow rate of gas used for calcination"@en .
+
+<http://example.org/nfdi4cat/photo/flow-rates-of-reactants> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/reactants> ;
+    skos:definition "The rate of flow of reactants (often in ml per min) in the photoreactor. Flow rates are usually controlled by mass flow controllers (MFCs)  "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Flow rates of reactants"@en .
+
+<http://example.org/nfdi4cat/photo/fluorine-doped-tin-oxide-coated-glass> a skos:Concept ;
+    skos:altLabel "FTO glass"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/glass-substrate> ;
+    skos:definition "Transparent conductive metal oxide (fluorine doped tin oxide) that can be used in the fabrication of transparent electrodes for thin films"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Fluorine doped tin oxide coated glass"@en .
+
+<http://example.org/nfdi4cat/photo/fourier-transform-infrared-spectroscopy> a skos:Concept ;
+    skos:altLabel "FT-IR"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "Measurement technique whereby spectra are collected based on measurements of the temporal coherence of an (infrared radiative source, using time-domain measurements of the electromagnetic radiation or other type of radiation."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Fourier transform infrared spectroscopy"@en .
+
+<http://example.org/nfdi4cat/photo/ground-state> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "The state of lowest Gibbs energy of a system"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Ground state"@en .
+
+<http://example.org/nfdi4cat/photo/heating-rate> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/calcination-steps> ;
+    skos:definition "Rate of increasing or decreasing the temperature during the calcination step. Usually mentioned in K min-1."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Heating rate"@en .
+
+<http://example.org/nfdi4cat/photo/hole-tranfer> a skos:Concept ;
+    skos:definition "Charge migration process in which the majority carriers are positively charged."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Hole tranfer"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/indium-tin-oxide-coated-glass> a skos:Concept ;
+    skos:altLabel "ITO glass"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/glass-substrate> ;
+    skos:definition "Transparent conductive metal oxide (indium tin oxide) that can be used in the fabrication of transparent electrodes for thin films"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Indium tin oxide coated glass"@en .
+
+<http://example.org/nfdi4cat/photo/initial-temperature> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/calcination-steps> ;
+    skos:definition "Initial temperature of the calcination step."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Initial temperature"@en .
+
+<http://example.org/nfdi4cat/photo/intensity-of-the-light-source> a skos:Concept ;
+    skos:altLabel "Light intensity"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/light-source> ;
+    skos:definition "The light intensity (usually in mW cm-2) of the selected light source. The light intensity should be measured at the same distance as the one between the light source and the reaction chamber / sample."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Intensity of the light source"@en .
+
+<http://example.org/nfdi4cat/photo/irradiation-time> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/total-duration-of-experiment> ;
+    skos:definition "The total duration in which the photocatalyst was under irradiation by the selected light source. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Irradiation time"@en .
+
+<http://example.org/nfdi4cat/photo/light-intensity> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/selected-light-source> ;
+    skos:definition "The value of intensity of light emitted by the selected light source. The light intensity must be measured at the same distance as the light source from the reaction chamber / sample. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Light intensity"@en .
+
+<http://example.org/nfdi4cat/photo/liquid-chromatography> a skos:Concept ;
+    skos:altLabel "LC"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "A separation technique in which the mobile phase is a liquid. Liquid chromatography can be carried out either in a column or on a plane. Present-day liquid chromatography generally utilizing very small particles and a relatively high inlet pressure is often characterized by the term high-performance (or high-pressure) liquid chromatography, and the acronym HPLC."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Liquid chromatography"@en .
+
+<http://example.org/nfdi4cat/photo/mass-flow-controller> a skos:Concept ;
+    skos:altLabel "MFC; MFCs"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/equipment-controlling-and-monitoring-gas-flow> ;
+    skos:definition "Devices used to control and monitor gas or liquid flow rates."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Mass flow controller"@en .
+
+<http://example.org/nfdi4cat/photo/mass-of-deposited-catalyst> a skos:Concept ;
+    skos:definition "Mass of catalyst deposited onto the surface of a substrate."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Mass of deposited catalyst"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/mass-of-powder-used> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/powdered-photocatalyst> ;
+    skos:definition "Mass of a powdered photocatalyst used for a CO2 photoreduction experiment."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Mass of powder used"@en .
+
+<http://example.org/nfdi4cat/photo/mass-spectroscopy> a skos:Concept ;
+    skos:altLabel "MS"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "The study of systems by causing the formation of gaseous ions, with or without fragmentation, which are then characterized by their mass-to-charge ratios and relative abundances."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Mass spectroscopy"@en .
+
+<http://example.org/nfdi4cat/photo/masses-volumes-concentrations-of-chemicals-used-in-synthesis> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/chemical-substances-used-for-synthesis> ;
+    skos:definition "Masses / volumes / concentrations of chemicals used for synthesis"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Masses / volumes / concentrations of chemicals used in synthesis"@en .
+
+<http://example.org/nfdi4cat/photo/material-of-optical-window> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/optical-window> ;
+    skos:definition "Material that the window is made of. The window, usually attached to the lid sealing the reaction chamber, allows for the incoming light to enter the reaction chamber and interact with the photocatalyst. The material of the window influences the wavelenth range the the photocatalyst experieneces. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Material of optical window"@en .
+
+<http://example.org/nfdi4cat/photo/material-of-reaction-chamber> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/reaction-chamber> ;
+    skos:definition "Material used for the construction of the main body of the reaction chamber."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Material of reaction chamber"@en .
+
+<http://example.org/nfdi4cat/photo/metal-oxide> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "Metal oxides are crystalline solids that contain a metal cation and an oxide anion."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Metal oxide"@en .
+
+<http://example.org/nfdi4cat/photo/metallic-substrate> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/material-of-substrate> ;
+    skos:definition "A  flat surface made of a metal (e.g., titanium, stainless steel) serving as a substrate for the deposition of a photocatalyst."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Metallic substrate"@en .
+
+<http://example.org/nfdi4cat/photo/mott-schottky-analysis> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "In semiconductor electrochemistry, a Mott-Schottky plot describes the reciprocal of the square of capacitance versus the potential difference between bulk semincoductor and bulk electrolyte. A Mott-Schottky analysis is used to determine system properties such as: flatband potential, doping density, Helmholtz capacitance, position of conduction and valence band."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Mott-Schottky analysis"@en .
+
+<http://example.org/nfdi4cat/photo/nuclear-magnetic-resonance-spectroscopy> a skos:Concept ;
+    skos:altLabel "NMR"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "Nuclear magnetic resonance spectroscopy, most commonly known as NMR spectroscopy or magnetic resonance spectroscopy (MRS), is a spectroscopic technique to observe local magnetic fields around atomic nuclei. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Nuclear magnetic resonance spectroscopy"@en .
+
+<http://example.org/nfdi4cat/photo/organization-of-literature-in-a-citation-management-software> a skos:Concept ;
+    skos:altLabel "Literature organization; Organization of literature; Citation management software"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/literature-research> ;
+    skos:definition "Addition and organization of relevant literature of interest using a citation management software (e.g., Mendeley, Zotero, EndNote etc.) allowing for easy access and categorization."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Organization of literature in a citation management software"@en .
+
+<http://example.org/nfdi4cat/photo/oxidation> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "1. The complete, net removal of one or more electrons from a molecular entity. 2. An increase in the oxidation number of any atom within any substrate. 3. Gain of oxygen and / or loss of hydrogen of an organic substrate,"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Oxidation "@en .
+
+<http://example.org/nfdi4cat/photo/ph-in-synthesis> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/synthesis-steps> ;
+    skos:definition "pH value in each of the synthesis steps (if applicable)"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "pH in synthesis"@en .
+
+<http://example.org/nfdi4cat/photo/photocatalyst> a skos:Concept ;
+    skos:altLabel "Photocatalytic material"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "Catalyst able to produce, upon absorption of light, chemical transformations of the reaction partners. The excited state of the photocatalyst repeatedly interacts with the reaction partners forming reaction intermediates and regenerates itself after each cycle of such interactions."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Photocatalyst"@en .
+
+<http://example.org/nfdi4cat/photo/photoexcitation> a skos:Concept ;
+    skos:altLabel "Photo-excitation"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "The production of an excited state by the adsorption of ultraviolet, visible, or infrared radiation. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Photoexcitation"@en .
+
+<http://example.org/nfdi4cat/photo/photoluminescence> a skos:Concept ;
+    skos:altLabel "PL"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "Luminescence from direct photoexcitation of the emitting species."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Photoluminescence"@en .
+
+<http://example.org/nfdi4cat/photo/pore-size-distribution> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "The distribution of pore volume with respect to pore size; alternatively, it may be defined by the related distribution of pore area with respect to pore size."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Pore size distribution"@en .
+
+<http://example.org/nfdi4cat/photo/power-output-of-the-light-source> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/light-source> ;
+    skos:definition "The power of the light source (usually in W or mW). The power can be calculated by the multiplication of the current and voltage used to operate the light source,"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Power output of the light source"@en .
+
+<http://example.org/nfdi4cat/photo/pressure-drop-in-a-co2-phoreduction-experiment> a skos:Concept ;
+    skos:definition "When performing a CO2 photoreduction experiment in batch mode, with each sampling event, the pressure in the reaction chamber decreases. This pressure drop should be taken into consideration when calculating the concentration of formed products."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Pressure drop in a CO2 phoreduction experiment"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/pressure-in-a-co2-photoreduction-experiment> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> ;
+    skos:definition "The pressure (range) under which the CO2 photoreduction takes place."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Pressure in a CO2 photoreduction experiment"@en .
+
+<http://example.org/nfdi4cat/photo/pressure-in-synthesis> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/synthesis-steps> ;
+    skos:definition "Pressure applied (if necessary) in any of the synthesis step. Changes in the pressure may be observed if variations in the temperature of the reaction occur (e.g., exothermic reaction) "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Pressure in synthesis"@en .
+
+<http://example.org/nfdi4cat/photo/purging-time> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/total-duration-of-experiment> ;
+    skos:definition "Time for which a gas is purged through the reaction chamber."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Purging time"@en .
+
+<http://example.org/nfdi4cat/photo/purity-of-reactants> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/reactants> ;
+    skos:definition "Purity of reactants (e.g., CO2, H2O, He) used in the photocatalytic CO2 reduction experiments. Purity is measure of the impurities contained in the reactants' supply. The highest purity reactants should be used to ensure the collection of reliable results. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Purity of reactants"@en .
+
+<http://example.org/nfdi4cat/photo/quartz> a skos:Concept ;
+    skos:definition "A colourless glass composed of almost pure silica, resistant to very high temperatures and transparent to near-ultraviolet radiation"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Quartz"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/raman-spectroscopy> a skos:Concept ;
+    skos:altLabel "RAMAN"@en,
+        "Raman"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "Raman spectroscopy is a spectroscopic technique typically used to determine vibrational modes of molecules, although rotational and other low-frequency modes of systems may also be observed."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Raman Spectroscopy"@en .
+
+<http://example.org/nfdi4cat/photo/reduction> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "The complete transfer of one or more electrons to a molecular entity."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Reduction"@en .
+
+<http://example.org/nfdi4cat/photo/sacrificial-acceptor> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/sacrificial-reagents> ;
+    skos:definition "Molecular entity that acts as the electron acceptor in a photoinduced electron transfer process and is not restored in a subsequent oxidation process but is destroyed by irreversible chemical conversion."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Sacrificial acceptor"@en .
+
+<http://example.org/nfdi4cat/photo/sacrificial-donor> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/sacrificial-reagents> ;
+    skos:definition "Molecular entity that acts as the electron donor in a photoinduced electron transfer process and is not restored in a subsequent reduction process but is destroyed by the irreversible chemical conversion."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Sacrificial donor"@en .
+
+<http://example.org/nfdi4cat/photo/sample-pre-treatment> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> ;
+    skos:definition "Pretreatment of the photocatalyst before its intoduction to the reaction chamber."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Sample pre-treatment"@en .
+
+<http://example.org/nfdi4cat/photo/sampling-intervals> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/total-duration-of-experiment> ;
+    skos:definition "The time in between the collection of two data points."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Sampling intervals"@en .
+
+<http://example.org/nfdi4cat/photo/scanning-electron-microscopy> a skos:Concept ;
+    skos:altLabel "SEM"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "Any analytical technique which involves the generation and evaluation of secondary electrons (and to a lesser extent back scattered electrons) by a finely focused electron beam (typically 10 nm or less) for high resolution and high depth of field imaging."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Scanning electron microscopy"@en .
+
+<http://example.org/nfdi4cat/photo/selectivity> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> ;
+    skos:definition "Identification of the mixture of gaseous products in a CO2 photoreduction experiment. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Selectivity"@en .
+
+<http://example.org/nfdi4cat/photo/semiconductor> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "Material whose conductivity, due to charges of both signs, is normally in the range between that of metals and insulators and in which the electric charge carrier density can be changed by external means."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Semiconductor"@en .
+
+<http://example.org/nfdi4cat/photo/sensitivity-of-gas-chromatograph> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/gas-chromatography> ;
+    skos:definition "The minimum concentration of a product or intermediate that the gas chromatograph can identify. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Sensitivity of gas chromatograph"@en .
+
+<http://example.org/nfdi4cat/photo/sensitivity-of-mass-spectrometer> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/mass-spectrometry> ;
+    skos:definition "The minimum concentration of a product or intermediate that the mass spectrometer can identify. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Sensitivity of mass spectrometer"@en .
+
+<http://example.org/nfdi4cat/photo/shape-of-reaction-chamber> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/reaction-chamber> ;
+    skos:definition "The shape of the reaction chamber. In gas-phase CO2 photoreduction, reaction chambers have usually a cylindrical, cubical or rectangular shape."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Shape of reaction chamber"@en .
+
+<http://example.org/nfdi4cat/photo/specific-surface-area> a skos:Concept ;
+    skos:altLabel "SSA"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "When the area of the interface between two phases is proportional to the mass of one of the phases (e.g., for a solid adsorbent, for an emulsion or for an aerosol), the specific surface area is defined as the surface area divided by the mass of the relevant phase. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Specific surface area"@en .
+
+<http://example.org/nfdi4cat/photo/spin-coating> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/deposition-technique> ;
+    skos:definition "Spin coating is a procedure used to deposit uniform thin films onto flat substrates. Usually a small amount of coating material is applied on the center of the substrate, which is either spinning at low speed or not spinning at all. The substrate is then rotated at speed up to 10,000 rpm to spread the coating material by centrifugal force."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Spin coating"@en .
+
+<http://example.org/nfdi4cat/photo/spray-coating> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/deposition-technique> ;
+    skos:definition "A technique in which a solution containing the photocatalyst, is forced through a nozzle whereby a fine aerosol will be formed. This aerosol is sprayed on the surface of an appropriate substrate."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Spray coating"@en .
+
+<http://example.org/nfdi4cat/photo/temperature-in-a-co2-photoreduction-experiment> a skos:Concept ;
+    skos:definition "The temperature (range) under which the CO2 photoreduction takes place."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Temperature in a CO2 photoreduction experiment"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/temperature-in-synthesis> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/synthesis-steps> ;
+    skos:definition "Temperature externally applied (if necessary) in any of the synthesis step. Higher temperature values can be observed if an exothermic reaction takes place during the synthesis."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Temperature in synthesis"@en .
+
+<http://example.org/nfdi4cat/photo/thermal-conductivity-detector> a skos:Concept ;
+    skos:altLabel "TCD"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/equipped-detectors-of-gas-chromatograph> ;
+    skos:definition """
+In general, two cells arranged in a bridge configuration detect the change in thermal conductivity of the gas at the output of the column. This detector is sensitive to any substance with thermal conductivity different from that of the carrier gas. The lowest detectable limit is between 0.5 and 100 ppmv. The linear dynamic range is of the order of 103. This type of detector is often used for measuring components at relatively high concentrations."""@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Thermal conductivity detector"@en .
+
+<http://example.org/nfdi4cat/photo/thermogravimetric-analysis> a skos:Concept ;
+    skos:altLabel "TGA"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "Thermogravimetric analysis or thermal gravimetric analysis (TGA) is a method of thermal analysis in which the mass of a sample is measured over time as the temperature changes. This measurement provides information about physical phenomena, such as phase transitions, absorption, adsorption and desorption; as well as chemical phenomena including chemisorptions, thermal decomposition, and solid-gas reactions (e.g., oxidation or reduction)"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Thermogravimetric analysis"@en .
+
+<http://example.org/nfdi4cat/photo/thickness-of-deposited-film> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/dimensions-of-deposited-film> ;
+    skos:definition "The thickness of the film of the deposited photocatalyst. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Thickness of deposited film"@en .
+
+<http://example.org/nfdi4cat/photo/thickness-of-optical-window> a skos:Concept ;
+    skos:altLabel "Thickness of window; Window thickness"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/dimensions-of-optical-window> ;
+    skos:definition "Thickness of the optical window allowing the incoming light to enter the reaction chamber and interact with the photocatalyst."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Thickness of optical window"@en .
+
+<http://example.org/nfdi4cat/photo/transmission-electron-microscopy> a skos:Concept ;
+    skos:altLabel "TEM"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "Any technique in which an electron transparent sample is bombarded with an electron beam and the intensity of the transmitted electrons which is determined by scattering phenomena (electron absorption phenomena) in the interior of the sample is recorded. TEM essentially provides a high resolution image of the microstructure of a thin sample. This technique is often just called electron microscopy. The term transmission electron microscopy is however recommended for the sake of a clear distinction from other electron microscopic techniques."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Transmission electron microscopy"@en .
+
+<http://example.org/nfdi4cat/photo/ultraviolet-visible-spectroscopy> a skos:Concept ;
+    skos:altLabel "UV-Vis"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "Refers to absorption spectroscopy or reflectance spectroscopy in part of the ultraviolet and the full, adjacent visible regions of the electromagnetic spectrum. This means it uses light in the visible and adjacent ranges. The absorption or reflectance in the visible range directly affects the perceived color of the chemicals involved. In this region of the spectrum, atoms and molecules undergo electronic transitions."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Ultraviolet-visible spectroscopy"@en .
+
+<http://example.org/nfdi4cat/photo/vacuum-pump> a skos:Concept ;
+    skos:altLabel "Pump"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/equipment-for-controlling-and-monitoring-operation-pressure> ;
+    skos:definition "A pump for exhausting gas from an enclosed space"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Vacuum pump"@en .
+
+<http://example.org/nfdi4cat/photo/valence-band> a skos:Concept ;
+    skos:altLabel "VB"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "Highest energy continuum of energy levels in a solid that is fully occupied by electrons at 0 K. The valence band is lower in energy than the conduction band and is generally completely full in semiconductors."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Valence band"@en .
+
+<http://example.org/nfdi4cat/photo/voltage-of-operation-of-the-light-source> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/light-source> ;
+    skos:definition "The value of voltage  (usually in V or mV) used to operate the selected light source."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Voltage of operation of the light source"@en .
+
+<http://example.org/nfdi4cat/photo/volume-of-the-reaction-chamber> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/reaction-chamber> ;
+    skos:definition "Volume of the reaction chamber, calculated by its dimensions. Volume of pipes and valves connected to the reaction chamber should also be calculated and added to the total volume. "@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Volume of the reaction chamber"@en .
+
+<http://example.org/nfdi4cat/photo/wavelength> a skos:Concept ;
+    skos:altLabel "λ"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
+    skos:definition "Distance in the direction of propagation of a periodic wave between two successive points where at a given the phase is the same."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Wavelength"@en .
+
+<http://example.org/nfdi4cat/photo/x-ray-diffraction> a skos:Concept ;
+    skos:altLabel "XRD"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "Any technique which utilizes the diffraction of X-rays generated in a microstructural domain of a solid under bombardment with a finely focused electron beam, thus providing an X-ray diffraction pattern of this microstructural domain."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "X-ray diffraction"@en .
+
+<http://example.org/nfdi4cat/photo/x-ray-fluorescence> a skos:Concept ;
+    skos:altLabel "XRF"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "A kind of analysis based on the measurement of the energies and intensities of characteristic X-radiation emitted by a test portion during irradiation with electromagnetic radiation."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "X-ray fluorescence"@en .
+
+<http://example.org/nfdi4cat/photo/x-ray-photoelectron-spectroscopy> a skos:Concept ;
+    skos:altLabel "XPS"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
+    skos:definition "Any technique in which the sample is bombarded with X-rays and photoelectrons produced by the sample are detected as a function of energy. ESCA (Electron Spectroscopy for Chemical Analysis) refers to the use of this technique to identify elements, their concentrations, and their chemical state within the sample."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "X-ray photoelectron spectroscopy"@en .
+
+<http://example.org/nfdi4cat/photo/chemical-substances-used-for-synthesis> a skos:Concept ;
+    skos:altLabel "Chemicals; Chemical reagents; Reagents"@en ;
+    skos:definition "Chemical substances used in the synthesis process of a desired photocatalyst."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/masses-volumes-concentrations-of-chemicals-used-in-synthesis> ;
+    skos:prefLabel "Chemical substances used for synthesis"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/deposited-film> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/thin-film> ;
+    skos:definition "A thin film of the photocatalyst deposited on an appropiate for the application substrate."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/dimensions-of-deposited-film> ;
+    skos:prefLabel "Deposited film"@en .
+
+<http://example.org/nfdi4cat/photo/equipment-controlling-and-monitoring-gas-flow> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/gas-flow> ;
+    skos:definition "Equipment used for controlling and / or monitoring the flow of gases (reactant or inert) needed for a CO2 photoreduction experiment. Mass flow controllers (MFCs) are commonly used to controlle gas flows."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/mass-flow-controller> ;
+    skos:prefLabel "Equipment controlling and monitoring gas flow"@en .
+
+<http://example.org/nfdi4cat/photo/equipment-for-controlling-and-monitoring-operation-pressure> a skos:Concept ;
+    skos:altLabel "Pressure controller; Pressure gauge; Pressure monitor"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/range-of-operation-pressure> ;
+    skos:definition "Equipment used for controlling and / or monitoring the pressure in various parts of a photoreactor. A vaccum pump is a typical example of such equipment."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/vacuum-pump> ;
+    skos:prefLabel "Equipment for controlling and monitoring operation pressure"@en .
+
+<http://example.org/nfdi4cat/photo/gas-flow> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/photoreactor-design> ;
+    skos:definition "Flow rates of gases used in a CO2 photoreduction experiment. Gases can have either the role of a reactant (e.g., CO2) or be inert (e.g., Ar, He). "@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/equipment-controlling-and-monitoring-gas-flow> ;
+    skos:prefLabel "Gas flow"@en .
+
+<http://example.org/nfdi4cat/photo/gaseous-enviroment> a skos:Concept ;
+    skos:altLabel "Calcination environment"@en ;
+    skos:definition "A gas flow under which the calcination step takes place (e,g,, Ar or synthetic air)"@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/flow-rate-of-gas-used-for-calcination> ;
+    skos:prefLabel "Gaseous enviroment"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/infrared> a skos:Concept ;
+    skos:altLabel "IR; Ir"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms>,
+        <http://example.org/nfdi4cat/photo/wavelength-range> ;
+    skos:definition "Region of the electromagnetic spectrum extending from 780 nm to about 20000 nm. This is the wavelength region in which absorption by a molecular entity causes excitation of its vibrational, rotational, and bending modes."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Infrared"@en .
+
+<http://example.org/nfdi4cat/photo/powdered-photocatalyst> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/form-of-photocatalyst> ;
+    skos:definition "A photocatalyst introduced to the reaction chamber in the form of a powder. Usually the powdered photocatalyst is spread inside a quartz / glass plate."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/mass-of-powder-used> ;
+    skos:prefLabel "Powdered photocatalyst"@en .
+
+<http://example.org/nfdi4cat/photo/range-of-operation-pressure> a skos:Concept ;
+    skos:altLabel "Operation pressure; Operation pressure range; Pressure range"@en ;
+    skos:definition "Maximum and minimum of operation pressure range within the reactor can operate safely. Higher operation temperatures can lead to higher pressure values."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/equipment-for-controlling-and-monitoring-operation-pressure> ;
+    skos:prefLabel "Range of operation pressure"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/range-of-operation-temperature> a skos:Concept ;
+    skos:altLabel "Operation temperature; Operation temperature range; Temparature range"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/photoreactor-design> ;
+    skos:definition "Maximum and minimum of operation temperature range within the reactor can operate safely."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/equipment-for-controlling-and-monitoring-operation-temperature> ;
+    skos:prefLabel "Range of operation temperature"@en .
+
+<http://example.org/nfdi4cat/photo/reactor-design> a skos:Collection ;
+    dcterms:isPartOf cs: ;
+    skos:definition "Details describing the construction, physical dimensions, and operation of the photoreactor used for the photocalytic CO2 reduction reactions."@en ;
+    skos:prefLabel "Reactor design"@en .
+
+<http://example.org/nfdi4cat/photo/ultraviolet> a skos:Concept ;
+    skos:altLabel "UV"@en,
+        "UV-A"@en,
+        "UV-B"@en,
+        "UV-C"@en,
+        "VUV"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms>,
+        <http://example.org/nfdi4cat/photo/wavelength-range> ;
+    skos:definition "Region of the electromagnetic spectrum extending from about 100 nm to 400 nm. This region is divided into four sub-bands as follows: 1) Vacuum Ultraviolet (VUV): 100 - 200 nm, 2) UV-C: 200 - 280 nm, 3) UV-B: 280 - 315 nm, 4) UV-A: 315 - 400 nm"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Ultraviolet"@en .
+
+<http://example.org/nfdi4cat/photo/visible> a skos:Concept ;
+    skos:altLabel "Vis; VIS"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/general-terms>,
+        <http://example.org/nfdi4cat/photo/wavelength-range> ;
+    skos:definition "Region of the electromagnetic spectrum extending from about 400 nm to 760 nm. This is the wavelength region to which the human eye is sensitive. There are no precise limits for the spectral range of visible radiation since they depend upon the amount or radiant power reaching the retina and on the responsivity of the observer."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Visible"@en .
+
+<http://example.org/nfdi4cat/photo/dimensions-of-deposited-film> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/deposited-film> ;
+    skos:definition "The diamensions (area / thickness / diameter) of the - deposited on the substrate - thin film"@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/area-of-deposited-film>,
+        <http://example.org/nfdi4cat/photo/thickness-of-deposited-film> ;
+    skos:prefLabel "Dimensions of deposited film"@en .
+
+<http://example.org/nfdi4cat/photo/dimensions-of-optical-window> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/optical-window> ;
+    skos:definition "The dimension of the optical window (diameter / thickness) allowing the incoming light to enter the reaction chamber and interact with the photocatalyst."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/diameter-of-optical-window>,
+        <http://example.org/nfdi4cat/photo/thickness-of-optical-window> ;
+    skos:prefLabel "Dimensions of optical window"@en .
+
+<http://example.org/nfdi4cat/photo/equipped-detectors-of-gas-chromatograph> a skos:Concept ;
+    skos:definition "Detectors of the gas chromatogragh used to identify the reaction products and intemediates."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/flame-ionization-detector>,
+        <http://example.org/nfdi4cat/photo/thermal-conductivity-detector> ;
+    skos:prefLabel "Equipped detectors of gas chromatograph"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/form-of-photocatalyst> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/evaluation-of-performance> ;
+    skos:definition "The form in which the photocatalyst is introduced to the reaction chamber. This can include e.g., powders, pellets or thin films deposited on a substrate. "@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/powdered-photocatalyst>,
+        <http://example.org/nfdi4cat/photo/thin-film> ;
+    skos:prefLabel "Form of photocatalyst"@en .
+
+<http://example.org/nfdi4cat/photo/literature-research> a skos:Concept ;
+    skos:altLabel "Publications; papers; manuscripts;"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/synthesis-of-photocatalysts> ;
+    skos:definition "Thorough search of available literature on the research topic of interest using online research platforms (e.g, Scopus, Google Scholar, Web of Science, Research Gate etc.) and / or libraries. Relevant literature can be found in the form of publications, books, abstracts and conference presentations. "@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/collection-of-publications-of-interest>,
+        <http://example.org/nfdi4cat/photo/organization-of-literature-in-a-citation-management-software> ;
+    skos:prefLabel "Literature research"@en .
+
+<http://example.org/nfdi4cat/photo/mass-spectrometry> a skos:Concept ;
+    skos:altLabel "MS"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/product-identification-method> ;
+    skos:definition "The study of systems by causing the formation of gaseous ions, with or without fragmentation, which are then characterized by their mass-to-charge ratios and relative abundances."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/calibration-of-mass-spectrometer>,
+        <http://example.org/nfdi4cat/photo/sensitivity-of-mass-spectrometer> ;
+    skos:prefLabel "Mass spectrometry"@en .
+
+<http://example.org/nfdi4cat/photo/optical-window> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/reaction-chamber> ;
+    skos:definition " Flat, optically transparent plates that are typically designed to maximize transmission in a specified wavelength range, while minimizing reflection and absoprtion."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/dimensions-of-optical-window>,
+        <http://example.org/nfdi4cat/photo/material-of-optical-window> ;
+    skos:prefLabel "Optical window"@en .
+
+<http://example.org/nfdi4cat/photo/product-identification-method> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/photoreactor-design> ;
+    skos:definition "Spectroscopic or chromatographic methods used to qualitatively and quantitatively identify the products of the photoreaction. Such devices are usually attached to the photoreactor, or a sample is being trasfered to an identification method via another medium (e.g., gastight syringes)."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/gas-chromatography>,
+        <http://example.org/nfdi4cat/photo/mass-spectrometry> ;
+    skos:prefLabel "Product identification method"@en .
+
+<http://example.org/nfdi4cat/photo/sacrificial-reagents> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/reactants> ;
+    skos:definition "Electron donors or hole scavengers used to reduce the recombination tendency of electrons and holes. Sacrificial reagents are used in photocatalysis to study an oxidation or reduction reaction seperately."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/sacrificial-acceptor>,
+        <http://example.org/nfdi4cat/photo/sacrificial-donor> ;
+    skos:prefLabel "Sacrificial reagents"@en .
+
+<http://example.org/nfdi4cat/photo/selected-light-source> a skos:Concept ;
+    skos:definition "The light source used for the irradiation of the reactants in the reaction chamber."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/light-intensity>,
+        <http://example.org/nfdi4cat/photo/wavelength-range> ;
+    skos:prefLabel "Selected light source"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/substrate> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/thin-film> ;
+    skos:definition "The substate onto which a (powdered) photocatalyst is deposited. Such substrates incude glass surfaces (e.g., borosilicate glass or conductive glass like ITO and FTO), ceramic substrates (e.g., alumina) or metal substrates (e.g., Ti foils, stainless steel etc.) "@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/dimensions-of-substrate>,
+        <http://example.org/nfdi4cat/photo/material-of-substrate> ;
+    skos:prefLabel "Substrate"@en .
+
+<http://example.org/nfdi4cat/photo/deposition-technique> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/thin-film> ;
+    skos:definition "A technique used to deposit (immobilize) a (powdered) photocatalyst on a substate. These techniques indlude (but are not limited to): doctor blading, spin coating, spray coating, etc."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/doctor-blading>,
+        <http://example.org/nfdi4cat/photo/spin-coating>,
+        <http://example.org/nfdi4cat/photo/spray-coating> ;
+    skos:prefLabel "Deposition technique"@en .
+
+<http://example.org/nfdi4cat/photo/gas-chromatography> a skos:Concept ;
+    skos:altLabel "GC"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts>,
+        <http://example.org/nfdi4cat/photo/product-identification-method> ;
+    skos:definition "A separation technique in which the mobile phase is a gas. Gas chromatography is always carried out in a column."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/calibration-of-gas-chromatograph>,
+        <http://example.org/nfdi4cat/photo/sensitivity-of-gas-chromatograph> ;
+    skos:prefLabel "Gas chromatography"@en .
+
+<http://example.org/nfdi4cat/photo/glass-substrate> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/material-of-substrate> ;
+    skos:definition "A flat surface made of glass serving as a substrate for the deposition of a photocatalyst."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/borosilicate-glass>,
+        <http://example.org/nfdi4cat/photo/fluorine-doped-tin-oxide-coated-glass>,
+        <http://example.org/nfdi4cat/photo/indium-tin-oxide-coated-glass> ;
+    skos:prefLabel "Glass substrate"@en .
+
+<http://example.org/nfdi4cat/photo/material-of-substrate> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/substrate> ;
+    skos:definition "The material that the substrate is made of. Common materials include: glass (conductive or not), ceramics and metal."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/ceramic-substrate>,
+        <http://example.org/nfdi4cat/photo/glass-substrate>,
+        <http://example.org/nfdi4cat/photo/metallic-substrate> ;
+    skos:prefLabel "Material of substrate"@en .
+
+<http://example.org/nfdi4cat/photo/operation-mode> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/evaluation-of-performance>,
+        <http://example.org/nfdi4cat/photo/photoreactor-design> ;
+    skos:definition "Operation mode under the which the experiment takes place: batch of continuous flow mode."@en,
+        "The mode under which the CO2 photoreduction experiment is performed. Usually is either in batch or in flow mode."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/batch-mode>,
+        <http://example.org/nfdi4cat/photo/flow-mode> ;
+    skos:prefLabel "Operation mode"@en .
+
+<http://example.org/nfdi4cat/photo/synthesis-of-photocatalysts> a skos:Collection,
+        skos:Concept ;
+    dcterms:isPartOf cs: ;
+    skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction> ;
+    skos:definition "The process by which one or more chemical reactions are performed with the aim of converting a reactant or starting material into a product or multiple products."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/literature-research>,
+        <http://example.org/nfdi4cat/photo/synthesis-steps> ;
+    skos:prefLabel "Synthesis of photocatalysts"@en .
+
+<http://example.org/nfdi4cat/photo/thin-film> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/form-of-photocatalyst> ;
+    skos:definition "A photocatalyst introduced to the reaction chamber in the form of a thin film. To form a thin film, a (powdered) photocatalyst is deposited on a substrate (e.g., glass or metal) using an appropriate deposition technique. "@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/deposited-film>,
+        <http://example.org/nfdi4cat/photo/deposition-technique>,
+        <http://example.org/nfdi4cat/photo/substrate> ;
+    skos:prefLabel "Thin film"@en .
+
+<http://example.org/nfdi4cat/photo/total-duration-of-experiment> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/evaluation-of-performance> ;
+    skos:definition "The total duration of an experiment"@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/irradiation-time>,
+        <http://example.org/nfdi4cat/photo/purging-time>,
+        <http://example.org/nfdi4cat/photo/sampling-intervals> ;
+    skos:prefLabel "Total duration of experiment"@en .
+
+<http://example.org/nfdi4cat/photo/calcination-steps> a skos:Concept ;
+    skos:altLabel "Heat treatment; Heat-treatment; Calcination"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/synthesis-steps> ;
+    skos:definition "Heat treatment to reach the desired final photocatalyst. The parameters of the heat treatment can vary between each calcination step. "@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/dwelling-time>,
+        <http://example.org/nfdi4cat/photo/final-temperature>,
+        <http://example.org/nfdi4cat/photo/heating-rate>,
+        <http://example.org/nfdi4cat/photo/initial-temperature> ;
+    skos:prefLabel "Calcination steps"@en .
+
+<http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction> a skos:Collection,
+        skos:Concept ;
+    dcterms:isPartOf cs: ;
+    skos:altLabel "Photocatalytic carbon dioxide reduction; CO2 photoreduction; Carbon dioxide photoreduction; artificial photosynthesis"@en ;
+    skos:definition "The light-driven reduction (conversion) of carbon dioxide (CO2) to hydrocarbons and / or platform chemicals in presence of water. The absorption of light and the adsorption of the reactants is performed by a photocatalyst (usually a metal oxide). "@en ;
+    skos:inScheme cs: ;
+    skos:member <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts>,
+        <http://example.org/nfdi4cat/photo/evaluation-of-performance>,
+        <http://example.org/nfdi4cat/photo/reactor-design> ;
+    skos:narrower <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts>,
+        <http://example.org/nfdi4cat/photo/evaluation-of-performance>,
+        <http://example.org/nfdi4cat/photo/synthesis-of-photocatalysts> ;
+    skos:prefLabel "Photocatalytic CO2 reduction"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/reactants> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/evaluation-of-performance> ;
+    skos:definition "A substance that is consumed in the course of chemical reaction. It is sometimes knonw, especially in the older literature, as a reagent, but this term is better used in a more specialized sence as a test substance that is added to a system in order to bring about a reaction or to see whether a reaction occurs (e.g., an analytical reagent)."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/concentration-of-reactants>,
+        <http://example.org/nfdi4cat/photo/flow-rates-of-reactants>,
+        <http://example.org/nfdi4cat/photo/purity-of-reactants>,
+        <http://example.org/nfdi4cat/photo/sacrificial-reagents> ;
+    skos:prefLabel "Reactants"@en .
+
+<http://example.org/nfdi4cat/photo/wavelength-range> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/light-source>,
+        <http://example.org/nfdi4cat/photo/selected-light-source> ;
+    skos:definition "The wavelength range that the selected light source emits. As different photocatalysts absorb difference range of wavelengths, a light source of appropriate wavelength should be selected."@en,
+        "Wavelength (single, narrow distribution or range) of the light emmited by the light source."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/infrared>,
+        <http://example.org/nfdi4cat/photo/ultraviolet>,
+        <http://example.org/nfdi4cat/photo/visible> ;
+    skos:prefLabel "Wavelength range"@en .
+
+<http://example.org/nfdi4cat/photo/reaction-chamber> a skos:Concept ;
+    skos:altLabel "Photoreaction chamber"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/photoreactor-design> ;
+    skos:definition "A construction inside of which the photocatalyst and the reactants coexist and the photoreaction takes place."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/dimensions-of-reaction-chamber>,
+        <http://example.org/nfdi4cat/photo/material-of-reaction-chamber>,
+        <http://example.org/nfdi4cat/photo/optical-window>,
+        <http://example.org/nfdi4cat/photo/shape-of-reaction-chamber>,
+        <http://example.org/nfdi4cat/photo/volume-of-the-reaction-chamber> ;
+    skos:prefLabel "Reaction chamber"@en .
+
+<http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> a skos:Concept ;
+    skos:altLabel "Carbon dioxide photoreduction experiment; Photocatalytic CO2 reduction experiment; Photocatalytic carbon dioxide reduction experiment"@en ;
+    skos:broader <http://example.org/nfdi4cat/photo/evaluation-of-performance> ;
+    skos:definition "An experiment in which a photocatalyst in the presence of H2O and under the influence of light of appropriate wavelength, converts CO2 to hydrocarbons and / or useful platform chemicals. "@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/blank-measurements>,
+        <http://example.org/nfdi4cat/photo/co2-photoreduction-measurement>,
+        <http://example.org/nfdi4cat/photo/evaluation-of-products-formed>,
+        <http://example.org/nfdi4cat/photo/pressure-in-a-co2-photoreduction-experiment>,
+        <http://example.org/nfdi4cat/photo/sample-pre-treatment>,
+        <http://example.org/nfdi4cat/photo/selectivity> ;
+    skos:prefLabel "Photocatalytic CO2 reduction experiment"@en .
+
+<http://example.org/nfdi4cat/photo/photoreactor-design> a skos:Concept ;
+    skos:altLabel "Reactor design; Reactor engineering; Photoreactor engineering"@en ;
+    skos:definition "Details describing the construction, physical dimensions, and operation of the photoreactor used for the photocalytic CO2 reduction reactions."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/gas-flow>,
+        <http://example.org/nfdi4cat/photo/light-source>,
+        <http://example.org/nfdi4cat/photo/operation-mode>,
+        <http://example.org/nfdi4cat/photo/product-identification-method>,
+        <http://example.org/nfdi4cat/photo/range-of-operation-temperature>,
+        <http://example.org/nfdi4cat/photo/reaction-chamber> ;
+    skos:prefLabel "Photoreactor design"@en ;
+    skos:topConceptOf cs: .
+
+<http://example.org/nfdi4cat/photo/synthesis-steps> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/synthesis-of-photocatalysts> ;
+    skos:definition "Necessary steps needed to follow in order to reach the desired photocatalyst."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/calcination-steps>,
+        <http://example.org/nfdi4cat/photo/duration-of-steps>,
+        <http://example.org/nfdi4cat/photo/equipment-used-for-synthesis>,
+        <http://example.org/nfdi4cat/photo/ph-in-synthesis>,
+        <http://example.org/nfdi4cat/photo/pressure-in-synthesis>,
+        <http://example.org/nfdi4cat/photo/temperature-in-synthesis> ;
+    skos:prefLabel "Synthesis steps"@en .
+
+<http://example.org/nfdi4cat/photo/light-source> a skos:Concept ;
+    skos:broader <http://example.org/nfdi4cat/photo/evaluation-of-performance>,
+        <http://example.org/nfdi4cat/photo/photoreactor-design> ;
+    skos:definition "Light sources used to irradiate a photocatalyst. These include sources with various intensities, powers and wavelength ranges,  including Hg/Xe lamps, Xe lamps and LEDs. "@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/current-of-operation-of-the-light-source>,
+        <http://example.org/nfdi4cat/photo/distance-of-light-source-from-the-reaction-chamber-sample>,
+        <http://example.org/nfdi4cat/photo/intensity-of-the-light-source>,
+        <http://example.org/nfdi4cat/photo/power-output-of-the-light-source>,
+        <http://example.org/nfdi4cat/photo/voltage-of-operation-of-the-light-source>,
+        <http://example.org/nfdi4cat/photo/wavelength-range> ;
+    skos:prefLabel "Light source"@en .
+
+<http://example.org/nfdi4cat/photo/evaluation-of-performance> a skos:Collection,
+        skos:Concept ;
+    dcterms:isPartOf cs: ;
+    skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction> ;
+    skos:definition "Selection of experimental parameters applied for the evaluation of the performance of a photocatalyst in CO2 photoreduction."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/form-of-photocatalyst>,
+        <http://example.org/nfdi4cat/photo/light-source>,
+        <http://example.org/nfdi4cat/photo/operation-mode>,
+        <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment>,
+        <http://example.org/nfdi4cat/photo/reactants>,
+        <http://example.org/nfdi4cat/photo/total-duration-of-experiment> ;
+    skos:prefLabel "Evaluation of performance"@en .
+
+<http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> a skos:Collection,
+        skos:Concept ;
+    dcterms:isPartOf cs: ;
+    skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction> ;
+    skos:definition "A collection of techniques used to identify the (physico)chemical, morphological, structural, mechanical, optical and electrical properties of the syntesized photocatalysts. Characterization is performed after the synthesis of the photocatalysts to evaluate the success of the synthetic approach, but also after the completion of the evaluation of the materials in CO2 photoreduction to ensure their stability under the selected experimental parameters."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/atomic-force-microscopy>,
+        <http://example.org/nfdi4cat/photo/brunauer-emmett-teller-surface-area-analysis>,
+        <http://example.org/nfdi4cat/photo/cyclic-voltammetry>,
+        <http://example.org/nfdi4cat/photo/differential-scanning-calorimetry>,
+        <http://example.org/nfdi4cat/photo/electron-energy-loss-spectroscopy>,
+        <http://example.org/nfdi4cat/photo/fourier-transform-infrared-spectroscopy>,
+        <http://example.org/nfdi4cat/photo/gas-chromatography>,
+        <http://example.org/nfdi4cat/photo/liquid-chromatography>,
+        <http://example.org/nfdi4cat/photo/mass-spectroscopy>,
+        <http://example.org/nfdi4cat/photo/mott-schottky-analysis>,
+        <http://example.org/nfdi4cat/photo/nuclear-magnetic-resonance-spectroscopy>,
+        <http://example.org/nfdi4cat/photo/photoluminescence>,
+        <http://example.org/nfdi4cat/photo/raman-spectroscopy>,
+        <http://example.org/nfdi4cat/photo/scanning-electron-microscopy>,
+        <http://example.org/nfdi4cat/photo/thermogravimetric-analysis>,
+        <http://example.org/nfdi4cat/photo/transmission-electron-microscopy>,
+        <http://example.org/nfdi4cat/photo/ultraviolet-visible-spectroscopy>,
+        <http://example.org/nfdi4cat/photo/x-ray-diffraction>,
+        <http://example.org/nfdi4cat/photo/x-ray-fluorescence>,
+        <http://example.org/nfdi4cat/photo/x-ray-photoelectron-spectroscopy> ;
+    skos:prefLabel "Characterization of photocatalysts"@en .
+
+<http://example.org/nfdi4cat/photo/general-terms> a skos:Collection,
+        skos:Concept ;
+    dcterms:isPartOf cs: ;
+    skos:definition "General terms often used in the field of photocatalysis."@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/nfdi4cat/photo/absorption>,
+        <http://example.org/nfdi4cat/photo/bandgap-energy>,
+        <http://example.org/nfdi4cat/photo/charge-photogeneration>,
+        <http://example.org/nfdi4cat/photo/charge-recombination>,
+        <http://example.org/nfdi4cat/photo/charge-separation>,
+        <http://example.org/nfdi4cat/photo/conduction-band>,
+        <http://example.org/nfdi4cat/photo/crystallinity>,
+        <http://example.org/nfdi4cat/photo/doping>,
+        <http://example.org/nfdi4cat/photo/electron-transfer>,
+        <http://example.org/nfdi4cat/photo/excited-state>,
+        <http://example.org/nfdi4cat/photo/fermi-level>,
+        <http://example.org/nfdi4cat/photo/ground-state>,
+        <http://example.org/nfdi4cat/photo/infrared>,
+        <http://example.org/nfdi4cat/photo/metal-oxide>,
+        <http://example.org/nfdi4cat/photo/oxidation>,
+        <http://example.org/nfdi4cat/photo/photocatalyst>,
+        <http://example.org/nfdi4cat/photo/photoexcitation>,
+        <http://example.org/nfdi4cat/photo/pore-size-distribution>,
+        <http://example.org/nfdi4cat/photo/reduction>,
+        <http://example.org/nfdi4cat/photo/semiconductor>,
+        <http://example.org/nfdi4cat/photo/specific-surface-area>,
+        <http://example.org/nfdi4cat/photo/ultraviolet>,
+        <http://example.org/nfdi4cat/photo/valence-band>,
+        <http://example.org/nfdi4cat/photo/visible>,
+        <http://example.org/nfdi4cat/photo/wavelength> ;
+    skos:prefLabel "General terms"@en ;
+    skos:topConceptOf cs: .
+
+cs: a skos:ConceptScheme ;
+    dcterms:created "2022-04-13"^^xsd:date ;
+    dcterms:creator <https://www.catalsis.de/> ;
+    dcterms:hasPart <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts>,
+        <http://example.org/nfdi4cat/photo/evaluation-of-performance>,
+        <http://example.org/nfdi4cat/photo/general-terms>,
+        <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction>,
+        <http://example.org/nfdi4cat/photo/reactor-design>,
+        <http://example.org/nfdi4cat/photo/synthesis-of-photocatalysts> ;
+    dcterms:modified "2022-04-13"^^xsd:date ;
+    dcterms:provenance "Heterogene Photokatalyse / Leibniz Institute für Katalyse e.V. (LIKAT)"@en ;
+    dcterms:publisher <http://example.org/nfdi4cat/> ;
+    owl:versionInfo "0.1" ;
+    skos:definition "A vocabulary of the most commonly used terms in the heterogeneous photocatalytic (light-driven) reduction (conversion) of carbon dioxide (CO2) to hydrocarbons and / or platform chemicals"@en ;
+    skos:hasTopConcept <http://example.org/nfdi4cat/photo/chemical-substances-used-for-synthesis>,
+        <http://example.org/nfdi4cat/photo/dielectric-barrier-discharge-ionization-detector>,
+        <http://example.org/nfdi4cat/photo/equipped-detectors-of-gas-chromatograph>,
+        <http://example.org/nfdi4cat/photo/equipped-detectors-of-mass-spectrometer>,
+        <http://example.org/nfdi4cat/photo/gaseous-enviroment>,
+        <http://example.org/nfdi4cat/photo/general-terms>,
+        <http://example.org/nfdi4cat/photo/hole-tranfer>,
+        <http://example.org/nfdi4cat/photo/mass-of-deposited-catalyst>,
+        <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction>,
+        <http://example.org/nfdi4cat/photo/photoreactor-design>,
+        <http://example.org/nfdi4cat/photo/pressure-drop-in-a-co2-phoreduction-experiment>,
+        <http://example.org/nfdi4cat/photo/quartz>,
+        <http://example.org/nfdi4cat/photo/range-of-operation-pressure>,
+        <http://example.org/nfdi4cat/photo/selected-light-source>,
+        <http://example.org/nfdi4cat/photo/temperature-in-a-co2-photoreduction-experiment> ;
+    skos:prefLabel "Photocatalytic CO2 reduction"@en ;
+    dcat:contactPoint "Nikolaos Moustakas / David Linke / Jennifer Strunk" .
+
