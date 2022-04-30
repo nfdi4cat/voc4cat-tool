@@ -47,21 +47,21 @@ Install dependencies.
 
 Run the wrapper and show the help message.
 
-`py vocexcel_4cat.py --help`
+`py vocexcel4cat.py --help`
 
 To create a new vocabulary use the NFDI4Cat-adjusted template from the subfolder `templates` subfolder. Typically, when a new vocabulary is created you want to create IRIs from the preferred labels:
 
-`py vocexcel_4cat.py -i vocabulary.xlsx`
+`py vocexcel4cat.py -i vocabulary.xlsx`
 
 This will fill the IRI-column for all rows with missig IRI entries.
 
 Manually filling the Children URI (in sheet "Concepts") and Members URI (in sheet "Collections") with URIs can be tedious. Alternatively, the additional columns "Children by Pref. Label" and "Members by Pref. Label" allow to specify the children or members by their preferred label. Then the script can be used to fill the URI columns:
 
-`py vocexcel_4cat.py -r vocabulary.xlsx`
+`py vocexcel4cat.py -r vocabulary.xlsx`
 
 Finally, the vocabulary file can be converted to turtle format. In this case the wrapper script passes the job on to vocexcel:
 
-`py vocexcel_4cat.py vocabulary.xlsx`
+`py vocexcel4cat.py vocabulary.xlsx`
 
 A turtle file `vocabulary.ttl` is created in the same directory a where the xlsx-file is located.
 

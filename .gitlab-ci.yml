@@ -41,12 +41,12 @@ run:
     #- pip install dist/*
     - pip install -r requirements.txt
     # run the command here
-    - python vocexcel_4cat.py --help
+    - python vocexcel4cat.py --help
 
   artifacts:
     paths:
       - inbox-excel-vocabs/*
-      - vocexcel_4cat.py
+      - vocexcel4cat.py
       #- dist/*.whl
 
 pages:
