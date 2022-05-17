@@ -1,6 +1,7 @@
 # We install vocexcel directly from a specific branch form github (or gitea in LIKAT)
 
-vocexcel @ git+https://gogs.catalysis.de/LIKAT_RDM/VocExcel.git@nfdi4cat-dev
+vocexcel @ git+https://github.com/nfdi4cat/VocExcel.git@nfdi4cat-dev
+#vocexcel @ git+https://gogs.catalysis.de/LIKAT_RDM/VocExcel.git@nfdi4cat-dev
 
 # ...and how to use a specific commit?
 #vocexcel @ git+https://github.com/nfdi4cat/VocExcel.git@5cbae28b2d

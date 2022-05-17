@@ -6,12 +6,10 @@ The new commands be may be run either before or after VocExcel.
 Copyright (c) 2022 David Linke (ORCID: 0000-0002-5898-1820)
 """
 import argparse
-from collections import defaultdict
 import glob
 import os
 import sys
 from pathlib import Path
-from unittest.result import failfast
 
 import openpyxl
 from openpyxl.styles import PatternFill
