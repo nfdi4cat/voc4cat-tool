@@ -6,12 +6,15 @@ The new commands be may be run either before or after VocExcel.
 Copyright (c) 2022 David Linke (ORCID: 0000-0002-5898-1820)
 """
 import argparse
+from collections import defaultdict
 import glob
 import os
 import sys
 from pathlib import Path
+from unittest.result import failfast
 
 import openpyxl
+from openpyxl.styles import PatternFill
 
 from rdflib import URIRef
 
@@ -69,6 +72,7 @@ def add_IRI(fpath, outdir=None):
     Safe and valid IRIs are created using django's slugify function.
     Column A is only updated for the rows where the cell is empty.
     """
+    print(f"Running add_IRI for file {fpath}")
     wb = openpyxl.load_workbook(fpath)
     is_supported_template(wb)
     VOC_BASE_IRI = wb["Concept Scheme"].cell(row=2, column=2).value
@@ -107,16 +111,16 @@ def add_related(fpath, outdir=None):
     "Concepts": update col. G "Children URI" from col. J "Children by Pref. Label"
     "Collections": update col. D "Members URI" from col. F "Members by Pref. Label"
     """
+    print(f"Running add_related for file {fpath}")
     wb = openpyxl.load_workbook(fpath)
     is_supported_template(wb)
-
     # process both worksheets
     subsequent_empty_rows = 0
     for sheet in ["Concepts", "Collections"]:
         print(f"Processing sheet '{sheet}'")
         ws = wb[sheet]
         pref_label_lookup = {}
-        # read all peferred labels from the sheet
+        # read all preferred labels from the sheet
         for row in ws.iter_rows(min_row=3, max_col=2):
             if row[0].value and row[1].value:
                 pref_label_lookup[slugify(row[1].value)] = row[0].value
@@ -157,6 +161,75 @@ def add_related(fpath, outdir=None):
         output_fname = Path(outdir) / os.path.split(output_fname)[1]
     wb.save(output_fname)
     print(f"Saved updated file as {output_fname}")
+
+
+def check(fpath, outdir=None):
+    """
+    Check vocabulary in Excel sheet
+
+    In detail the following checks are performed:
+    Concepts:
+    - The language-specific preferred label of a concept must be unique.
+      The comparison ignores case.
+    - The "Concept IRI" must be unique; this is the case when no language
+      is used more than once per concept.
+    """
+    print(f"Running check of Concepts sheet for file {fpath}")
+    wb = openpyxl.load_workbook(fpath)
+    is_supported_template(wb)
+    ws = wb["Concepts"]
+    color = PatternFill("solid", start_color="00FFCC00")  # orange
+
+    subsequent_empty_rows = 0
+    seen_preflabels = []
+    # seen_conceptIRIs = defaultdict(list)
+    seen_conceptIRIs = []
+    failed_check = False
+    for row_no, row in enumerate(ws.iter_rows(min_row=3, max_col=3), 3):
+        if row[0].value and row[1].value:
+            conceptIRI, preflabel, lang = [c.value.strip() for c in row]
+
+            new_preflabel = f'"{preflabel}"@{lang}'.lower()
+            if new_preflabel in seen_preflabels:
+                failed_check = True
+                print(f"Duplicate of Preferred Label found: {new_preflabel}")
+                # colorise problematic cells
+                row[1].fill = row[2].fill = color
+                seen_in_row = 3 + seen_preflabels.index(new_preflabel)
+                ws[f"B{seen_in_row}"].fill = ws[f"C{seen_in_row}"].fill = color
+            else:
+                seen_preflabels.append(new_preflabel)
+
+            new_conceptIRI = f'"{conceptIRI}"@{lang.lower()}'
+            if new_conceptIRI in seen_conceptIRIs:
+                failed_check = True
+                print(
+                    f'Same Concept IRI "{conceptIRI}" used more than once for language "{lang}"'
+                )
+                # colorise problematic cells
+                row[0].fill = row[2].fill = color
+                seen_in_row = 3 + seen_conceptIRIs.index(new_conceptIRI)
+                ws[f"A{seen_in_row}"].fill = ws[f"C{seen_in_row}"].fill = color
+            else:
+                seen_conceptIRIs.append(new_conceptIRI)
+
+            subsequent_empty_rows = 0
+        elif row[0].value is None and row[1].value is None:
+            # stop processing a sheet after 3 empty rows
+            if subsequent_empty_rows < 2:
+                subsequent_empty_rows += 1
+            else:
+                subsequent_empty_rows = 0
+                break
+
+    if failed_check:
+        output_fname = Path("%s_checked.%s" % tuple(str(fpath).rsplit(".", 1)))
+        if outdir is not None:
+            output_fname = Path(outdir) / os.path.split(output_fname)[1]
+        wb.save(output_fname)
+        print(f"Saved file with highlighted errors as {output_fname}")
+    else:
+        print(f"All checks passed succesfully.")
 
 
 def run_vocexcel(args=None):
@@ -213,6 +286,15 @@ def wrapper(args=None):
     )
 
     parser.add_argument(
+        "-c",
+        "--check",
+        help=(
+            "Perform various checks on vocabulary in Excel file (detect duplicates,...)"
+        ),
+        action="store_true",
+    )
+
+    parser.add_argument(
         "file_to_preprocess",
         nargs="?",  # allow 0 or 1 file name as argument
         type=Path,
@@ -233,28 +315,24 @@ def wrapper(args=None):
 
     if args_wrapper.version:
         print(f"{__version__}")
-    elif args_wrapper.add_IRI:
+    elif args_wrapper.add_IRI or args_wrapper.add_related or args_wrapper.check:
+        funcs = [
+            m
+            for m, to_run in zip(
+                [add_IRI, add_related, check],
+                [args_wrapper.add_IRI, args_wrapper.add_related, args_wrapper.check],
+            )
+            if to_run
+        ]
         if os.path.isdir(args_wrapper.file_to_preprocess):
             for xlf in glob.glob(
                 os.path.join(args_wrapper.file_to_preprocess, "*.xlsx")
             ):
-                print(f"Running add_IRI for file {xlf}")
-                add_IRI(xlf, outdir)
+                for func in funcs:
+                    func(xlf, outdir)
         elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
-            print(f"Running add_IRI for file {args_wrapper.file_to_preprocess}")
-            add_IRI(args_wrapper.file_to_preprocess, outdir)
-        else:
-            parser.exit()
-    elif args_wrapper.add_related:
-        if os.path.isdir(args_wrapper.file_to_preprocess):
-            for xlf in glob.glob(
-                os.path.join(args_wrapper.file_to_preprocess, "*.xlsx")
-            ):
-                print(f"Running add_related for file {xlf}")
-                add_related(xlf, outdir)
-        elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
-            print(f"Running add_related for file {args_wrapper.file_to_preprocess}")
-            add_related(args_wrapper.file_to_preprocess, outdir)
+            for func in funcs:
+                func(args_wrapper.file_to_preprocess, outdir)
         else:
             parser.exit()
     elif args_wrapper and args_wrapper.file_to_preprocess:
