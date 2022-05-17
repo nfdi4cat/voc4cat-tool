@@ -6,6 +6,7 @@ The new commands be may be run either before or after VocExcel.
 Copyright (c) 2022 David Linke (ORCID: 0000-0002-5898-1820)
 """
 import argparse
+import glob
 import os
 import sys
 from pathlib import Path
@@ -15,33 +16,53 @@ import openpyxl
 from rdflib import URIRef
 
 from vocexcel.convert import main
-from vocexcel.utils import EXCEL_FILE_ENDINGS
-from vocexcel.models import ORGANISATIONS
+from vocexcel.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS, KNOWN_FILE_ENDINGS
+from vocexcel.models import ORGANISATIONS, ORGANISATIONS_INVERSE
 
 from django.utils.text import slugify
 
-__version__ = "0.1.0"
+__version__ = "0.2.0-dev"
 
 ORGANISATIONS["NFDI4Cat"] = URIRef("http://example.org/nfdi4cat/")
-ORGANISATIONS["LIKAT"] = URIRef("https://www.catalsis.de/")
+ORGANISATIONS["LIKAT"] = URIRef("https://www.catalysis.de/")
+ORGANISATIONS_INVERSE.update({v: k for k, v in ORGANISATIONS.items()})
 
 
-def is_excel_file_available(fname):
-    if fname is None or not fname.suffix.lower().endswith(tuple(EXCEL_FILE_ENDINGS)):
-        print("Files for preprocessing must end with .xlsx (Excel).")
+def is_file_available(fname, ftype):
+    if not type(ftype) is list:
+        ftype = [ftype]
+    if fname is None or not os.path.exists(fname):
+        print(f"File not found: {fname}s")
         return False
-    if not os.path.exists(fname):
-        print(f"Excel file not found: {fname}s")
+    if "excel" in ftype and fname.suffix.lower().endswith(tuple(EXCEL_FILE_ENDINGS)):
+        return True
+    if "rdf" in ftype and fname.suffix.lower().endswith(tuple(RDF_FILE_ENDINGS)):
+        return True
+    return False
+
+
+def has_file_in_more_than_one_format(dir_):
+    files = [
+        os.path.normcase(f)
+        for f in glob.glob(os.path.join(dir_, "*.*"))
+        if f.endswith(tuple(KNOWN_FILE_ENDINGS))
+    ]
+    file_names = [os.path.splitext(f)[0] for f in files]
+    unique_file_names = set(file_names)
+    if len(file_names) == len(unique_file_names):
         return False
-    return True
+    else:
+        seen = set()
+        duplicates = [x for x in file_names if x in seen or seen.add(x)]
+        return duplicates
 
 
 def is_supported_template(wb):
-    #TODO write check
+    # TODO add check for Excel template version
     return True
 
 
-def add_IRI(fpath):
+def add_IRI(fpath, outdir=None):
     """
     Add IRIs from preferred label in col A of sheets Concepts & Collections
 
@@ -71,12 +92,14 @@ def add_IRI(fpath):
                 else:
                     break
 
-    output_fnanme = "%s_i.%s" % tuple(str(fpath).rsplit(".", 1))
-    wb.save(output_fnanme)
-    print(f"Saved updated file as {output_fnanme}")
+    output_fname = Path("%s_i.%s" % tuple(str(fpath).rsplit(".", 1)))
+    if outdir is not None:
+        output_fname = Path(outdir) / os.path.split(output_fname)[1]
+    wb.save(output_fname)
+    print(f"Saved updated file as {output_fname}")
 
 
-def add_related(fpath):
+def add_related(fpath, outdir=None):
     """
     Add related Children URI and Members URI by preferred label if none is present.
 
@@ -129,9 +152,11 @@ def add_related(fpath):
                 else:
                     break
 
-    output_fnanme = "%s_r.%s" % tuple(str(fpath).rsplit(".", 1))
-    wb.save(output_fnanme)
-    print(f"Saved updated file as {output_fnanme}")
+    output_fname = Path("%s_r.%s" % tuple(str(fpath).rsplit(".", 1)))
+    if outdir is not None:
+        output_fname = Path(outdir) / os.path.split(output_fname)[1]
+    wb.save(output_fname)
+    print(f"Saved updated file as {output_fname}")
 
 
 def run_vocexcel(args=None):
@@ -140,8 +165,14 @@ def run_vocexcel(args=None):
 
 def wrapper(args=None):
     print("Running VocExcel wrapper")
+
+    if args is None:  # vocexcel4cat run via entrypoint
+        args = sys.argv[1:]
+
+    has_args = True if args else False
+
     parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        prog="vocexcel4cat", formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
     parser.add_argument(
@@ -153,15 +184,31 @@ def wrapper(args=None):
 
     parser.add_argument(
         "-i",
-        "--addIRI",
-        help="Add IRI (http://example.org/...) for concepts and collections if none is present.",
+        "--add_IRI",
+        help=(
+            "Add IRI (http://example.org/...) for concepts and collections "
+            "if none is present."
+        ),
         action="store_true",
+    )
+
+    parser.add_argument(
+        "-od",
+        "--output_directory",
+        help=(
+            "Specify directory where files should be written to. "
+            "The directory is created if required."
+        ),
+        required=False,
     )
 
     parser.add_argument(
         "-r",
         "--add_related",
-        help="Add related Children URI and Members URI by preferred label if none is present.",
+        help=(
+            "Add related Children URI and Members URI by preferred label "
+            "if none is present."
+        ),
         action="store_true",
     )
 
@@ -169,42 +216,88 @@ def wrapper(args=None):
         "file_to_preprocess",
         nargs="?",  # allow 0 or 1 file name as argument
         type=Path,
-        help="The Excel file to preprocess and convert to a SKOS vocabulary.",
+        help="Either the file to process or a directory with files to process.",
     )
 
-    args_wrapper = parser.parse_args()
+    # args_wrapper = parser.parse_args(args)
+    args_wrapper, vocexcel_args = parser.parse_known_args(args)
 
-    if len(sys.argv) == 1:
+    if not has_args:
         # show help if no args are given
         parser.print_help()
         parser.exit()
 
+    outdir = args_wrapper.output_directory
+    if outdir is not None and not os.path.isdir(outdir):
+        os.makedirs(outdir, exist_ok=True)
+
     if args_wrapper.version:
         print(f"{__version__}")
-    elif args_wrapper.addIRI:
-        if is_excel_file_available(args_wrapper.file_to_preprocess):
-            print(f"Processing file {args_wrapper.file_to_preprocess}")
-            add_IRI(args_wrapper.file_to_preprocess)
+    elif args_wrapper.add_IRI:
+        if os.path.isdir(args_wrapper.file_to_preprocess):
+            for xlf in glob.glob(
+                os.path.join(args_wrapper.file_to_preprocess, "*.xlsx")
+            ):
+                print(f"Running add_IRI for file {xlf}")
+                add_IRI(xlf, outdir)
+        elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
+            print(f"Running add_IRI for file {args_wrapper.file_to_preprocess}")
+            add_IRI(args_wrapper.file_to_preprocess, outdir)
         else:
             parser.exit()
     elif args_wrapper.add_related:
-        if is_excel_file_available(args_wrapper.file_to_preprocess):
-            print(f"Processing file {args_wrapper.file_to_preprocess}")
-            add_related(args_wrapper.file_to_preprocess)
+        if os.path.isdir(args_wrapper.file_to_preprocess):
+            for xlf in glob.glob(
+                os.path.join(args_wrapper.file_to_preprocess, "*.xlsx")
+            ):
+                print(f"Running add_related for file {xlf}")
+                add_related(xlf, outdir)
+        elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
+            print(f"Running add_related for file {args_wrapper.file_to_preprocess}")
+            add_related(args_wrapper.file_to_preprocess, outdir)
         else:
             parser.exit()
     elif args_wrapper and args_wrapper.file_to_preprocess:
-        if is_excel_file_available(args_wrapper.file_to_preprocess):
-            print(f"Processing file {args_wrapper.file_to_preprocess}")
-            print("\nCalling VocExcel")
+        if os.path.isdir(args_wrapper.file_to_preprocess):
+            dir_ = args_wrapper.file_to_preprocess
+            if duplicates := has_file_in_more_than_one_format(dir_):
+                print(
+                    "Files may only be present in one format. Found more than one "
+                    "format for:\n  " + "\n  ".join(duplicates)
+                )
+                parser.exit()
+            for xlf in glob.glob(os.path.join(dir_, "*.xlsx")):
+                print(f"Calling VocExcel for Excel file {xlf}")
+                locargs = list(vocexcel_args)
+                locargs.append(xlf)
+                if outdir is not None:
+                    output_fname = Path(outdir) / os.path.split(xlf)[1]
+                    locargs = ["--outputfile", str(output_fname)] + locargs
+                main(locargs)
+            for ttlf in glob.glob(os.path.join(dir_, "*.ttl")) + glob.glob(
+                os.path.join(dir_, "*.turtle")
+            ):
+                print(f"Calling VocExcel for RDF/turtle file {ttlf}")
+                locargs = list(vocexcel_args)
+                locargs.append(ttlf)
+                if outdir is not None:
+                    output_fname = Path(outdir) / os.path.split(ttlf)[1]
+                    locargs = ["--outputfile", str(output_fname)] + locargs
+                main(locargs)
+        elif is_file_available(args_wrapper.file_to_preprocess, ftype=["excel", "rdf"]):
+            print(f"Calling VocExcel for file {args_wrapper.file_to_preprocess}")
             main(args)
         else:
-            print("Files for preprocessing must end with .xlsx (Excel).")
+            if os.path.exists(args_wrapper.file_to_preprocess):
+                print(f"Cannot convert file {args_wrapper.file_to_preprocess}")
+                endings = ", ".join(
+                    [f".{e}" for e in EXCEL_FILE_ENDINGS]
+                    + list(RDF_FILE_ENDINGS.keys())
+                )
+                print(f"Files for processing must end with one of {endings}.")
             parser.exit()
     else:
-        print("\nCalling VocExcel")
-        # We add a dummy since vocexcel must be called with a filename.
-        main(args.insert(1, "."))
+        print("\nThis part should not be reached!")
 
     return args_wrapper
 
