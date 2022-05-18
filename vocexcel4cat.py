@@ -87,6 +87,7 @@ def add_IRI(fpath, outfile):
         for row in ws.iter_rows(min_row=3, max_col=2):
             if not row[0].value and row[1].value:
                 concept_iri = VOC_BASE_IRI + slugify(row[1].value)
+                concept_iri += "-coll" if sheet == "Collections" else ""
                 ws.cell(row[0].row, column=1).value = concept_iri
                 subsequent_empty_rows = 0
             elif row[0].value is None and row[1].value is None:
