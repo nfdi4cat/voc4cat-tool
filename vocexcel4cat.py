@@ -6,6 +6,7 @@ The new commands be may be run either before or after VocExcel.
 Copyright (c) 2022 David Linke (ORCID: 0000-0002-5898-1820)
 """
 import argparse
+import datetime
 import glob
 import os
 import sys
@@ -27,6 +28,7 @@ __version__ = "0.2.0-dev"
 ORGANISATIONS["NFDI4Cat"] = URIRef("http://example.org/nfdi4cat/")
 ORGANISATIONS["LIKAT"] = URIRef("https://www.catalysis.de/")
 ORGANISATIONS_INVERSE.update({v: k for k, v in ORGANISATIONS.items()})
+NOW = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
 
 
 def is_file_available(fname, ftype):
@@ -63,14 +65,14 @@ def is_supported_template(wb):
     return True
 
 
-def add_IRI(fpath, outdir=None):
+def add_IRI(fpath, outfile):
     """
     Add IRIs from preferred label in col A of sheets Concepts & Collections
 
     Safe and valid IRIs are created using django's slugify function.
     Column A is only updated for the rows where the cell is empty.
     """
-    print(f"Running add_IRI for file {fpath}")
+    print(f"\nRunning add_IRI for file {fpath}")
     wb = openpyxl.load_workbook(fpath)
     is_supported_template(wb)
     VOC_BASE_IRI = wb["Concept Scheme"].cell(row=2, column=2).value
@@ -94,14 +96,11 @@ def add_IRI(fpath, outdir=None):
                 else:
                     break
 
-    output_fname = Path("%s_i.%s" % tuple(str(fpath).rsplit(".", 1)))
-    if outdir is not None:
-        output_fname = Path(outdir) / os.path.split(output_fname)[1]
-    wb.save(output_fname)
-    print(f"Saved updated file as {output_fname}")
+    wb.save(outfile)
+    print(f"Saved updated file as {outfile}")
 
 
-def add_related(fpath, outdir=None):
+def add_related(fpath, outfile):
     """
     Add related Children URI and Members URI by preferred label if none is present.
 
@@ -109,7 +108,7 @@ def add_related(fpath, outdir=None):
     "Concepts": update col. G "Children URI" from col. J "Children by Pref. Label"
     "Collections": update col. D "Members URI" from col. F "Members by Pref. Label"
     """
-    print(f"Running add_related for file {fpath}")
+    print(f"\nRunning add_related for file {fpath}")
     wb = openpyxl.load_workbook(fpath)
     is_supported_template(wb)
     # process both worksheets
@@ -154,14 +153,11 @@ def add_related(fpath, outdir=None):
                 else:
                     break
 
-    output_fname = Path("%s_r.%s" % tuple(str(fpath).rsplit(".", 1)))
-    if outdir is not None:
-        output_fname = Path(outdir) / os.path.split(output_fname)[1]
-    wb.save(output_fname)
-    print(f"Saved updated file as {output_fname}")
+    wb.save(outfile)
+    print(f"Saved updated file as {outfile}")
 
 
-def check(fpath, outdir=None):
+def check(fpath, outfile):
     """
     Check vocabulary in Excel sheet
 
@@ -172,7 +168,7 @@ def check(fpath, outdir=None):
     - The "Concept IRI" must be unique; this is the case when no language
       is used more than once per concept.
     """
-    print(f"Running check of Concepts sheet for file {fpath}")
+    print(f"\nRunning check of Concepts sheet for file {fpath}")
     wb = openpyxl.load_workbook(fpath)
     is_supported_template(wb)
     ws = wb["Concepts"]
@@ -221,11 +217,8 @@ def check(fpath, outdir=None):
                 break
 
     if failed_check:
-        output_fname = Path("%s_checked.%s" % tuple(str(fpath).rsplit(".", 1)))
-        if outdir is not None:
-            output_fname = Path(outdir) / os.path.split(output_fname)[1]
-        wb.save(output_fname)
-        print(f"Saved file with highlighted errors as {output_fname}")
+        wb.save(outfile)
+        print(f"Saved file with highlighted errors as {outfile}")
     else:
         print(f"All checks passed succesfully.")
 
@@ -326,11 +319,25 @@ def wrapper(args=None):
             for xlf in glob.glob(
                 os.path.join(args_wrapper.file_to_preprocess, "*.xlsx")
             ):
+                fprefix, fsuffix = xlf.rsplit(".", 1)
+                if outdir is None:
+                    outfile = Path(f"{fprefix}_{NOW}.{fsuffix}")
+                else:
+                    outfile = Path(outdir) / Path(f"{fprefix}_{NOW}.{fsuffix}")
+                infile = xlf
                 for func in funcs:
-                    func(xlf, outdir)
+                    func(infile, outfile)
+                    infile = outfile
         elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
+            fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
+            if outdir is None:
+                outfile = Path(f"{fprefix}_{NOW}.{fsuffix}")
+            else:
+                outfile = Path(outdir) / Path(f"{fprefix}_{NOW}.{fsuffix}")
+            infile = args_wrapper.file_to_preprocess
             for func in funcs:
-                func(args_wrapper.file_to_preprocess, outdir)
+                func(infile, outfile)
+                infile = outfile
         else:
             parser.exit()
     elif args_wrapper and args_wrapper.file_to_preprocess:
