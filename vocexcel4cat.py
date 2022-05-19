@@ -72,7 +72,8 @@ def may_overwrite(no_warn, xlf, outfile, func):
             "Run again with --no-warn option to overwrite the file."
         )
         return False
-    True
+    else:
+        return True
 
 
 def add_IRI(fpath, outfile):
@@ -349,34 +350,40 @@ def wrapper(args=None):
                 os.path.join(args_wrapper.file_to_preprocess, "*.xlsx")
             ):
                 fprefix, fsuffix = xlf.rsplit(".", 1)
+                fname = os.path.split(fprefix)[1]  # split off leading dirs
                 if outdir is None:
-                    outfile = Path(f"{fprefix}.{fsuffix}")
+                    outfile = xlf
                 else:
-                    fprefix = os.path.split(fprefix)[1]  # split off leading dirs
-                    outfile = Path(outdir) / Path(f"{fprefix}.{fsuffix}")
+                    outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
+                infile = xlf
                 for func in funcs:
                     if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
                         parser.exit()
-                    func(xlf, outfile)
+                    func(infile, outfile)
+                    infile = outfile
                 if args_wrapper.forward:
+                    print("\nCalling VocExcel for forwarded Excel file {infile}")
                     locargs = list(vocexcel_args)
-                    locargs.append(str(xlf))
+                    locargs.append(str(infile))
                     main(locargs)
+
         elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
-            xlf = args_wrapper.file_to_preprocess
-            fprefix, fsuffix = str(xlf).rsplit(".", 1)
+            fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
+            fname = os.path.split(fprefix)[1]  # split off leading dirs
             if outdir is None:
-                outfile = Path(f"{fprefix}.{fsuffix}")
+                outfile = args_wrapper.file_to_preprocess
             else:
-                fprefix = os.path.split(fprefix)[1]  # split off leading dirs
-                outfile = Path(outdir) / Path(f"{fprefix}.{fsuffix}")
+                outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
+            infile = args_wrapper.file_to_preprocess
             for func in funcs:
                 if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
                     parser.exit()
-                func(xlf, outfile)
+                func(infile, outfile)
+                infile = outfile
             if args_wrapper.forward:
+                print("\nCalling VocExcel for forwarded Excel file {infile}")
                 locargs = list(vocexcel_args)
-                locargs.append(str(xlf))
+                locargs.append(str(infile))
                 main(locargs)
         else:
             parser.exit()
@@ -389,27 +396,34 @@ def wrapper(args=None):
                     "format for:\n  " + "\n  ".join(duplicates)
                 )
                 parser.exit()
+            print("\nCalling VocExcel for Excel files")
             for xlf in glob.glob(os.path.join(dir_, "*.xlsx")):
-                print(f"Calling VocExcel for Excel file {xlf}")
+                print(f"  {xlf}")
                 locargs = list(vocexcel_args)
                 locargs.append(xlf)
-                if outdir is not None:
-                    fprefix, fsuffix = str(xlf).rsplit(".", 1)
-
-                    outfile = Path(f"{fprefix}.{fsuffix}")
-
-                    output_fname = Path(outdir) / os.path.split(xlf)[1]
-                    locargs = ["--outputfile", str(output_fname)] + locargs
+                fprefix, fsuffix = str(xlf).rsplit(".", 1)
+                fname = os.path.split(fprefix)[1]  # split off leading dirs
+                if outdir is None:
+                    outfile = Path(f"{fprefix}.ttl")
+                else:
+                    outfile = Path(outdir) / Path(f"{fname}.ttl")
+                    locargs = ["--outputfile", str(outfile)] + locargs
                 main(locargs)
+
+            print("Calling VocExcel for Excel files")
             for ttlf in glob.glob(os.path.join(dir_, "*.ttl")) + glob.glob(
                 os.path.join(dir_, "*.turtle")
             ):
-                print(f"Calling VocExcel for RDF/turtle file {ttlf}")
+                print(f"  {ttlf}")
                 locargs = list(vocexcel_args)
                 locargs.append(ttlf)
-                if outdir is not None:
-                    output_fname = Path(outdir) / os.path.split(ttlf)[1]
-                    locargs = ["--outputfile", str(output_fname)] + locargs
+                fprefix, fsuffix = str(ttlf).rsplit(".", 1)
+                fname = os.path.split(fprefix)[1]  # split off leading dirs
+                if outdir is None:
+                    outfile = Path(f"{fprefix}.xlsx")
+                else:
+                    outfile = Path(outdir) / Path(f"{fname}.xlsx")
+                    locargs = ["--outputfile", str(outfile)] + locargs
                 main(locargs)
         elif is_file_available(args_wrapper.file_to_preprocess, ftype=["excel", "rdf"]):
             print(f"Calling VocExcel for file {args_wrapper.file_to_preprocess}")
