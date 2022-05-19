@@ -243,7 +243,7 @@ def wrapper(args=None):
     parser.add_argument(
         "-v",
         "--version",
-        help="The version of this wrapper of VocExel.",
+        help="The version of this wrapper of VocExcel.",
         action="store_true",
     )
 
@@ -264,6 +264,7 @@ def wrapper(args=None):
             "Specify directory where files should be written to. "
             "The directory is created if required."
         ),
+        type=Path,
         required=False,
     )
 
@@ -282,6 +283,15 @@ def wrapper(args=None):
         "--check",
         help=(
             "Perform various checks on vocabulary in Excel file (detect duplicates,...)"
+        ),
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "-f",
+        "--forward",
+        help=(
+            "Forward file resulting from other running other options to vocexcel."
         ),
         action="store_true",
     )
@@ -321,6 +331,7 @@ def wrapper(args=None):
                 os.path.join(args_wrapper.file_to_preprocess, "*.xlsx")
             ):
                 fprefix, fsuffix = xlf.rsplit(".", 1)
+                fprefix = os.path.split(fprefix)[1]  # split off leading dirs
                 if outdir is None:
                     outfile = Path(f"{fprefix}_{NOW}.{fsuffix}")
                 else:
@@ -329,6 +340,10 @@ def wrapper(args=None):
                 for func in funcs:
                     func(infile, outfile)
                     infile = outfile
+                if args_wrapper.forward:
+                    locargs = list(vocexcel_args)
+                    locargs.append(str(infile))
+                    main(locargs)
         elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
             fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
             if outdir is None:
@@ -339,6 +354,10 @@ def wrapper(args=None):
             for func in funcs:
                 func(infile, outfile)
                 infile = outfile
+            if args_wrapper.forward:
+                locargs = list(vocexcel_args)
+                locargs.append(str(infile))
+                main(locargs)
         else:
             parser.exit()
     elif args_wrapper and args_wrapper.file_to_preprocess:
@@ -355,6 +374,10 @@ def wrapper(args=None):
                 locargs = list(vocexcel_args)
                 locargs.append(xlf)
                 if outdir is not None:
+                    fprefix, fsuffix = str(xlf).rsplit(".", 1)
+
+                    outfile = Path(f"{fprefix}_{NOW}.{fsuffix}")
+
                     output_fname = Path(outdir) / os.path.split(xlf)[1]
                     locargs = ["--outputfile", str(output_fname)] + locargs
                 main(locargs)
