@@ -65,6 +65,16 @@ def is_supported_template(wb):
     return True
 
 
+def may_overwrite(no_warn, xlf, outfile, func):
+    if not no_warn and os.path.exists(outfile) and Path(xlf) == Path(outfile):
+        print(
+            f'Option "{func.__name__}" will overwrite the existing file {outfile}\n'
+            "Run again with --no-warn option to overwrite the file."
+        )
+        return False
+    True
+
+
 def add_IRI(fpath, outfile):
     """
     Add IRIs from preferred label in col A of sheets Concepts & Collections
@@ -199,7 +209,8 @@ def check(fpath, outfile):
             if new_conceptIRI in seen_conceptIRIs:
                 failed_check = True
                 print(
-                    f'Same Concept IRI "{conceptIRI}" used more than once for language "{lang}"'
+                    f'Same Concept IRI "{conceptIRI}" used more than once for '
+                    'language "{lang}"'
                 )
                 # colorise problematic cells
                 row[0].fill = row[2].fill = color
@@ -221,7 +232,7 @@ def check(fpath, outfile):
         wb.save(outfile)
         print(f"Saved file with highlighted errors as {outfile}")
     else:
-        print(f"All checks passed succesfully.")
+        print("All checks passed succesfully.")
 
 
 def run_vocexcel(args=None):
@@ -290,8 +301,15 @@ def wrapper(args=None):
     parser.add_argument(
         "-f",
         "--forward",
+        help=("Forward file resulting from other running other options to vocexcel."),
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--no-warn",
         help=(
-            "Forward file resulting from other running other options to vocexcel."
+            "Don't warn if an input file would be overwritten by the generated "
+            "output file."
         ),
         action="store_true",
     )
@@ -331,32 +349,34 @@ def wrapper(args=None):
                 os.path.join(args_wrapper.file_to_preprocess, "*.xlsx")
             ):
                 fprefix, fsuffix = xlf.rsplit(".", 1)
-                fprefix = os.path.split(fprefix)[1]  # split off leading dirs
                 if outdir is None:
-                    outfile = Path(f"{fprefix}_{NOW}.{fsuffix}")
+                    outfile = Path(f"{fprefix}.{fsuffix}")
                 else:
-                    outfile = Path(outdir) / Path(f"{fprefix}_{NOW}.{fsuffix}")
-                infile = xlf
+                    fprefix = os.path.split(fprefix)[1]  # split off leading dirs
+                    outfile = Path(outdir) / Path(f"{fprefix}.{fsuffix}")
                 for func in funcs:
-                    func(infile, outfile)
-                    infile = outfile
+                    if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
+                        parser.exit()
+                    func(xlf, outfile)
                 if args_wrapper.forward:
                     locargs = list(vocexcel_args)
-                    locargs.append(str(infile))
+                    locargs.append(str(xlf))
                     main(locargs)
         elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
-            fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
+            xlf = args_wrapper.file_to_preprocess
+            fprefix, fsuffix = str(xlf).rsplit(".", 1)
             if outdir is None:
-                outfile = Path(f"{fprefix}_{NOW}.{fsuffix}")
+                outfile = Path(f"{fprefix}.{fsuffix}")
             else:
-                outfile = Path(outdir) / Path(f"{fprefix}_{NOW}.{fsuffix}")
-            infile = args_wrapper.file_to_preprocess
+                fprefix = os.path.split(fprefix)[1]  # split off leading dirs
+                outfile = Path(outdir) / Path(f"{fprefix}.{fsuffix}")
             for func in funcs:
-                func(infile, outfile)
-                infile = outfile
+                if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
+                    parser.exit()
+                func(xlf, outfile)
             if args_wrapper.forward:
                 locargs = list(vocexcel_args)
-                locargs.append(str(infile))
+                locargs.append(str(xlf))
                 main(locargs)
         else:
             parser.exit()
@@ -376,7 +396,7 @@ def wrapper(args=None):
                 if outdir is not None:
                     fprefix, fsuffix = str(xlf).rsplit(".", 1)
 
-                    outfile = Path(f"{fprefix}_{NOW}.{fsuffix}")
+                    outfile = Path(f"{fprefix}.{fsuffix}")
 
                     output_fname = Path(outdir) / os.path.split(xlf)[1]
                     locargs = ["--outputfile", str(output_fname)] + locargs
