@@ -11,3 +11,4 @@ vocexcel @ git+https://github.com/nfdi4cat/VocExcel.git@nfdi4cat-dev
 django>=4.0.0
 openpyxl>=3.0.9; python_version >= "3.6"
 pillow>=9.1.0
+ontospy[Full] >= 1.9.9.4

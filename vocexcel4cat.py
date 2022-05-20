@@ -169,6 +169,22 @@ def add_related(fpath, outfile):
     print(f"Saved updated file as {outfile}")
 
 
+def run_ontospy(file_path, output_path):
+    import ontospy
+    from ontospy.ontodocs.viz.viz_html_single import HTMLVisualizer
+    from ontospy.ontodocs.viz.viz_d3dendogram import Dataviz
+
+    g = ontospy.Ontospy(file_path)
+
+    docs = HTMLVisualizer(g)
+    docs_path = os.path.join(output_path, "docs")
+    docs.build(docs_path)  # => build and save docs/visualization.
+
+    viz = Dataviz(g)
+    viz_path = os.path.join(output_path, "dendro")
+    viz.build(viz_path)  # => build and save docs/visualization.
+
+
 def check(fpath, outfile):
     """
     Check vocabulary in Excel sheet
@@ -300,6 +316,14 @@ def wrapper(args=None):
     )
 
     parser.add_argument(
+        "--docs",
+        help=(
+            "Build documentation and dendrogram-visualization with ontospy."
+        ),
+        action="store_true",
+    )
+
+    parser.add_argument(
         "-f",
         "--forward",
         help=("Forward file resulting from other running other options to vocexcel."),
@@ -367,6 +391,11 @@ def wrapper(args=None):
                     locargs.append(str(infile))
                     main(locargs)
 
+            if args_wrapper.docs and args_wrapper.forward:
+                infile = args_wrapper.file_to_preprocess
+                doc_path = outdir if outdir is not None else infile.parent[0]
+                run_ontospy(infile, doc_path)
+
         elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
             fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
             fname = os.path.split(fprefix)[1]  # split off leading dirs
@@ -385,6 +414,11 @@ def wrapper(args=None):
                 locargs = list(vocexcel_args)
                 locargs.append(str(infile))
                 main(locargs)
+                if args_wrapper.docs:
+                    infile = Path(infile).with_suffix('.ttl')
+                    doc_path = outdir if outdir is not None else infile.parent[0]
+                    run_ontospy(infile, doc_path)
+
         else:
             parser.exit()
     elif args_wrapper and args_wrapper.file_to_preprocess:
@@ -425,9 +459,19 @@ def wrapper(args=None):
                     outfile = Path(outdir) / Path(f"{fname}.xlsx")
                     locargs = ["--outputfile", str(outfile)] + locargs
                 main(locargs)
+
+            if args_wrapper.docs and args_wrapper.forward:
+                infile = args_wrapper.file_to_preprocess
+                doc_path = outdir if outdir is not None else infile.parent[0]
+                run_ontospy(infile, doc_path)
+
         elif is_file_available(args_wrapper.file_to_preprocess, ftype=["excel", "rdf"]):
             print(f"Calling VocExcel for file {args_wrapper.file_to_preprocess}")
             main(args)
+            if args_wrapper.docs:
+                infile = Path(args_wrapper.file_to_preprocess).with_suffix('.ttl')
+                doc_path = outdir if outdir is not None else infile.parent[0]
+                run_ontospy(infile, doc_path)
         else:
             if os.path.exists(args_wrapper.file_to_preprocess):
                 print(f"Cannot convert file {args_wrapper.file_to_preprocess}")
