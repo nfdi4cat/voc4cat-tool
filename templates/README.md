@@ -1,5 +1,5 @@
 The templates here match the templates from VocExcel with the same version number. 
-The changes made to not affect processing with vocexcel.
+None of the changes made affect processing with vocexcel.
 
 The following is different in the NFDI4Cat-template for v0.4.3:
 - Changed "Introduction" sheet for NFDI4Cat
