@@ -174,6 +174,12 @@ def run_ontospy(file_path, output_path):
     from ontospy.ontodocs.viz.viz_html_single import HTMLVisualizer
     from ontospy.ontodocs.viz.viz_d3dendogram import Dataviz
 
+    print(f"\nBuilding ontospy docu for Excel file {file_path}")
+
+    if not glob.glob('example/*.ttl'):
+        print('No turtle file found to build documentation for.')
+        return
+
     g = ontospy.Ontospy(file_path)
 
     docs = HTMLVisualizer(g)
@@ -386,7 +392,7 @@ def wrapper(args=None):
                     func(infile, outfile)
                     infile = outfile
                 if args_wrapper.forward:
-                    print("\nCalling VocExcel for forwarded Excel file {infile}")
+                    print(f"\nCalling VocExcel for forwarded Excel file {infile}")
                     locargs = list(vocexcel_args)
                     locargs.append(str(infile))
                     main(locargs)
@@ -410,7 +416,7 @@ def wrapper(args=None):
                 func(infile, outfile)
                 infile = outfile
             if args_wrapper.forward:
-                print("\nCalling VocExcel for forwarded Excel file {infile}")
+                print(f"\nCalling VocExcel for forwarded Excel file {infile}")
                 locargs = list(vocexcel_args)
                 locargs.append(str(infile))
                 main(locargs)
