@@ -1,8 +1,14 @@
-# This file is a template, and might need editing before it works on your project.
-# To contribute improvements to CI/CD templates, please follow the Development guide at:
-# https://docs.gitlab.com/ee/development/cicd/templates.html
-# This specific template is located at:
-# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Python.gitlab-ci.yml
+# https://docs.gitlab.com/ee/ci/yaml/#stages
+# https://docs.gitlab.com/ee/ci/yaml/#stage
+stages:
+  # PYthon build
+  - build
+  # Python testing
+  - test
+  # Prepare/test vocabulary
+  - prepare
+  # Publish vocabulary
+  - publish
 
 # Official language image. Look for the different tagged releases at:
 # https://hub.docker.com/r/library/python/tags/
@@ -13,50 +19,147 @@ image: python:latest
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
-# Pip's cache doesn't store the python packages
-# https://pip.pypa.io/en/stable/reference/pip_install/#caching
-#
 # If you want to also cache the installed packages, you have to install
 # them in a virtualenv and cache it as well.
 cache:
   paths:
     - .cache/pip
-    - venv/
+    - .venv/
 
 before_script:
-  - python --version  # For debugging
-  - pip install virtualenv
-  - virtualenv venv
-  - source venv/bin/activate
+  - python --version
+  - python -m venv .venv
+  - source .venv/bin/activate
+  - python -m pip install -U pip
 
-#test:
-#  script:
-#    - pip install tox flake8  # you can also use tox
-#    - tox -e py39,flake8
+# ==== Merge request pipelines (run on changes in merge request’s branch) ====
 
-run:
-  script:
-    #- python setup.py bdist_wheel
-    # an alternative approach is to install and run:
-    #- pip install dist/*
-    - pip install -r requirements.txt
-    # run the command here
-    - python vocexcel4cat.py --help
+# show-variables:  # step to list all available variables and their values
+#   script:
+#     - export
 
-  artifacts:
-    paths:
-      - inbox-excel-vocabs/*
-      - vocexcel4cat.py
-      #- dist/*.whl
-
-pages:
-  script:
-    - pip install sphinx furo myst-parser
-    - cd docs
-    - make html
-    - mv _build/html/ ../public/
-  artifacts:
-    paths:
-      - public
+vocab:build:
+  # Run vocexcel4cat and provide the generated artifacts for download:
+  # - updated excel-file(s)
+  # - generated turtle file(s)
+  # - Ontospy documentation & dendogram.
+  stage: prepare
+  needs: []
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  script:
+    - python -m pip install -r requirements.txt
+    - python vocexcel4cat.py --version
+    - python vocexcel4cat.py --add_IRI --add_related --check --forward --docs --output_directory outbox --logfile outbox/vocexcel.log inbox-excel-vocabs/
+  artifacts:
+    when: always
+    # set the name that is shown in UI for the artifact
+    expose_as: 'vocexcel4cat output'
+    # set the name of the created artifacts archive.
+    name: 'vocexcel4cat-artifacts-MR$CI_MERGE_REQUEST_IID-$CI_PIPELINE_CREATED_AT'
+    paths:
+      - outbox/
+
+vocab:commit:
+  # Actions
+  # - copy generated turtle file(s) to vocabularies
+  # - commit new/changed file(s) in vocabularies
+  stage: prepare
+  needs: ["vocab:build"]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  script:
+    # cp reports an error if nothing is copied. We prevents this.
+    # - cp -v -u outbox/*.ttl vocabularies || echo "No ttl files to copy/update."
+    # next line avoids "detached head state", but is it required?
+    # - git checkout "$CI_COMMIT_REF_NAME"
+    - git status
+    # Use python script to call "git merge-file" on existing or "copy" on new vocabs
+    - python merge_vocab.py outbox vocabularies
+    - git add vocabularies/\*.ttl || echo "No ttl files to add."
+    - git status
+    # on project token: https://docs.gitlab.com/ee/user/project/settings/project_access_tokens.html
+    # the secret token is added as masked variable: GitLab Project CI/CD Settings menu > Variables settings
+    - git remote set-url origin "https://$CI_PROJECT_NAME:$PROJECT_ACCESS_TOKEN@$CI_SERVER_HOST/$CI_PROJECT_PATH.git"
+    - git config --global user.email "${GITLAB_USER_EMAIL}"
+    - git config --global user.name "${GITLAB_USER_NAME}"
+    # Nothing to commit gives exit code 1 (=error). We prevent this.
+    # note on colons: https://docs.gitlab.com/ee/ci/yaml/script.html#syntax-is-incorrect-in-scripts-that-use-
+    - 'git diff-files --quiet || git commit -m "CI: vocabularies change in pipeline $CI_PIPELINE_ID"'
+    # push to MR branch
+    # commit with "-o ci.skip" to prevent triggering another pipeline.
+    - echo "pushing to branch ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}"
+    - git push -o ci.skip origin HEAD:${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
+
+vocab:is_approved:
+  # work around because CI_MERGE_REQUEST_APPROVED cannot yet be used in rules
+  # https://gitlab.com/gitlab-org/gitlab/-/issues/329787
+  # Another solution is to pass the information as artifact (variables are local only!)
+  stage: prepare
+  needs: ["vocab:commit"]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+  script:
+    - rm approved.vocab || true
+    - python -c "import os; print('Approved.' if os.environ.get('CI_MERGE_REQUEST_APPROVED', False) else 'Not yet approved.')"
+    #- python -c "import sys, os; sys.exit(0 if os.environ.get('CI_MERGE_REQUEST_APPROVED', False) else 1)"
+    - python -c "import os; open('./approved.vocab', 'w').write('Approved!') if os.environ.get('CI_MERGE_REQUEST_APPROVED', False) else False"
+  artifacts:
+      paths:
+      - ./approved.vocab
+  when: on_success
+
+vocab:merge:
+  # - delete xlsx files from inbox
+  # - commit "deletion"
+  stage: prepare
+  needs: ["vocab:is_approved"]
+  rules:
+    # - if: $CI_MERGE_REQUEST_APPROVED  # does not work https://gitlab.com/gitlab-org/gitlab/-/issues/329787
+    - exists:
+      - ./approved.vocab
+  script:
+    # next line avoids "detached head state", but is it required?
+    # - git checkout "$CI_COMMIT_REF_NAME"
+    - git status
+    - git rm inbox-excel-vocabs/\*.xlsx || echo "No xlsx files to remove."
+    - git status
+    - git remote set-url origin "https://$CI_PROJECT_NAME:$PROJECT_ACCESS_TOKEN@$CI_SERVER_HOST/$CI_PROJECT_PATH.git"
+    - git remote -v
+    - git config --global user.email "${GITLAB_USER_EMAIL}"
+    - git config --global user.name "${GITLAB_USER_NAME}"
+    - 'git diff-files --quiet || git commit -m "CI: remove Excel files from inbox-excel-vocabs"'
+    # push to merge request branch and let gitlab merge automatically on success
+    - git push -o merge_request.merge_when_pipeline_succeeds origin HEAD:${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
+
+    # push to origin/main (just an example).
+    # - git push -o merge_request.merge_when_pipeline_succeeds origin HEAD:${CI_DEFAULT_BRANCH}
+
+
+# ==== Merge-results-pipelines, runs after the merge to main ====
+# - Rebuild docu after merge
+# - Publish docu/vocabs
+
+vocab:publish:
+  stage: publish
+  rules:
+    - exists:
+      - ./approved.vocab
+  script:
+     # TODO
+    - echo "Hello from the NOT-YET-IMPLEMENTED deploy pipeline."
+    - rm approved.vocab || true
+
+# !! pages are not active on gitlab@focus so they cannot be used !!
+# The below code nevertheless runs but the output is not accessible.
+# pages:
+#   rules:
+#     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+#   script:
+#     - pip install sphinx furo myst-parser
+#     - cd docs
+#     - make html
+#     - mv _build/html/ ../public/
+#   artifacts:
+#     paths:
+#       - public
