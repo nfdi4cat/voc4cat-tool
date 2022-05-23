@@ -48,9 +48,23 @@ vocab:build:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   script:
+    - ls -l outbox/ || echo "outbox directory does not exist."
     - python -m pip install -r requirements.txt
     - python vocexcel4cat.py --version
-    - python -u vocexcel4cat.py --add_IRI --add_related --check --forward --docs --output_directory outbox inbox-excel-vocabs/ 2>&1 | tee outbox/vocexcel4cat.log
+    # When calling vocexcel4cat we want get the exit code, and fail the pipeline.
+    # When using tee, the bash-pipeline stops on exit code != 0 and we don't
+    # get the command output written to vocexcel4cat.log
+    # So we need to evalute the bash pipeline failure not immediately but delayed.
+    - >
+      python -u vocexcel4cat.py --add_IRI --add_related --check --forward --docs --output_directory outbox inbox-excel-vocabs/
+      |& tee vocexcel4cat.log
+      || EXIT_CODE=${PIPESTATUS[1]}; echo $?
+    # tee cannot create a file in a subdir. So we move the file afterwards.
+    - mv vocexcel4cat.log outbox
+    - ls -l outbox/ || echo "outbox directory does not exist."
+    # Evaluate exit code now that we saved vocexcel4cat.log and fail CI
+    - echo "${EXIT_CODE}"
+    - if [ $EXIT_CODE -ne 0 ]; then exit ${EXIT_CODE}; fi;
   artifacts:
     when: always
     # set the name that is shown in UI for the artifact
@@ -68,11 +82,12 @@ vocab:commit:
   needs: ["vocab:build"]
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    # - exists:
+    #   - outbox/*.ttl
   script:
-    # cp reports an error if nothing is copied. We prevents this.
-    # - cp -v -u outbox/*.ttl vocabularies || echo "No ttl files to copy/update."
-    # next line avoids "detached head state", but is it required?
-    # - git checkout "$CI_COMMIT_REF_NAME"
+    # checkout avoids "detached head state", https://stackoverflow.com/a/69268083
+    #- echo "${CI_COMMIT_REF_NAME}"
+    #- git checkout "${CI_COMMIT_REF_NAME}"
     - git status
     # Use python script to call "git merge-file" on existing or "copy" on new vocabs
     - python merge_vocab.py outbox vocabularies
@@ -85,7 +100,7 @@ vocab:commit:
     - git config --global user.name "${GITLAB_USER_NAME}"
     # Nothing to commit gives exit code 1 (=error). We prevent this.
     # note on colons: https://docs.gitlab.com/ee/ci/yaml/script.html#syntax-is-incorrect-in-scripts-that-use-
-    - 'git diff-files --quiet || git commit -m "CI: vocabularies change in pipeline $CI_PIPELINE_ID"'
+    - git diff-files --quiet || git commit -m "CI vocabulary update in pipeline $CI_PIPELINE_ID"
     # push to MR branch
     # commit with "-o ci.skip" to prevent triggering another pipeline.
     - echo "pushing to branch ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}"
@@ -99,10 +114,11 @@ vocab:is_approved:
   needs: ["vocab:commit"]
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    # - exists:
+    #   - outbox/*.ttl
   script:
     - rm approved.vocab || true
     - python -c "import os; print('Approved.' if os.environ.get('CI_MERGE_REQUEST_APPROVED', False) else 'Not yet approved.')"
-    #- python -c "import sys, os; sys.exit(0 if os.environ.get('CI_MERGE_REQUEST_APPROVED', False) else 1)"
     - python -c "import os; open('./approved.vocab', 'w').write('Approved!') if os.environ.get('CI_MERGE_REQUEST_APPROVED', False) else False"
   artifacts:
       paths:
@@ -119,8 +135,8 @@ vocab:merge:
     - exists:
       - ./approved.vocab
   script:
-    # next line avoids "detached head state", but is it required?
-    # - git checkout "$CI_COMMIT_REF_NAME"
+    # checkout avoids "detached head state", https://stackoverflow.com/a/69268083
+    #- git checkout "$CI_COMMIT_REF_NAME"
     - git status
     - git rm inbox-excel-vocabs/\*.xlsx || echo "No xlsx files to remove."
     - git status
