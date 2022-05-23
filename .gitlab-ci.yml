@@ -50,7 +50,7 @@ vocab:build:
   script:
     - python -m pip install -r requirements.txt
     - python vocexcel4cat.py --version
-    - python vocexcel4cat.py --add_IRI --add_related --check --forward --docs --output_directory outbox --logfile outbox/vocexcel.log inbox-excel-vocabs/
+    - python -u vocexcel4cat.py --add_IRI --add_related --check --forward --docs --output_directory outbox inbox-excel-vocabs/ 2>&1 | tee outbox/vocexcel4cat.log
   artifacts:
     when: always
     # set the name that is shown in UI for the artifact
