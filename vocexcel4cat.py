@@ -430,7 +430,7 @@ def wrapper(args=None):
                 outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
             infile = args_wrapper.file_to_preprocess
             for func in funcs:
-                if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
+                if not may_overwrite(args_wrapper.no_warn, infile, outfile, func):
                     parser.exit()
                 func(infile, outfile)
                 infile = outfile
