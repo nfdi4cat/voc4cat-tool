@@ -35,7 +35,7 @@ def is_file_available(fname, ftype):
     if not type(ftype) is list:
         ftype = [ftype]
     if fname is None or not os.path.exists(fname):
-        print(f"File not found: {fname}s")
+        print(f"File not found: {fname}")
         return False
     if "excel" in ftype and fname.suffix.lower().endswith(tuple(EXCEL_FILE_ENDINGS)):
         return True
@@ -330,6 +330,17 @@ def wrapper(args=None):
     )
 
     parser.add_argument(
+        "-l",
+        "--logfile",
+        help=(
+            "The file to write logging output to. If -od/--output_directory is also given, "
+            "the file is placed in that diretory."
+        ),
+        type=Path,
+        required=False,
+    )
+
+    parser.add_argument(
         "-f",
         "--forward",
         help=("Forward file resulting from other running other options to vocexcel."),
@@ -352,7 +363,6 @@ def wrapper(args=None):
         help="Either the file to process or a directory with files to process.",
     )
 
-    # args_wrapper = parser.parse_args(args)
     args_wrapper, vocexcel_args = parser.parse_known_args(args)
 
     if not has_args:
@@ -363,6 +373,15 @@ def wrapper(args=None):
     outdir = args_wrapper.output_directory
     if outdir is not None and not os.path.isdir(outdir):
         os.makedirs(outdir, exist_ok=True)
+
+    logfile = args_wrapper.logfile
+    if logfile is not None:
+        if outdir is not None:
+            logfile = Path(outdir) / logfile
+        elif not logfile.parents[0].exists():
+            os.makedirs(logfile.parents[0], exist_ok=True)
+        vocexcel_args.append("--logfile")
+        vocexcel_args.append(str(logfile))
 
     if args_wrapper.version:
         print(f"{__version__}")
