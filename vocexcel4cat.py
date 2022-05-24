@@ -110,6 +110,7 @@ def add_IRI(fpath, outfile):
 
     wb.save(outfile)
     print(f"Saved updated file as {outfile}")
+    return 0
 
 
 def add_related(fpath, outfile):
@@ -167,7 +168,7 @@ def add_related(fpath, outfile):
 
     wb.save(outfile)
     print(f"Saved updated file as {outfile}")
-
+    return 0
 
 def run_ontospy(file_path, output_path):
     import ontospy
@@ -178,7 +179,7 @@ def run_ontospy(file_path, output_path):
 
     if not glob.glob('example/*.ttl'):
         print('No turtle file found to build documentation for.')
-        return
+        return 0
 
     g = ontospy.Ontospy(file_path)
 
@@ -189,7 +190,7 @@ def run_ontospy(file_path, output_path):
     viz = Dataviz(g)
     viz_path = os.path.join(output_path, "dendro")
     viz.build(viz_path)  # => build and save docs/visualization.
-
+    return 0
 
 def check(fpath, outfile):
     """
@@ -220,7 +221,7 @@ def check(fpath, outfile):
             new_preflabel = f'"{preflabel}"@{lang}'.lower()
             if new_preflabel in seen_preflabels:
                 failed_check = True
-                print(f"Duplicate of Preferred Label found: {new_preflabel}")
+                print(f"ERROR: Duplicate of Preferred Label found: {new_preflabel}")
                 # colorise problematic cells
                 row[1].fill = row[2].fill = color
                 seen_in_row = 3 + seen_preflabels.index(new_preflabel)
@@ -232,7 +233,7 @@ def check(fpath, outfile):
             if new_conceptIRI in seen_conceptIRIs:
                 failed_check = True
                 print(
-                    f'Same Concept IRI "{conceptIRI}" used more than once for '
+                    f'ERROR: Same Concept IRI "{conceptIRI}" used more than once for '
                     'language "{lang}"'
                 )
                 # colorise problematic cells
@@ -254,12 +255,18 @@ def check(fpath, outfile):
     if failed_check:
         wb.save(outfile)
         print(f"Saved file with highlighted errors as {outfile}")
+        return 1
     else:
         print("All checks passed succesfully.")
+        return 0
 
 
 def run_vocexcel(args=None):
-    main(args)
+    retval = main(args)
+    if retval is not None:
+        return 1
+    else:
+        return 0
 
 
 def wrapper(args=None):
@@ -383,6 +390,7 @@ def wrapper(args=None):
         vocexcel_args.append("--logfile")
         vocexcel_args.append(str(logfile))
 
+    err = 0
     if args_wrapper.version:
         print(f"{__version__}")
     elif args_wrapper.add_IRI or args_wrapper.add_related or args_wrapper.check:
@@ -408,13 +416,13 @@ def wrapper(args=None):
                 for func in funcs:
                     if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
                         parser.exit()
-                    func(infile, outfile)
+                    err += func(infile, outfile)
                     infile = outfile
                 if args_wrapper.forward:
                     print(f"\nCalling VocExcel for forwarded Excel file {infile}")
                     locargs = list(vocexcel_args)
                     locargs.append(str(infile))
-                    main(locargs)
+                    err += run_vocexcel(locargs)
 
             if args_wrapper.docs and args_wrapper.forward:
                 infile = args_wrapper.file_to_preprocess
@@ -432,13 +440,13 @@ def wrapper(args=None):
             for func in funcs:
                 if not may_overwrite(args_wrapper.no_warn, infile, outfile, func):
                     parser.exit()
-                func(infile, outfile)
+                err += func(infile, outfile)
                 infile = outfile
             if args_wrapper.forward:
                 print(f"\nCalling VocExcel for forwarded Excel file {infile}")
                 locargs = list(vocexcel_args)
                 locargs.append(str(infile))
-                main(locargs)
+                err += run_vocexcel(locargs)
                 if args_wrapper.docs:
                     infile = Path(infile).with_suffix('.ttl')
                     doc_path = outdir if outdir is not None else infile.parent[0]
@@ -467,7 +475,7 @@ def wrapper(args=None):
                 else:
                     outfile = Path(outdir) / Path(f"{fname}.ttl")
                     locargs = ["--outputfile", str(outfile)] + locargs
-                main(locargs)
+                err += run_vocexcel(locargs)
 
             print("Calling VocExcel for Excel files")
             for ttlf in glob.glob(os.path.join(dir_, "*.ttl")) + glob.glob(
@@ -483,7 +491,7 @@ def wrapper(args=None):
                 else:
                     outfile = Path(outdir) / Path(f"{fname}.xlsx")
                     locargs = ["--outputfile", str(outfile)] + locargs
-                main(locargs)
+                err += run_vocexcel(locargs)
 
             if args_wrapper.docs and args_wrapper.forward:
                 infile = args_wrapper.file_to_preprocess
@@ -492,7 +500,7 @@ def wrapper(args=None):
 
         elif is_file_available(args_wrapper.file_to_preprocess, ftype=["excel", "rdf"]):
             print(f"Calling VocExcel for file {args_wrapper.file_to_preprocess}")
-            main(args)
+            err += run_vocexcel(args)
             if args_wrapper.docs:
                 infile = Path(args_wrapper.file_to_preprocess).with_suffix('.ttl')
                 doc_path = outdir if outdir is not None else infile.parent[0]
@@ -509,8 +517,10 @@ def wrapper(args=None):
     else:
         print("\nThis part should not be reached!")
 
-    return args_wrapper
+    return err
 
 
 if __name__ == "__main__":
-    w = wrapper(sys.argv[1:])
+    err = wrapper(sys.argv[1:])
+    # CI need to know if an error occurred (failed check or validation error)
+    sys.exit(err)
