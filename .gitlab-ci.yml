@@ -58,7 +58,7 @@ vocab:build:
     - >
       python -u vocexcel4cat.py --add_IRI --add_related --check --forward --docs --output_directory outbox inbox-excel-vocabs/
       |& tee vocexcel4cat.log
-      || EXIT_CODE=${PIPESTATUS[1]}; echo $?
+      || EXIT_CODE=${PIPESTATUS[0]}
     # tee cannot create a file in a subdir. So we move the file afterwards.
     - mv vocexcel4cat.log outbox
     - ls -l outbox/ || echo "outbox directory does not exist."
