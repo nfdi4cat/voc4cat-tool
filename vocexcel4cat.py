@@ -180,7 +180,7 @@ def run_ontospy(file_path, output_path):
 
     if not glob.glob('outbox/*.ttl'):
         print(f'No turtle file found to document with Ontospy in "{file_path}"')
-        return 0
+        return 1
 
     print(f"\nBuilding ontospy documentation for {file_path}")
 
