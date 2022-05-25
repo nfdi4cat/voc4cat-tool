@@ -107,6 +107,10 @@ It is also possible create an xlsx file from a turtle file. Optionally a custom 
 
 `py vocexcel4cat.py --template template/VocExcel-template_043_4Cat.xlsx vocabulary.ttl`
 
+It is also possible to specify vocexcel-specific options at the end of a `vocexcel4cat` command. Here is an example that forwards the `-e 3` and `-m 3` options to vocexcel and moreover demonstrates a complex combination of options (as used in CI):
+
+`(.venv) λ python -u vocexcel4cat.py --add_IRI --add_related --check --forward --docs --output_directory outbox inbox-excel-vocabs/ -e 3 -m 3`
+
 
 # Feedback and code contributions
 

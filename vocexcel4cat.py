@@ -374,6 +374,12 @@ def wrapper(args=None):
         help="Either the file to process or a directory with files to process.",
     )
 
+    parser.add_argument(
+        "vocexcel_options",
+        nargs="?",  # allow 0 or 1 file name as argument
+        help="Options to pass to vocexcel. Run vocexcel --help to see what is available.",
+    )
+
     args_wrapper, vocexcel_args = parser.parse_known_args(args)
 
     if not has_args:
