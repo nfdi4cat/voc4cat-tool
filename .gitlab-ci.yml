@@ -100,7 +100,7 @@ vocab:commit:
     - git config --global user.name "${GITLAB_USER_NAME}"
     # Nothing to commit gives exit code 1 (=error). We prevent this.
     # note on colons: https://docs.gitlab.com/ee/ci/yaml/script.html#syntax-is-incorrect-in-scripts-that-use-
-    - git diff-files --quiet || git commit -m "CI vocabulary update in pipeline $CI_PIPELINE_ID"
+    - 'git commit -m "CI: vocabulary update in pipeline $CI_PIPELINE_ID" || echo "Nothing to commit"'
     # push to MR branch
     # commit with "-o ci.skip" to prevent triggering another pipeline.
     - echo "pushing to branch ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}"
@@ -144,7 +144,7 @@ vocab:merge:
     - git remote -v
     - git config --global user.email "${GITLAB_USER_EMAIL}"
     - git config --global user.name "${GITLAB_USER_NAME}"
-    - 'git diff-files --quiet || git commit -m "CI: remove Excel files from inbox-excel-vocabs"'
+    - 'git commit -m "CI: remove Excel files from inbox-excel-vocabs" || echo "Nothing to commit"'
     # push to merge request branch and let gitlab merge automatically on success
     - git push -o merge_request.merge_when_pipeline_succeeds origin HEAD:${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
 
