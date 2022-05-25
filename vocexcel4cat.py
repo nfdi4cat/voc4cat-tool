@@ -171,15 +171,18 @@ def add_related(fpath, outfile):
     return 0
 
 def run_ontospy(file_path, output_path):
+    """
+    Generate Ontospy documentation for a file or directory of files
+    """
     import ontospy
     from ontospy.ontodocs.viz.viz_html_single import HTMLVisualizer
     from ontospy.ontodocs.viz.viz_d3dendogram import Dataviz
 
-    print(f"\nBuilding ontospy docu for Excel file {file_path}")
-
-    if not glob.glob('example/*.ttl'):
-        print('No turtle file found to build documentation for.')
+    if not glob.glob('outbox/*.ttl'):
+        print(f'No turtle file found to document with Ontospy in "{file_path}"')
         return 0
+
+    print(f"\nBuilding ontospy documentation for {file_path}")
 
     g = ontospy.Ontospy(file_path)
 
@@ -191,6 +194,7 @@ def run_ontospy(file_path, output_path):
     viz_path = os.path.join(output_path, "dendro")
     viz.build(viz_path)  # => build and save docs/visualization.
     return 0
+
 
 def check(fpath, outfile):
     """
@@ -425,9 +429,9 @@ def wrapper(args=None):
                     err += run_vocexcel(locargs)
 
             if args_wrapper.docs and args_wrapper.forward:
-                infile = args_wrapper.file_to_preprocess
-                doc_path = outdir if outdir is not None else infile.parent[0]
-                run_ontospy(infile, doc_path)
+                indir = args_wrapper.file_to_preprocess if outdir is None else outdir
+                doc_path = infile.parent[0] if outdir is None else outdir
+                run_ontospy(indir, doc_path)
 
         elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
             fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
@@ -447,11 +451,10 @@ def wrapper(args=None):
                 locargs = list(vocexcel_args)
                 locargs.append(str(infile))
                 err += run_vocexcel(locargs)
-                if args_wrapper.docs:
-                    infile = Path(infile).with_suffix('.ttl')
-                    doc_path = outdir if outdir is not None else infile.parent[0]
-                    run_ontospy(infile, doc_path)
-
+            if args_wrapper.docs:
+                infile = Path(infile).with_suffix('.ttl') if outdir is None else outfile
+                doc_path = infile.parent[0] if outdir is None else outdir
+                run_ontospy(infile, doc_path)
         else:
             parser.exit()
     elif args_wrapper and args_wrapper.file_to_preprocess:
