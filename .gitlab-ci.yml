@@ -161,7 +161,7 @@ vocab:publish:
   only:
     - main
   script:
-    - python -m pip install -r requirements.txt
+    - pip install .
     - voc4cat --version
     # TODO: add upload to some hosting provider
     # "pages" are not active on gitlab@focus so they cannot be used.
