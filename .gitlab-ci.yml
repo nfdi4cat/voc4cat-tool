@@ -45,8 +45,6 @@ vocab:build:
   # - Ontospy documentation & dendogram.
   stage: prepare
   needs: []
-  only:
-    - merge_requests
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   script:
@@ -162,9 +160,6 @@ vocab:publish:
   stage: publish
   only:
     - main
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_PIPELINE_SOURCE == "push"
   script:
     - python -m pip install -r requirements.txt
     - python vocexcel4cat.py --version
