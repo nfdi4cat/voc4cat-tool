@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# Storing project metadata in pyproject.toml https://peps.python.org/pep-0621/
+name = "voc4cat"
+description = "Vocabulary management for NFDI4Cat."
+authors = [
+    {name = "David Linke", email = "david.linke@catalysis.de"}
+]
+license = {file = "LICENSE"}
+requires-python = ">=3.8"
+
+keywords = ["packaging", "dependency", "infer", "pyproject.toml"]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python",
+  "Environment :: Console",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+]
+
+dependencies = [
+  # We install vocexcel directly from a specific branch form github (or gitea in LIKAT)
+  "vocexcel @ git+https://github.com/nfdi4cat/VocExcel.git@nfdi4cat-dev",
+  #vocexcel @ git+https://gogs.catalysis.de/LIKAT_RDM/VocExcel.git@nfdi4cat-dev
+  "django>=4.0.0",
+  "openpyxl>=3.0.9",
+  "pillow>=9.1.0",
+  "ontospy[Full] >= 1.9.9.4",
+]
+
+dynamic = ["version", "readme"]
+
+[project.urls]
+homepage = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/heterogen-synth/"
+repository = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/heterogen-synth/"
+documentation = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/heterogen-synth/"
+# changelog = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/heterogen-synth/CHANGELOG.md"
+
+[project.optional-dependencies]
+#test = [
+#  "pytest < 5.0.0",
+#  "pytest-cov[all]"
+#]
+
+[project.scripts]
+voc4cat = "voc4cat.wrapper:main_cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]  # ["."] by default
+
+[tool.setuptools_scm]
+# presence of section activates version-number generation
+write_to = "src/voc4cat/_version.py"
+
+[tool.setuptools.dynamic]
+version = {attr = "voc4cat._version.version"}
+readme = {file = ["README.md"]}

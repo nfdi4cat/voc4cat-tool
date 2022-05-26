@@ -4,6 +4,8 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+from importlib.metadata import version
+
 # -- Path setup --------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -17,13 +19,13 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'vocexcel4cat'
+project = 'voc4cat'
 copyright = '2022, David Linke'
 author = 'David Linke'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.0'
-
+release = version('voc4cat')
+version = '.'.join(release.split('.')[:3])
 
 # -- General configuration ---------------------------------------------------
 
