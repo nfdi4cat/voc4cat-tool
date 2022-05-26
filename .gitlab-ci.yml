@@ -45,6 +45,8 @@ vocab:build:
   # - Ontospy documentation & dendogram.
   stage: prepare
   needs: []
+  only:
+    - merge_requests
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   script:
@@ -119,8 +121,6 @@ vocab:is_approved:
   needs: ["vocab:commit"]
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-    # - exists:
-    #   - outbox/*.ttl
   script:
     - rm approved.vocab || true
     - python -c "import os; print('Approved.' if os.environ.get('CI_MERGE_REQUEST_APPROVED', False) else 'Not yet approved.')"
@@ -152,7 +152,7 @@ vocab:merge:
     - 'git commit -m "CI: remove Excel files from inbox-excel-vocabs" || echo "Nothing to commit"'
 
     # push to merge request branch and let gitlab merge automatically on success
-    - git push -o merge_request.merge_when_pipeline_succeeds origin HEAD:${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
+    - git push -o merge_request.merge_when_pipeline_succeeds -o ci.skip origin HEAD:${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
     - rm approved.vocab
 
 vocab:publish:
@@ -160,10 +160,11 @@ vocab:publish:
   # - Rebuild docu after merge (push to main)
   # - Publish updated documentation & vocabularies (ttl & xlsx)
   stage: publish
+  only:
+    - main
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: never
-    - if: $CI_PIPELINE_SOURCE == "push"
+  - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  - if: $CI_PIPELINE_SOURCE == "push"
   script:
     - python -m pip install -r requirements.txt
     - python vocexcel4cat.py --version
