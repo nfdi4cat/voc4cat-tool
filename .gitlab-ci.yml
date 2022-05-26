@@ -163,8 +163,8 @@ vocab:publish:
   only:
     - main
   rules:
-  - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-  - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "push"
   script:
     - python -m pip install -r requirements.txt
     - python vocexcel4cat.py --version
