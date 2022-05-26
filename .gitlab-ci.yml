@@ -51,10 +51,10 @@ vocab:build:
     - ls -l outbox/ || echo "outbox directory does not exist."
     - python -m pip install -r requirements.txt
     - python vocexcel4cat.py --version
-    # When calling vocexcel4cat we want get the exit code, and fail the pipeline.
+    # When calling vocexcel4cat we want to get the exit code and fail the pipeline.
     # When using tee, the bash-pipeline stops on exit code != 0 and we don't
-    # get the command output written to vocexcel4cat.log
-    # So we need to evalute the bash pipeline failure not immediately but delayed.
+    # get the command output written to vocexcel4cat.log which happens last.
+    # So we need to evalute the bash pipeline failure not immediately but later.
     - >
       python -u vocexcel4cat.py --add_IRI --add_related --check --forward --docs --output_directory outbox inbox-excel-vocabs/
       |& tee vocexcel4cat.log
@@ -68,16 +68,16 @@ vocab:build:
   artifacts:
     when: always
     # set the name that is shown in UI for the artifact
-    expose_as: 'vocexcel4cat output'
+    expose_as: 'vocexcel4cat-validation'
     # set the name of the created artifacts archive.
-    name: 'vocexcel4cat-artifacts-MR$CI_MERGE_REQUEST_IID-$CI_PIPELINE_CREATED_AT'
+    name: 'vocexcel4cat-validation-MR$CI_MERGE_REQUEST_IID-$CI_PIPELINE_CREATED_AT'
     paths:
       - outbox/
 
 vocab:commit:
   # Actions
   # - copy generated turtle file(s) to vocabularies
-  # - commit new/changed file(s) in vocabularies
+  # - commit new/changed file(s) in vocabularies (from CI account)
   stage: prepare
   needs: ["vocab:build"]
   rules:
@@ -85,31 +85,36 @@ vocab:commit:
     # - exists:
     #   - outbox/*.ttl
   script:
-    # checkout avoids "detached head state", https://stackoverflow.com/a/69268083
-    #- echo "${CI_COMMIT_REF_NAME}"
+    # checkout avoids "detached head state", https://stackoverflow.com/a/69268083 (this is not required!)
     #- git checkout "${CI_COMMIT_REF_NAME}"
     - git status
+
     # Use python script to call "git merge-file" on existing or "copy" on new vocabs
     - python merge_vocab.py outbox vocabularies
     - git add vocabularies/\*.ttl || echo "No ttl files to add."
     - git status
+
     # on project token: https://docs.gitlab.com/ee/user/project/settings/project_access_tokens.html
     # the secret token is added as masked variable: GitLab Project CI/CD Settings menu > Variables settings
     - git remote set-url origin "https://$CI_PROJECT_NAME:$PROJECT_ACCESS_TOKEN@$CI_SERVER_HOST/$CI_PROJECT_PATH.git"
-    - git config --global user.email "${GITLAB_USER_EMAIL}"
-    - git config --global user.name "${GITLAB_USER_NAME}"
+    # It would also be possible to use the email/name of the acting user
+    #- git config --global user.email "${GITLAB_USER_EMAIL}"
+    #- git config --global user.name "${GITLAB_USER_NAME}"
+
     # Nothing to commit gives exit code 1 (=error). We prevent this.
     # note on colons: https://docs.gitlab.com/ee/ci/yaml/script.html#syntax-is-incorrect-in-scripts-that-use-
     - 'git commit -m "CI: vocabulary update in pipeline $CI_PIPELINE_ID" || echo "Nothing to commit"'
+
     # push to MR branch
     # commit with "-o ci.skip" to prevent triggering another pipeline.
     - echo "pushing to branch ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}"
     - git push -o ci.skip origin HEAD:${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
 
 vocab:is_approved:
-  # work around because CI_MERGE_REQUEST_APPROVED cannot yet be used in rules
+  # work-around because CI_MERGE_REQUEST_APPROVED cannot yet be used in rules
   # https://gitlab.com/gitlab-org/gitlab/-/issues/329787
-  # Another solution is to pass the information as artifact (variables are local only!)
+  # User defined variables cannot be used because they are job-local.
+  # So we pass the information as artifact.
   stage: prepare
   needs: ["vocab:commit"]
   rules:
@@ -121,61 +126,57 @@ vocab:is_approved:
     - python -c "import os; print('Approved.' if os.environ.get('CI_MERGE_REQUEST_APPROVED', False) else 'Not yet approved.')"
     - python -c "import os; open('./approved.vocab', 'w').write('Approved!') if os.environ.get('CI_MERGE_REQUEST_APPROVED', False) else False"
   artifacts:
-      paths:
+    paths:
       - ./approved.vocab
   when: on_success
 
 vocab:merge:
+  # Actions
   # - delete xlsx files from inbox
-  # - commit "deletion"
+  # - commit & push "deletion" (from CI account)
   stage: prepare
   needs: ["vocab:is_approved"]
   rules:
     # - if: $CI_MERGE_REQUEST_APPROVED  # does not work https://gitlab.com/gitlab-org/gitlab/-/issues/329787
     - exists:
-      - ./approved.vocab
+        - ./approved.vocab
   script:
-    # checkout avoids "detached head state", https://stackoverflow.com/a/69268083
-    #- git checkout "$CI_COMMIT_REF_NAME"
     - git status
     - git rm inbox-excel-vocabs/\*.xlsx || echo "No xlsx files to remove."
     - git status
     - git remote set-url origin "https://$CI_PROJECT_NAME:$PROJECT_ACCESS_TOKEN@$CI_SERVER_HOST/$CI_PROJECT_PATH.git"
     - git remote -v
-    - git config --global user.email "${GITLAB_USER_EMAIL}"
-    - git config --global user.name "${GITLAB_USER_NAME}"
+    # It would also be possible to use the email/name of the acting user
+    # - git config --global user.email "${GITLAB_USER_EMAIL}"
+    # - git config --global user.name "${GITLAB_USER_NAME}"
     - 'git commit -m "CI: remove Excel files from inbox-excel-vocabs" || echo "Nothing to commit"'
+
     # push to merge request branch and let gitlab merge automatically on success
     - git push -o merge_request.merge_when_pipeline_succeeds origin HEAD:${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
-
-    # push to origin/main (just an example).
-    # - git push -o merge_request.merge_when_pipeline_succeeds origin HEAD:${CI_DEFAULT_BRANCH}
-
-
-# ==== Merge-results-pipelines, runs after the merge to main ====
-# - Rebuild docu after merge
-# - Publish docu/vocabs
+    - rm approved.vocab
 
 vocab:publish:
+  # Actions
+  # - Rebuild docu after merge (push to main)
+  # - Publish updated documentation & vocabularies (ttl & xlsx)
   stage: publish
   rules:
-    - exists:
-      - ./approved.vocab
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "push"
   script:
-     # TODO
-    - echo "Hello from the NOT-YET-IMPLEMENTED deploy pipeline."
-    - rm approved.vocab || true
-
-# !! pages are not active on gitlab@focus so they cannot be used !!
-# The below code nevertheless runs but the output is not accessible.
-# pages:
-#   rules:
-#     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-#   script:
-#     - pip install sphinx furo myst-parser
-#     - cd docs
-#     - make html
-#     - mv _build/html/ ../public/
-#   artifacts:
-#     paths:
-#       - public
+    # TODO: add upload to some hosting provider
+    # "pages" are not active on gitlab@focus so they cannot be used.
+    - echo "Welcome to the partially implemented deploy pipeline."
+    # Build documentation and create Excel vocabulary files for final vocabularies.
+    - python -u vocexcel4cat.py --check --forward --docs --output_directory publish vocabularies/
+    # Also copy the turtle vocabulary files into the dir that is published.
+    - cp vocabularies/*.ttl publish/ || echo "no turtle(ttl) vocabulary files to publish."
+    - ls -l publish/ || echo "publish directory does not exist."
+  artifacts:
+    # set the name that is shown in UI for the artifact
+    expose_as: 'vocexcel4cat-published'
+    # set the name of the created artifacts archive.
+    name: 'vocexcel4cat-published-MR$CI_MERGE_REQUEST_IID-$CI_PIPELINE_CREATED_AT'
+    paths:
+      - publish/
