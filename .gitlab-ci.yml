@@ -1,7 +1,7 @@
 # https://docs.gitlab.com/ee/ci/yaml/#stages
 # https://docs.gitlab.com/ee/ci/yaml/#stage
 stages:
-  # PYthon build
+  # Python build
   - build
   # Python testing
   - test

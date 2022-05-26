@@ -437,7 +437,7 @@ def wrapper(args=None):
             if args_wrapper.docs and args_wrapper.forward:
                 indir = args_wrapper.file_to_preprocess if outdir is None else outdir
                 doc_path = infile.parent[0] if outdir is None else outdir
-                run_ontospy(indir, doc_path)
+                err += run_ontospy(indir, doc_path)
 
         elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
             fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
@@ -460,7 +460,7 @@ def wrapper(args=None):
             if args_wrapper.docs:
                 infile = Path(infile).with_suffix('.ttl') if outdir is None else outfile
                 doc_path = infile.parent[0] if outdir is None else outdir
-                run_ontospy(infile, doc_path)
+                err += run_ontospy(infile, doc_path)
         else:
             parser.exit()
     elif args_wrapper and args_wrapper.file_to_preprocess:
@@ -505,7 +505,7 @@ def wrapper(args=None):
             if args_wrapper.docs and args_wrapper.forward:
                 infile = args_wrapper.file_to_preprocess
                 doc_path = outdir if outdir is not None else infile.parent[0]
-                run_ontospy(infile, doc_path)
+                err += run_ontospy(infile, doc_path)
 
         elif is_file_available(args_wrapper.file_to_preprocess, ftype=["excel", "rdf"]):
             print(f"Calling VocExcel for file {args_wrapper.file_to_preprocess}")
@@ -513,7 +513,7 @@ def wrapper(args=None):
             if args_wrapper.docs:
                 infile = Path(args_wrapper.file_to_preprocess).with_suffix('.ttl')
                 doc_path = outdir if outdir is not None else infile.parent[0]
-                run_ontospy(infile, doc_path)
+                err += run_ontospy(infile, doc_path)
         else:
             if os.path.exists(args_wrapper.file_to_preprocess):
                 print(f"Cannot convert file {args_wrapper.file_to_preprocess}")
