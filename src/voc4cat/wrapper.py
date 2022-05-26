@@ -11,6 +11,7 @@ import glob
 import os
 import sys
 from pathlib import Path
+from importlib.metadata import version, PackageNotFoundError
 
 import openpyxl
 from openpyxl.styles import PatternFill
@@ -23,12 +24,20 @@ from vocexcel.models import ORGANISATIONS, ORGANISATIONS_INVERSE
 
 from django.utils.text import slugify
 
-__version__ = "0.2.0-dev"
-
 ORGANISATIONS["NFDI4Cat"] = URIRef("http://example.org/nfdi4cat/")
 ORGANISATIONS["LIKAT"] = URIRef("https://www.catalysis.de/")
 ORGANISATIONS_INVERSE.update({v: k for k, v in ORGANISATIONS.items()})
 NOW = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+
+
+try:
+    __version__ = version("voc4cat")
+except PackageNotFoundError:
+    # package is not installed
+    try:
+        from _version import version as __version__
+    except ImportError:
+        __version__ = "0.0.0"
 
 
 def is_file_available(fname, ftype):
@@ -273,16 +282,15 @@ def run_vocexcel(args=None):
         return 0
 
 
-def wrapper(args=None):
-    print("Running VocExcel wrapper")
+def main_cli(args=None):
 
-    if args is None:  # vocexcel4cat run via entrypoint
+    if args is None:  # voc4cat run via entrypoint
         args = sys.argv[1:]
 
     has_args = True if args else False
 
     parser = argparse.ArgumentParser(
-        prog="vocexcel4cat", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        prog="voc4cat", formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
     parser.add_argument(
@@ -534,6 +542,6 @@ def wrapper(args=None):
 
 
 if __name__ == "__main__":
-    err = wrapper(sys.argv[1:])
+    err = main_cli(sys.argv[1:])
     # CI need to know if an error occurred (failed check or validation error)
     sys.exit(err)

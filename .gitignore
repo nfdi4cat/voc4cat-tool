@@ -167,5 +167,8 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+# setuptools_scm generated version file
+_version.py
+
 # output dir
 outbox/

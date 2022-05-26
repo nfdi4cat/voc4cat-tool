@@ -39,7 +39,7 @@ before_script:
 #     - export
 
 vocab:build:
-  # Run vocexcel4cat and provide the generated artifacts for download:
+  # Run voc4cat and provide the generated artifacts for download:
   # - updated excel-file(s)
   # - generated turtle file(s)
   # - Ontospy documentation & dendogram.
@@ -49,28 +49,28 @@ vocab:build:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
   script:
     - ls -l outbox/ || echo "outbox directory does not exist."
-    - python -m pip install -r requirements.txt
-    - python vocexcel4cat.py --version
-    # When calling vocexcel4cat we want to get the exit code and fail the pipeline.
+    - pip install .
+    - voc4cat --version
+    # When calling voc4cat we want to get the exit code and fail the pipeline.
     # When using tee, the bash-pipeline stops on exit code != 0 and we don't
-    # get the command output written to vocexcel4cat.log which happens last.
+    # get the command output written to voc4cat.log which happens last.
     # So we need to evalute the bash pipeline failure not immediately but later.
     - >
-      python -u vocexcel4cat.py --add_IRI --add_related --check --forward --docs --output_directory outbox inbox-excel-vocabs/
-      |& tee vocexcel4cat.log
+      voc4cat --add_IRI --add_related --check --forward --docs --output_directory outbox inbox-excel-vocabs/
+      |& tee voc4cat.log
       || EXIT_CODE=${PIPESTATUS[0]}
     # tee cannot create a file in a subdir. So we move the file afterwards.
-    - mv vocexcel4cat.log outbox
+    - mv voc4cat.log outbox
     - ls -l outbox/ || echo "outbox directory does not exist."
-    # Evaluate exit code now that we saved vocexcel4cat.log and fail CI
+    # Evaluate exit code now that we saved voc4cat.log and fail CI
     - echo "${EXIT_CODE}"
     - if [ $EXIT_CODE -ne 0 ]; then exit ${EXIT_CODE}; fi;
   artifacts:
     when: always
     # set the name that is shown in UI for the artifact
-    expose_as: 'vocexcel4cat-validation'
+    expose_as: 'voc4cat-validation'
     # set the name of the created artifacts archive.
-    name: 'vocexcel4cat-validation-MR$CI_MERGE_REQUEST_IID-$CI_PIPELINE_CREATED_AT'
+    name: 'voc4cat-validation-MR$CI_MERGE_REQUEST_IID-$CI_PIPELINE_CREATED_AT'
     paths:
       - outbox/
 
@@ -162,19 +162,19 @@ vocab:publish:
     - main
   script:
     - python -m pip install -r requirements.txt
-    - python vocexcel4cat.py --version
+    - voc4cat --version
     # TODO: add upload to some hosting provider
     # "pages" are not active on gitlab@focus so they cannot be used.
     - echo "Welcome to the partially implemented deploy pipeline."
     # Build documentation and create Excel vocabulary files for final vocabularies.
-    - python -u vocexcel4cat.py --check --forward --docs --output_directory publish vocabularies/
+    - voc4cat --check --forward --docs --output_directory publish vocabularies/
     # Also copy the turtle vocabulary files into the dir that is published.
     - cp vocabularies/*.ttl publish/ || echo "no turtle(ttl) vocabulary files to publish."
     - ls -l publish/ || echo "publish directory does not exist."
   artifacts:
     # set the name that is shown in UI for the artifact
-    expose_as: 'vocexcel4cat-published'
+    expose_as: 'voc4cat-published'
     # set the name of the created artifacts archive.
-    name: 'vocexcel4cat-published-MR$CI_MERGE_REQUEST_IID-$CI_PIPELINE_CREATED_AT'
+    name: 'voc4cat-published-MR$CI_MERGE_REQUEST_IID-$CI_PIPELINE_CREATED_AT'
     paths:
       - publish/
