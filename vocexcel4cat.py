@@ -180,7 +180,7 @@ def run_ontospy(file_path, output_path):
 
     if not glob.glob('outbox/*.ttl'):
         print(f'No turtle file found to document with Ontospy in "{file_path}"')
-        return 0
+        return 1
 
     print(f"\nBuilding ontospy documentation for {file_path}")
 
@@ -413,6 +413,7 @@ def wrapper(args=None):
             if to_run
         ]
         if os.path.isdir(args_wrapper.file_to_preprocess):
+            to_build_docs = False
             for xlf in glob.glob(
                 os.path.join(args_wrapper.file_to_preprocess, "*.xlsx")
             ):
@@ -433,11 +434,12 @@ def wrapper(args=None):
                     locargs = list(vocexcel_args)
                     locargs.append(str(infile))
                     err += run_vocexcel(locargs)
+                to_build_docs = True
 
-            if args_wrapper.docs and args_wrapper.forward:
+            if args_wrapper.docs and args_wrapper.forward and to_build_docs:
                 indir = args_wrapper.file_to_preprocess if outdir is None else outdir
                 doc_path = infile.parent[0] if outdir is None else outdir
-                run_ontospy(indir, doc_path)
+                err += run_ontospy(indir, doc_path)
 
         elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
             fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
@@ -460,11 +462,12 @@ def wrapper(args=None):
             if args_wrapper.docs:
                 infile = Path(infile).with_suffix('.ttl') if outdir is None else outfile
                 doc_path = infile.parent[0] if outdir is None else outdir
-                run_ontospy(infile, doc_path)
+                err += run_ontospy(infile, doc_path)
         else:
             parser.exit()
     elif args_wrapper and args_wrapper.file_to_preprocess:
         if os.path.isdir(args_wrapper.file_to_preprocess):
+            to_build_docs = False
             dir_ = args_wrapper.file_to_preprocess
             if duplicates := has_file_in_more_than_one_format(dir_):
                 print(
@@ -501,11 +504,12 @@ def wrapper(args=None):
                     outfile = Path(outdir) / Path(f"{fname}.xlsx")
                     locargs = ["--outputfile", str(outfile)] + locargs
                 err += run_vocexcel(locargs)
+                to_build_docs = True
 
-            if args_wrapper.docs and args_wrapper.forward:
+            if args_wrapper.docs and args_wrapper.forward and to_build_docs:
                 infile = args_wrapper.file_to_preprocess
                 doc_path = outdir if outdir is not None else infile.parent[0]
-                run_ontospy(infile, doc_path)
+                err += run_ontospy(infile, doc_path)
 
         elif is_file_available(args_wrapper.file_to_preprocess, ftype=["excel", "rdf"]):
             print(f"Calling VocExcel for file {args_wrapper.file_to_preprocess}")
@@ -513,7 +517,7 @@ def wrapper(args=None):
             if args_wrapper.docs:
                 infile = Path(args_wrapper.file_to_preprocess).with_suffix('.ttl')
                 doc_path = outdir if outdir is not None else infile.parent[0]
-                run_ontospy(infile, doc_path)
+                err += run_ontospy(infile, doc_path)
         else:
             if os.path.exists(args_wrapper.file_to_preprocess):
                 print(f"Cannot convert file {args_wrapper.file_to_preprocess}")
