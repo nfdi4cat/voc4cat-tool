@@ -413,6 +413,7 @@ def wrapper(args=None):
             if to_run
         ]
         if os.path.isdir(args_wrapper.file_to_preprocess):
+            to_build_docs = False
             for xlf in glob.glob(
                 os.path.join(args_wrapper.file_to_preprocess, "*.xlsx")
             ):
@@ -433,8 +434,9 @@ def wrapper(args=None):
                     locargs = list(vocexcel_args)
                     locargs.append(str(infile))
                     err += run_vocexcel(locargs)
+                to_build_docs = True
 
-            if args_wrapper.docs and args_wrapper.forward:
+            if args_wrapper.docs and args_wrapper.forward and to_build_docs:
                 indir = args_wrapper.file_to_preprocess if outdir is None else outdir
                 doc_path = infile.parent[0] if outdir is None else outdir
                 err += run_ontospy(indir, doc_path)
@@ -465,6 +467,7 @@ def wrapper(args=None):
             parser.exit()
     elif args_wrapper and args_wrapper.file_to_preprocess:
         if os.path.isdir(args_wrapper.file_to_preprocess):
+            to_build_docs = False
             dir_ = args_wrapper.file_to_preprocess
             if duplicates := has_file_in_more_than_one_format(dir_):
                 print(
@@ -501,8 +504,9 @@ def wrapper(args=None):
                     outfile = Path(outdir) / Path(f"{fname}.xlsx")
                     locargs = ["--outputfile", str(outfile)] + locargs
                 err += run_vocexcel(locargs)
+                to_build_docs = True
 
-            if args_wrapper.docs and args_wrapper.forward:
+            if args_wrapper.docs and args_wrapper.forward and to_build_docs:
                 infile = args_wrapper.file_to_preprocess
                 doc_path = outdir if outdir is not None else infile.parent[0]
                 err += run_ontospy(infile, doc_path)
