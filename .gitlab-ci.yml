@@ -165,6 +165,8 @@ vocab:publish:
       when: never
     - if: $CI_PIPELINE_SOURCE == "push"
   script:
+    - python -m pip install -r requirements.txt
+    - python vocexcel4cat.py --version
     # TODO: add upload to some hosting provider
     # "pages" are not active on gitlab@focus so they cannot be used.
     - echo "Welcome to the partially implemented deploy pipeline."
