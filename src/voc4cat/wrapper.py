@@ -29,7 +29,6 @@ ORGANISATIONS["LIKAT"] = URIRef("https://www.catalysis.de/")
 ORGANISATIONS_INVERSE.update({v: k for k, v in ORGANISATIONS.items()})
 NOW = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
 
-
 try:
     __version__ = version("voc4cat")
 except PackageNotFoundError:
@@ -179,6 +178,7 @@ def add_related(fpath, outfile):
     print(f"Saved updated file as {outfile}")
     return 0
 
+
 def run_ontospy(file_path, output_path):
     """
     Generate Ontospy documentation for a file or directory of files
@@ -187,7 +187,7 @@ def run_ontospy(file_path, output_path):
     from ontospy.ontodocs.viz.viz_html_single import HTMLVisualizer
     from ontospy.ontodocs.viz.viz_d3dendogram import Dataviz
 
-    if not glob.glob('outbox/*.ttl'):
+    if not glob.glob("outbox/*.ttl"):
         print(f'No turtle file found to document with Ontospy in "{file_path}"')
         return 1
 
@@ -342,9 +342,7 @@ def main_cli(args=None):
 
     parser.add_argument(
         "--docs",
-        help=(
-            "Build documentation and dendrogram-visualization with ontospy."
-        ),
+        help=("Build documentation and dendrogram-visualization with ontospy."),
         action="store_true",
     )
 
@@ -352,8 +350,8 @@ def main_cli(args=None):
         "-l",
         "--logfile",
         help=(
-            "The file to write logging output to. If -od/--output_directory is also given, "
-            "the file is placed in that diretory."
+            "The file to write logging output to. If -od/--output_directory is also "
+            "given, the file is placed in that diretory."
         ),
         type=Path,
         required=False,
@@ -364,6 +362,29 @@ def main_cli(args=None):
         "--forward",
         help=("Forward file resulting from other running other options to vocexcel."),
         action="store_true",
+    )
+
+    parser.add_argument(
+        "--hierarchy-from-indent",
+        help=("Convert concept sheet with indentation to children-URI hierarchy."),
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--hierarchy-as-indent",
+        help=("Convert concept sheet from children-URI hierarchy to indentation."),
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "-sep",
+        "--hierarchy-indent-separator",
+        help=(
+            "Separator character(s) to read/write indented hierarchies "
+            "(default: Excel's indent)."
+        ),
+        type=str,
+        required=False,
     )
 
     parser.add_argument(
@@ -385,7 +406,10 @@ def main_cli(args=None):
     parser.add_argument(
         "vocexcel_options",
         nargs="?",  # allow 0 or 1 file name as argument
-        help="Options to pass to vocexcel. Run vocexcel --help to see what is available.",
+        help=(
+            "Options to forward to vocexcel. Run vocexcel --help to see what "
+            "is available."
+        ),
     )
 
     args_wrapper, vocexcel_args = parser.parse_known_args(args)
@@ -408,9 +432,24 @@ def main_cli(args=None):
         vocexcel_args.append("--logfile")
         vocexcel_args.append(str(logfile))
 
+    if args_wrapper.hierarchy_indent_separator:
+        sep = args_wrapper.hierarchy_indent_separator
+        if len(sep) < 1:
+            raise ValueError(
+                "Setting the indent separator to zero length is not allowed."
+            )
+    else:  # Excel's default indent / openpyxl.styles.Alignment(indent=0)
+        sep = "xlsx"
     err = 0
     if args_wrapper.version:
         print(f"{__version__}")
+
+    elif args_wrapper.hierarchy_from_indent:
+        raise NotImplementedError()
+
+    elif args_wrapper.hierarchy_as_indent:
+        raise NotImplementedError()
+
     elif args_wrapper.add_IRI or args_wrapper.add_related or args_wrapper.check:
         funcs = [
             m
@@ -468,7 +507,7 @@ def main_cli(args=None):
                 locargs.append(str(infile))
                 err += run_vocexcel(locargs)
             if args_wrapper.docs:
-                infile = Path(infile).with_suffix('.ttl') if outdir is None else outfile
+                infile = Path(infile).with_suffix(".ttl") if outdir is None else outfile
                 doc_path = infile.parent[0] if outdir is None else outdir
                 err += run_ontospy(infile, doc_path)
         else:
@@ -523,7 +562,7 @@ def main_cli(args=None):
             print(f"Calling VocExcel for file {args_wrapper.file_to_preprocess}")
             err += run_vocexcel(args)
             if args_wrapper.docs:
-                infile = Path(args_wrapper.file_to_preprocess).with_suffix('.ttl')
+                infile = Path(args_wrapper.file_to_preprocess).with_suffix(".ttl")
                 doc_path = outdir if outdir is not None else infile.parent[0]
                 err += run_ontospy(infile, doc_path)
         else:

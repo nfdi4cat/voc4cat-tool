@@ -147,6 +147,7 @@ class Node:
 
 # === Factory functions to build a tree of nodes ===
 
+
 def build_tree(text, sep=" "):
     """Build tree of nodes from indented text."""
     root = Node("root", sep=sep)
