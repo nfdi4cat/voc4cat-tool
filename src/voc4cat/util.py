@@ -20,7 +20,7 @@ class Node:
         split_line = indented_line.rstrip().split(sep)
         self.level = len(split_line) - 1
         self.text = split_line[self.level]
-        if len(sep) > 1 and self.text.startswith(sep[0]):
+        if sep is not None and len(sep) > 1 and self.text.startswith(sep[0]):
             warn(f'Node "{self.text}": Incomplete separator "{sep}"?')
 
     def add_children(self, nodes):

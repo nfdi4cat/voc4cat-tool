@@ -136,6 +136,14 @@ def test_one_node():
     assert tree.as_dict() == expected
 
 
+def test_none_as_sep():
+    text = "n1"
+    tree = build_tree(text, sep=None)
+    expected = {"root": ["n1"]}
+    assert len(tree.children) == 1
+    assert tree.as_dict() == expected
+
+
 def test_bad_dedent():
     text = " x1\nx2"
     with pytest.raises(ValueError) as excinfo:
