@@ -14,7 +14,7 @@ from pathlib import Path
 from importlib.metadata import version, PackageNotFoundError
 
 import openpyxl
-from openpyxl.styles import PatternFill
+from openpyxl.styles import PatternFill, Alignment
 
 from rdflib import URIRef
 
@@ -23,6 +23,8 @@ from vocexcel.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS, KNOWN_FILE_ENDI
 from vocexcel.models import ORGANISATIONS, ORGANISATIONS_INVERSE
 
 from django.utils.text import slugify
+
+from voc4cat.util import Node, build_tree
 
 ORGANISATIONS["NFDI4Cat"] = URIRef("http://example.org/nfdi4cat/")
 ORGANISATIONS["LIKAT"] = URIRef("https://www.catalysis.de/")
@@ -151,7 +153,7 @@ def add_related(fpath, outfile):
                     subsequent_empty_rows = 0
                     break
 
-        # update read all peferred labels from the sheet
+        # update URI columns
         col_to_fill = 6 if sheet == "Concepts" else 3
         col_preflabel = 9 if sheet == "Concepts" else 5
         for row in ws.iter_rows(min_row=3, max_col=col_preflabel + 1):
@@ -177,6 +179,69 @@ def add_related(fpath, outfile):
     wb.save(outfile)
     print(f"Saved updated file as {outfile}")
     return 0
+
+
+def indent_to_children(fpath, outfile, sep):
+    """
+    Convert indentation hierarchy of concepts to children-URI form.
+
+    If seperator character(s) are given they will be replaced with
+    Excel indent which is also the default if sep is None.
+    """
+    print(f"\nReading concepts from file {fpath}")
+    wb = openpyxl.load_workbook(fpath)
+    is_supported_template(wb)
+    # process both worksheets
+    subsequent_empty_rows = 0
+    ws = wb["Concepts"]
+    concept_nodes = []
+    # read all preferred labels from the sheet
+    for row in ws.iter_rows(min_row=3, max_col=2):
+        if row[0].value and row[1].value:
+            if sep is None:
+                node = Node(row[0].value, sep=sep)
+                node.level = int(row[1].alignment.indent)
+            else:
+                node = Node(row[1].value, sep=sep)
+                concept_text = node.text
+                node.text = row[0].value  # use IRI
+                # replace indent by sep with excel indent
+                ws.cell(row[0].row, column=2).value = concept_text
+                ws.cell(row[0].row, column=2).alignment = Alignment(indent=node.level)
+            concept_nodes.append(node)
+        elif row[0].value is None and row[1].value is None:
+            # stop processing a sheet after 3 empty rows
+            if subsequent_empty_rows < 2:
+                subsequent_empty_rows += 1
+            else:
+                subsequent_empty_rows = 0
+                break
+    tree = Node("root", sep=sep)
+    tree.add_children(concept_nodes)
+
+    # Update childrenURI column
+    uri_children_dict = tree.as_narrower_dict()
+    col_to_fill = 7
+    for row in ws.iter_rows(min_row=3, max_col=col_to_fill):
+        if row[0].value and row[1].value:
+            # update cell in col_to_fill
+            childrenURIs = uri_children_dict[row[0].value]
+            ws.cell(row[0].row, column=col_to_fill).value = ", ".join(childrenURIs)
+            subsequent_empty_rows = 0
+        elif row[0].value is None and row[1].value is None:
+            # stop processing a sheet after 3 empty rows
+            if subsequent_empty_rows < 2:
+                subsequent_empty_rows += 1
+            else:
+                break
+
+    wb.save(outfile)
+    print(f"Saved updated file as {outfile}")
+    return 0
+
+
+def children_to_indent(file_path, output_path, sep):
+    pass
 
 
 def run_ontospy(file_path, output_path):
@@ -439,15 +504,26 @@ def main_cli(args=None):
                 "Setting the indent separator to zero length is not allowed."
             )
     else:  # Excel's default indent / openpyxl.styles.Alignment(indent=0)
-        sep = "xlsx"
+        sep = None
     err = 0
     if args_wrapper.version:
         print(f"{__version__}")
 
     elif args_wrapper.hierarchy_from_indent:
-        raise NotImplementedError()
+        if is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
+            fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
+            fname = os.path.split(fprefix)[1]  # split off leading dirs
+            if outdir is None:
+                outfile = args_wrapper.file_to_preprocess
+            else:
+                outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
+        else:
+            # processin all file in directory is not supported for now.
+            raise NotImplementedError()
+        indent_to_children(args_wrapper.file_to_preprocess, outfile, sep)
 
     elif args_wrapper.hierarchy_as_indent:
+        children_to_indent(args_wrapper.file_to_preprocess, "example/outfile.xlsx", sep)
         raise NotImplementedError()
 
     elif args_wrapper.add_IRI or args_wrapper.add_related or args_wrapper.check:
