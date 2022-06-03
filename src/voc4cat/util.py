@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
 from copy import copy
+from functools import total_ordering
 from itertools import chain
 from warnings import warn
 
 
+@total_ordering
 class Node:
     """
     Node class to build a linked tree of nodes.
@@ -57,10 +59,15 @@ class Node:
                 return
 
     def add_nodes_narrower(self, narrower):
-        """Add children and their level from narrower dict (non-recursive)."""
+        """Add children and their level from narrower dict."""
         nodes = {}
         stack = []
         list_of_all_children = list(chain.from_iterable([v for v in narrower.values()]))
+
+        # Check if all children are also key in narrower.
+        for ch in list_of_all_children:
+            if ch not in narrower.keys():
+                raise ValueError(f'Child "{ch}" is not defined.')
 
         # Create nodes that are never present as child and store in nodes.
         # Only these nodes are fully defined at this point.
@@ -75,9 +82,7 @@ class Node:
 
         # Process stack of nodes which are not fully defined. Use the defined
         # nodes to add the children level by level.
-        level = 0
         while stack:
-            all_children_defined = copy(stack)
             to_add = []
             for nd, v in stack:
                 all_children_defined = True
@@ -89,7 +94,7 @@ class Node:
 
             for nd, v in to_add:
                 node = Node(nd)
-                node.level = level + 1
+                node.level = self.get_level(narrower, nd, self.level)
                 for c in v:
                     chnode = nodes[c]
                     node.children.append(chnode)
@@ -98,7 +103,6 @@ class Node:
                     self.children.append(node)
                 nodes[nd] = node
                 stack.remove((nd, v))
-            level += 1
 
     def get_level(self, narrower, key, level=0):
         """Return the depth level of a given node."""
@@ -119,17 +123,25 @@ class Node:
         else:
             return self.text
 
-    def as_indented_text(self, sep=None, out=None):
+    def as_indented_text(self, sep=" ", out=None):
         """Return tree of nodes as indented text."""
         if out is None:
             out = []
+        for text, level in self.as_level_dict().items():
+            out.append(f"{level*sep}{text}")
+        return out
+
+    def as_level_dict(self, out=None):
+        """Return hierarchically sorted list of of all nodes in tree with level."""
+        if out is None:
+            out = {}
         if len(self.children) > 0:
-            out.append(f"{self.level*sep}{self.text}")
-            for node in self.children:
-                node.as_indented_text(sep, out)
+            out[self.text] = self.level
+            for node in sorted(self.children, key=lambda t: t.text):
+                node.as_level_dict(out)
             return out
         else:
-            out.append(f"{self.level*sep}{self.text}")
+            out[self.text] = self.level
             return out
 
     def as_narrower_dict(self, out=None):
@@ -143,6 +155,20 @@ class Node:
         else:
             out[self.text] = []
         return out
+
+    def __eq__(self, other):
+        return (self.text, self.level, self.children) == (
+            other.text,
+            other.level,
+            other.children,
+        )
+
+    def __lt__(self, other):
+        return (self.text, self.level, self.children) < (
+            other.text,
+            other.level,
+            other.children,
+        )
 
 
 # === Factory functions to build a tree of nodes ===
@@ -169,7 +195,8 @@ def build_from_narrower(narrower):
     elif len(roots) < 1:
         raise ValueError("No root found on root level.")
     else:
-        raise ValueError("More than one node on root level found.")
+        root = Node("root")
+        narrower_no_root = copy(narrower)
 
     root.add_nodes_narrower(narrower_no_root)
     return root

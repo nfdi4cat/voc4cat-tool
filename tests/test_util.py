@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from voc4cat.util import Node, build_tree, build_from_narrower
+from voc4cat.util import Node, build_from_narrower, build_tree
 
 text1 = """
 a1
@@ -59,7 +59,6 @@ a1
 
 def test_text2():
     tree = build_tree(text2)
-    # print(tree.as_dict())
     expected_text = """root
 a1
 a2
@@ -114,11 +113,53 @@ def test_from_narrower_no_root():
     assert "No root found on root level." in str(excinfo.value)
 
 
+# def test_from_narrower_more_roots():
+#     n = {"a1": [], "a2": []}
+#     with pytest.raises(ValueError) as excinfo:
+#         build_from_narrower(n)
+#     assert "More than one node on root level found." in str(excinfo.value)
+
+
+def test_narrower3():
+    n = {
+        'ex:1': ['ex:2', 'ex:3', 'ex:6'],
+        'ex:2': [],
+        'ex:3': ['ex:4', 'ex:5'],
+        'ex:4': [],
+        'ex:5': [],
+        'ex:6': ['ex:7'],
+        'ex:7': [],
+        'ex:8': [],
+        'ex:9': []
+    }
+    tree = build_from_narrower(n)
+    expected = {
+        'root': 0,
+        'ex:1': 0,
+        'ex:2': 1,
+        'ex:3': 1,
+        'ex:4': 2,
+        'ex:5': 2,
+        'ex:6': 1,
+        'ex:7': 2,
+        'ex:8': 0,
+        'ex:9': 0
+    }
+    assert tree.as_level_dict() == expected
+
+
 def test_from_narrower_more_roots():
     n = {"a1": [], "a2": []}
+    tree = build_from_narrower(n)
+    expected = {"root": ["a1", "a2"]}
+    assert tree.as_dict() == expected
+
+
+def test_undefined_childURI():
+    n = {"a1": [], "a2": ["c"]}
     with pytest.raises(ValueError) as excinfo:
         build_from_narrower(n)
-    assert "More than one node on root level found." in str(excinfo.value)
+    assert 'Child "c" is not defined.' in str(excinfo.value)
 
 
 def test_pure_tree():
@@ -171,3 +212,18 @@ def test_non_matching_indent_warning():
         tree.add_children(
             [Node("n1", sep="--"), Node("--n2", sep="--"), Node("---n3", sep="--")]
         )
+
+
+def test_equality():
+    n1 = Node("n1")
+    n2 = Node(" n2")
+    assert n1 != n2
+    n1.level = 1
+    n2.text = "n1"
+    assert n1 == n2
+
+
+def test_order():
+    n1 = Node("n1")
+    n2 = Node("n2")
+    assert n1 < n2
