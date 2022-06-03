@@ -10,21 +10,19 @@ import datetime
 import glob
 import os
 import sys
+from importlib.metadata import PackageNotFoundError, version
+from itertools import chain
 from pathlib import Path
-from importlib.metadata import version, PackageNotFoundError
 
 import openpyxl
-from openpyxl.styles import PatternFill, Alignment
-
-from rdflib import URIRef
-
-from vocexcel.convert import main
-from vocexcel.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS, KNOWN_FILE_ENDINGS
-from vocexcel.models import ORGANISATIONS, ORGANISATIONS_INVERSE
-
 from django.utils.text import slugify
+from openpyxl.styles import Alignment, PatternFill
+from rdflib import URIRef
+from vocexcel.convert import main
+from vocexcel.models import ORGANISATIONS, ORGANISATIONS_INVERSE
+from vocexcel.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDINGS
 
-from voc4cat.util import Node, build_tree
+from voc4cat.util import Node, build_from_narrower
 
 ORGANISATIONS["NFDI4Cat"] = URIRef("http://example.org/nfdi4cat/")
 ORGANISATIONS["LIKAT"] = URIRef("https://www.catalysis.de/")
@@ -240,8 +238,73 @@ def indent_to_children(fpath, outfile, sep):
     return 0
 
 
-def children_to_indent(file_path, output_path, sep):
-    pass
+def children_to_indent(fpath, outfile, sep):
+    """
+    Convert concept hierarchy in children-URI form to indentation.
+
+    If seperator character(s) are given they will be used.
+    If sep is None, Excel indent will be used.
+    """
+    print(f"\nReading concepts from file {fpath}")
+    wb = openpyxl.load_workbook(fpath)
+    is_supported_template(wb)
+    ws = wb["Concepts"]
+
+    concept_children_dict = {}
+    rows = {}
+    subsequent_empty_rows = 0
+    # read all IRI, preferred labels, childrenURIs from the sheet
+    for rows_total, row in enumerate(
+        ws.iter_rows(min_row=3, max_col=10, values_only=True)
+    ):
+        if row[0] and row[1]:
+            iri = row[0]
+            if iri not in rows:
+                rows[iri] = row
+            if not row[6]:
+                childrenURIs = []
+            else:
+                childrenURIs = [c.strip() for c in row[6].split(",")]
+            concept_children_dict[iri] = childrenURIs
+        else:
+            # stop processing a sheet after 3 empty rows
+            if subsequent_empty_rows < 2:
+                subsequent_empty_rows += 1
+            else:
+                subsequent_empty_rows = 0
+                rows_total = rows_total - 2
+                break
+
+    # Check if all used childrenURIs are defined as concepts
+    list_of_all_children = list(
+        chain.from_iterable([v for v in concept_children_dict.values()])
+    )
+    for iri in list_of_all_children:
+        if iri not in concept_children_dict.keys():
+            raise ValueError(f"Child-concept with URI {iri} is never defined.")
+
+    tree = build_from_narrower(concept_children_dict)
+    concept_levels = tree.as_level_dict()
+    del concept_levels['root']
+
+    # Set cell values by breaking them down into individual cells
+    for row, (iri, level) in zip(
+        ws.iter_rows(min_row=3, max_col=10),
+        concept_levels.items()
+    ):
+        row_values = rows[iri]
+        for cell, value in zip(row, row_values):
+            cell.value = value
+        if sep is None:
+            row[1].alignment = Alignment(indent=level)
+        else:
+            concept_text = row_values[1]
+            row[1].value = sep*level + concept_text
+            row[1].alignment = Alignment(indent=0)
+
+    wb.save(outfile)
+    print(f"Saved updated file as {outfile}")
+    return 0
 
 
 def run_ontospy(file_path, output_path):
@@ -249,8 +312,8 @@ def run_ontospy(file_path, output_path):
     Generate Ontospy documentation for a file or directory of files
     """
     import ontospy
-    from ontospy.ontodocs.viz.viz_html_single import HTMLVisualizer
     from ontospy.ontodocs.viz.viz_d3dendogram import Dataviz
+    from ontospy.ontodocs.viz.viz_html_single import HTMLVisualizer
 
     if not glob.glob("outbox/*.ttl"):
         print(f'No turtle file found to document with Ontospy in "{file_path}"')
@@ -523,8 +586,17 @@ def main_cli(args=None):
         indent_to_children(args_wrapper.file_to_preprocess, outfile, sep)
 
     elif args_wrapper.hierarchy_as_indent:
-        children_to_indent(args_wrapper.file_to_preprocess, "example/outfile.xlsx", sep)
-        raise NotImplementedError()
+        if is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
+            fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
+            fname = os.path.split(fprefix)[1]  # split off leading dirs
+            if outdir is None:
+                outfile = args_wrapper.file_to_preprocess
+            else:
+                outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
+        else:
+            # processin all file in directory is not supported for now.
+            raise NotImplementedError()
+        children_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
 
     elif args_wrapper.add_IRI or args_wrapper.add_related or args_wrapper.check:
         funcs = [
