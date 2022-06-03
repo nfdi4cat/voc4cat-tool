@@ -10,25 +10,24 @@ import datetime
 import glob
 import os
 import sys
+from importlib.metadata import PackageNotFoundError, version
+from itertools import chain
 from pathlib import Path
-from importlib.metadata import version, PackageNotFoundError
 
 import openpyxl
-from openpyxl.styles import PatternFill
-
-from rdflib import URIRef
-
-from vocexcel.convert import main
-from vocexcel.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS, KNOWN_FILE_ENDINGS
-from vocexcel.models import ORGANISATIONS, ORGANISATIONS_INVERSE
-
 from django.utils.text import slugify
+from openpyxl.styles import Alignment, PatternFill
+from rdflib import URIRef
+from vocexcel.convert import main
+from vocexcel.models import ORGANISATIONS, ORGANISATIONS_INVERSE
+from vocexcel.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDINGS
+
+from voc4cat.util import Node, build_from_narrower
 
 ORGANISATIONS["NFDI4Cat"] = URIRef("http://example.org/nfdi4cat/")
 ORGANISATIONS["LIKAT"] = URIRef("https://www.catalysis.de/")
 ORGANISATIONS_INVERSE.update({v: k for k, v in ORGANISATIONS.items()})
 NOW = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
-
 
 try:
     __version__ = version("voc4cat")
@@ -152,7 +151,7 @@ def add_related(fpath, outfile):
                     subsequent_empty_rows = 0
                     break
 
-        # update read all peferred labels from the sheet
+        # update URI columns
         col_to_fill = 6 if sheet == "Concepts" else 3
         col_preflabel = 9 if sheet == "Concepts" else 5
         for row in ws.iter_rows(min_row=3, max_col=col_preflabel + 1):
@@ -179,15 +178,144 @@ def add_related(fpath, outfile):
     print(f"Saved updated file as {outfile}")
     return 0
 
+
+def indent_to_children(fpath, outfile, sep):
+    """
+    Convert indentation hierarchy of concepts to children-URI form.
+
+    If seperator character(s) are given they will be replaced with
+    Excel indent which is also the default if sep is None.
+    """
+    print(f"\nReading concepts from file {fpath}")
+    wb = openpyxl.load_workbook(fpath)
+    is_supported_template(wb)
+    # process both worksheets
+    subsequent_empty_rows = 0
+    ws = wb["Concepts"]
+    concept_nodes = []
+    # read all preferred labels from the sheet
+    for row in ws.iter_rows(min_row=3, max_col=2):
+        if row[0].value and row[1].value:
+            if sep is None:
+                node = Node(row[0].value, sep=sep)
+                node.level = int(row[1].alignment.indent)
+            else:
+                node = Node(row[1].value, sep=sep)
+                concept_text = node.text
+                node.text = row[0].value  # use IRI
+                # replace indent by sep with excel indent
+                ws.cell(row[0].row, column=2).value = concept_text
+                ws.cell(row[0].row, column=2).alignment = Alignment(indent=node.level)
+            concept_nodes.append(node)
+        elif row[0].value is None and row[1].value is None:
+            # stop processing a sheet after 3 empty rows
+            if subsequent_empty_rows < 2:
+                subsequent_empty_rows += 1
+            else:
+                subsequent_empty_rows = 0
+                break
+    tree = Node("root", sep=sep)
+    tree.add_children(concept_nodes)
+
+    # Update childrenURI column
+    uri_children_dict = tree.as_narrower_dict()
+    col_to_fill = 7
+    for row in ws.iter_rows(min_row=3, max_col=col_to_fill):
+        if row[0].value and row[1].value:
+            # update cell in col_to_fill
+            childrenURIs = uri_children_dict[row[0].value]
+            ws.cell(row[0].row, column=col_to_fill).value = ", ".join(childrenURIs)
+            subsequent_empty_rows = 0
+        elif row[0].value is None and row[1].value is None:
+            # stop processing a sheet after 3 empty rows
+            if subsequent_empty_rows < 2:
+                subsequent_empty_rows += 1
+            else:
+                break
+
+    wb.save(outfile)
+    print(f"Saved updated file as {outfile}")
+    return 0
+
+
+def children_to_indent(fpath, outfile, sep):
+    """
+    Convert concept hierarchy in children-URI form to indentation.
+
+    If seperator character(s) are given they will be used.
+    If sep is None, Excel indent will be used.
+    """
+    print(f"\nReading concepts from file {fpath}")
+    wb = openpyxl.load_workbook(fpath)
+    is_supported_template(wb)
+    ws = wb["Concepts"]
+
+    concept_children_dict = {}
+    rows = {}
+    subsequent_empty_rows = 0
+    # read all IRI, preferred labels, childrenURIs from the sheet
+    for rows_total, row in enumerate(
+        ws.iter_rows(min_row=3, max_col=10, values_only=True)
+    ):
+        if row[0] and row[1]:
+            iri = row[0]
+            if iri not in rows:
+                rows[iri] = row
+            if not row[6]:
+                childrenURIs = []
+            else:
+                childrenURIs = [c.strip() for c in row[6].split(",")]
+            concept_children_dict[iri] = childrenURIs
+        else:
+            # stop processing a sheet after 3 empty rows
+            if subsequent_empty_rows < 2:
+                subsequent_empty_rows += 1
+            else:
+                subsequent_empty_rows = 0
+                rows_total = rows_total - 2
+                break
+
+    # Check if all used childrenURIs are defined as concepts
+    list_of_all_children = list(
+        chain.from_iterable([v for v in concept_children_dict.values()])
+    )
+    for iri in list_of_all_children:
+        if iri not in concept_children_dict.keys():
+            raise ValueError(f"Child-concept with URI {iri} is never defined.")
+
+    tree = build_from_narrower(concept_children_dict)
+    concept_levels = tree.as_level_dict()
+    del concept_levels['root']
+
+    # Set cell values by breaking them down into individual cells
+    for row, (iri, level) in zip(
+        ws.iter_rows(min_row=3, max_col=10),
+        concept_levels.items()
+    ):
+        row_values = rows[iri]
+        for cell, value in zip(row, row_values):
+            cell.value = value
+        if sep is None:
+            row[1].alignment = Alignment(indent=level)
+        else:
+            concept_text = row_values[1]
+            row[1].value = sep*level + concept_text
+            row[1].alignment = Alignment(indent=0)
+
+    wb.save(outfile)
+    print(f"Saved updated file as {outfile}")
+    return 0
+
+
 def run_ontospy(file_path, output_path):
     """
     Generate Ontospy documentation for a file or directory of files
     """
     import ontospy
-    from ontospy.ontodocs.viz.viz_html_single import HTMLVisualizer
     from ontospy.ontodocs.viz.viz_d3dendogram import Dataviz
+    from ontospy.ontodocs.viz.viz_html_single import HTMLVisualizer
 
-    if not glob.glob('outbox/*.ttl'):
+    if not glob.glob("outbox/*.ttl"):
         print(f'No turtle file found to document with Ontospy in "{file_path}"')
         return 1
 
@@ -342,9 +470,7 @@ def main_cli(args=None):
 
     parser.add_argument(
         "--docs",
-        help=(
-            "Build documentation and dendrogram-visualization with ontospy."
-        ),
+        help=("Build documentation and dendrogram-visualization with ontospy."),
         action="store_true",
     )
 
@@ -352,8 +478,8 @@ def main_cli(args=None):
         "-l",
         "--logfile",
         help=(
-            "The file to write logging output to. If -od/--output_directory is also given, "
-            "the file is placed in that diretory."
+            "The file to write logging output to. If -od/--output_directory is also "
+            "given, the file is placed in that diretory."
         ),
         type=Path,
         required=False,
@@ -364,6 +490,29 @@ def main_cli(args=None):
         "--forward",
         help=("Forward file resulting from other running other options to vocexcel."),
         action="store_true",
+    )
+
+    parser.add_argument(
+        "--hierarchy-from-indent",
+        help=("Convert concept sheet with indentation to children-URI hierarchy."),
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--hierarchy-as-indent",
+        help=("Convert concept sheet from children-URI hierarchy to indentation."),
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "-sep",
+        "--hierarchy-indent-separator",
+        help=(
+            "Separator character(s) to read/write indented hierarchies "
+            "(default: Excel's indent)."
+        ),
+        type=str,
+        required=False,
     )
 
     parser.add_argument(
@@ -385,7 +534,10 @@ def main_cli(args=None):
     parser.add_argument(
         "vocexcel_options",
         nargs="?",  # allow 0 or 1 file name as argument
-        help="Options to pass to vocexcel. Run vocexcel --help to see what is available.",
+        help=(
+            "Options to forward to vocexcel. Run vocexcel --help to see what "
+            "is available."
+        ),
     )
 
     args_wrapper, vocexcel_args = parser.parse_known_args(args)
@@ -408,9 +560,44 @@ def main_cli(args=None):
         vocexcel_args.append("--logfile")
         vocexcel_args.append(str(logfile))
 
+    if args_wrapper.hierarchy_indent_separator:
+        sep = args_wrapper.hierarchy_indent_separator
+        if len(sep) < 1:
+            raise ValueError(
+                "Setting the indent separator to zero length is not allowed."
+            )
+    else:  # Excel's default indent / openpyxl.styles.Alignment(indent=0)
+        sep = None
     err = 0
     if args_wrapper.version:
         print(f"{__version__}")
+
+    elif args_wrapper.hierarchy_from_indent:
+        if is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
+            fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
+            fname = os.path.split(fprefix)[1]  # split off leading dirs
+            if outdir is None:
+                outfile = args_wrapper.file_to_preprocess
+            else:
+                outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
+        else:
+            # processin all file in directory is not supported for now.
+            raise NotImplementedError()
+        indent_to_children(args_wrapper.file_to_preprocess, outfile, sep)
+
+    elif args_wrapper.hierarchy_as_indent:
+        if is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
+            fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
+            fname = os.path.split(fprefix)[1]  # split off leading dirs
+            if outdir is None:
+                outfile = args_wrapper.file_to_preprocess
+            else:
+                outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
+        else:
+            # processin all file in directory is not supported for now.
+            raise NotImplementedError()
+        children_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
+
     elif args_wrapper.add_IRI or args_wrapper.add_related or args_wrapper.check:
         funcs = [
             m
@@ -468,7 +655,7 @@ def main_cli(args=None):
                 locargs.append(str(infile))
                 err += run_vocexcel(locargs)
             if args_wrapper.docs:
-                infile = Path(infile).with_suffix('.ttl') if outdir is None else outfile
+                infile = Path(infile).with_suffix(".ttl") if outdir is None else outfile
                 doc_path = infile.parent[0] if outdir is None else outdir
                 err += run_ontospy(infile, doc_path)
         else:
@@ -523,7 +710,7 @@ def main_cli(args=None):
             print(f"Calling VocExcel for file {args_wrapper.file_to_preprocess}")
             err += run_vocexcel(args)
             if args_wrapper.docs:
-                infile = Path(args_wrapper.file_to_preprocess).with_suffix('.ttl')
+                infile = Path(args_wrapper.file_to_preprocess).with_suffix(".ttl")
                 doc_path = outdir if outdir is not None else infile.parent[0]
                 err += run_ontospy(infile, doc_path)
         else:

@@ -1,6 +1,8 @@
 [build-system]
-requires = ["setuptools", "setuptools_scm[toml]>=6.2"]
-build-backend = "setuptools.build_meta"
+#requires = ["setuptools", "setuptools_scm[toml]>=6.2"]
+#build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 # Storing project metadata in pyproject.toml https://peps.python.org/pep-0621/
@@ -10,6 +12,7 @@ authors = [
     {name = "David Linke", email = "david.linke@catalysis.de"}
 ]
 license = {file = "LICENSE"}
+readme = "README.md"
 requires-python = ">=3.8"
 
 keywords = ["packaging", "dependency", "infer", "pyproject.toml"]
@@ -37,7 +40,8 @@ dependencies = [
   "ontospy[Full] >= 1.9.9.4",
 ]
 
-dynamic = ["version", "readme"]
+#dynamic = ["version", "readme"]
+dynamic = ["version"]
 
 [project.urls]
 homepage = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/heterogen-synth/"
@@ -46,21 +50,52 @@ documentation = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/hete
 # changelog = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/heterogen-synth/CHANGELOG.md"
 
 [project.optional-dependencies]
-#test = [
-#  "pytest < 5.0.0",
-#  "pytest-cov[all]"
-#]
+test = [
+  "pytest < 5.0.0",
+  "pytest-cov[all]",
+]
+lint = [
+  "black",
+  "flake8",
+  "isort",
+]
 
 [project.scripts]
 voc4cat = "voc4cat.wrapper:main_cli"
 
-[tool.setuptools.packages.find]
-where = ["src"]  # ["."] by default
+#[tool.setuptools.packages.find]
+#where = ["src"]
+#
+#[tool.setuptools_scm]
+## presence of section activates version-number generation
+#write_to = "src/voc4cat/_version.py"
 
-[tool.setuptools_scm]
-# presence of section activates version-number generation
-write_to = "src/voc4cat/_version.py"
+#[tool.setuptools.dynamic]
+#version = {attr = "voc4cat._version.version"}
+#readme = {file = ["README.md"]}
 
-[tool.setuptools.dynamic]
-version = {attr = "voc4cat._version.version"}
-readme = {file = ["README.md"]}
+
+[tool.hatch.metadata]
+# Hatch disallows direct references for dependencies by default.
+# We need to enable them to allow installing NFDI4Cat's vocexcel from github.
+allow-direct-references = true
+
+# Build targets for hatch are defined as sections within tool.hatch.build.targets:
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/docs",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/voc4cat"]
+
+# integrates setuptools_scm into hatch, https://github.com/ofek/hatch-vcs
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/voc4cat/_version.py"
+
+[tool.isort]
+profile = "black"
+src_paths = ["src", "tests"]
