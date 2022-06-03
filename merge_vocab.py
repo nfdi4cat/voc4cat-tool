@@ -3,7 +3,6 @@ import os
 import shutil
 import subprocess
 import sys
-
 from pathlib import Path
 
 VOCAB_DIR = Path("vocabularies")
@@ -24,8 +23,8 @@ def main(outbox, vocab):
             continue
         if os.path.exists(vocab / Path(new).name):
             exists = vocab / Path(new).name
-            cmd = ['git', 'merge-file', '--theirs', str(exists), str(exists), str(new)]
-            print(' '.join(cmd))
+            cmd = ["git", "merge-file", "--theirs", str(exists), str(exists), str(new)]
+            print(" ".join(cmd))
             outp = subprocess.run(cmd, capture_output=True)
             print(outp.stdout)
             if retcode := outp.returncode != 0:

@@ -52,7 +52,12 @@ documentation = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/hete
 [project.optional-dependencies]
 test = [
   "pytest < 5.0.0",
-  "pytest-cov[all]"
+  "pytest-cov[all]",
+]
+lint = [
+  "black",
+  "flake8",
+  "isort",
 ]
 
 [project.scripts]
@@ -90,3 +95,7 @@ source = "vcs"
 
 [tool.hatch.build.hooks.vcs]
 version-file = "src/voc4cat/_version.py"
+
+[tool.isort]
+profile = "black"
+src_paths = ["src", "tests"]
