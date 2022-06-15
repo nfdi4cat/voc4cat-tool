@@ -7,6 +7,6 @@ Example files showing what voc4cat can do:
 
 Files demonstrating the different ways how to express concept-hierarchies:
 
-- in form of children URIs: concept_hierarchy_043_4Cat.xlsx
-- in form of Excel-indentaion: indent_043_4Cat.xlsx
-- in form of using 3-spaces for indentation: indent_3spaces_043_4Cat.xlsx
+- Children URIs: concept_hierarchy_043_4Cat.xlsx
+- Excel indentaion: indent_043_4Cat.xlsx
+- Three spaces for indentation: indent_3spaces_043_4Cat.xlsx
