@@ -337,10 +337,7 @@ def check(fpath, outfile):
     """
     Check vocabulary in Excel sheet
 
-    In detail the following checks are performed:
-    Concepts:
-    - The language-specific preferred label of a concept must be unique.
-      The comparison ignores case.
+    For concepts:
     - The "Concept IRI" must be unique; this is the case when no language
       is used more than once per concept.
     """
@@ -351,24 +348,11 @@ def check(fpath, outfile):
     color = PatternFill("solid", start_color="00FFCC00")  # orange
 
     subsequent_empty_rows = 0
-    seen_preflabels = []
-    # seen_conceptIRIs = defaultdict(list)
     seen_conceptIRIs = []
     failed_check = False
     for row_no, row in enumerate(ws.iter_rows(min_row=3, max_col=3), 3):
         if row[0].value and row[1].value:
             conceptIRI, preflabel, lang = [c.value.strip() for c in row]
-
-            new_preflabel = f'"{preflabel}"@{lang}'.lower()
-            if new_preflabel in seen_preflabels:
-                failed_check = True
-                print(f"ERROR: Duplicate of Preferred Label found: {new_preflabel}")
-                # colorise problematic cells
-                row[1].fill = row[2].fill = color
-                seen_in_row = 3 + seen_preflabels.index(new_preflabel)
-                ws[f"B{seen_in_row}"].fill = ws[f"C{seen_in_row}"].fill = color
-            else:
-                seen_preflabels.append(new_preflabel)
 
             new_conceptIRI = f'"{conceptIRI}"@{lang.lower()}'
             if new_conceptIRI in seen_conceptIRIs:
