@@ -35,13 +35,15 @@ Please describe your changes and the motivation for the changes in the merge req
 Finally, when the proposed merge request is accepted, your changes will be integrated in the vocabularies in the folder `vocabularies`.
 
 
-# Tool voxexcel4cat
+# Tool voc4cat
 
 To support what is not provided by the original vocexcel project we have developed this wrapper "voc4cat" that augments vocexcel with additional options like
 - Checking our NFDI4Cat-Excel template 
 - Enriching our NFDI4Cat-Excel template (e.g. automatically add IRIs)
 - Processing all files in a folder at once
 - Generating documentation (with [ontospy](http://lambdamusic.github.io/Ontospy/))
+- Support for expressing concept-hierarchies by indentation.
+
 
 ## Installation
 
@@ -97,6 +99,18 @@ Manually filling the Children URI (in sheet "Concepts") and Members URI (in shee
 
 `voc4cat -r vocabulary.xlsx`
 
+Another way to express hierarchies between concepts, is to use indentation. voc4Cat supports Excel-indentation (default). voc4cat can also convert other indentaions (e.g.by 3 spaces per level) into Excel-indentation. voc4cat supports converting between  indentation-based hierarchy and Children-URI hierarchy (both directions). For example, use
+
+`voc4cat --hierarchy-from-indent -od output example/concept_hierarchy_043_4Cat.xlsx`
+
+or if you were using 3 spaces per level
+
+`voc4cat --hierarchy-from-indent -sep "   " -od output example/concept_hierarchy_043_4Cat.xlsx`
+
+to convert to ChildrenURI-hierarchy. For ChildrenURI-hierarchy to Excel-indenation, use
+
+`voc4cat --hierarchy-to-indent -od output example/concept_hierarchy_043_4Cat.xlsx`
+
 Finally, the vocabulary file can be converted to turtle format. In this case the wrapper script passes the job on to vocexcel:
 
 `voc4cat vocabulary.xlsx`
@@ -107,7 +121,7 @@ It is also possible create an xlsx file from a turtle file. Optionally a custom 
 
 `voc4cat --template template/VocExcel-template_043_4Cat.xlsx vocabulary.ttl`
 
-It is also possible to specify vocexcel-specific options at the end of a `voc4cat` command. Here is an example that forwards the `-e 3` and `-m 3` options to vocexcel and moreover demonstrates a complex combination of options (as used in CI):
+Options that are specific for vocexcel can be put at the end of a `voc4cat` command. Here is an example that forwards the `-e 3` and `-m 3` options to vocexcel and moreover demonstrates a complex combination of options (as used in CI):
 
 `(.venv) λ voc4cat --add_IRI --add_related --check --forward --docs --output_directory outbox inbox-excel-vocabs/ -e 3 -m 3`
 
