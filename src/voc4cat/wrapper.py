@@ -499,7 +499,7 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
-        "--hierarchy-as-indent",
+        "--hierarchy-to-indent",
         help=("Convert concept sheet from children-URI hierarchy to indentation."),
         action="store_true",
     )
@@ -585,7 +585,7 @@ def main_cli(args=None):
             raise NotImplementedError()
         indent_to_children(args_wrapper.file_to_preprocess, outfile, sep)
 
-    elif args_wrapper.hierarchy_as_indent:
+    elif args_wrapper.hierarchy_to_indent:
         if is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
             fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
             fname = os.path.split(fprefix)[1]  # split off leading dirs
