@@ -359,7 +359,7 @@ def check(fpath, outfile):
                 failed_check = True
                 print(
                     f'ERROR: Same Concept IRI "{conceptIRI}" used more than once for '
-                    'language "{lang}"'
+                    f'language "{lang}"'
                 )
                 # colorise problematic cells
                 row[0].fill = row[2].fill = color
