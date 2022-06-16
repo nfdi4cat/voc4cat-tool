@@ -84,6 +84,12 @@ vocab:commit:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     # - exists:
     #   - outbox/*.ttl
+  before_script:
+    - git config user.name "CI.runner"
+    - git config user.email "CI.runner@gitlab.fokus.fraunhofer.de"
+    # It would also be possible to use the email/name of the acting user
+    #- git config --global user.email "${GITLAB_USER_EMAIL}"
+    #- git config --global user.name "${GITLAB_USER_NAME}"
   script:
     # checkout avoids "detached head state", https://stackoverflow.com/a/69268083 (this is not required!)
     #- git checkout "${CI_COMMIT_REF_NAME}"
@@ -97,9 +103,6 @@ vocab:commit:
     # on project token: https://docs.gitlab.com/ee/user/project/settings/project_access_tokens.html
     # the secret token is added as masked variable: GitLab Project CI/CD Settings menu > Variables settings
     - git remote set-url origin "https://$CI_PROJECT_NAME:$PROJECT_ACCESS_TOKEN@$CI_SERVER_HOST/$CI_PROJECT_PATH.git"
-    # It would also be possible to use the email/name of the acting user
-    #- git config --global user.email "${GITLAB_USER_EMAIL}"
-    #- git config --global user.name "${GITLAB_USER_NAME}"
 
     # Nothing to commit gives exit code 1 (=error). We prevent this.
     # note on colons: https://docs.gitlab.com/ee/ci/yaml/script.html#syntax-is-incorrect-in-scripts-that-use-
