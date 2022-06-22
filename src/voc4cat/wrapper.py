@@ -423,7 +423,6 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
-        "-od",
         "--output_directory",
         help=(
             "Specify directory where files should be written to. "

@@ -101,15 +101,15 @@ Manually filling the Children URI (in sheet "Concepts") and Members URI (in shee
 
 Another way to express hierarchies between concepts, is to use indentation. voc4Cat supports Excel-indentation (default). voc4cat can also convert other indentaions (e.g.by 3 spaces per level) into Excel-indentation. voc4cat supports converting between  indentation-based hierarchy and Children-URI hierarchy (both directions). For example, use
 
-`voc4cat --hierarchy-from-indent -od output example/concept_hierarchy_043_4Cat.xlsx`
+`voc4cat --hierarchy-from-indent --output_directory output example/concept_hierarchy_043_4Cat.xlsx`
 
 or if you were using 3 spaces per level
 
-`voc4cat --hierarchy-from-indent -sep "   " -od output example/concept_hierarchy_043_4Cat.xlsx`
+`voc4cat --hierarchy-from-indent -sep "   " --output_directory output example/concept_hierarchy_043_4Cat.xlsx`
 
 to convert to ChildrenURI-hierarchy. For ChildrenURI-hierarchy to Excel-indenation, use
 
-`voc4cat --hierarchy-to-indent -od output example/concept_hierarchy_043_4Cat.xlsx`
+`voc4cat --hierarchy-to-indent --output_directory output example/concept_hierarchy_043_4Cat.xlsx`
 
 Finally, the vocabulary file can be converted to turtle format. In this case the wrapper script passes the job on to vocexcel:
 
