@@ -88,11 +88,11 @@ vocab:commit:
     - git config user.name "CI.runner"
     - git config user.email "CI.runner@gitlab.fokus.fraunhofer.de"
     # It would also be possible to use the email/name of the acting user
-    #- git config --global user.email "${GITLAB_USER_EMAIL}"
-    #- git config --global user.name "${GITLAB_USER_NAME}"
+    # - git config --global user.email "${GITLAB_USER_EMAIL}"
+    # - git config --global user.name "${GITLAB_USER_NAME}"
   script:
     # checkout avoids "detached head state", https://stackoverflow.com/a/69268083 (this is not required!)
-    #- git checkout "${CI_COMMIT_REF_NAME}"
+    # - git checkout "${CI_COMMIT_REF_NAME}"
     - git status
 
     # Use python script to call "git merge-file" on existing or "copy" on new vocabs
@@ -113,48 +113,70 @@ vocab:commit:
     - echo "pushing to branch ${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}"
     - git push -o ci.skip origin HEAD:${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
 
-vocab:is_approved:
-  # work-around because CI_MERGE_REQUEST_APPROVED cannot yet be used in rules
-  # https://gitlab.com/gitlab-org/gitlab/-/issues/329787
-  # User defined variables cannot be used because they are job-local.
-  # So we pass the information as artifact.
-  stage: prepare
-  needs: ["vocab:commit"]
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-  script:
-    - rm approved.vocab || true
-    - python -c "import os; print('Approved.' if os.environ.get('CI_MERGE_REQUEST_APPROVED', False) else 'Not yet approved.')"
-    - python -c "import os; open('./approved.vocab', 'w').write('Approved!') if os.environ.get('CI_MERGE_REQUEST_APPROVED', False) else False"
-  artifacts:
-    paths:
-      - ./approved.vocab
-  when: on_success
+# vocab:is_approved:
+#   # Approvals are not active on gitlab@focus
+#   #   gitlab docs: https://docs.gitlab.com/ee/user/project/merge_requests/approvals/
+#
+#   # This stage is a work-around because CI_MERGE_REQUEST_APPROVED cannot yet be used in rules
+#   # https://gitlab.com/gitlab-org/gitlab/-/issues/329787
+#   # User defined variables cannot be used because they are job-local.
+#   # So we pass the information as artifact.
+#   stage: prepare
+#   needs: ["vocab:commit"]
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+#   script:
+#     - rm approved.vocab || true
+#     - python -c "import os; print('Approved.' if os.environ.get('CI_MERGE_REQUEST_APPROVED', False) else 'Not yet approved.')"
+#     - python -c "import os, sys; open('./approved.vocab', 'w').write('Approved!') if os.environ.get('CI_MERGE_REQUEST_APPROVED', False) else sys.exit(1)"
+#   artifacts:
+#     paths:
+#       - ./approved.vocab
+#   when: on_success
 
-vocab:merge:
+vocab:clean:
   # Actions
   # - delete xlsx files from inbox
   # - commit & push "deletion" (from CI account)
+  # Note:
+  #  These actions would ideally run "on merge to main" but still on the merge-request branch.
+  #  There is no easy way to trigger a pipeline at this stage. The stage could alternatively
+  #  be linked to approval, but that is not active on gitlab@focus. As a compromise, we run
+  #  this stage now on every merge-request change which removes the excel file too(?) early.
   stage: prepare
-  needs: ["vocab:is_approved"]
+  # needs: ["vocab:is_approved"]
+  needs: ["vocab:commit"]
   rules:
-    # - if: $CI_MERGE_REQUEST_APPROVED  # does not work https://gitlab.com/gitlab-org/gitlab/-/issues/329787
-    - exists:
-        - ./approved.vocab
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    # Note the following commented out lines may be useful if approval is activated.
+    # - if: $CI_PIPELINE_SOURCE == 'merge_request_event' && $CI_MERGE_REQUEST_APPROVED
+    # Using $CI_MERGE_REQUEST_APPROVED does not work well at the moment, https://gitlab.com/gitlab-org/gitlab/-/issues/329787#note_714888608
+
+    # The following was used with the commented out vocab:is_approved stage
+    # - exists:
+    #    - ./approved.vocab
+  before_script:
+    - git config user.name "CI.runner"
+    - git config user.email "CI.runner@gitlab.fokus.fraunhofer.de"
+    # It would also be possible to use the email/name of the acting user
+    # - git config --global user.email "${GITLAB_USER_EMAIL}"
+    # - git config --global user.name "${GITLAB_USER_NAME}"
   script:
+    # Next line can be used to show all CI variables for debugging
+    # - export
+    # - echo "Value of CI_MERGE_REQUEST_APPROVED ${CI_MERGE_REQUEST_APPROVED}"
     - git status
     - git rm inbox-excel-vocabs/\*.xlsx || echo "No xlsx files to remove."
     - git status
     - git remote set-url origin "https://$CI_PROJECT_NAME:$PROJECT_ACCESS_TOKEN@$CI_SERVER_HOST/$CI_PROJECT_PATH.git"
     - git remote -v
-    # It would also be possible to use the email/name of the acting user
-    # - git config --global user.email "${GITLAB_USER_EMAIL}"
-    # - git config --global user.name "${GITLAB_USER_NAME}"
     - 'git commit -m "CI: remove Excel files from inbox-excel-vocabs" || echo "Nothing to commit"'
 
-    # push to merge request branch and let gitlab merge automatically on success
-    - git push -o merge_request.merge_when_pipeline_succeeds -o ci.skip origin HEAD:${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
-    - rm approved.vocab
+    # push to merge request branch
+    #   for more push-options see https://docs.gitlab.com/ee/user/project/push_options.html#push-options-for-gitlab-cicd
+    - git push -o ci.skip origin HEAD:${CI_MERGE_REQUEST_SOURCE_BRANCH_NAME}
+
+    # - rm approved.vocab
 
 vocab:publish:
   # Actions
