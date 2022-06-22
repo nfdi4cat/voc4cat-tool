@@ -15,7 +15,7 @@
 
 <http://example.org/nfdi4cat/photo/area-of-deposited-film> a skos:Concept ;
     dcterms:identifier "area-of-deposited-film"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/dimensions-of-deposited-film> ;
     skos:definition "The area of the substrate covered by the deposited photocatalyst."@en ;
     skos:inScheme cs: ;
@@ -41,7 +41,7 @@
 
 <http://example.org/nfdi4cat/photo/batch-mode> a skos:Concept ;
     dcterms:identifier "batch-mode"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/operation-mode> ;
     skos:definition "Operation mode in which the reaction chamber is filled with the (reactant) gas(es) up to a certain pressure, and the photoreaction products acummulate over time."@en ;
     skos:inScheme cs: ;
@@ -49,7 +49,7 @@
 
 <http://example.org/nfdi4cat/photo/blank-measurements> a skos:Concept ;
     dcterms:identifier "blank-measurements"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> ;
     skos:definition "Measurements performed under a humidified inert gas atmosphre without the presence of CO2 but otherwise under the same conditions as a CO2 photoreduction experiment. These measurements provide an indirect proof of the origin of the carbon-containing products, as no products should be observed in the absence of CO2."@en ;
     skos:inScheme cs: ;
@@ -65,7 +65,7 @@
 
 <http://example.org/nfdi4cat/photo/brunauer-emmett-teller-surface-area-analysis> a skos:Concept ;
     dcterms:identifier "brunauer-emmett-teller-surface-area-analysis"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "BET"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> ;
     skos:definition "The study of physical adsorption of gas molecules on a solid surface for the calculation of the specific surface area of materials."@en ;
@@ -74,7 +74,7 @@
 
 <http://example.org/nfdi4cat/photo/calibration-of-gas-chromatograph> a skos:Concept ;
     dcterms:identifier "calibration-of-gas-chromatograph"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/gas-chromatography> ;
     skos:definition "A process in which gaseous substances of known purity and concentration are introduced to the gas chromatograph and the respective area and retention time of the resulting peaks are identified. This process when concluded, allows for the calculation of concentrations of products and intermediates of the photoreaction."@en ;
     skos:inScheme cs: ;
@@ -82,7 +82,7 @@
 
 <http://example.org/nfdi4cat/photo/calibration-of-mass-spectrometer> a skos:Concept ;
     dcterms:identifier "calibration-of-mass-spectrometer"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/mass-spectrometry> ;
     skos:definition "A process in which gaseous substances of known purity and concentration are introduced to the mass spectrometer and the respective mass-to-charge ratios are identified. This process when concluded, allows for the calculation of concentrations of products and intermediates of the photoreaction."@en ;
     skos:inScheme cs: ;
@@ -90,7 +90,7 @@
 
 <http://example.org/nfdi4cat/photo/ceramic-substrate> a skos:Concept ;
     dcterms:identifier "ceramic-substrate"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/material-of-substrate> ;
     skos:definition "A  surface made of a ceramic material (e.g., alumina) serving as a substrate for the deposition of a photocatalyst."@en ;
     skos:inScheme cs: ;
@@ -98,7 +98,7 @@
 
 <http://example.org/nfdi4cat/photo/charge-photogeneration> a skos:Concept ;
     dcterms:identifier "charge-photogeneration"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Photogenerated charges; Charge photo-generation; Electron excitation; Electron-hole pair;"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
     skos:definition "The generation of electron - hole pairs in a semiconductor as a result of light absorption of sufficient energy to overcome the bandgap energy. Electrons (negative charge) get excited to the conduction band, while holes (positive charge) remain in the valence band. "@en ;
@@ -107,7 +107,7 @@
 
 <http://example.org/nfdi4cat/photo/charge-recombination> a skos:Concept ;
     dcterms:identifier "charge-recombination"^^xsd:token ;
-    dcterms:provenance "IUPAC / Self"@en ;
+    dcterms:provenance "IUPAC / Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/general-terms> ;
     skos:definition "The reverse of charge separation. The recombination of electrons and holes without them having enough time to reduce and oxidize (respectively) the adsorbed reactants, leads to lower efficiencies in CO2 photoreduction."@en ;
     skos:inScheme cs: ;
@@ -123,7 +123,7 @@
 
 <http://example.org/nfdi4cat/photo/co2-photoreduction-measurement> a skos:Concept ;
     dcterms:identifier "co2-photoreduction-measurement"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Carbon dioxide photoreduction measurement; Photocatalytic CO2 reduction measurement; Photocatalytic carbon dioxide reduction measurement"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> ;
     skos:definition "A single measurement of a CO2 photoreduction experiment performed either in flow or in batch mode. The measurement involves the collection of a gaseous sample, and its analysis employing an appropriate product identification method. "@en ;
@@ -132,7 +132,7 @@
 
 <http://example.org/nfdi4cat/photo/collection-of-publications-of-interest> a skos:Concept ;
     dcterms:identifier "collection-of-publications-of-interest"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/literature-research> ;
     skos:definition "Filtering of literature research to include only the most relevant sources of information for the application / experiment / catalysts of interest."@en ;
     skos:inScheme cs: ;
@@ -140,7 +140,7 @@
 
 <http://example.org/nfdi4cat/photo/concentration-of-reactants> a skos:Concept ;
     dcterms:identifier "concentration-of-reactants"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/reactants> ;
     skos:definition "Concentration of the reactants (e.g., CO2 and H2O) used in the photocatalytic CO2 reduction experiments"@en ;
     skos:inScheme cs: ;
@@ -165,7 +165,7 @@
 
 <http://example.org/nfdi4cat/photo/current-of-operation-of-the-light-source> a skos:Concept ;
     dcterms:identifier "current-of-operation-of-the-light-source"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/light-source> ;
     skos:definition "The value of current (usually in A or mA) used to operate the selected light source."@en ;
     skos:inScheme cs: ;
@@ -182,7 +182,7 @@
 
 <http://example.org/nfdi4cat/photo/diameter-of-optical-window> a skos:Concept ;
     dcterms:identifier "diameter-of-optical-window"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Diameter of window; Window diameter"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/dimensions-of-optical-window> ;
     skos:definition "Diameter of the optical window allowing the incoming light to enter the reaction chamber and interact with the photocatalyst."@en ;
@@ -191,7 +191,7 @@
 
 <http://example.org/nfdi4cat/photo/dielectric-barrier-discharge-ionization-detector> a skos:Concept ;
     dcterms:identifier "dielectric-barrier-discharge-ionization-detector"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "BID"@en ;
     skos:definition "Detector incorporating Ionization via a new dielectric barrier discharge He plasma."@en ;
     skos:inScheme cs: ;
@@ -209,7 +209,7 @@
 
 <http://example.org/nfdi4cat/photo/dimensions-of-reaction-chamber> a skos:Concept ;
     dcterms:identifier "dimensions-of-reaction-chamber"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/reaction-chamber> ;
     skos:definition "Height, width and depth (in cubic- or rectangular- shaped reaction chambers) or diameter and height (in cylindrer - shaped reaction chambers)"@en ;
     skos:inScheme cs: ;
@@ -217,7 +217,7 @@
 
 <http://example.org/nfdi4cat/photo/dimensions-of-substrate> a skos:Concept ;
     dcterms:identifier "dimensions-of-substrate"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/substrate> ;
     skos:definition "The diamensions (area / thickness / diameter) of the substrate."@en ;
     skos:inScheme cs: ;
@@ -225,7 +225,7 @@
 
 <http://example.org/nfdi4cat/photo/distance-of-light-source-from-the-reaction-chamber-sample> a skos:Concept ;
     dcterms:identifier "distance-of-light-source-from-the-reaction-chamber-sample"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/light-source> ;
     skos:definition "The distance of the light source from the reaction chamber and the photocatalyst."@en ;
     skos:inScheme cs: ;
@@ -233,7 +233,7 @@
 
 <http://example.org/nfdi4cat/photo/doctor-blading> a skos:Concept ;
     dcterms:identifier "doctor-blading"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/deposition-technique> ;
     skos:definition "A tape-casting method used to deposit thin films of a photocatalyst onto the surface of a substrate."@en ;
     skos:inScheme cs: ;
@@ -249,7 +249,7 @@
 
 <http://example.org/nfdi4cat/photo/duration-of-steps> a skos:Concept ;
     dcterms:identifier "duration-of-steps"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/synthesis-steps> ;
     skos:definition "Duration of each synthesis step needed to synthesize the desired photocatalyst."@en ;
     skos:inScheme cs: ;
@@ -257,7 +257,7 @@
 
 <http://example.org/nfdi4cat/photo/dwelling-time> a skos:Concept ;
     dcterms:identifier "dwelling-time"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Soaking time"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/calcination-steps> ;
     skos:definition "Time (usually in h) for which a desired temperature is held."@en ;
@@ -283,7 +283,7 @@
 
 <http://example.org/nfdi4cat/photo/equipment-for-controlling-and-monitoring-operation-temperature> a skos:Concept ;
     dcterms:identifier "equipment-for-controlling-and-monitoring-operation-temperature"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Temperature controller; Temperature gauge; Temperature monitor; Heating device; Cooling device"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/range-of-operation-temperature> ;
     skos:definition "Equipment used for controlling and/or monitoring the temperature in various parts of a photoreactor. This can include hot plates, heating elements and cryostats. Light sources in operation can also affect the temperature in the reaction chamber."@en ;
@@ -292,7 +292,7 @@
 
 <http://example.org/nfdi4cat/photo/equipment-used-for-synthesis> a skos:Concept ;
     dcterms:identifier "equipment-used-for-synthesis"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/synthesis-steps> ;
     skos:definition "Equipment used in each step of the synthesis of the photocatalysts. The equipment can incude (but not limited to): crucibles, pH meters, condensers, volumetric cylinders, centrifuges, test tubes, flasks, beakers, mechanical shakers, pipettes, syringes, magenetic stirrers, heating plates, fitlers, funnels and digital balances."@en ;
     skos:inScheme cs: ;
@@ -300,7 +300,7 @@
 
 <http://example.org/nfdi4cat/photo/equipped-detectors-of-mass-spectrometer> a skos:Concept ;
     dcterms:identifier "equipped-detectors-of-mass-spectrometer"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:definition "Detectors of the mass spectrometer used to identify the reaction products and intemediates."@en ;
     skos:inScheme cs: ;
     skos:prefLabel "Equipped detectors of mass spectrometer"@en ;
@@ -308,7 +308,7 @@
 
 <http://example.org/nfdi4cat/photo/evaluation-of-products-formed> a skos:Concept ;
     dcterms:identifier "evaluation-of-products-formed"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> ;
     skos:definition "Calculation of the concentration of the products formed in a CO2 photoreduction experiment. "@en ;
     skos:inScheme cs: ;
@@ -333,7 +333,7 @@
 
 <http://example.org/nfdi4cat/photo/final-temperature> a skos:Concept ;
     dcterms:identifier "final-temperature"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/calcination-steps> ;
     skos:definition "Final temperature of the calcination step."@en ;
     skos:inScheme cs: ;
@@ -350,7 +350,7 @@
 
 <http://example.org/nfdi4cat/photo/flow-mode> a skos:Concept ;
     dcterms:identifier "flow-mode"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Continuous flow mode"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/operation-mode> ;
     skos:definition "A mode under which the CO2 photoreduction experiment is performed. Under flow conditions, a continuous flow of reactants is supplied to the reaction chamber and the formed products are removed and identified by an appropriate technique."@en ;
@@ -359,7 +359,7 @@
 
 <http://example.org/nfdi4cat/photo/flow-rate-of-gas-used-for-calcination> a skos:Concept ;
     dcterms:identifier "flow-rate-of-gas-used-for-calcination"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/gaseous-enviroment> ;
     skos:definition "The flow of gas (usually in ml min-1) used in the calcination steps during synthesis"@en ;
     skos:inScheme cs: ;
@@ -367,7 +367,7 @@
 
 <http://example.org/nfdi4cat/photo/flow-rates-of-reactants> a skos:Concept ;
     dcterms:identifier "flow-rates-of-reactants"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/reactants> ;
     skos:definition "The rate of flow of reactants (often in ml per min) in the photoreactor. Flow rates are usually controlled by mass flow controllers (MFCs)  "@en ;
     skos:inScheme cs: ;
@@ -375,7 +375,7 @@
 
 <http://example.org/nfdi4cat/photo/fluorine-doped-tin-oxide-coated-glass> a skos:Concept ;
     dcterms:identifier "fluorine-doped-tin-oxide-coated-glass"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "FTO glass"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/glass-substrate> ;
     skos:definition "Transparent conductive metal oxide (fluorine doped tin oxide) that can be used in the fabrication of transparent electrodes for thin films"@en ;
@@ -394,7 +394,7 @@
 <http://example.org/nfdi4cat/photo/general-terms-coll> a skos:Collection ;
     dcterms:identifier "general-terms-coll"^^xsd:token ;
     dcterms:isPartOf cs: ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:definition "General terms often used in the field of photocatalysis."@en ;
     skos:prefLabel "General terms"@en .
 
@@ -408,7 +408,7 @@
 
 <http://example.org/nfdi4cat/photo/heating-rate> a skos:Concept ;
     dcterms:identifier "heating-rate"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/calcination-steps> ;
     skos:definition "Rate of increasing or decreasing the temperature during the calcination step. Usually mentioned in K min-1."@en ;
     skos:inScheme cs: ;
@@ -424,7 +424,7 @@
 
 <http://example.org/nfdi4cat/photo/indium-tin-oxide-coated-glass> a skos:Concept ;
     dcterms:identifier "indium-tin-oxide-coated-glass"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "ITO glass"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/glass-substrate> ;
     skos:definition "Transparent conductive metal oxide (indium tin oxide) that can be used in the fabrication of transparent electrodes for thin films"@en ;
@@ -433,7 +433,7 @@
 
 <http://example.org/nfdi4cat/photo/initial-temperature> a skos:Concept ;
     dcterms:identifier "initial-temperature"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/calcination-steps> ;
     skos:definition "Initial temperature of the calcination step."@en ;
     skos:inScheme cs: ;
@@ -441,7 +441,7 @@
 
 <http://example.org/nfdi4cat/photo/intensity-of-the-light-source> a skos:Concept ;
     dcterms:identifier "intensity-of-the-light-source"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Light intensity"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/light-source> ;
     skos:definition "The light intensity (usually in mW cm-2) of the selected light source. The light intensity should be measured at the same distance as the one between the light source and the reaction chamber / sample."@en ;
@@ -450,7 +450,7 @@
 
 <http://example.org/nfdi4cat/photo/irradiation-time> a skos:Concept ;
     dcterms:identifier "irradiation-time"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/total-duration-of-experiment> ;
     skos:definition "The total duration in which the photocatalyst was under irradiation by the selected light source. "@en ;
     skos:inScheme cs: ;
@@ -458,7 +458,7 @@
 
 <http://example.org/nfdi4cat/photo/light-intensity> a skos:Concept ;
     dcterms:identifier "light-intensity"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/selected-light-source> ;
     skos:definition "The value of intensity of light emitted by the selected light source. The light intensity must be measured at the same distance as the light source from the reaction chamber / sample. "@en ;
     skos:inScheme cs: ;
@@ -475,7 +475,7 @@
 
 <http://example.org/nfdi4cat/photo/mass-flow-controller> a skos:Concept ;
     dcterms:identifier "mass-flow-controller"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "MFC; MFCs"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/equipment-controlling-and-monitoring-gas-flow> ;
     skos:definition "Devices used to control and monitor gas or liquid flow rates."@en ;
@@ -484,7 +484,7 @@
 
 <http://example.org/nfdi4cat/photo/mass-of-deposited-catalyst> a skos:Concept ;
     dcterms:identifier "mass-of-deposited-catalyst"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:definition "Mass of catalyst deposited onto the surface of a substrate."@en ;
     skos:inScheme cs: ;
     skos:prefLabel "Mass of deposited catalyst"@en ;
@@ -492,7 +492,7 @@
 
 <http://example.org/nfdi4cat/photo/mass-of-powder-used> a skos:Concept ;
     dcterms:identifier "mass-of-powder-used"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/powdered-photocatalyst> ;
     skos:definition "Mass of a powdered photocatalyst used for a CO2 photoreduction experiment."@en ;
     skos:inScheme cs: ;
@@ -509,7 +509,7 @@
 
 <http://example.org/nfdi4cat/photo/masses-volumes-concentrations-of-chemicals-used-in-synthesis> a skos:Concept ;
     dcterms:identifier "masses-volumes-concentrations-of-chemicals-used-in-synthesis"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/chemical-substances-used-for-synthesis> ;
     skos:definition "Masses / volumes / concentrations of chemicals used for synthesis"@en ;
     skos:inScheme cs: ;
@@ -517,7 +517,7 @@
 
 <http://example.org/nfdi4cat/photo/material-of-optical-window> a skos:Concept ;
     dcterms:identifier "material-of-optical-window"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/optical-window> ;
     skos:definition "Material that the window is made of. The window, usually attached to the lid sealing the reaction chamber, allows for the incoming light to enter the reaction chamber and interact with the photocatalyst. The material of the window influences the wavelenth range the the photocatalyst experieneces. "@en ;
     skos:inScheme cs: ;
@@ -525,7 +525,7 @@
 
 <http://example.org/nfdi4cat/photo/material-of-reaction-chamber> a skos:Concept ;
     dcterms:identifier "material-of-reaction-chamber"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/reaction-chamber> ;
     skos:definition "Material used for the construction of the main body of the reaction chamber."@en ;
     skos:inScheme cs: ;
@@ -541,7 +541,7 @@
 
 <http://example.org/nfdi4cat/photo/metallic-substrate> a skos:Concept ;
     dcterms:identifier "metallic-substrate"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/material-of-substrate> ;
     skos:definition "A  flat surface made of a metal (e.g., titanium, stainless steel) serving as a substrate for the deposition of a photocatalyst."@en ;
     skos:inScheme cs: ;
@@ -566,7 +566,7 @@
 
 <http://example.org/nfdi4cat/photo/organization-of-literature-in-a-citation-management-software> a skos:Concept ;
     dcterms:identifier "organization-of-literature-in-a-citation-management-software"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Literature organization; Organization of literature; Citation management software"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/literature-research> ;
     skos:definition "Addition and organization of relevant literature of interest using a citation management software (e.g., Mendeley, Zotero, EndNote etc.) allowing for easy access and categorization."@en ;
@@ -583,7 +583,7 @@
 
 <http://example.org/nfdi4cat/photo/ph-in-synthesis> a skos:Concept ;
     dcterms:identifier "ph-in-synthesis"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/synthesis-steps> ;
     skos:definition "pH value in each of the synthesis steps (if applicable)"@en ;
     skos:inScheme cs: ;
@@ -601,7 +601,7 @@
 <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-coll> a skos:Collection ;
     dcterms:identifier "photocatalytic-co2-reduction-coll"^^xsd:token ;
     dcterms:isPartOf cs: ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:definition "The light-driven reduction (conversion) of carbon dioxide (CO2) to hydrocarbons and / or platform chemicals in presence of water. The absorption of light and the adsorption of the reactants is performed by a photocatalyst (usually a metal oxide). "@en ;
     skos:member <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts-coll>,
         <http://example.org/nfdi4cat/photo/evaluation-of-performance-coll>,
@@ -636,7 +636,7 @@
 
 <http://example.org/nfdi4cat/photo/power-output-of-the-light-source> a skos:Concept ;
     dcterms:identifier "power-output-of-the-light-source"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/light-source> ;
     skos:definition "The power of the light source (usually in W or mW). The power can be calculated by the multiplication of the current and voltage used to operate the light source,"@en ;
     skos:inScheme cs: ;
@@ -644,7 +644,7 @@
 
 <http://example.org/nfdi4cat/photo/pressure-drop-in-a-co2-phoreduction-experiment> a skos:Concept ;
     dcterms:identifier "pressure-drop-in-a-co2-phoreduction-experiment"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:definition "When performing a CO2 photoreduction experiment in batch mode, with each sampling event, the pressure in the reaction chamber decreases. This pressure drop should be taken into consideration when calculating the concentration of formed products."@en ;
     skos:inScheme cs: ;
     skos:prefLabel "Pressure drop in a CO2 phoreduction experiment"@en ;
@@ -652,7 +652,7 @@
 
 <http://example.org/nfdi4cat/photo/pressure-in-a-co2-photoreduction-experiment> a skos:Concept ;
     dcterms:identifier "pressure-in-a-co2-photoreduction-experiment"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> ;
     skos:definition "The pressure (range) under which the CO2 photoreduction takes place."@en ;
     skos:inScheme cs: ;
@@ -660,7 +660,7 @@
 
 <http://example.org/nfdi4cat/photo/pressure-in-synthesis> a skos:Concept ;
     dcterms:identifier "pressure-in-synthesis"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/synthesis-steps> ;
     skos:definition "Pressure applied (if necessary) in any of the synthesis step. Changes in the pressure may be observed if variations in the temperature of the reaction occur (e.g., exothermic reaction) "@en ;
     skos:inScheme cs: ;
@@ -668,7 +668,7 @@
 
 <http://example.org/nfdi4cat/photo/purging-time> a skos:Concept ;
     dcterms:identifier "purging-time"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/total-duration-of-experiment> ;
     skos:definition "Time for which a gas is purged through the reaction chamber."@en ;
     skos:inScheme cs: ;
@@ -676,7 +676,7 @@
 
 <http://example.org/nfdi4cat/photo/purity-of-reactants> a skos:Concept ;
     dcterms:identifier "purity-of-reactants"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/reactants> ;
     skos:definition "Purity of reactants (e.g., CO2, H2O, He) used in the photocatalytic CO2 reduction experiments. Purity is measure of the impurities contained in the reactants' supply. The highest purity reactants should be used to ensure the collection of reliable results. "@en ;
     skos:inScheme cs: ;
@@ -726,7 +726,7 @@
 
 <http://example.org/nfdi4cat/photo/sample-pre-treatment> a skos:Concept ;
     dcterms:identifier "sample-pre-treatment"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> ;
     skos:definition "Pretreatment of the photocatalyst before its intoduction to the reaction chamber."@en ;
     skos:inScheme cs: ;
@@ -734,7 +734,7 @@
 
 <http://example.org/nfdi4cat/photo/sampling-intervals> a skos:Concept ;
     dcterms:identifier "sampling-intervals"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/total-duration-of-experiment> ;
     skos:definition "The time in between the collection of two data points."@en ;
     skos:inScheme cs: ;
@@ -751,7 +751,7 @@
 
 <http://example.org/nfdi4cat/photo/selectivity> a skos:Concept ;
     dcterms:identifier "selectivity"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> ;
     skos:definition "Identification of the mixture of gaseous products in a CO2 photoreduction experiment. "@en ;
     skos:inScheme cs: ;
@@ -767,7 +767,7 @@
 
 <http://example.org/nfdi4cat/photo/sensitivity-of-gas-chromatograph> a skos:Concept ;
     dcterms:identifier "sensitivity-of-gas-chromatograph"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/gas-chromatography> ;
     skos:definition "The minimum concentration of a product or intermediate that the gas chromatograph can identify. "@en ;
     skos:inScheme cs: ;
@@ -775,7 +775,7 @@
 
 <http://example.org/nfdi4cat/photo/sensitivity-of-mass-spectrometer> a skos:Concept ;
     dcterms:identifier "sensitivity-of-mass-spectrometer"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/mass-spectrometry> ;
     skos:definition "The minimum concentration of a product or intermediate that the mass spectrometer can identify. "@en ;
     skos:inScheme cs: ;
@@ -783,7 +783,7 @@
 
 <http://example.org/nfdi4cat/photo/shape-of-reaction-chamber> a skos:Concept ;
     dcterms:identifier "shape-of-reaction-chamber"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/reaction-chamber> ;
     skos:definition "The shape of the reaction chamber. In gas-phase CO2 photoreduction, reaction chambers have usually a cylindrical, cubical or rectangular shape."@en ;
     skos:inScheme cs: ;
@@ -808,7 +808,7 @@
 
 <http://example.org/nfdi4cat/photo/spray-coating> a skos:Concept ;
     dcterms:identifier "spray-coating"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/deposition-technique> ;
     skos:definition "A technique in which a solution containing the photocatalyst, is forced through a nozzle whereby a fine aerosol will be formed. This aerosol is sprayed on the surface of an appropriate substrate."@en ;
     skos:inScheme cs: ;
@@ -817,13 +817,13 @@
 <http://example.org/nfdi4cat/photo/synthesis-of-photocatalysts-coll> a skos:Collection ;
     dcterms:identifier "synthesis-of-photocatalysts-coll"^^xsd:token ;
     dcterms:isPartOf cs: ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:definition "The process by which one or more chemical reactions are performed with the aim of converting a reactant or starting material into a product or multiple products."@en ;
     skos:prefLabel "Synthesis of photocatalysts"@en .
 
 <http://example.org/nfdi4cat/photo/temperature-in-a-co2-photoreduction-experiment> a skos:Concept ;
     dcterms:identifier "temperature-in-a-co2-photoreduction-experiment"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:definition "The temperature (range) under which the CO2 photoreduction takes place."@en ;
     skos:inScheme cs: ;
     skos:prefLabel "Temperature in a CO2 photoreduction experiment"@en ;
@@ -831,7 +831,7 @@
 
 <http://example.org/nfdi4cat/photo/temperature-in-synthesis> a skos:Concept ;
     dcterms:identifier "temperature-in-synthesis"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/synthesis-steps> ;
     skos:definition "Temperature externally applied (if necessary) in any of the synthesis step. Higher temperature values can be observed if an exothermic reaction takes place during the synthesis."@en ;
     skos:inScheme cs: ;
@@ -858,7 +858,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/thickness-of-deposited-film> a skos:Concept ;
     dcterms:identifier "thickness-of-deposited-film"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/dimensions-of-deposited-film> ;
     skos:definition "The thickness of the film of the deposited photocatalyst. "@en ;
     skos:inScheme cs: ;
@@ -866,7 +866,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/thickness-of-optical-window> a skos:Concept ;
     dcterms:identifier "thickness-of-optical-window"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Thickness of window; Window thickness"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/dimensions-of-optical-window> ;
     skos:definition "Thickness of the optical window allowing the incoming light to enter the reaction chamber and interact with the photocatalyst."@en ;
@@ -911,7 +911,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/voltage-of-operation-of-the-light-source> a skos:Concept ;
     dcterms:identifier "voltage-of-operation-of-the-light-source"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/light-source> ;
     skos:definition "The value of voltage  (usually in V or mV) used to operate the selected light source."@en ;
     skos:inScheme cs: ;
@@ -919,7 +919,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/volume-of-the-reaction-chamber> a skos:Concept ;
     dcterms:identifier "volume-of-the-reaction-chamber"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/reaction-chamber> ;
     skos:definition "Volume of the reaction chamber, calculated by its dimensions. Volume of pipes and valves connected to the reaction chamber should also be calculated and added to the total volume. "@en ;
     skos:inScheme cs: ;
@@ -964,13 +964,13 @@ In general, two cells arranged in a bridge configuration detect the change in th
 <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts-coll> a skos:Collection ;
     dcterms:identifier "characterization-of-photocatalysts-coll"^^xsd:token ;
     dcterms:isPartOf cs: ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:definition "A collection of techniques used to identify the (physico)chemical, morphological, structural, mechanical, optical and electrical properties of the syntesized photocatalysts. Characterization is performed after the synthesis of the photocatalysts to evaluate the success of the synthetic approach, but also after the completion of the evaluation of the materials in CO2 photoreduction to ensure their stability under the selected experimental parameters."@en ;
     skos:prefLabel "Characterization of photocatalysts"@en .
 
 <http://example.org/nfdi4cat/photo/chemical-substances-used-for-synthesis> a skos:Concept ;
     dcterms:identifier "chemical-substances-used-for-synthesis"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Chemicals; Chemical reagents; Reagents"@en ;
     skos:definition "Chemical substances used in the synthesis process of a desired photocatalyst."@en ;
     skos:inScheme cs: ;
@@ -980,7 +980,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/deposited-film> a skos:Concept ;
     dcterms:identifier "deposited-film"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/thin-film> ;
     skos:definition "A thin film of the photocatalyst deposited on an appropiate for the application substrate."@en ;
     skos:inScheme cs: ;
@@ -989,7 +989,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/equipment-controlling-and-monitoring-gas-flow> a skos:Concept ;
     dcterms:identifier "equipment-controlling-and-monitoring-gas-flow"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/gas-flow> ;
     skos:definition "Equipment used for controlling and / or monitoring the flow of gases (reactant or inert) needed for a CO2 photoreduction experiment. Mass flow controllers (MFCs) are commonly used to controlle gas flows."@en ;
     skos:inScheme cs: ;
@@ -998,7 +998,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/equipment-for-controlling-and-monitoring-operation-pressure> a skos:Concept ;
     dcterms:identifier "equipment-for-controlling-and-monitoring-operation-pressure"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Pressure controller; Pressure gauge; Pressure monitor"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/range-of-operation-pressure> ;
     skos:definition "Equipment used for controlling and / or monitoring the pressure in various parts of a photoreactor. A vaccum pump is a typical example of such equipment."@en ;
@@ -1009,13 +1009,13 @@ In general, two cells arranged in a bridge configuration detect the change in th
 <http://example.org/nfdi4cat/photo/evaluation-of-performance-coll> a skos:Collection ;
     dcterms:identifier "evaluation-of-performance-coll"^^xsd:token ;
     dcterms:isPartOf cs: ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:definition "Selection of experimental parameters applied for the evaluation of the performance of a photocatalyst in CO2 photoreduction."@en ;
     skos:prefLabel "Evaluation of performance"@en .
 
 <http://example.org/nfdi4cat/photo/gas-flow> a skos:Concept ;
     dcterms:identifier "gas-flow"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/photoreactor-design> ;
     skos:definition "Flow rates of gases used in a CO2 photoreduction experiment. Gases can have either the role of a reactant (e.g., CO2) or be inert (e.g., Ar, He). "@en ;
     skos:inScheme cs: ;
@@ -1024,7 +1024,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/gaseous-enviroment> a skos:Concept ;
     dcterms:identifier "gaseous-enviroment"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Calcination environment"@en ;
     skos:definition "A gas flow under which the calcination step takes place (e,g,, Ar or synthetic air)"@en ;
     skos:inScheme cs: ;
@@ -1044,7 +1044,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/powdered-photocatalyst> a skos:Concept ;
     dcterms:identifier "powdered-photocatalyst"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/form-of-photocatalyst> ;
     skos:definition "A photocatalyst introduced to the reaction chamber in the form of a powder. Usually the powdered photocatalyst is spread inside a quartz / glass plate."@en ;
     skos:inScheme cs: ;
@@ -1053,7 +1053,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/range-of-operation-pressure> a skos:Concept ;
     dcterms:identifier "range-of-operation-pressure"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Operation pressure; Operation pressure range; Pressure range"@en ;
     skos:definition "Maximum and minimum of operation pressure range within the reactor can operate safely. Higher operation temperatures can lead to higher pressure values."@en ;
     skos:inScheme cs: ;
@@ -1063,7 +1063,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/range-of-operation-temperature> a skos:Concept ;
     dcterms:identifier "range-of-operation-temperature"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Operation temperature; Operation temperature range; Temparature range"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/photoreactor-design> ;
     skos:definition "Maximum and minimum of operation temperature range within the reactor can operate safely."@en ;
@@ -1074,7 +1074,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 <http://example.org/nfdi4cat/photo/reactor-design-coll> a skos:Collection ;
     dcterms:identifier "reactor-design-coll"^^xsd:token ;
     dcterms:isPartOf cs: ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:definition "Details describing the construction, physical dimensions, and operation of the photoreactor used for the photocalytic CO2 reduction reactions."@en ;
     skos:prefLabel "Reactor design"@en .
 
@@ -1104,7 +1104,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/dimensions-of-deposited-film> a skos:Concept ;
     dcterms:identifier "dimensions-of-deposited-film"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/deposited-film> ;
     skos:definition "The diamensions (area / thickness / diameter) of the - deposited on the substrate - thin film"@en ;
     skos:inScheme cs: ;
@@ -1114,7 +1114,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/dimensions-of-optical-window> a skos:Concept ;
     dcterms:identifier "dimensions-of-optical-window"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/optical-window> ;
     skos:definition "The dimension of the optical window (diameter / thickness) allowing the incoming light to enter the reaction chamber and interact with the photocatalyst."@en ;
     skos:inScheme cs: ;
@@ -1124,7 +1124,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/equipped-detectors-of-gas-chromatograph> a skos:Concept ;
     dcterms:identifier "equipped-detectors-of-gas-chromatograph"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:definition "Detectors of the gas chromatogragh used to identify the reaction products and intemediates."@en ;
     skos:inScheme cs: ;
     skos:narrower <http://example.org/nfdi4cat/photo/flame-ionization-detector>,
@@ -1134,7 +1134,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/form-of-photocatalyst> a skos:Concept ;
     dcterms:identifier "form-of-photocatalyst"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/evaluation-of-performance> ;
     skos:definition "The form in which the photocatalyst is introduced to the reaction chamber. This can include e.g., powders, pellets or thin films deposited on a substrate. "@en ;
     skos:inScheme cs: ;
@@ -1144,7 +1144,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/literature-research> a skos:Concept ;
     dcterms:identifier "literature-research"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Publications; papers; manuscripts;"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/synthesis-of-photocatalysts> ;
     skos:definition "Thorough search of available literature on the research topic of interest using online research platforms (e.g, Scopus, Google Scholar, Web of Science, Research Gate etc.) and / or libraries. Relevant literature can be found in the form of publications, books, abstracts and conference presentations. "@en ;
@@ -1176,7 +1176,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/product-identification-method> a skos:Concept ;
     dcterms:identifier "product-identification-method"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/photoreactor-design> ;
     skos:definition "Spectroscopic or chromatographic methods used to qualitatively and quantitatively identify the products of the photoreaction. Such devices are usually attached to the photoreactor, or a sample is being trasfered to an identification method via another medium (e.g., gastight syringes)."@en ;
     skos:inScheme cs: ;
@@ -1186,7 +1186,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/sacrificial-reagents> a skos:Concept ;
     dcterms:identifier "sacrificial-reagents"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/reactants> ;
     skos:definition "Electron donors or hole scavengers used to reduce the recombination tendency of electrons and holes. Sacrificial reagents are used in photocatalysis to study an oxidation or reduction reaction seperately."@en ;
     skos:inScheme cs: ;
@@ -1196,7 +1196,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/selected-light-source> a skos:Concept ;
     dcterms:identifier "selected-light-source"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:definition "The light source used for the irradiation of the reactants in the reaction chamber."@en ;
     skos:inScheme cs: ;
     skos:narrower <http://example.org/nfdi4cat/photo/light-intensity>,
@@ -1206,7 +1206,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/substrate> a skos:Concept ;
     dcterms:identifier "substrate"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/thin-film> ;
     skos:definition "The substate onto which a (powdered) photocatalyst is deposited. Such substrates incude glass surfaces (e.g., borosilicate glass or conductive glass like ITO and FTO), ceramic substrates (e.g., alumina) or metal substrates (e.g., Ti foils, stainless steel etc.) "@en ;
     skos:inScheme cs: ;
@@ -1216,7 +1216,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/synthesis-of-photocatalysts> a skos:Concept ;
     dcterms:identifier "synthesis-of-photocatalysts"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction> ;
     skos:definition "The process by which one or more chemical reactions are performed with the aim of converting a reactant or starting material into a product or multiple products."@en ;
     skos:inScheme cs: ;
@@ -1226,7 +1226,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/deposition-technique> a skos:Concept ;
     dcterms:identifier "deposition-technique"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/thin-film> ;
     skos:definition "A technique used to deposit (immobilize) a (powdered) photocatalyst on a substate. These techniques indlude (but are not limited to): doctor blading, spin coating, spray coating, etc."@en ;
     skos:inScheme cs: ;
@@ -1249,7 +1249,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/glass-substrate> a skos:Concept ;
     dcterms:identifier "glass-substrate"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/material-of-substrate> ;
     skos:definition "A flat surface made of glass serving as a substrate for the deposition of a photocatalyst."@en ;
     skos:inScheme cs: ;
@@ -1260,7 +1260,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/material-of-substrate> a skos:Concept ;
     dcterms:identifier "material-of-substrate"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/substrate> ;
     skos:definition "The material that the substrate is made of. Common materials include: glass (conductive or not), ceramics and metal."@en ;
     skos:inScheme cs: ;
@@ -1271,7 +1271,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/operation-mode> a skos:Concept ;
     dcterms:identifier "operation-mode"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/evaluation-of-performance>,
         <http://example.org/nfdi4cat/photo/photoreactor-design> ;
     skos:definition "Operation mode under the which the experiment takes place: batch of continuous flow mode."@en ;
@@ -1282,7 +1282,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction> a skos:Concept ;
     dcterms:identifier "photocatalytic-co2-reduction"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Photocatalytic carbon dioxide reduction; CO2 photoreduction; Carbon dioxide photoreduction; artificial photosynthesis"@en ;
     skos:definition "The light-driven reduction (conversion) of carbon dioxide (CO2) to hydrocarbons and / or platform chemicals in presence of water. The absorption of light and the adsorption of the reactants is performed by a photocatalyst (usually a metal oxide). "@en ;
     skos:inScheme cs: ;
@@ -1294,7 +1294,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/thin-film> a skos:Concept ;
     dcterms:identifier "thin-film"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/form-of-photocatalyst> ;
     skos:definition "A photocatalyst introduced to the reaction chamber in the form of a thin film. To form a thin film, a (powdered) photocatalyst is deposited on a substrate (e.g., glass or metal) using an appropriate deposition technique. "@en ;
     skos:inScheme cs: ;
@@ -1305,7 +1305,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/total-duration-of-experiment> a skos:Concept ;
     dcterms:identifier "total-duration-of-experiment"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/evaluation-of-performance> ;
     skos:definition "The total duration of an experiment"@en ;
     skos:inScheme cs: ;
@@ -1316,7 +1316,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/calcination-steps> a skos:Concept ;
     dcterms:identifier "calcination-steps"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Heat treatment; Heat-treatment; Calcination"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/synthesis-steps> ;
     skos:definition "Heat treatment to reach the desired final photocatalyst. The parameters of the heat treatment can vary between each calcination step. "@en ;
@@ -1341,7 +1341,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/wavelength-range> a skos:Concept ;
     dcterms:identifier "wavelength-range"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/light-source>,
         <http://example.org/nfdi4cat/photo/selected-light-source> ;
     skos:definition "Wavelength (single, narrow distribution or range) of the light emmited by the light source."@en ;
@@ -1353,7 +1353,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/reaction-chamber> a skos:Concept ;
     dcterms:identifier "reaction-chamber"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Photoreaction chamber"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/photoreactor-design> ;
     skos:definition "A construction inside of which the photocatalyst and the reactants coexist and the photoreaction takes place."@en ;
@@ -1367,7 +1367,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/evaluation-of-performance> a skos:Concept ;
     dcterms:identifier "evaluation-of-performance"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction> ;
     skos:definition "Selection of experimental parameters applied for the evaluation of the performance of a photocatalyst in CO2 photoreduction."@en ;
     skos:inScheme cs: ;
@@ -1381,7 +1381,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction-experiment> a skos:Concept ;
     dcterms:identifier "photocatalytic-co2-reduction-experiment"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Carbon dioxide photoreduction experiment; Photocatalytic CO2 reduction experiment; Photocatalytic carbon dioxide reduction experiment"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/evaluation-of-performance> ;
     skos:definition "An experiment in which a photocatalyst in the presence of H2O and under the influence of light of appropriate wavelength, converts CO2 to hydrocarbons and / or useful platform chemicals. "@en ;
@@ -1396,7 +1396,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/photoreactor-design> a skos:Concept ;
     dcterms:identifier "photoreactor-design"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:altLabel "Reactor design; Reactor engineering; Photoreactor engineering"@en ;
     skos:definition "Details describing the construction, physical dimensions, and operation of the photoreactor used for the photocalytic CO2 reduction reactions."@en ;
     skos:inScheme cs: ;
@@ -1411,7 +1411,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/synthesis-steps> a skos:Concept ;
     dcterms:identifier "synthesis-steps"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/synthesis-of-photocatalysts> ;
     skos:definition "Necessary steps needed to follow in order to reach the desired photocatalyst."@en ;
     skos:inScheme cs: ;
@@ -1425,7 +1425,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/light-source> a skos:Concept ;
     dcterms:identifier "light-source"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/evaluation-of-performance>,
         <http://example.org/nfdi4cat/photo/photoreactor-design> ;
     skos:definition "Light sources used to irradiate a photocatalyst. These include sources with various intensities, powers and wavelength ranges,  including Hg/Xe lamps, Xe lamps and LEDs. "@en ;
@@ -1440,7 +1440,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/characterization-of-photocatalysts> a skos:Concept ;
     dcterms:identifier "characterization-of-photocatalysts"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:broader <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction> ;
     skos:definition "A collection of techniques used to identify the (physico)chemical, morphological, structural, mechanical, optical and electrical properties of the syntesized photocatalysts. Characterization is performed after the synthesis of the photocatalysts to evaluate the success of the synthetic approach, but also after the completion of the evaluation of the materials in CO2 photoreduction to ensure their stability under the selected experimental parameters."@en ;
     skos:inScheme cs: ;
@@ -1468,7 +1468,7 @@ In general, two cells arranged in a bridge configuration detect the change in th
 
 <http://example.org/nfdi4cat/photo/general-terms> a skos:Concept ;
     dcterms:identifier "general-terms"^^xsd:token ;
-    dcterms:provenance "Self"@en ;
+    dcterms:provenance "Nikolaos Moustakas"@en ;
     skos:definition "General terms often used in the field of photocatalysis."@en ;
     skos:inScheme cs: ;
     skos:narrower <http://example.org/nfdi4cat/photo/absorption>,
