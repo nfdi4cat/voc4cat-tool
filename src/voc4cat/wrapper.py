@@ -488,8 +488,7 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
-        "-sep",
-        "--hierarchy-indent-separator",
+        "--indent-separator",
         help=(
             "Separator character(s) to read/write indented hierarchies "
             "(default: Excel's indent)."
