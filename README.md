@@ -105,7 +105,7 @@ Another way to express hierarchies between concepts, is to use indentation. voc4
 
 or if you were using 3 spaces per level
 
-`voc4cat --hierarchy-from-indent -sep "   " --output_directory output example/concept_hierarchy_043_4Cat.xlsx`
+`voc4cat --hierarchy-from-indent --indent-separator "   " --output_directory output example/concept_hierarchy_043_4Cat.xlsx`
 
 to convert to ChildrenURI-hierarchy. For ChildrenURI-hierarchy to Excel-indenation, use
 
