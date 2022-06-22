@@ -542,8 +542,8 @@ def main_cli(args=None):
         vocexcel_args.append("--logfile")
         vocexcel_args.append(str(logfile))
 
-    if args_wrapper.hierarchy_indent_separator:
-        sep = args_wrapper.hierarchy_indent_separator
+    if args_wrapper.indent_separator:
+        sep = args_wrapper.indent_separator
         if len(sep) < 1:
             raise ValueError(
                 "Setting the indent separator to zero length is not allowed."
