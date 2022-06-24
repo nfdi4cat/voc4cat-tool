@@ -85,6 +85,7 @@ vocab:commit:
     # - exists:
     #   - outbox/*.ttl
   before_script:
+    - pip install .
     - git config user.name "CI.runner"
     - git config user.email "CI.runner@gitlab.fokus.fraunhofer.de"
     # It would also be possible to use the email/name of the acting user
