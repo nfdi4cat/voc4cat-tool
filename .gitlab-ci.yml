@@ -85,6 +85,7 @@ vocab:commit:
     # - exists:
     #   - outbox/*.ttl
   before_script:
+    - pip install .
     - git config user.name "CI.runner"
     - git config user.email "CI.runner@gitlab.fokus.fraunhofer.de"
     # It would also be possible to use the email/name of the acting user
@@ -96,7 +97,7 @@ vocab:commit:
     - git status
 
     # Use python script to call "git merge-file" on existing or "copy" on new vocabs
-    - python merge_vocab.py outbox vocabularies
+    - merge_vocab outbox vocabularies
     - git add vocabularies/\*.ttl || echo "No ttl files to add."
     - git status
 

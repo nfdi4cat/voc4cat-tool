@@ -62,6 +62,7 @@ lint = [
 
 [project.scripts]
 voc4cat = "voc4cat.wrapper:main_cli"
+merge_vocab = "voc4cat.merge_vocab:run"
 
 #[tool.setuptools.packages.find]
 #where = ["src"]

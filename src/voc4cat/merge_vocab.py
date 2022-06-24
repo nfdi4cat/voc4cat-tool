@@ -35,7 +35,7 @@ def main(outbox, vocab):
     return retcode
 
 
-if __name__ == "__main__":
+def run():
     if len(sys.argv) != 3:
         print('Usage: "python merge_vocab.py outbox_dir vocab_dir')
         sys.exit(1)
@@ -46,3 +46,7 @@ if __name__ == "__main__":
     else:
         print(f'This script requires both folders to exist: "{outbox}" and "{vocab}"')
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    run()
