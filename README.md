@@ -60,11 +60,11 @@ voc4cat works on windows, linux and mac. However, the command examples below ass
 
 Checkout this repository
 
-`git clone https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/heterogen-synth.git`
+`git clone https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/voc4cat-tool.git`
 
 Enter the directory to which you cloned.
 
-`cd heterogen-synth`
+`cd voc4cat-tool`
  
 Create a virtual environment in a local subfolder ".venv" (Note that the command is for windows. Replace "py" with "python3" on other platforms.):
 

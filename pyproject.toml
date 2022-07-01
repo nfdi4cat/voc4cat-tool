@@ -44,10 +44,10 @@ dependencies = [
 dynamic = ["version"]
 
 [project.urls]
-homepage = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/heterogen-synth/"
-repository = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/heterogen-synth/"
-documentation = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/heterogen-synth/"
-# changelog = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/heterogen-synth/CHANGELOG.md"
+homepage = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/voc4cat-tool/"
+repository = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/voc4cat-tool/"
+documentation = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/voc4cat-tool/"
+# changelog = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/voc4cat-tool/CHANGELOG.md"
 
 [project.optional-dependencies]
 test = [
