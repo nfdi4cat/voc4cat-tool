@@ -50,9 +50,9 @@ documentation = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/voc4
 # changelog = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/voc4cat-tool/CHANGELOG.md"
 
 [project.optional-dependencies]
-test = [
-  "pytest < 5.0.0",
-  "pytest-cov[all]",
+tests = [
+  "pytest",
+  "pytest-cov",
 ]
 lint = [
   "black",
@@ -74,7 +74,6 @@ merge_vocab = "voc4cat.merge_vocab:run"
 #[tool.setuptools.dynamic]
 #version = {attr = "voc4cat._version.version"}
 #readme = {file = ["README.md"]}
-
 
 [tool.hatch.metadata]
 # Hatch disallows direct references for dependencies by default.
@@ -100,3 +99,8 @@ version-file = "src/voc4cat/_version.py"
 [tool.isort]
 profile = "black"
 src_paths = ["src", "tests"]
+
+[tool.coverage.run]
+omit = [
+    "src/voc4cat/_version.py",
+]
