@@ -1,16 +1,17 @@
 This is the repository
+
 - for working in NFDI4Cat on **Vocabularies for analytics, synthesis and heterogeneous catalysis**.
 - for **voc4cat** a script that adds additional options to the original vocexcel tool (without changing or copying any original vocexcel code)
 - for developing a **gitlab-based, CI-supported workflow for maintaining vocabularies.**
 
 Additional files and notes from the subgroup can be found in the HLRS cloud:
 
- * [Folder of TA1 subgroup Analytics-Synthesis-HeterogeneousCatalysis](https://edocs.hlrs.de/nextcloud/apps/files/?dir=/NFDI4Cat/Project-related%20activities/Task%20Areas/TA1/Subgroup_Analytics-Synthesis-HeterogCatalysis&fileid=155479)
- * [Top level folder for TA1](https://edocs.hlrs.de/nextcloud/apps/files/?dir=/NFDI4Cat/Project-related%20activities/Task%20Areas/TA1&fileid=96729)
+- [Folder of TA1 subgroup Analytics-Synthesis-HeterogeneousCatalysis](https://edocs.hlrs.de/nextcloud/apps/files/?dir=/NFDI4Cat/Project-related%20activities/Task%20Areas/TA1/Subgroup_Analytics-Synthesis-HeterogCatalysis&fileid=155479)
+- [Top level folder for TA1](https://edocs.hlrs.de/nextcloud/apps/files/?dir=/NFDI4Cat/Project-related%20activities/Task%20Areas/TA1&fileid=96729)
 
 # Gitlab-based vocabulary development and maintenance
 
-All vocabularies that have gone through the standard gitlab process of 
+All vocabularies that have gone through the standard gitlab process of
 
 - submission of merge request,
 - review of merge request,
@@ -34,29 +35,28 @@ Please describe your changes and the motivation for the changes in the merge req
 
 Finally, when the proposed merge request is accepted, your changes will be integrated in the vocabularies in the folder `vocabularies`.
 
-
 # Tool voc4cat
 
 To support what is not provided by the original vocexcel project we have developed this wrapper "voc4cat" that augments vocexcel with additional options like
-- Checking our NFDI4Cat-Excel template 
+
+- Checking our NFDI4Cat-Excel template
 - Enriching our NFDI4Cat-Excel template (e.g. automatically add IRIs)
 - Processing all files in a folder at once
 - Generating documentation (with [ontospy](http://lambdamusic.github.io/Ontospy/))
 - Support for expressing concept-hierarchies by indentation.
-
 
 ## Installation
 
 The installation requires internet access since we install vocexcel directly from GitHub.
 
 Preconditions:
- * git
- * Python (3.8 or newer)
- 
+
+- git
+- Python (3.8 or newer)
+
 voc4cat works on windows, linux and mac. However, the command examples below assume that you work on windows and that the [launcher](https://docs.python.org/3.10/using/windows.html#python-launcher-for-windows) is also installed. The launcher is included by default in Windows installers from [python.org](https://www.python.org/downloads/)
 
-
-## Installation steps:
+## Installation steps
 
 Checkout this repository
 
@@ -65,7 +65,7 @@ Checkout this repository
 Enter the directory to which you cloned.
 
 `cd voc4cat-tool`
- 
+
 Create a virtual environment in a local subfolder ".venv" (Note that the command is for windows. Replace "py" with "python3" on other platforms.):
 
 `py -m venv .venv`
@@ -81,7 +81,6 @@ Update the packages in the virtual environment.
 Install voc4cat into the virtual environment.
 
 `pip install .`
-
 
 ## Typical use
 
@@ -123,8 +122,7 @@ It is also possible create an xlsx file from a turtle file. Optionally a custom 
 
 Options that are specific for vocexcel can be put at the end of a `voc4cat` command. Here is an example that forwards the `-e 3` and `-m 3` options to vocexcel and moreover demonstrates a complex combination of options (as used in CI):
 
-`(.venv) λ voc4cat --add_IRI --add_related --check --forward --docs --output_directory outbox inbox-excel-vocabs/ -e 3 -m 3`
-
+`voc4cat --add_IRI --add_related --check --forward --docs --output_directory outbox inbox-excel-vocabs/ -e 3 -m 3`
 
 # Feedback and code contributions
 
