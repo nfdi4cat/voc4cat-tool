@@ -95,7 +95,9 @@ def add_IRI(fpath, outfile):
     wb = openpyxl.load_workbook(fpath)
     is_supported_template(wb)
     VOC_BASE_IRI = wb["Concept Scheme"].cell(row=2, column=2).value
-    if not VOC_BASE_IRI.endswith("/"):
+    if VOC_BASE_IRI is None:
+        VOC_BASE_IRI = ""
+    elif not VOC_BASE_IRI.endswith("/"):
         VOC_BASE_IRI += "/"
 
     # process both worksheets
@@ -352,7 +354,7 @@ def check(fpath, outfile):
     failed_check = False
     for row_no, row in enumerate(ws.iter_rows(min_row=3, max_col=3), 3):
         if row[0].value and row[1].value:
-            conceptIRI, preflabel, lang = [c.value.strip() for c in row]
+            conceptIRI, preflabel, lang = [c.value.strip() if c.value is not None else "" for c in row]
 
             new_conceptIRI = f'"{conceptIRI}"@{lang.lower()}'
             if new_conceptIRI in seen_conceptIRIs:
