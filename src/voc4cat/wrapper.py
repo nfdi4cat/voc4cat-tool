@@ -1,7 +1,7 @@
 """
-Add mechanism to extend VocExcel with more commands
+A wrapper to extend VocExcel with more commands
 
-The new commands be may be run either before or after VocExcel.
+The new commands may be run either before or after VocExcel.
 
 Copyright (c) 2022 David Linke (ORCID: 0000-0002-5898-1820)
 """
@@ -34,7 +34,7 @@ try:
 except PackageNotFoundError:
     # package is not installed
     try:
-        from _version import version as __version__
+        from ._version import version as __version__
     except ImportError:
         __version__ = "0.0.0"
 
@@ -110,74 +110,6 @@ def add_IRI(fpath, outfile):
                 concept_iri = VOC_BASE_IRI + slugify(row[1].value)
                 concept_iri += "-coll" if sheet == "Collections" else ""
                 ws.cell(row[0].row, column=1).value = concept_iri
-                subsequent_empty_rows = 0
-            elif row[0].value is None and row[1].value is None:
-                # stop processing a sheet after 3 empty rows
-                if subsequent_empty_rows < 2:
-                    subsequent_empty_rows += 1
-                else:
-                    break
-
-    wb.save(outfile)
-    print(f"Saved updated file as {outfile}")
-    return 0
-
-
-def add_related(fpath, outfile):
-    """
-    Add related Children URI and Members URI by preferred label if none is present.
-
-    In detail the folowing sheets are modified:
-    "Concepts": update col. G "Children URI" from col. J "Children by Pref. Label"
-    "Collections": update col. D "Members URI" from col. F "Members by Pref. Label"
-    """
-    print(f"\nRunning add_related for file {fpath}")
-    wb = openpyxl.load_workbook(fpath)
-    is_supported_template(wb)
-
-    subsequent_empty_rows = 0
-    print("Reading concepts...")
-    ws = wb["Concepts"]
-    pref_label_lookup = {}
-    # read all preferred labels from the sheet concepts
-    for row in ws.iter_rows(min_row=3, max_col=2):
-        if row[0].value and row[1].value:
-            pref_label_lookup[slugify(row[1].value)] = row[0].value
-            subsequent_empty_rows = 0
-        elif row[0].value is None and row[1].value is None:
-            # stop processing a sheet after 3 empty rows
-            if subsequent_empty_rows < 2:
-                subsequent_empty_rows += 1
-            else:
-                subsequent_empty_rows = 0
-                break
-
-    # process both worksheets
-    for sheet in ["Concepts", "Collections"]:
-        ws = wb[sheet]
-        print(f"Processing sheet '{sheet}'")
-        # update URI columns
-        col_to_fill = 6 if sheet == "Concepts" else 3
-        col_preflabel = 9 if sheet == "Concepts" else 5
-        for row in ws.iter_rows(min_row=3, max_col=col_preflabel + 1):
-            if not row[col_to_fill].value and row[col_preflabel].value:
-                # update cell in col_to_fill
-                pref_label_slugs = [
-                    slugify(pl.strip()) for pl in row[col_preflabel].value.split(",")
-                ]
-                found = [
-                    pref_label_lookup[pl]
-                    for pl in pref_label_slugs
-                    if pl in pref_label_lookup
-                ]
-                not_found = [
-                    pl
-                    for pl in pref_label_slugs
-                    if pl not in pref_label_lookup
-                ]
-                ws.cell(row[0].row, column=col_to_fill + 1).value = ", ".join(found)
-                if not_found:
-                    print(f"Unknown children/member IRIs for {row[0].value}: {not_found}")
                 subsequent_empty_rows = 0
             elif row[0].value is None and row[1].value is None:
                 # stop processing a sheet after 3 empty rows
@@ -445,16 +377,6 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
-        "-r",
-        "--add_related",
-        help=(
-            "Add related Children URI and Members URI by preferred label "
-            "if none is present."
-        ),
-        action="store_true",
-    )
-
-    parser.add_argument(
         "-c",
         "--check",
         help=(
@@ -592,12 +514,12 @@ def main_cli(args=None):
             raise NotImplementedError()
         children_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
 
-    elif args_wrapper.add_IRI or args_wrapper.add_related or args_wrapper.check:
+    elif args_wrapper.add_IRI or args_wrapper.check:
         funcs = [
             m
             for m, to_run in zip(
-                [add_IRI, add_related, check],
-                [args_wrapper.add_IRI, args_wrapper.add_related, args_wrapper.check],
+                [add_IRI, check],
+                [args_wrapper.add_IRI, args_wrapper.check],
             )
             if to_run
         ]
@@ -724,5 +646,5 @@ def main_cli(args=None):
 
 if __name__ == "__main__":
     err = main_cli(sys.argv[1:])
-    # CI need to know if an error occurred (failed check or validation error)
+    # CI needs to know if an error occurred (failed check or validation error)
     sys.exit(err)
