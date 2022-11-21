@@ -104,12 +104,7 @@ Typically, when a new vocabulary is created you want to create IRIs from the pre
 This will fill the IRI-column for all rows with missing IRI entries.
 
 Manually filling the Children URI (in sheet "Concepts") and Members URI (in sheet "Collections") with URIs can be tedious.
-Alternatively, the additional columns "Children by Pref. Label" and "Members by Pref. Label" allow to specify the children or members by their preferred label.
-Then the script can be used to fill the URI columns:
-
-`voc4cat -r vocabulary.xlsx`
-
-Another way to express hierarchies between concepts, is to use indentation. voc4Cat supports Excel-indentation (default).
+An easier way to express hierarchies between concepts, is to use indentation. voc4Cat supports Excel-indentation (default).
 voc4cat can also convert other indentaions (e.g.by 3 spaces per level) into Excel-indentation.
 voc4cat supports converting between indentation-based hierarchy and Children-URI hierarchy (both directions). For example, use
 
@@ -129,18 +124,18 @@ Finally, the vocabulary file can be converted to turtle format. In this case the
 
 A turtle file `vocabulary.ttl` is created in the same directory where the xlsx-file is located.
 
-It is also possible create an xlsx file from a turtle file. Optionally a custom template (like we use here) can be specified:
+It is also possible to create an xlsx file from a turtle file. Optionally a custom template (like we use here) can be specified:
 
 `voc4cat --template template/VocExcel-template_043_4Cat.xlsx vocabulary.ttl`
 
 Options that are specific for vocexcel can be put at the end of a `voc4cat` command.
 Here is an example that forwards the `-e 3` and `-m 3` options to vocexcel and moreover demonstrates a complex combination of options (as used in CI):
 
-`voc4cat --add_IRI --add_related --check --forward --docs --output_directory outbox inbox-excel-vocabs/ -e 3 -m 3`
+`voc4cat --add_IRI --check --forward --docs --output_directory outbox inbox-excel-vocabs/ -e 3 -m 3`
 
 # Feedback and code contributions
 
 Just create an issue here. We appreciate any kind of feedback and reasoned criticism.
 
-If you want to contribute code, that is great! Please create an issue first to discuss your plan before you spent too much time on the problem.
+If you want to contribute code, that is even better! We advise to create an issue to get feedback on your plans before you spent too much time on the problem.
 By contributing you agree that your contributions fall under the project´s MIT license.
