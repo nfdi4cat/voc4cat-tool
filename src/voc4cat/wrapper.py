@@ -134,25 +134,28 @@ def add_related(fpath, outfile):
     print(f"\nRunning add_related for file {fpath}")
     wb = openpyxl.load_workbook(fpath)
     is_supported_template(wb)
-    # process both worksheets
-    subsequent_empty_rows = 0
-    for sheet in ["Concepts", "Collections"]:
-        print(f"Processing sheet '{sheet}'")
-        ws = wb[sheet]
-        pref_label_lookup = {}
-        # read all preferred labels from the sheet
-        for row in ws.iter_rows(min_row=3, max_col=2):
-            if row[0].value and row[1].value:
-                pref_label_lookup[slugify(row[1].value)] = row[0].value
-                subsequent_empty_rows = 0
-            elif row[0].value is None and row[1].value is None:
-                # stop processing a sheet after 3 empty rows
-                if subsequent_empty_rows < 2:
-                    subsequent_empty_rows += 1
-                else:
-                    subsequent_empty_rows = 0
-                    break
 
+    subsequent_empty_rows = 0
+    print("Reading concepts...")
+    ws = wb["Concepts"]
+    pref_label_lookup = {}
+    # read all preferred labels from the sheet concepts
+    for row in ws.iter_rows(min_row=3, max_col=2):
+        if row[0].value and row[1].value:
+            pref_label_lookup[slugify(row[1].value)] = row[0].value
+            subsequent_empty_rows = 0
+        elif row[0].value is None and row[1].value is None:
+            # stop processing a sheet after 3 empty rows
+            if subsequent_empty_rows < 2:
+                subsequent_empty_rows += 1
+            else:
+                subsequent_empty_rows = 0
+                break
+
+    # process both worksheets
+    for sheet in ["Concepts", "Collections"]:
+        ws = wb[sheet]
+        print(f"Processing sheet '{sheet}'")
         # update URI columns
         col_to_fill = 6 if sheet == "Concepts" else 3
         col_preflabel = 9 if sheet == "Concepts" else 5
@@ -167,7 +170,14 @@ def add_related(fpath, outfile):
                     for pl in pref_label_slugs
                     if pl in pref_label_lookup
                 ]
+                not_found = [
+                    pl
+                    for pl in pref_label_slugs
+                    if pl not in pref_label_lookup
+                ]
                 ws.cell(row[0].row, column=col_to_fill + 1).value = ", ".join(found)
+                if not_found:
+                    print(f"Unknown children/member IRIs for {row[0].value}: {not_found}")
                 subsequent_empty_rows = 0
             elif row[0].value is None and row[1].value is None:
                 # stop processing a sheet after 3 empty rows
