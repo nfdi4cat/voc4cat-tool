@@ -100,6 +100,9 @@ version-file = "src/voc4cat/_version.py"
 profile = "black"
 src_paths = ["src", "tests"]
 
+[tool.pylint.format]
+max-line-length = "88"
+
 [tool.coverage.run]
 omit = [
     "src/voc4cat/_version.py",
