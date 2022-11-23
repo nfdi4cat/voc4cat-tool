@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from copy import copy
 from functools import total_ordering
 from itertools import chain
@@ -38,7 +36,9 @@ class Node:
                 raise ValueError(
                     f'Level of node "{node.text}" lower than of ' "first node to add."
                 )
-        self.__add_children(nodes)
+        # Make a copy to avoid changing nodes.
+        nodes_copy = list(nodes)
+        self.__add_children(nodes_copy)
 
     def __add_children(self, nodes):
         childlevel = nodes[0].level
@@ -62,7 +62,7 @@ class Node:
         """Add children and their level from narrower dict."""
         nodes = {}
         stack = []
-        list_of_all_children = list(chain.from_iterable([v for v in narrower.values()]))
+        list_of_all_children = list(chain.from_iterable(list(narrower.values())))
 
         # Check if all children are also key in narrower.
         for ch in list_of_all_children:
@@ -113,15 +113,14 @@ class Node:
 
     def as_dict(self):
         """Return tree of nodes as nested dictionary."""
-        if len(self.children) > 0:
+        if self.children:
             return {
                 self.text: [
                     node.as_dict()
                     for node in sorted(self.children, key=lambda child: child.text)
                 ]
             }
-        else:
-            return self.text
+        return self.text
 
     def as_indented_text(self, sep=" ", out=None):
         """Return tree of nodes as indented text."""
@@ -135,20 +134,19 @@ class Node:
         """Return hierarchically sorted list of of all nodes in tree with level."""
         if out is None:
             out = {}
-        if len(self.children) > 0:
+        if self.children:
             out[self.text] = self.level
             for node in sorted(self.children, key=lambda t: t.text):
                 node.as_level_dict(out)
             return out
-        else:
-            out[self.text] = self.level
-            return out
+        out[self.text] = self.level
+        return out
 
     def as_narrower_dict(self, out=None):
         """Return tree of nodes as flat dictionary of nodes with children."""
         if out is None:
             out = {}
-        if len(self.children) > 0:
+        if self.children:
             out[self.text] = sorted([c.text for c in self.children])
             for node in self.children:
                 node.as_narrower_dict(out)
@@ -186,14 +184,14 @@ def build_from_narrower(narrower):
     roots = []
     for k in narrower.keys():
         # find which node(s) are not linked by any other
-        if k not in chain.from_iterable([v for v in narrower.values()]):
+        if k not in chain.from_iterable(list(narrower.values())):
             roots.append(k)
+    if not roots:
+        raise ValueError("No root found on root level.")
     if len(roots) == 1:
         root = Node(roots[0])
         narrower_no_root = copy(narrower)
-        del narrower_no_root[roots[0]]
-    elif len(roots) < 1:
-        raise ValueError("No root found on root level.")
+        narrower_no_root.pop(roots[0])
     else:
         root = Node("root")
         narrower_no_root = copy(narrower)

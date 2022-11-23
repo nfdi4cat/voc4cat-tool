@@ -1,5 +1,5 @@
 """
-A wrapper to extend VocExcel with more commands
+A wrapper to extend VocExcel with more commands.
 
 The new commands may be run either before or after VocExcel.
 
@@ -243,7 +243,7 @@ def children_to_indent(fpath, outfile, sep):
             row[1].alignment = Alignment(indent=level)
         else:
             concept_text = row_values[1]
-            row[1].value = sep*level + concept_text
+            row[1].value = sep * level + concept_text
             row[1].alignment = Alignment(indent=0)
 
     wb.save(outfile)
@@ -253,7 +253,7 @@ def children_to_indent(fpath, outfile, sep):
 
 def run_ontospy(file_path, output_path):
     """
-    Generate Ontospy documentation for a file or directory of files
+    Generate Ontospy documentation for a file or directory of files.
     """
     import ontospy
     from ontospy.ontodocs.viz.viz_d3dendogram import Dataviz
@@ -497,7 +497,7 @@ def main_cli(args=None):
             else:
                 outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
         else:
-            # processin all file in directory is not supported for now.
+            # processing all file in directory is not supported for now.
             raise NotImplementedError()
         indent_to_children(args_wrapper.file_to_preprocess, outfile, sep)
 
@@ -600,7 +600,7 @@ def main_cli(args=None):
                     locargs = ["--outputfile", str(outfile)] + locargs
                 err += run_vocexcel(locargs)
 
-            print("Calling VocExcel for Excel files")
+            print("Calling VocExcel for turtle files")
             for ttlf in glob.glob(os.path.join(dir_, "*.ttl")) + glob.glob(
                 os.path.join(dir_, "*.turtle")
             ):

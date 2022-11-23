@@ -39,7 +39,7 @@ def run():
     if len(sys.argv) != 3:
         print('Usage: "python merge_vocab.py outbox_dir vocab_dir')
         sys.exit(1)
-    outbox, vocab = sys.argv[1:]
+    outbox, vocab = sys.argv[1:3]
     if os.path.exists(outbox) and os.path.exists(vocab):
         retcode = main(Path(outbox), Path(vocab))
         sys.exit(retcode)
