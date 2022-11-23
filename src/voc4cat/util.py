@@ -37,12 +37,9 @@ class Node:
                     f'Level of node "{node.text}" lower than of ' "first node to add."
                 )
         # Make a copy to avoid changing nodes.
-        nodes_copy = list(nodes)
-        self.__add_children(nodes_copy)
+        self.__add_children(list(nodes))
 
-    def __add_children(self, nodes_in):
-        # Make a copy to avoid changes to nodes_in.
-        nodes = list(nodes_in)
+    def __add_children(self, nodes):
         childlevel = nodes[0].level
         while nodes:
             node = nodes.pop(0)
