@@ -40,7 +40,9 @@ class Node:
         nodes_copy = list(nodes)
         self.__add_children(nodes_copy)
 
-    def __add_children(self, nodes):
+    def __add_children(self, nodes_in):
+        # Make a copy to avoid changes to nodes_in.
+        nodes = list(nodes_in)
         childlevel = nodes[0].level
         while nodes:
             node = nodes.pop(0)
