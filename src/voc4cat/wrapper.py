@@ -497,7 +497,7 @@ def main_cli(args=None):
             else:
                 outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
         else:
-            # processin all file in directory is not supported for now.
+            # processing all file in directory is not supported for now.
             raise NotImplementedError()
         indent_to_children(args_wrapper.file_to_preprocess, outfile, sep)
 
@@ -600,7 +600,7 @@ def main_cli(args=None):
                     locargs = ["--outputfile", str(outfile)] + locargs
                 err += run_vocexcel(locargs)
 
-            print("Calling VocExcel for Excel files")
+            print("Calling VocExcel for turtle files")
             for ttlf in glob.glob(os.path.join(dir_, "*.ttl")) + glob.glob(
                 os.path.join(dir_, "*.turtle")
             ):
