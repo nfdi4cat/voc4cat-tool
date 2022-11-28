@@ -35,6 +35,7 @@ dependencies = [
   "vocexcel @ git+https://github.com/nfdi4cat/VocExcel.git@nfdi4cat-dev",
   #vocexcel @ git+https://gogs.catalysis.de/LIKAT_RDM/VocExcel.git@nfdi4cat-dev
   "django>=4.0.0",
+  "networkx>=2.8",
   "openpyxl>=3.0.9",
   "pillow>=9.1.0",
   "ontospy[Full] >= 1.9.9.4",
