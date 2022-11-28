@@ -27,6 +27,15 @@ def _get_edges(text_with_level, base_level):  # noqa: WPS231
     return edges
 
 
+def get_concept_and_level_from_indented_line(line, sep):
+    split_line = line.rstrip().split(sep)
+    level = len(split_line) - 1
+    concept = split_line[level]
+    if sep is not None and len(sep) > 1 and concept.startswith(sep[0]):
+        warn(f'Line "{concept}": Incomplete separator "{sep}"?')
+    return concept, level
+
+
 def dag_from_indented_text(text, sep=" "):
     """Build networkx directed graph from indented text."""
     # remove empty lines
@@ -34,13 +43,9 @@ def dag_from_indented_text(text, sep=" "):
     text_with_level = []
     nodes = []
     for indented_line in indented_lines:
-        split_line = indented_line.rstrip().split(sep)
-        level = len(split_line) - 1
-        concept = split_line[level]
+        concept, level = get_concept_and_level_from_indented_line(indented_line, sep)
         if concept not in nodes:
             nodes.append(concept)
-        if sep is not None and len(sep) > 1 and concept.startswith(sep[0]):
-            warn(f'Line "{concept}": Incomplete separator "{sep}"?')
         if text_with_level and (level - 1) > text_with_level[-1][1]:
             raise ValueError(
                 f'Indentation inreases by more than one level for "{concept}".'
@@ -149,7 +154,7 @@ def dag_from_narrower(narrower):
             # check for undefined children
             if child not in nodes:
                 raise ValueError(
-                    f'Concept "{child}" needs to defined if use as narrower concept.'
+                    f'Concept "{child}" needs to defined if used as narrower concept.'
                 )
             edges.append((concept, child))
 

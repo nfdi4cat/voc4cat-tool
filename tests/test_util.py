@@ -224,7 +224,7 @@ def test_undefined_child():
     n = {"a1": [], "a2": ["c"]}
     with pytest.raises(ValueError) as excinfo:
         dag_from_narrower(n)
-    assert 'Concept "c" needs to defined if use as narrower concept.' in str(
+    assert 'Concept "c" needs to defined if used as narrower concept.' in str(
         excinfo.value
     )
 
