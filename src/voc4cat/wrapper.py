@@ -23,11 +23,11 @@ from vocexcel.models import ORGANISATIONS, ORGANISATIONS_INVERSE
 from vocexcel.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDINGS
 
 from voc4cat.util import (
-    dag_from_narrower,
-    dag_to_node_levels,
     dag_from_indented_text,
-    get_concept_and_level_from_indented_line,
+    dag_from_narrower,
     dag_to_narrower,
+    dag_to_node_levels,
+    get_concept_and_level_from_indented_line,
 )
 
 ORGANISATIONS["NFDI4Cat"] = URIRef("http://example.org/nfdi4cat/")
@@ -46,7 +46,7 @@ except PackageNotFoundError:
 
 
 def is_file_available(fname, ftype):
-    if not type(ftype) is list:
+    if not isinstance(ftype, list):
         ftype = [ftype]
     if fname is None or not os.path.exists(fname):
         print(f"File not found: {fname}")
@@ -85,13 +85,12 @@ def may_overwrite(no_warn, xlf, outfile, func):
             "Run again with --no-warn option to overwrite the file."
         )
         return False
-    else:
-        return True
+    return True
 
 
 def add_IRI(fpath, outfile):
     """
-    Add IRIs from preferred label in col A of sheets Concepts & Collections
+    Add IRIs from preferred label in col A of sheets Concepts & Collections.
 
     Safe and valid IRIs are created using django's slugify function.
     Column A is only updated for the rows where the cell is empty.
@@ -128,7 +127,7 @@ def add_IRI(fpath, outfile):
     return 0
 
 
-def indent_to_children(fpath, outfile, sep):
+def hierarchy_from_indent(fpath, outfile, sep):
     """
     Convert indentation hierarchy of concepts to children-URI form.
 
@@ -162,15 +161,21 @@ def indent_to_children(fpath, outfile, sep):
             # TODO think about how to handle language.
             if iri in row_by_iri:  # merge needed
                 # compare fields, merge if one is empty, error if different values
-                new_data  = [ws.cell(row_no, col_no).value for col_no in range(2, col_last)]
+                new_data = [
+                    ws.cell(row_no, col_no).value for col_no in range(2, col_last)
+                ]
                 merged = []
                 for old, new in zip(row_by_iri[iri], new_data):
                     if (old and new) and (old != new):
-                        raise ValueError("Cannot merge rows for {iri}. Resolve differences manually.")
+                        raise ValueError(
+                            "Cannot merge rows for {iri}. Resolve differences manually."
+                        )
                     merged.append(old if old else new)
                 row_by_iri[iri] = merged
             else:
-                row_by_iri[iri] = [ws.cell(row_no, col_no).value for col_no in range(2, col_last)]
+                row_by_iri[iri] = [
+                    ws.cell(row_no, col_no).value for col_no in range(2, col_last)
+                ]
             max_row = row_no
         elif iri is None and row[1].value is None:
             # stop processing a sheet after 3 empty rows
@@ -189,7 +194,9 @@ def indent_to_children(fpath, outfile, sep):
         ws.cell(row[0].row, column=1).value = iri
         for col, stored_value in zip(range(2, col_last), row_by_iri[iri]):
             ws.cell(row[0].row, column=col).value = stored_value
-        ws.cell(row[0].row, column=col_children_iri).value = ", ".join(children_by_iri[iri])
+        ws.cell(row[0].row, column=col_children_iri).value = ", ".join(
+            children_by_iri[iri]
+        )
 
     # Clear remaining rows.
     first_row_to_clear = 3 + len(children_by_iri)
@@ -204,7 +211,7 @@ def indent_to_children(fpath, outfile, sep):
     return 0
 
 
-def children_to_indent(fpath, outfile, sep):
+def hierarchy_to_indent(fpath, outfile, sep):
     """
     Convert concept hierarchy in children-URI form to indentation.
 
@@ -246,9 +253,7 @@ def children_to_indent(fpath, outfile, sep):
 
     # Set cell values by breaking them down into individual cells
     iri_written = []
-    for row, (iri, level) in zip(
-        ws.iter_rows(min_row=3, max_col=10), concept_levels
-    ):
+    for row, (iri, level) in zip(ws.iter_rows(min_row=3, max_col=10), concept_levels):
         row[0].value = iri
         concept_text = row_by_iri[iri][0]
         if sep is None:
@@ -327,9 +332,11 @@ def check(fpath, outfile):
                     f'language "{lang}"'
                 )
                 # colorise problematic cells
-                row[0].fill = row[2].fill = color
+                row[0].fill = color
+                row[2].fill = color
                 seen_in_row = 3 + seen_conceptIRIs.index(new_conceptIRI)
-                ws[f"A{seen_in_row}"].fill = ws[f"C{seen_in_row}"].fill = color
+                ws[f"A{seen_in_row}"].fill = color
+                ws[f"C{seen_in_row}"].fill = color
             else:
                 seen_conceptIRIs.append(new_conceptIRI)
 
@@ -346,9 +353,9 @@ def check(fpath, outfile):
         wb.save(outfile)
         print(f"Saved file with highlighted errors as {outfile}")
         return 1
-    else:
-        print("All checks passed succesfully.")
-        return 0
+
+    print("All checks passed succesfully.")
+    return 0
 
 
 def run_vocexcel(args=None):
@@ -498,7 +505,7 @@ def main_cli(args=None):
 
     if args_wrapper.indent_separator:
         sep = args_wrapper.indent_separator
-        if len(sep) < 1:
+        if not len(sep):
             raise ValueError(
                 "Setting the indent separator to zero length is not allowed."
             )
@@ -519,7 +526,7 @@ def main_cli(args=None):
         else:
             # processing all file in directory is not supported for now.
             raise NotImplementedError()
-        indent_to_children(args_wrapper.file_to_preprocess, outfile, sep)
+        hierarchy_from_indent(args_wrapper.file_to_preprocess, outfile, sep)
 
     elif args_wrapper.hierarchy_to_indent:
         if is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
@@ -532,7 +539,7 @@ def main_cli(args=None):
         else:
             # processin all file in directory is not supported for now.
             raise NotImplementedError()
-        children_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
+        hierarchy_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
 
     elif args_wrapper.add_IRI or args_wrapper.check:
         funcs = [

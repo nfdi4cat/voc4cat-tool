@@ -82,9 +82,6 @@ def dag_to_indented_text(termdag, sep=" "):
 
 def _break_cycles(dag, edges_cycle):
     # print(f"-> has cycle: {edges_cycle} - len={len(edges_cycle)}")
-    if len(edges_cycle) < 3:
-        warn(f'Small unbreakable cycle detected: "{edges_cycle}"')
-        return ()
     # find edge to break
     deg_out = dict(dag.out_degree)
     edge_deg_diff = []
@@ -114,18 +111,30 @@ def _node_levels(sl, root_node, level=0, sep="  ", out=None):
 def dag_to_node_levels(termgraph, baselevel=0):
     """Build tree representation of directed graph breaking cycles as needed."""
     subgraphs = [
-        termgraph.subgraph(sgc).copy()
+        termgraph.subgraph(sgc)
         for sgc in nx.connected_components(termgraph.to_undirected())
     ]
+    tg_copy = termgraph.copy()
+    # We must find & eliminate cycles no matter which direction for the tree representation.
+    cycles = nx.cycle_basis(tg_copy.to_undirected())
+    broken_edges = []
+    while cycles:
+        cycle = cycles.pop(0)
+        # We pass the DAG for breaking the cycle to evaluate in/out degree.
+        edge_to_break = _break_cycles(tg_copy, cycle)
+        tg_copy.remove_edge(*edge_to_break)
+        # nx.cycle_basis does only report cycles >= 3 members.
+        cycles = nx.cycle_basis(tg_copy.to_undirected())
+        # It is not clearly documented in networkx if the direction of edges is preserved
+        # when converting to an undirected graph. So we better check...
+        if termgraph.has_edge(*edge_to_break):
+            broken_edges.append(edge_to_break)
+        else:  # pragma: no cover
+            broken_edges.append(edge_to_break[::-1])  # change direction
+
     node_levels = []
     for subgraph in subgraphs:
         # print(f"\nsubgraph: {subgraph}")
-        broken_edges = []
-        for cycle in nx.simple_cycles(subgraph):
-            edge = _break_cycles(subgraph, cycle)
-            if edge:
-                broken_edges.append(edge)
-
         # We need a clean subgraph without cylces for creating an indented tree.
         subgraph_clean = subgraph.copy()
         subgraph_clean.remove_edges_from(broken_edges)
@@ -136,11 +145,11 @@ def dag_to_node_levels(termgraph, baselevel=0):
             succ_bfs = dict(nx.bfs_successors(subgraph_clean, root))
             node_levels.extend(_node_levels(succ_bfs, root, level=baselevel))
 
-        # Add broken_edges
-        for broken_edge in broken_edges:
-            start_node, end_node = broken_edge
-            node_levels.append((start_node, baselevel))
-            node_levels.append((end_node, baselevel + 1))
+    # Add broken_edges
+    for broken_edge in broken_edges:
+        start_node, end_node = broken_edge
+        node_levels.append((start_node, baselevel))
+        node_levels.append((end_node, baselevel + 1))
 
     return node_levels
 
