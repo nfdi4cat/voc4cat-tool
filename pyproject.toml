@@ -57,8 +57,8 @@ tests = [
 ]
 lint = [
   "black",
-  "flake8",
   "isort",
+  "wemake-python-styleguide",
 ]
 
 [project.scripts]
@@ -105,6 +105,59 @@ src_paths = ["src", "tests"]
 max-line-length = "88"
 
 [tool.coverage.run]
+# https://coverage.readthedocs.io/en/latest/config.html
+branch = true
 omit = [
     "src/voc4cat/_version.py",
 ]
+
+[tool.pytest.ini_options]
+# pytest configuration:
+# https://docs.pytest.org/en/stable/customize.html
+
+# Sets directories to be searched for tests. Useful when all project tests are
+# in a known location to speed up test collection and to avoid picking up
+# undesired tests by accident. (related: issue #95)
+testpaths = [
+  "tests",
+ ]
+
+# Directories that are not visited by pytest collector:
+norecursedirs = "dist build .tox .git .cache __pycache__ .venv"
+
+# Treat typos in function markers as an error (pytest)
+# --strict-markers
+# Raise an error instead of a warning for pytest related config issues (pytest)
+# --strict-config
+# Degree of detail of trace-backs (pytest)
+# --tb=short
+# Execute doctests in classes, functions, and test modules (pytest)
+# --doctest-modules
+# Coverage (pytest-cov)
+# --cov=src/voc4cat
+# --cov=tests
+# --cov-branch
+# --cov-report=term:skip-covered
+# --cov-report=html
+# Failing due to coverage makes no sense for voc4cat currently.
+# --cov-fail-under=100
+addopts = "--strict-markers --strict-config --tb=short --cov=src/voc4cat --cov=tests --cov-branch --cov-report=term:skip-covered --cov-report=html"
+
+[tool.coverage.report]
+# Show in report which lines are not covered
+show_missing = false
+# Any line of the source code that matches one of these regexes is excluded
+# from being reported as missing.
+exclude_lines = [
+    # Have to re-enable the standard pragma
+    "pragma: no cover",
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "return NotImplemented",
+]
+
+[tool.coverage.html]
+# directory where to write the HTML report files.
+directory = ".htmlcov"
+title = "voc4cat coverage report"

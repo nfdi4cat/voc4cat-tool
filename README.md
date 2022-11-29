@@ -99,7 +99,7 @@ Run the wrapper and show the help message.
 To create a new vocabulary use the NFDI4Cat-adjusted template from the  `templates` subfolder.
 Typically, when a new vocabulary is created you want to create IRIs from the preferred labels:
 
-`voc4cat -i vocabulary.xlsx`
+`voc4cat -i Your_Vocabulary.xlsx`
 
 This will fill the IRI-column for all rows with missing IRI entries.
 
@@ -108,11 +108,11 @@ An easier way to express hierarchies between concepts, is to use indentation. vo
 voc4cat can also convert other indentaions (e.g.by 3 spaces per level) into Excel-indentation.
 voc4cat supports converting between indentation-based hierarchy and Children-URI hierarchy (both directions). For example, use
 
-`voc4cat --hierarchy-from-indent --output_directory output example/concept_hierarchy_043_4Cat.xlsx`
+`voc4cat --hierarchy-from-indent --output_directory output example/indent_043_4Cat.xlsx`
 
 or if you were using 3 spaces per level
 
-`voc4cat --hierarchy-from-indent --indent-separator "   " --output_directory output example/concept_hierarchy_043_4Cat.xlsx`
+`voc4cat --hierarchy-from-indent --indent-separator "   " --output_directory output example/indent_3spaces_043_4Cat.xlsx`
 
 to convert to ChildrenURI-hierarchy. For ChildrenURI-hierarchy to Excel-indenation, use
 
