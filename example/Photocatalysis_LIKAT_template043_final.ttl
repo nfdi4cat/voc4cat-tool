@@ -269,6 +269,14 @@
     skos:inScheme cs: ;
     skos:prefLabel "Flow mode"@en .
 
+<http://example.org/nfdi4cat/photo/flow-mode-co2-reduction-experiment> a skos:Concept ;
+    dcterms:identifier "flow-mode-co2-reduction-experiment"^^xsd:token ;
+    dcterms:provenance "Self"@en ;
+    skos:definition "A mode under which the CO2 photoreduction experiment is performed. Under flow conditions, a continuous flow of reactants is supplied to the reaction chamber and the formed products are removed and identified by an appropriate technique."@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Flow mode CO2 reduction experiment"@en ;
+    skos:topConceptOf cs: .
+
 <http://example.org/nfdi4cat/photo/flow-rate-of-gas-used-for-calcination> a skos:Concept ;
     dcterms:identifier "flow-rate-of-gas-used-for-calcination"^^xsd:token ;
     dcterms:provenance "Self"@en ;
@@ -1595,6 +1603,7 @@ cs: a skos:ConceptScheme ;
     owl:versionInfo "0.1" ;
     skos:definition "A vocabulary of the most commonly used terms in the heterogeneous photocatalytic (light-driven) reduction (conversion) of carbon dioxide (CO2) to hydrocarbons and / or platform chemicals"@en ;
     skos:hasTopConcept <http://example.org/nfdi4cat/photo/chemical-substances-used-for-synthesis>,
+        <http://example.org/nfdi4cat/photo/flow-mode-co2-reduction-experiment>,
         <http://example.org/nfdi4cat/photo/general-terms>,
         <http://example.org/nfdi4cat/photo/photocatalytic-co2-reduction>,
         <http://example.org/nfdi4cat/photo/range-of-operation-pressure>,

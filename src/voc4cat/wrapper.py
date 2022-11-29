@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 """
-A wrapper to extend VocExcel with more commands
+A wrapper to extend VocExcel with more commands.
 
 The new commands may be run either before or after VocExcel.
 
@@ -11,7 +12,6 @@ import glob
 import os
 import sys
 from importlib.metadata import PackageNotFoundError, version
-from itertools import chain
 from pathlib import Path
 
 import openpyxl
@@ -22,7 +22,13 @@ from vocexcel.convert import main
 from vocexcel.models import ORGANISATIONS, ORGANISATIONS_INVERSE
 from vocexcel.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDINGS
 
-from voc4cat.util import Node, build_from_narrower
+from voc4cat.util import (
+    dag_from_indented_text,
+    dag_from_narrower,
+    dag_to_narrower,
+    dag_to_node_levels,
+    get_concept_and_level_from_indented_line,
+)
 
 ORGANISATIONS["NFDI4Cat"] = URIRef("http://example.org/nfdi4cat/")
 ORGANISATIONS["LIKAT"] = URIRef("https://www.catalysis.de/")
@@ -40,7 +46,7 @@ except PackageNotFoundError:
 
 
 def is_file_available(fname, ftype):
-    if not type(ftype) is list:
+    if not isinstance(ftype, list):
         ftype = [ftype]
     if fname is None or not os.path.exists(fname):
         print(f"File not found: {fname}")
@@ -62,10 +68,9 @@ def has_file_in_more_than_one_format(dir_):
     unique_file_names = set(file_names)
     if len(file_names) == len(unique_file_names):
         return False
-    else:
-        seen = set()
-        duplicates = [x for x in file_names if x in seen or seen.add(x)]
-        return duplicates
+    seen = set()
+    duplicates = [x for x in file_names if x in seen or seen.add(x)]
+    return duplicates
 
 
 def is_supported_template(wb):
@@ -80,13 +85,12 @@ def may_overwrite(no_warn, xlf, outfile, func):
             "Run again with --no-warn option to overwrite the file."
         )
         return False
-    else:
-        return True
+    return True
 
 
 def add_IRI(fpath, outfile):
     """
-    Add IRIs from preferred label in col A of sheets Concepts & Collections
+    Add IRIs from preferred label in col A of sheets Concepts & Collections.
 
     Safe and valid IRIs are created using django's slugify function.
     Column A is only updated for the rows where the cell is empty.
@@ -123,11 +127,11 @@ def add_IRI(fpath, outfile):
     return 0
 
 
-def indent_to_children(fpath, outfile, sep):
+def hierarchy_from_indent(fpath, outfile, sep):
     """
     Convert indentation hierarchy of concepts to children-URI form.
 
-    If seperator character(s) are given they will be replaced with
+    If separator character(s) are given they will be replaced with
     Excel indent which is also the default if sep is None.
     """
     print(f"\nReading concepts from file {fpath}")
@@ -136,57 +140,82 @@ def indent_to_children(fpath, outfile, sep):
     # process both worksheets
     subsequent_empty_rows = 0
     ws = wb["Concepts"]
-    concept_nodes = []
-    # read all preferred labels from the sheet
-    for row in ws.iter_rows(min_row=3, max_col=2):
-        if row[0].value and row[1].value:
-            if sep is None:
-                node = Node(row[0].value, sep=sep)
-                node.level = int(row[1].alignment.indent)
+    concepts_indented = []
+    row_by_iri = {}
+    # read concepts, determine their indentation level, then clear indentation
+    col_last = 10
+    for row in ws.iter_rows(min_row=3, max_col=col_last):
+        iri = row[0].value
+        row_no = row[0].row
+        if iri and row[1].value:
+            if sep is None:  # Excel indentation
+                level = int(row[1].alignment.indent)
+                ws.cell(row_no, column=2).alignment = Alignment(indent=0)
             else:
-                node = Node(row[1].value, sep=sep)
-                concept_text = node.text
-                node.text = row[0].value  # use IRI
-                # replace indent by sep with excel indent
-                ws.cell(row[0].row, column=2).value = concept_text
-                ws.cell(row[0].row, column=2).alignment = Alignment(indent=node.level)
-            concept_nodes.append(node)
-        elif row[0].value is None and row[1].value is None:
+                descr, level = get_concept_and_level_from_indented_line(
+                    row[1].value, sep=sep
+                )
+                ws.cell(row_no, column=2).value = descr
+                ws.cell(row_no, column=2).alignment = Alignment(indent=0)
+            concepts_indented.append(level * " " + iri)
+            # TODO think about how to handle language.
+            if iri in row_by_iri:  # merge needed
+                # compare fields, merge if one is empty, error if different values
+                new_data = [
+                    ws.cell(row_no, col_no).value for col_no in range(2, col_last)
+                ]
+                merged = []
+                for old, new in zip(row_by_iri[iri], new_data):
+                    if (old and new) and (old != new):
+                        raise ValueError(
+                            "Cannot merge rows for {iri}. Resolve differences manually."
+                        )
+                    merged.append(old if old else new)
+                row_by_iri[iri] = merged
+            else:
+                row_by_iri[iri] = [
+                    ws.cell(row_no, col_no).value for col_no in range(2, col_last)
+                ]
+            max_row = row_no
+        elif iri is None and row[1].value is None:
             # stop processing a sheet after 3 empty rows
             if subsequent_empty_rows < 2:
                 subsequent_empty_rows += 1
             else:
                 subsequent_empty_rows = 0
                 break
-    tree = Node("root", sep=sep)
-    tree.add_children(concept_nodes)
+
+    term_dag = dag_from_indented_text("\n".join(concepts_indented))
+    children_by_iri = dag_to_narrower(term_dag)
 
     # Update childrenURI column
-    uri_children_dict = tree.as_narrower_dict()
-    col_to_fill = 7
-    for row in ws.iter_rows(min_row=3, max_col=col_to_fill):
-        if row[0].value and row[1].value:
-            # update cell in col_to_fill
-            childrenURIs = uri_children_dict[row[0].value]
-            ws.cell(row[0].row, column=col_to_fill).value = ", ".join(childrenURIs)
-            subsequent_empty_rows = 0
-        elif row[0].value is None and row[1].value is None:
-            # stop processing a sheet after 3 empty rows
-            if subsequent_empty_rows < 2:
-                subsequent_empty_rows += 1
-            else:
-                break
+    col_children_iri = 7
+    for iri, row in zip(children_by_iri, ws.iter_rows(min_row=3, max_col=col_last)):
+        ws.cell(row[0].row, column=1).value = iri
+        for col, stored_value in zip(range(2, col_last), row_by_iri[iri]):
+            ws.cell(row[0].row, column=col).value = stored_value
+        ws.cell(row[0].row, column=col_children_iri).value = ", ".join(
+            children_by_iri[iri]
+        )
+
+    # Clear remaining rows.
+    first_row_to_clear = 3 + len(children_by_iri)
+    for row in ws.iter_rows(min_row=first_row_to_clear, max_col=col_last):
+        for col in range(1, col_last):
+            ws.cell(row[0].row, column=col).value = None
+        if row[0].row == max_row:
+            break
 
     wb.save(outfile)
     print(f"Saved updated file as {outfile}")
     return 0
 
 
-def children_to_indent(fpath, outfile, sep):
+def hierarchy_to_indent(fpath, outfile, sep):
     """
     Convert concept hierarchy in children-URI form to indentation.
 
-    If seperator character(s) are given they will be used.
+    If separator character(s) are given they will be used.
     If sep is None, Excel indent will be used.
     """
     print(f"\nReading concepts from file {fpath}")
@@ -195,21 +224,21 @@ def children_to_indent(fpath, outfile, sep):
     ws = wb["Concepts"]
 
     concept_children_dict = {}
-    rows = {}
     subsequent_empty_rows = 0
+    row_by_iri = {}
+    col_last = 10
     # read all IRI, preferred labels, childrenURIs from the sheet
     for rows_total, row in enumerate(
         ws.iter_rows(min_row=3, max_col=10, values_only=True)
     ):
         if row[0] and row[1]:
             iri = row[0]
-            if iri not in rows:
-                rows[iri] = row
             if not row[6]:
                 childrenURIs = []
             else:
                 childrenURIs = [c.strip() for c in row[6].split(",")]
             concept_children_dict[iri] = childrenURIs
+            row_by_iri[iri] = [row[col] for col in range(1, col_last)]
         else:
             # stop processing a sheet after 3 empty rows
             if subsequent_empty_rows < 2:
@@ -219,32 +248,27 @@ def children_to_indent(fpath, outfile, sep):
                 rows_total = rows_total - 2
                 break
 
-    # Check if all used childrenURIs are defined as concepts
-    list_of_all_children = list(
-        chain.from_iterable([v for v in concept_children_dict.values()])
-    )
-    for iri in list_of_all_children:
-        if iri not in concept_children_dict.keys():
-            raise ValueError(f"Child-concept with URI {iri} is never defined.")
-
-    tree = build_from_narrower(concept_children_dict)
-    concept_levels = tree.as_level_dict()
-    del concept_levels['root']
+    term_dag = dag_from_narrower(concept_children_dict)
+    concept_levels = dag_to_node_levels(term_dag)
 
     # Set cell values by breaking them down into individual cells
-    for row, (iri, level) in zip(
-        ws.iter_rows(min_row=3, max_col=10),
-        concept_levels.items()
-    ):
-        row_values = rows[iri]
-        for cell, value in zip(row, row_values):
-            cell.value = value
+    iri_written = []
+    for row, (iri, level) in zip(ws.iter_rows(min_row=3, max_col=10), concept_levels):
+        row[0].value = iri
+        concept_text = row_by_iri[iri][0]
         if sep is None:
+            row[1].value = concept_text
             row[1].alignment = Alignment(indent=level)
         else:
-            concept_text = row_values[1]
-            row[1].value = sep*level + concept_text
+            row[1].value = sep * level + concept_text
             row[1].alignment = Alignment(indent=0)
+        row[2].value = row_by_iri[iri][1]
+        for col, stored_value in zip(range(4, col_last), row_by_iri[iri][2:]):
+            if iri in iri_written:
+                ws.cell(row[0].row, column=col).value = None
+            else:
+                ws.cell(row[0].row, column=col).value = stored_value
+        iri_written.append(iri)
 
     wb.save(outfile)
     print(f"Saved updated file as {outfile}")
@@ -253,7 +277,7 @@ def children_to_indent(fpath, outfile, sep):
 
 def run_ontospy(file_path, output_path):
     """
-    Generate Ontospy documentation for a file or directory of files
+    Generate Ontospy documentation for a file or directory of files.
     """
     import ontospy
     from ontospy.ontodocs.viz.viz_d3dendogram import Dataviz
@@ -296,7 +320,9 @@ def check(fpath, outfile):
     failed_check = False
     for row_no, row in enumerate(ws.iter_rows(min_row=3, max_col=3), 3):
         if row[0].value and row[1].value:
-            conceptIRI, preflabel, lang = [c.value.strip() if c.value is not None else "" for c in row]
+            conceptIRI, preflabel, lang = [
+                c.value.strip() if c.value is not None else "" for c in row
+            ]
 
             new_conceptIRI = f'"{conceptIRI}"@{lang.lower()}'
             if new_conceptIRI in seen_conceptIRIs:
@@ -306,9 +332,11 @@ def check(fpath, outfile):
                     f'language "{lang}"'
                 )
                 # colorise problematic cells
-                row[0].fill = row[2].fill = color
+                row[0].fill = color
+                row[2].fill = color
                 seen_in_row = 3 + seen_conceptIRIs.index(new_conceptIRI)
-                ws[f"A{seen_in_row}"].fill = ws[f"C{seen_in_row}"].fill = color
+                ws[f"A{seen_in_row}"].fill = color
+                ws[f"C{seen_in_row}"].fill = color
             else:
                 seen_conceptIRIs.append(new_conceptIRI)
 
@@ -325,17 +353,16 @@ def check(fpath, outfile):
         wb.save(outfile)
         print(f"Saved file with highlighted errors as {outfile}")
         return 1
-    else:
-        print("All checks passed succesfully.")
-        return 0
+
+    print("All checks passed succesfully.")
+    return 0
 
 
 def run_vocexcel(args=None):
     retval = main(args)
     if retval is not None:
         return 1
-    else:
-        return 0
+    return 0
 
 
 def main_cli(args=None):
@@ -478,7 +505,7 @@ def main_cli(args=None):
 
     if args_wrapper.indent_separator:
         sep = args_wrapper.indent_separator
-        if len(sep) < 1:
+        if not len(sep):
             raise ValueError(
                 "Setting the indent separator to zero length is not allowed."
             )
@@ -497,9 +524,9 @@ def main_cli(args=None):
             else:
                 outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
         else:
-            # processin all file in directory is not supported for now.
+            # processing all file in directory is not supported for now.
             raise NotImplementedError()
-        indent_to_children(args_wrapper.file_to_preprocess, outfile, sep)
+        hierarchy_from_indent(args_wrapper.file_to_preprocess, outfile, sep)
 
     elif args_wrapper.hierarchy_to_indent:
         if is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
@@ -512,7 +539,7 @@ def main_cli(args=None):
         else:
             # processin all file in directory is not supported for now.
             raise NotImplementedError()
-        children_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
+        hierarchy_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
 
     elif args_wrapper.add_IRI or args_wrapper.check:
         funcs = [
@@ -600,7 +627,7 @@ def main_cli(args=None):
                     locargs = ["--outputfile", str(outfile)] + locargs
                 err += run_vocexcel(locargs)
 
-            print("Calling VocExcel for Excel files")
+            print("Calling VocExcel for turtle files")
             for ttlf in glob.glob(os.path.join(dir_, "*.ttl")) + glob.glob(
                 os.path.join(dir_, "*.turtle")
             ):
@@ -633,7 +660,7 @@ def main_cli(args=None):
             if os.path.exists(args_wrapper.file_to_preprocess):
                 print(f"Cannot convert file {args_wrapper.file_to_preprocess}")
                 endings = ", ".join(
-                    [f".{e}" for e in EXCEL_FILE_ENDINGS]
+                    [f".{ext}" for ext in EXCEL_FILE_ENDINGS]
                     + list(RDF_FILE_ENDINGS.keys())
                 )
                 print(f"Files for processing must end with one of {endings}.")
