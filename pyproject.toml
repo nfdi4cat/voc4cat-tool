@@ -155,6 +155,7 @@ exclude_lines = [
     "raise AssertionError",
     "raise NotImplementedError",
     "return NotImplemented",
+    "if __name__ == .__main__.:",
 ]
 
 [tool.coverage.html]

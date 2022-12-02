@@ -13,6 +13,7 @@ import os
 import sys
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+from warnings import warn
 
 import openpyxl
 from django.utils.text import slugify
@@ -80,7 +81,7 @@ def is_supported_template(wb):
 
 def may_overwrite(no_warn, xlf, outfile, func):
     if not no_warn and os.path.exists(outfile) and Path(xlf) == Path(outfile):
-        print(
+        warn(
             f'Option "{func.__name__}" will overwrite the existing file {outfile}\n'
             "Run again with --no-warn option to overwrite the file."
         )
@@ -143,7 +144,7 @@ def hierarchy_from_indent(fpath, outfile, sep):
     concepts_indented = []
     row_by_iri = {}
     # read concepts, determine their indentation level, then clear indentation
-    col_last = 10
+    col_last = 9
     for row in ws.iter_rows(min_row=3, max_col=col_last):
         iri = row[0].value
         row_no = row[0].row
@@ -226,10 +227,10 @@ def hierarchy_to_indent(fpath, outfile, sep):
     concept_children_dict = {}
     subsequent_empty_rows = 0
     row_by_iri = {}
-    col_last = 10
+    col_last = 9
     # read all IRI, preferred labels, childrenURIs from the sheet
     for rows_total, row in enumerate(
-        ws.iter_rows(min_row=3, max_col=10, values_only=True)
+        ws.iter_rows(min_row=3, max_col=col_last, values_only=True)
     ):
         if row[0] and row[1]:
             iri = row[0]
@@ -253,7 +254,9 @@ def hierarchy_to_indent(fpath, outfile, sep):
 
     # Set cell values by breaking them down into individual cells
     iri_written = []
-    for row, (iri, level) in zip(ws.iter_rows(min_row=3, max_col=10), concept_levels):
+    for row, (iri, level) in zip(
+        ws.iter_rows(min_row=3, max_col=col_last), concept_levels
+    ):
         row[0].value = iri
         concept_text = row_by_iri[iri][0]
         if sep is None:
@@ -268,6 +271,8 @@ def hierarchy_to_indent(fpath, outfile, sep):
                 ws.cell(row[0].row, column=col).value = None
             else:
                 ws.cell(row[0].row, column=col).value = stored_value
+            # clear children IRI column G
+            ws.cell(row[0].row, column=7).value = None
         iri_written.append(iri)
 
     wb.save(outfile)
@@ -318,9 +323,9 @@ def check(fpath, outfile):
     subsequent_empty_rows = 0
     seen_conceptIRIs = []
     failed_check = False
-    for row_no, row in enumerate(ws.iter_rows(min_row=3, max_col=3), 3):
+    for row in ws.iter_rows(min_row=3, max_col=3):
         if row[0].value and row[1].value:
-            conceptIRI, preflabel, lang = [
+            conceptIRI, _, lang = [
                 c.value.strip() if c.value is not None else "" for c in row
             ]
 
@@ -331,7 +336,7 @@ def check(fpath, outfile):
                     f'ERROR: Same Concept IRI "{conceptIRI}" used more than once for '
                     f'language "{lang}"'
                 )
-                # colorise problematic cells
+                # colorize problematic cells
                 row[0].fill = color
                 row[2].fill = color
                 seen_in_row = 3 + seen_conceptIRIs.index(new_conceptIRI)
@@ -354,7 +359,7 @@ def check(fpath, outfile):
         print(f"Saved file with highlighted errors as {outfile}")
         return 1
 
-    print("All checks passed succesfully.")
+    print("All checks passed successfully.")
     return 0
 
 
@@ -485,10 +490,12 @@ def main_cli(args=None):
 
     args_wrapper, vocexcel_args = parser.parse_known_args(args)
 
+    err = 0  # return error code
+
     if not has_args:
         # show help if no args are given
         parser.print_help()
-        parser.exit()
+        return err
 
     outdir = args_wrapper.output_directory
     if outdir is not None and not os.path.isdir(outdir):
@@ -511,9 +518,9 @@ def main_cli(args=None):
             )
     else:  # Excel's default indent / openpyxl.styles.Alignment(indent=0)
         sep = None
-    err = 0
+
     if args_wrapper.version:
-        print(f"{__version__}")
+        print(f"voc4cat {__version__}")
 
     elif args_wrapper.hierarchy_from_indent:
         if is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
@@ -564,7 +571,7 @@ def main_cli(args=None):
                 infile = xlf
                 for func in funcs:
                     if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
-                        parser.exit()
+                        return 1
                     err += func(infile, outfile)
                     infile = outfile
                 if args_wrapper.forward:
@@ -589,7 +596,7 @@ def main_cli(args=None):
             infile = args_wrapper.file_to_preprocess
             for func in funcs:
                 if not may_overwrite(args_wrapper.no_warn, infile, outfile, func):
-                    parser.exit()
+                    return 1
                 err += func(infile, outfile)
                 infile = outfile
             if args_wrapper.forward:
@@ -602,17 +609,17 @@ def main_cli(args=None):
                 doc_path = infile.parent[0] if outdir is None else outdir
                 err += run_ontospy(infile, doc_path)
         else:
-            parser.exit()
+            return err
     elif args_wrapper and args_wrapper.file_to_preprocess:
         if os.path.isdir(args_wrapper.file_to_preprocess):
             to_build_docs = False
             dir_ = args_wrapper.file_to_preprocess
-            if duplicates := has_file_in_more_than_one_format(dir_):
+            if duplicates := has_file_in_more_than_one_format(dir_):  # noqa: WPS332
                 print(
                     "Files may only be present in one format. Found more than one "
                     "format for:\n  " + "\n  ".join(duplicates)
                 )
-                parser.exit()
+                return 1
             print("\nCalling VocExcel for Excel files")
             for xlf in glob.glob(os.path.join(dir_, "*.xlsx")):
                 print(f"  {xlf}")
@@ -664,9 +671,10 @@ def main_cli(args=None):
                     + list(RDF_FILE_ENDINGS.keys())
                 )
                 print(f"Files for processing must end with one of {endings}.")
-            parser.exit()
+            err = 0
     else:
         print("\nThis part should not be reached!")
+        err = 1
 
     return err
 

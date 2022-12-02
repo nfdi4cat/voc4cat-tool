@@ -1,0 +1,181 @@
+# -*- coding: utf-8 -*-
+import os
+import shutil
+
+import pytest
+from openpyxl.reader.excel import load_workbook
+
+from voc4cat.wrapper import main_cli
+
+CS_CYCLES = "concept-scheme-with-cycles.xlsx"
+CS_CYCLES_INDENT = "concept-scheme-with-cycles_indent.xlsx"
+CS_CYCLES_INDENT_IRI = "concept-scheme-with-cycles_indent_iri.xlsx"
+
+
+# @pytest.fixture()
+# def cs_cycles_workbook(datadir):
+#     """Open test-xlsx  with children-IRI-based hierarchy."""
+#     os.chdir(datadir)
+#     wb = load_workbook(filename=CS_CYCLES, read_only=True, data_only=True)
+#     return wb
+
+
+def test_main_no_args_entrypoint(monkeypatch, capsys):
+    monkeypatch.setattr("sys.argv", ["voc4at"])
+    exit_code = main_cli()
+    captured = capsys.readouterr()
+    assert "usage: voc4cat" in captured.out
+    assert exit_code == 0
+
+
+def test_main_no_args(capsys):
+    exit_code = main_cli([])
+    captured = capsys.readouterr()
+    assert "usage: voc4cat" in captured.out
+    assert exit_code == 0
+
+
+def test_main_version(capsys):
+    exit_code = main_cli(["--version"])
+    captured = capsys.readouterr()
+    assert captured.out.startswith("voc4cat")
+    assert exit_code == 0
+
+
+def test_add_IRI(datadir, tmp_path):
+    expected = [
+        ("ex:test/term1", "term1"),
+        ("ex:test/term3", "term3"),
+        ("ex:test/term4", "term4"),
+        ("ex:test/term2", "term2"),
+        ("ex:test/term4", "term4"),
+        ("ex:test/term1", "term1"),
+        ("ex:test/term2", "term2"),
+    ]
+    os.chdir(datadir)
+    shutil.copy(CS_CYCLES_INDENT, tmp_path / CS_CYCLES_INDENT)
+    os.chdir(tmp_path)
+
+    # Try to run a command that would overwrite the input file with the output file
+    with pytest.warns(
+        UserWarning, match='Option "add_IRI" will overwrite the existing file'
+    ):
+        main_cli(
+            [
+                "--add_IRI",
+                str(tmp_path),
+            ]
+        )
+    # Now overwrite the file explicitly.
+    main_cli(
+        [
+            "--add_IRI",
+            "--no-warn",
+            str(tmp_path),
+        ]
+    )
+    os.chdir(tmp_path)
+    wb = load_workbook(filename=CS_CYCLES_INDENT, read_only=True, data_only=True)
+    ws = wb["Concepts"]
+    for row, expected_row in zip(
+        ws.iter_rows(min_row=3, max_col=2, values_only=True), expected
+    ):
+        print(row)
+        assert row == expected_row
+
+
+def test_hierarchy_from_indent(datadir, tmp_path):
+    # fmt: off
+    expected = [  # data in children-IRI-representation
+        ('ex:test/term1', 'term1', 'en', 'def for term1', 'en', 'AltLbl for term1', 'ex:test/term2, ex:test/term3', 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
+        ('ex:test/term2', 'term2', 'en', 'def for term2', 'en', 'AltLbl for term2', 'ex:test/term4',                'Prov for term2', 'ex:XYZ/term2'),  # noqa:E501
+        ('ex:test/term3', 'term3', 'en', 'def for term3', 'en', 'AltLbl for term3', 'ex:test/term4',                'Prov for term3', 'ex:XYZ/term3'),  # noqa:E501
+        ('ex:test/term4', 'term4', 'en', 'def for term4', 'en', 'AltLbl for term4', None,                           'Prov for term4', 'ex:XYZ/term4'),  # noqa:E501
+        (None, None, None, None, None, None, None, None, None)
+    ]
+    # fmt: on
+    expected_len = len(expected[0])
+    os.chdir(datadir)
+    main_cli(
+        [
+            "--hierarchy-from-indent",
+            "--output_directory",
+            str(tmp_path),
+            CS_CYCLES_INDENT_IRI,
+        ]
+    )
+    os.chdir(tmp_path)
+    wb = load_workbook(filename=CS_CYCLES_INDENT_IRI, read_only=True, data_only=True)
+    ws = wb["Concepts"]
+    for row, expected_row in zip(ws.iter_rows(min_row=3, values_only=True), expected):
+        assert len(row) == expected_len
+        assert row in expected  # We intentionally don't check the row position here!
+
+
+def test_hierarchy_to_indent(datadir, tmp_path):
+    # fmt: off
+    expected = [  # data in children-IRI-representation
+        ('ex:test/term1', 'term1',     'en', 'def for term1', 'en', 'AltLbl for term1', None, 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
+        ('ex:test/term3', '..term3',   'en', 'def for term3', 'en', 'AltLbl for term3', None, 'Prov for term3', 'ex:XYZ/term2'),  # noqa:E501
+        ('ex:test/term4', '....term4', 'en', 'def for term4', 'en', 'AltLbl for term4', None, 'Prov for term4', 'ex:XYZ/term3'),  # noqa:E501
+        ('ex:test/term2', 'term2',     'en', 'def for term2', 'en', 'AltLbl for term2', None, 'Prov for term2', 'ex:XYZ/term4'),  # noqa:E501
+        ('ex:test/term4', '..term4',   'en', None, None, None, None, None, None),
+        ('ex:test/term1', 'term1',     'en', None, None, None, None, None, None),
+        ('ex:test/term2', '..term2',   'en', None, None, None, None, None, None),
+        (None, None, None, None, None, None, None, None, None),
+    ]
+    # fmt: on
+    expected_len = len(expected[0])
+    os.chdir(datadir)
+    main_cli(
+        [
+            "--hierarchy-to-indent",
+            "--indent-separator",
+            "..",
+            "--output_directory",
+            str(tmp_path),
+            CS_CYCLES,
+        ]
+    )
+    os.chdir(tmp_path)
+    wb = load_workbook(filename=CS_CYCLES, read_only=True, data_only=True)
+    ws = wb["Concepts"]
+    for row, expected_row in zip(ws.iter_rows(min_row=3, values_only=True), expected):
+        assert len(row) == expected_len
+        assert row == expected_row
+
+
+def test_run_ontospy(datadir, tmp_path):
+    # TODO
+    pass
+
+
+@pytest.mark.parametrize(
+    "test_file,err,msg",
+    [
+        (CS_CYCLES, 0, "All checks passed successfully."),
+        (
+            CS_CYCLES_INDENT_IRI,
+            1,
+            'ERROR: Same Concept IRI "ex:test/term1"'
+            ' used more than once for language "en"',
+        ),
+    ],
+    ids=["no error", "with error"],
+)
+def test_check(datadir, tmp_path, capsys, test_file, err, msg):
+    dst = tmp_path / test_file
+    shutil.copy(datadir / test_file, dst)
+    exit_code = main_cli(["--check", "--no-warn", str(dst)])
+    captured = capsys.readouterr()
+    # TODO check that erroneous cells get colored.
+    assert exit_code == err
+    assert msg in captured.out
+
+
+def test_run_vocexcel(datadir, tmp_path):
+    """Check that an xlsx file is converted to ttl by vocexcel."""
+    dst = tmp_path / CS_CYCLES
+    shutil.copy(datadir / CS_CYCLES, dst)
+    main_cli([str(dst)])
+    assert dst.with_suffix(".ttl")
