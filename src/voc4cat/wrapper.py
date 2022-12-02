@@ -101,7 +101,8 @@ def add_IRI(fpath, outfile):
     is_supported_template(wb)
     VOC_BASE_IRI = wb["Concept Scheme"].cell(row=2, column=2).value
     if VOC_BASE_IRI is None:
-        VOC_BASE_IRI = ""
+        VOC_BASE_IRI = "https://example.org/"
+        wb["Concept Scheme"].cell(row=2, column=2).value = VOC_BASE_IRI
     elif not VOC_BASE_IRI.endswith("/"):
         VOC_BASE_IRI += "/"
 

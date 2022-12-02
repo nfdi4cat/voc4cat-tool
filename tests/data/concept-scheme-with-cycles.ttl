@@ -1,0 +1,78 @@
+@prefix cs: <http://example.org/test> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<http://example.org/test/undirected-cycle> a skos:Collection ;
+    dcterms:identifier "undirected-cycle"^^xsd:token ;
+    dcterms:isPartOf cs: ;
+    dcterms:provenance "Prov for unidirected cycle"@en ;
+    skos:definition "Collection of Term to test unidirected branch-join-cycle"@en ;
+    skos:member <http://example.org/test/term1>,
+        <http://example.org/test/term2>,
+        <http://example.org/test/term3>,
+        <http://example.org/test/term4> ;
+    skos:prefLabel "Undirected cycle"@en .
+
+<http://example.org/test/term2> a skos:Concept ;
+    dcterms:identifier "term2"^^xsd:token ;
+    dcterms:provenance "Prov for term2"@en ;
+    rdfs:isDefinedBy <http://example.org/XYZ/term2> ;
+    skos:altLabel "AltLbl for term2"@en ;
+    skos:broader <http://example.org/test/term1> ;
+    skos:definition "def for term2"@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/test/term4> ;
+    skos:prefLabel "term2"@en .
+
+<http://example.org/test/term3> a skos:Concept ;
+    dcterms:identifier "term3"^^xsd:token ;
+    dcterms:provenance "Prov for term3"@en ;
+    rdfs:isDefinedBy <http://example.org/XYZ/term3> ;
+    skos:altLabel "AltLbl for term3"@en ;
+    skos:broader <http://example.org/test/term1> ;
+    skos:definition "def for term3"@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/test/term4> ;
+    skos:prefLabel "term3"@en .
+
+<http://example.org/test/term4> a skos:Concept ;
+    dcterms:identifier "term4"^^xsd:token ;
+    dcterms:provenance "Prov for term4"@en ;
+    rdfs:isDefinedBy <http://example.org/XYZ/term4> ;
+    skos:altLabel "AltLbl for term4"@en ;
+    skos:broader <http://example.org/test/term2>,
+        <http://example.org/test/term3> ;
+    skos:definition "def for term4"@en ;
+    skos:inScheme cs: ;
+    skos:prefLabel "term4"@en .
+
+<http://example.org/test/term1> a skos:Concept ;
+    dcterms:identifier "term1"^^xsd:token ;
+    dcterms:provenance "Prov for term1"@en ;
+    rdfs:isDefinedBy <http://example.org/XYZ/term1> ;
+    skos:altLabel "AltLbl for term1"@en ;
+    skos:definition "def for term1"@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/test/term2>,
+        <http://example.org/test/term3> ;
+    skos:prefLabel "term1"@en ;
+    skos:topConceptOf cs: .
+
+cs: a skos:ConceptScheme ;
+    dcterms:created "2022-12-01"^^xsd:date ;
+    dcterms:creator <https://www.catalysis.de/> ;
+    dcterms:hasPart <http://example.org/test/undirected-cycle> ;
+    dcterms:identifier "test"^^xsd:token ;
+    dcterms:modified "2022-12-01"^^xsd:date ;
+    dcterms:provenance "Leibniz-Institut für Katalyse e.V. (LIKAT)"@en ;
+    dcterms:publisher <http://example.org/nfdi4cat/> ;
+    owl:versionInfo "0.1" ;
+    skos:definition "A concept scheme for unit testing voc4cat."@en ;
+    skos:hasTopConcept <http://example.org/test/term1> ;
+    skos:prefLabel "voc4cat-test-data"@en ;
+    dcat:contactPoint "David Linke" .
+

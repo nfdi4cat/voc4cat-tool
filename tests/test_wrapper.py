@@ -8,6 +8,7 @@ from openpyxl.reader.excel import load_workbook
 from voc4cat.wrapper import main_cli
 
 CS_CYCLES = "concept-scheme-with-cycles.xlsx"
+CS_CYCLES_TURTLE = "concept-scheme-with-cycles.ttl"
 CS_CYCLES_INDENT = "concept-scheme-with-cycles_indent.xlsx"
 CS_CYCLES_INDENT_IRI = "concept-scheme-with-cycles_indent_iri.xlsx"
 
