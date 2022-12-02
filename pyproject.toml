@@ -58,7 +58,12 @@ tests = [
 lint = [
   "black",
   "isort",
-  "wemake-python-styleguide",
+]
+dev = [
+    # Recursively including the project's own optional dependencies requires pip>=21.2
+    "voc4cat[tests,lint]",
+    "ruff",
+    "wemake-python-styleguide",
 ]
 
 [project.scripts]
