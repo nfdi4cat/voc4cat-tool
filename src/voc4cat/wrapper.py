@@ -289,21 +289,31 @@ def run_ontospy(file_path, output_path):
     from ontospy.gendocs.viz.viz_d3dendogram import Dataviz
     from ontospy.gendocs.viz.viz_html_single import HTMLVisualizer
 
-    if Path(file_path).is_dir() and not glob.glob("outbox/*.ttl"):
-        print(f'No turtle file(s) found to document with Ontospy in "{file_path}"')
+    if Path(file_path).is_dir():
+        turtle_files = glob.glob(f"{file_path}/*.ttl")
+        if not turtle_files:
+            print(f'No turtle file(s) found to document with Ontospy in "{file_path}"')
+            return 1
+    elif Path(file_path).exists():
+        turtle_files = [file_path]
+    else:
+        print(f"File/dir not found: {file_path}")
         return 1
 
-    print(f"\nBuilding ontospy documentation for {file_path}")
+    for turtle_file in turtle_files:
+        print(f"\nBuilding ontospy documentation for {turtle_file}")
+        specific_output_path = Path(output_path) / Path(turtle_file).stem
 
-    g = ontospy.Ontospy(file_path.resolve().as_uri())
+        g = ontospy.Ontospy(Path(turtle_file).resolve().as_uri())
 
-    docs = HTMLVisualizer(g)
-    docs_path = os.path.join(output_path, "docs")
-    docs.build(docs_path)  # => build and save docs/visualization.
+        docs = HTMLVisualizer(g)
+        docs_path = os.path.join(specific_output_path, "docs")
+        docs.build(docs_path)  # => build and save docs/visualization.
 
-    viz = Dataviz(g)
-    viz_path = os.path.join(output_path, "dendro")
-    viz.build(viz_path)  # => build and save docs/visualization.
+        viz = Dataviz(g)
+        viz_path = os.path.join(specific_output_path, "dendro")
+        viz.build(viz_path)  # => build and save docs/visualization.
+
     return 0
 
 
@@ -440,7 +450,7 @@ def main_cli(args=None):
     parser.add_argument(
         "-f",
         "--forward",
-        help=("Forward file resulting from other running other options to vocexcel."),
+        help=("Forward file resulting from running other options to vocexcel."),
         action="store_true",
     )
 
@@ -491,7 +501,7 @@ def main_cli(args=None):
         ),
     )
 
-    args_wrapper, _  = parser.parse_known_args(args)
+    args_wrapper, _ = parser.parse_known_args(args)
     vocexcel_args = args_wrapper.vocexcel_options or []
 
     err = 0  # return error code
@@ -548,7 +558,7 @@ def main_cli(args=None):
             else:
                 outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
         else:
-            # processin all file in directory is not supported for now.
+            # processing all files in directory is not supported for now.
             raise NotImplementedError()
         hierarchy_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
 
@@ -569,10 +579,10 @@ def main_cli(args=None):
                 fprefix, fsuffix = xlf.rsplit(".", 1)
                 fname = os.path.split(fprefix)[1]  # split off leading dirs
                 if outdir is None:
-                    outfile = xlf
+                    outfile = Path(xlf)
                 else:
                     outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
-                infile = xlf
+                infile = Path(xlf)
                 for func in funcs:
                     if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
                         return 1
@@ -587,14 +597,14 @@ def main_cli(args=None):
 
             if args_wrapper.docs and args_wrapper.forward and to_build_docs:
                 indir = args_wrapper.file_to_preprocess if outdir is None else outdir
-                doc_path = infile.parent[0] if outdir is None else outdir
+                doc_path = infile.parent if outdir is None else outdir
                 err += run_ontospy(indir, doc_path)
 
         elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
             fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
             fname = os.path.split(fprefix)[1]  # split off leading dirs
             if outdir is None:
-                outfile = args_wrapper.file_to_preprocess
+                outfile = Path(args_wrapper.file_to_preprocess)
             else:
                 outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
             infile = args_wrapper.file_to_preprocess
@@ -610,7 +620,7 @@ def main_cli(args=None):
                 err += run_vocexcel(locargs)
             if args_wrapper.docs:
                 infile = Path(infile).with_suffix(".ttl") if outdir is None else outfile
-                doc_path = infile.parent[0] if outdir is None else outdir
+                doc_path = infile.parent if outdir is None else outdir
                 err += run_ontospy(infile, doc_path)
         else:
             return err
@@ -657,7 +667,7 @@ def main_cli(args=None):
 
             if args_wrapper.docs and args_wrapper.forward and to_build_docs:
                 infile = args_wrapper.file_to_preprocess
-                doc_path = outdir if outdir is not None else infile.parent[0]
+                doc_path = outdir if outdir is not None else infile.parent
                 err += run_ontospy(infile, doc_path)
 
         elif is_file_available(args_wrapper.file_to_preprocess, ftype=["excel", "rdf"]):
@@ -666,7 +676,7 @@ def main_cli(args=None):
             err += run_vocexcel(vocexcel_args[:] + [file_to_process])
             if args_wrapper.docs:
                 infile = Path(args_wrapper.file_to_preprocess).with_suffix(".ttl")
-                doc_path = outdir if outdir is not None else infile.parent[0]
+                doc_path = outdir if outdir is not None else infile.parent
                 err += run_ontospy(infile, doc_path)
         else:
             if os.path.exists(args_wrapper.file_to_preprocess):
@@ -676,7 +686,9 @@ def main_cli(args=None):
                     + list(RDF_FILE_ENDINGS.keys())
                 )
                 print(f"Files for processing must end with one of {endings}.")
-            err = 0
+            else:
+                print("File not found: {args_wrapper.file_to_preprocess}.")
+            err = 1
     else:
         raise AssertionError("This part should never be reached!")
 

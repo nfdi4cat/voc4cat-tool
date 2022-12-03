@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import shutil
+from pathlib import Path
 
 import pytest
 from openpyxl.reader.excel import load_workbook
@@ -152,8 +153,8 @@ def test_run_ontospy(datadir, tmp_path):
     outdir = tmp_path / "ontospy"
     # To test the code-path, outdir is created automatically here.
     main_cli(["--docs", "--output_directory", str(outdir), str(dst)])
-    assert (outdir / "dendro" / "index.html").exists()
-    assert (outdir / "docs" / "index.html").exists()
+    assert (outdir / Path(CS_CYCLES_TURTLE).stem / "dendro" / "index.html").exists()
+    assert (outdir / Path(CS_CYCLES_TURTLE).stem / "docs" / "index.html").exists()
 
 
 @pytest.mark.parametrize(
@@ -179,12 +180,61 @@ def test_check(datadir, tmp_path, capsys, test_file, err, msg):
     assert msg in captured.out
 
 
-def test_run_vocexcel(datadir, tmp_path):
+def test_unsupported_filetype(datadir, capsys):
+    os.chdir(datadir)
+    exit_code = main_cli(["README.md"])
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "Files for processing must end with" in captured.out
+
+
+def test_nonexisting_file(datadir, capsys):
+    os.chdir(datadir)
+    exit_code = main_cli(["missing.txt"])
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "File not found:" in captured.out
+
+
+@pytest.mark.parametrize(
+    "test_file",
+    [CS_CYCLES, ""],
+    ids=["single file", "dir of files"],
+)
+def test_run_vocexcel(datadir, tmp_path, test_file):
     """Check that an xlsx file is converted to ttl by vocexcel."""
-    dst = tmp_path / CS_CYCLES
+    dst = tmp_path / test_file
     shutil.copy(datadir / CS_CYCLES, dst)
-    # We also test if the logging optio is forwared to vocexcel.
+    # We also test if the logging option is passed on to vocexcel.
     log = tmp_path / "logs" / "test-run.log"
-    main_cli(["--logfile", str(log) , str(dst)])
-    assert dst.with_suffix(".ttl")
+    main_cli(["--logfile", str(log), str(dst)])
+    expected = (tmp_path / CS_CYCLES).with_suffix(".ttl")
+    assert expected.exists()
     assert log.exists()
+
+
+@pytest.mark.parametrize(
+    "test_file",
+    [CS_CYCLES, ""],
+    ids=["single file", "dir of files"],
+)
+def test_forwarding(datadir, tmp_path, test_file):
+    """Check a file by voc4cat then forward it to vocexcel then to ontospy."""
+    dst = tmp_path / test_file
+    shutil.copy(datadir / CS_CYCLES, dst)
+    os.chdir(tmp_path)
+    main_cli(
+        [
+            "--check",
+            "--forward",
+            "--logfile",
+            "test.log",
+            "--no-warn",
+            "--docs",
+            str(dst),
+        ]
+    )
+    assert (tmp_path / CS_CYCLES).with_suffix(".ttl").exists()
+    assert (tmp_path / Path(CS_CYCLES).stem / "dendro" / "index.html").exists()
+    assert (tmp_path / Path(CS_CYCLES).stem / "docs" / "index.html").exists()
+    assert (tmp_path / "test.log").exists()
