@@ -286,8 +286,8 @@ def run_ontospy(file_path, output_path):
     Generate Ontospy documentation for a file or directory of files.
     """
     import ontospy
-    from ontospy.ontodocs.viz.viz_d3dendogram import Dataviz
-    from ontospy.ontodocs.viz.viz_html_single import HTMLVisualizer
+    from ontospy.gendocs.viz.viz_d3dendogram import Dataviz
+    from ontospy.gendocs.viz.viz_html_single import HTMLVisualizer
 
     if Path(file_path).is_dir() and not glob.glob("outbox/*.ttl"):
         print(f'No turtle file(s) found to document with Ontospy in "{file_path}"')
