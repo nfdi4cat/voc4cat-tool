@@ -81,7 +81,6 @@ def test_add_IRI(datadir, tmp_path):
     for row, expected_row in zip(
         ws.iter_rows(min_row=3, max_col=2, values_only=True), expected
     ):
-        print(row)
         assert row == expected_row
 
 
@@ -147,8 +146,14 @@ def test_hierarchy_to_indent(datadir, tmp_path):
 
 
 def test_run_ontospy(datadir, tmp_path):
-    # TODO
-    pass
+    """Check that ontospy generates the expected output."""
+    dst = tmp_path / CS_CYCLES_TURTLE
+    shutil.copy(datadir / CS_CYCLES_TURTLE, dst)
+    outdir = tmp_path / "ontospy"
+    # To test the code-path, outdir is created automatically here.
+    main_cli(["--docs", "--output_directory", str(outdir), str(dst)])
+    assert (outdir / "dendro" / "index.html").exists()
+    assert (outdir / "docs" / "index.html").exists()
 
 
 @pytest.mark.parametrize(
@@ -178,5 +183,8 @@ def test_run_vocexcel(datadir, tmp_path):
     """Check that an xlsx file is converted to ttl by vocexcel."""
     dst = tmp_path / CS_CYCLES
     shutil.copy(datadir / CS_CYCLES, dst)
-    main_cli([str(dst)])
+    # We also test if the logging optio is forwared to vocexcel.
+    log = tmp_path / "logs" / "test-run.log"
+    main_cli(["--logfile", str(log) , str(dst)])
     assert dst.with_suffix(".ttl")
+    assert log.exists()

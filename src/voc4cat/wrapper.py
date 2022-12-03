@@ -289,13 +289,13 @@ def run_ontospy(file_path, output_path):
     from ontospy.ontodocs.viz.viz_d3dendogram import Dataviz
     from ontospy.ontodocs.viz.viz_html_single import HTMLVisualizer
 
-    if not glob.glob("outbox/*.ttl"):
-        print(f'No turtle file found to document with Ontospy in "{file_path}"')
+    if Path(file_path).is_dir() and not glob.glob("outbox/*.ttl"):
+        print(f'No turtle file(s) found to document with Ontospy in "{file_path}"')
         return 1
 
     print(f"\nBuilding ontospy documentation for {file_path}")
 
-    g = ontospy.Ontospy(file_path)
+    g = ontospy.Ontospy(file_path.resolve().as_uri())
 
     docs = HTMLVisualizer(g)
     docs_path = os.path.join(output_path, "docs")
@@ -365,6 +365,8 @@ def check(fpath, outfile):
 
 
 def run_vocexcel(args=None):
+    if args is None:
+        args = []  # Important! Prevents vocexcel to use args from sys.argv.
     retval = main(args)
     if retval is not None:
         return 1
@@ -489,7 +491,8 @@ def main_cli(args=None):
         ),
     )
 
-    args_wrapper, vocexcel_args = parser.parse_known_args(args)
+    args_wrapper, _  = parser.parse_known_args(args)
+    vocexcel_args = args_wrapper.vocexcel_options or []
 
     err = 0  # return error code
 
@@ -659,7 +662,8 @@ def main_cli(args=None):
 
         elif is_file_available(args_wrapper.file_to_preprocess, ftype=["excel", "rdf"]):
             print(f"Calling VocExcel for file {args_wrapper.file_to_preprocess}")
-            err += run_vocexcel(args)
+            file_to_process = str(args_wrapper.file_to_preprocess)
+            err += run_vocexcel(vocexcel_args[:] + [file_to_process])
             if args_wrapper.docs:
                 infile = Path(args_wrapper.file_to_preprocess).with_suffix(".ttl")
                 doc_path = outdir if outdir is not None else infile.parent[0]
@@ -674,8 +678,7 @@ def main_cli(args=None):
                 print(f"Files for processing must end with one of {endings}.")
             err = 0
     else:
-        print("\nThis part should not be reached!")
-        err = 1
+        raise AssertionError("This part should never be reached!")
 
     return err
 
