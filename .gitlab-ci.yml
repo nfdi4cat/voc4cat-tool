@@ -26,8 +26,8 @@ before_script:
 tests:
   stage: test
   script:
-    - pip install -U pytest
-    - pip install .
+    # install project inlcuding optional test dependencies
+    - pip install -U .[tests]
     - pytest
 
 # https://docs.gitlab.com/ee/ci/testing/test_coverage_visualization.html#python-example

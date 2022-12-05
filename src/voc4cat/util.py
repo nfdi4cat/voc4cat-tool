@@ -115,7 +115,7 @@ def dag_to_node_levels(termgraph, baselevel=0):
         for sgc in nx.connected_components(termgraph.to_undirected())
     ]
     tg_copy = termgraph.copy()
-    # We must find & eliminate cycles no matter which direction for the tree representation.
+    # We must find & eliminate cycles no matter if directed or undirected.
     cycles = nx.cycle_basis(tg_copy.to_undirected())
     broken_edges = []
     while cycles:
@@ -125,8 +125,8 @@ def dag_to_node_levels(termgraph, baselevel=0):
         tg_copy.remove_edge(*edge_to_break)
         # nx.cycle_basis does only report cycles >= 3 members.
         cycles = nx.cycle_basis(tg_copy.to_undirected())
-        # It is not clearly documented in networkx if the direction of edges is preserved
-        # when converting to an undirected graph. So we better check...
+        # It is not clearly documented in networkx if the direction of edges is
+        # preserved when converting to an undirected graph. So we better check...
         if termgraph.has_edge(*edge_to_break):
             broken_edges.append(edge_to_break)
         else:  # pragma: no cover

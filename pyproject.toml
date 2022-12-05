@@ -34,11 +34,11 @@ dependencies = [
   # We install vocexcel directly from a specific branch form github (or gitea in LIKAT)
   "vocexcel @ git+https://github.com/nfdi4cat/VocExcel.git@nfdi4cat-dev",
   #vocexcel @ git+https://gogs.catalysis.de/LIKAT_RDM/VocExcel.git@nfdi4cat-dev
-  "django>=4.0.0",
-  "networkx>=2.8",
-  "openpyxl>=3.0.9",
-  "pillow>=9.1.0",
-  "ontospy[Full] >= 1.9.9.4",
+  "django >= 4.1.3",
+  "networkx >= 2.8",
+  "openpyxl >= 3.0.9",
+  "pillow >= 9.1.0",
+  "ontospy >= 2.1.0",
 ]
 
 #dynamic = ["version", "readme"]
@@ -58,7 +58,12 @@ tests = [
 lint = [
   "black",
   "isort",
-  "wemake-python-styleguide",
+]
+dev = [
+    # Recursively including the project's own optional dependencies requires pip>=21.2
+    "voc4cat[tests,lint]",
+    "ruff",
+    "wemake-python-styleguide",
 ]
 
 [project.scripts]
@@ -155,6 +160,7 @@ exclude_lines = [
     "raise AssertionError",
     "raise NotImplementedError",
     "return NotImplemented",
+    "if __name__ == .__main__.:",
 ]
 
 [tool.coverage.html]
