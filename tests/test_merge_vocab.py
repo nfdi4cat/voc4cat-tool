@@ -2,7 +2,6 @@
 import shutil
 from unittest import mock
 
-import voc4cat
 from test_wrapper import CS_CYCLES_TURTLE
 from voc4cat.merge_vocab import main_cli
 

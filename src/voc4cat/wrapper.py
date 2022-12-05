@@ -11,7 +11,6 @@ import datetime
 import glob
 import os
 import sys
-from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from warnings import warn
 
@@ -19,10 +18,11 @@ import openpyxl
 from django.utils.text import slugify
 from openpyxl.styles import Alignment, PatternFill
 from rdflib import URIRef
-from vocexcel.convert import main
+from vocexcel.convert import main as vocexcel_main
 from vocexcel.models import ORGANISATIONS, ORGANISATIONS_INVERSE
 from vocexcel.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDINGS
 
+from voc4cat import __version__
 from voc4cat.util import (
     dag_from_indented_text,
     dag_from_narrower,
@@ -35,15 +35,6 @@ ORGANISATIONS["NFDI4Cat"] = URIRef("http://example.org/nfdi4cat/")
 ORGANISATIONS["LIKAT"] = URIRef("https://www.catalysis.de/")
 ORGANISATIONS_INVERSE.update({v: k for k, v in ORGANISATIONS.items()})
 NOW = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
-
-try:
-    __version__ = version("voc4cat")
-except PackageNotFoundError:
-    # package is not installed
-    try:
-        from ._version import version as __version__
-    except ImportError:
-        __version__ = "0.0.0"
 
 
 def is_file_available(fname, ftype):
@@ -103,7 +94,7 @@ def add_IRI(fpath, outfile):
     if VOC_BASE_IRI is None:
         VOC_BASE_IRI = "https://example.org/"
         wb["Concept Scheme"].cell(row=2, column=2).value = VOC_BASE_IRI
-    elif not VOC_BASE_IRI.endswith("/"):
+    if not VOC_BASE_IRI.endswith("/"):
         VOC_BASE_IRI += "/"
 
     # process both worksheets
@@ -111,13 +102,13 @@ def add_IRI(fpath, outfile):
     for sheet in ["Concepts", "Collections"]:
         ws = wb[sheet]
         # iterate over first two columns; skip header and start from row 3
-        for row in ws.iter_rows(min_row=3, max_col=2):
+        for row in ws.iter_rows(min_row=3, max_col=2):  # pragma: no branch
             if not row[0].value and row[1].value:
                 concept_iri = VOC_BASE_IRI + slugify(row[1].value)
                 concept_iri += "-coll" if sheet == "Collections" else ""
                 ws.cell(row[0].row, column=1).value = concept_iri
                 subsequent_empty_rows = 0
-            elif row[0].value is None and row[1].value is None:
+            else:
                 # stop processing a sheet after 3 empty rows
                 if subsequent_empty_rows < 2:
                     subsequent_empty_rows += 1
@@ -146,7 +137,8 @@ def hierarchy_from_indent(fpath, outfile, sep):
     row_by_iri = {}
     # read concepts, determine their indentation level, then clear indentation
     col_last = 9
-    for row in ws.iter_rows(min_row=3, max_col=col_last):
+    max_row = 0
+    for row in ws.iter_rows(min_row=3, max_col=col_last):  # pragma: no branch
         iri = row[0].value
         row_no = row[0].row
         if iri and row[1].value:
@@ -160,6 +152,7 @@ def hierarchy_from_indent(fpath, outfile, sep):
                 ws.cell(row_no, column=2).value = descr
                 ws.cell(row_no, column=2).alignment = Alignment(indent=0)
             concepts_indented.append(level * " " + iri)
+
             # TODO think about how to handle language.
             if iri in row_by_iri:  # merge needed
                 # compare fields, merge if one is empty, error if different values
@@ -170,7 +163,8 @@ def hierarchy_from_indent(fpath, outfile, sep):
                 for old, new in zip(row_by_iri[iri], new_data):
                     if (old and new) and (old != new):
                         raise ValueError(
-                            "Cannot merge rows for {iri}. Resolve differences manually."
+                            f"Cannot merge rows for {iri}. "
+                            "Resolve differences manually."
                         )
                     merged.append(old if old else new)
                 row_by_iri[iri] = merged
@@ -179,7 +173,7 @@ def hierarchy_from_indent(fpath, outfile, sep):
                     ws.cell(row_no, col_no).value for col_no in range(2, col_last)
                 ]
             max_row = row_no
-        elif iri is None and row[1].value is None:
+        else:
             # stop processing a sheet after 3 empty rows
             if subsequent_empty_rows < 2:
                 subsequent_empty_rows += 1
@@ -202,7 +196,9 @@ def hierarchy_from_indent(fpath, outfile, sep):
 
     # Clear remaining rows.
     first_row_to_clear = 3 + len(children_by_iri)
-    for row in ws.iter_rows(min_row=first_row_to_clear, max_col=col_last):
+    for row in ws.iter_rows(  # pragma: no branch
+        min_row=first_row_to_clear, max_col=col_last
+    ):
         for col in range(1, col_last):
             ws.cell(row[0].row, column=col).value = None
         if row[0].row == max_row:
@@ -230,7 +226,7 @@ def hierarchy_to_indent(fpath, outfile, sep):
     row_by_iri = {}
     col_last = 9
     # read all IRI, preferred labels, childrenURIs from the sheet
-    for rows_total, row in enumerate(
+    for rows_total, row in enumerate(  # pragma: no branch
         ws.iter_rows(min_row=3, max_col=col_last, values_only=True)
     ):
         if row[0] and row[1]:
@@ -267,7 +263,7 @@ def hierarchy_to_indent(fpath, outfile, sep):
             row[1].value = sep * level + concept_text
             row[1].alignment = Alignment(indent=0)
         row[2].value = row_by_iri[iri][1]
-        for col, stored_value in zip(range(4, col_last), row_by_iri[iri][2:]):
+        for col, stored_value in zip(range(4, col_last + 1), row_by_iri[iri][2:]):
             if iri in iri_written:
                 ws.cell(row[0].row, column=col).value = None
             else:
@@ -292,7 +288,7 @@ def run_ontospy(file_path, output_path):
     if Path(file_path).is_dir():
         turtle_files = glob.glob(f"{file_path}/*.ttl")
         if not turtle_files:
-            print(f'No turtle file(s) found to document with Ontospy in "{file_path}"')
+            print(f"No turtle file(s) found to document with Ontospy in {file_path}")
             return 1
     elif Path(file_path).exists():
         turtle_files = [file_path]
@@ -334,7 +330,7 @@ def check(fpath, outfile):
     subsequent_empty_rows = 0
     seen_conceptIRIs = []
     failed_check = False
-    for row in ws.iter_rows(min_row=3, max_col=3):
+    for row in ws.iter_rows(min_row=3, max_col=3):  # pragma: no branch
         if row[0].value and row[1].value:
             conceptIRI, _, lang = [
                 c.value.strip() if c.value is not None else "" for c in row
@@ -357,7 +353,7 @@ def check(fpath, outfile):
                 seen_conceptIRIs.append(new_conceptIRI)
 
             subsequent_empty_rows = 0
-        elif row[0].value is None and row[1].value is None:
+        else:
             # stop processing a sheet after 3 empty rows
             if subsequent_empty_rows < 2:
                 subsequent_empty_rows += 1
@@ -375,9 +371,9 @@ def check(fpath, outfile):
 
 
 def run_vocexcel(args=None):
-    if args is None:
+    if args is None:  # pragma: no cover
         args = []  # Important! Prevents vocexcel to use args from sys.argv.
-    retval = main(args)
+    retval = vocexcel_main(args)
     if retval is not None:
         return 1
     return 0
@@ -524,7 +520,7 @@ def main_cli(args=None):
         vocexcel_args.append("--logfile")
         vocexcel_args.append(str(logfile))
 
-    if args_wrapper.indent_separator:
+    if args_wrapper.indent_separator is not None:
         sep = args_wrapper.indent_separator
         if not len(sep):
             raise ValueError(
@@ -536,20 +532,7 @@ def main_cli(args=None):
     if args_wrapper.version:
         print(f"voc4cat {__version__}")
 
-    elif args_wrapper.hierarchy_from_indent:
-        if is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
-            fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
-            fname = os.path.split(fprefix)[1]  # split off leading dirs
-            if outdir is None:
-                outfile = args_wrapper.file_to_preprocess
-            else:
-                outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
-        else:
-            # processing all file in directory is not supported for now.
-            raise NotImplementedError()
-        hierarchy_from_indent(args_wrapper.file_to_preprocess, outfile, sep)
-
-    elif args_wrapper.hierarchy_to_indent:
+    elif args_wrapper.hierarchy_from_indent or args_wrapper.hierarchy_to_indent:
         if is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
             fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
             fname = os.path.split(fprefix)[1]  # split off leading dirs
@@ -560,7 +543,10 @@ def main_cli(args=None):
         else:
             # processing all files in directory is not supported for now.
             raise NotImplementedError()
-        hierarchy_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
+        if args_wrapper.hierarchy_from_indent:
+            hierarchy_from_indent(args_wrapper.file_to_preprocess, outfile, sep)
+        else:
+            hierarchy_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
 
     elif args_wrapper.add_IRI or args_wrapper.check:
         funcs = [
@@ -623,10 +609,14 @@ def main_cli(args=None):
                 doc_path = infile.parent if outdir is None else outdir
                 err += run_ontospy(infile, doc_path)
         else:
-            return err
+            print(
+                "Expected xlsx-file or directory but got: {0}".format(
+                    args_wrapper.file_to_preprocess
+                )
+            )
+            return 1
     elif args_wrapper and args_wrapper.file_to_preprocess:
         if os.path.isdir(args_wrapper.file_to_preprocess):
-            to_build_docs = False
             dir_ = args_wrapper.file_to_preprocess
             if duplicates := has_file_in_more_than_one_format(dir_):  # noqa: WPS332
                 print(
@@ -634,6 +624,11 @@ def main_cli(args=None):
                     "format for:\n  " + "\n  ".join(duplicates)
                 )
                 return 1
+
+            turtle_files = glob.glob(os.path.join(dir_, "*.ttl")) + glob.glob(
+                os.path.join(dir_, "*.turtle")
+            )
+
             print("\nCalling VocExcel for Excel files")
             for xlf in glob.glob(os.path.join(dir_, "*.xlsx")):
                 print(f"  {xlf}")
@@ -649,9 +644,7 @@ def main_cli(args=None):
                 err += run_vocexcel(locargs)
 
             print("Calling VocExcel for turtle files")
-            for ttlf in glob.glob(os.path.join(dir_, "*.ttl")) + glob.glob(
-                os.path.join(dir_, "*.turtle")
-            ):
+            for ttlf in turtle_files:
                 print(f"  {ttlf}")
                 locargs = list(vocexcel_args)
                 locargs.append(ttlf)
@@ -663,11 +656,10 @@ def main_cli(args=None):
                     outfile = Path(outdir) / Path(f"{fname}.xlsx")
                     locargs = ["--outputfile", str(outfile)] + locargs
                 err += run_vocexcel(locargs)
-                to_build_docs = True
 
-            if args_wrapper.docs and args_wrapper.forward and to_build_docs:
+            if args_wrapper.docs and (args_wrapper.forward or turtle_files):
                 infile = args_wrapper.file_to_preprocess
-                doc_path = outdir if outdir is not None else infile.parent
+                doc_path = infile if outdir is None else outdir
                 err += run_ontospy(infile, doc_path)
 
         elif is_file_available(args_wrapper.file_to_preprocess, ftype=["excel", "rdf"]):
@@ -697,5 +689,4 @@ def main_cli(args=None):
 
 if __name__ == "__main__":
     err = main_cli(sys.argv[1:])
-    # CI needs to know if an error occurred (failed check or validation error)
     sys.exit(err)
