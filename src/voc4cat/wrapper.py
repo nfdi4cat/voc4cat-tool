@@ -135,14 +135,16 @@ def hierarchy_from_indent(fpath, outfile, sep):
     subsequent_empty_rows = 0
     ws = wb["Concepts"]
     concepts_indented = []
-    row_by_iri = {}
+    row_by_iri = defaultdict(dict)
     # read concepts, determine their indentation level, then clear indentation
     col_last = 9
     max_row = 0
     for row in ws.iter_rows(min_row=3, max_col=col_last):  # pragma: no branch
         iri = row[0].value
-        row_no = row[0].row
         if iri and row[1].value:
+            row_no = row[0].row
+            lang = row[2].value
+
             if sep is None:  # Excel indentation
                 level = int(row[1].alignment.indent)
                 ws.cell(row_no, column=2).alignment = Alignment(indent=0)
@@ -154,23 +156,24 @@ def hierarchy_from_indent(fpath, outfile, sep):
                 ws.cell(row_no, column=2).alignment = Alignment(indent=0)
             concepts_indented.append(level * " " + iri)
 
-            # TODO think about how to handle language.
             if iri in row_by_iri:  # merge needed
                 # compare fields, merge if one is empty, error if different values
                 new_data = [
                     ws.cell(row_no, col_no).value for col_no in range(2, col_last)
                 ]
+                old_data = row_by_iri[iri].get(lang, [None] * (len(new_data)))
                 merged = []
-                for old, new in zip(row_by_iri[iri], new_data):
+                labels = ["ChildrenIRI", "Provenance", "SourceVocabURL"]
+                for old, new, label in zip(old_data, new_data, labels):
                     if (old and new) and (old != new):
                         raise ValueError(
                             f"Cannot merge rows for {iri}. "
                             "Resolve differences manually."
                         )
                     merged.append(old if old else new)
-                row_by_iri[iri] = merged
+                row_by_iri[iri][lang] = merged
             else:
-                row_by_iri[iri] = [
+                row_by_iri[iri][lang] = [
                     ws.cell(row_no, col_no).value for col_no in range(2, col_last)
                 ]
             max_row = row_no
@@ -185,25 +188,24 @@ def hierarchy_from_indent(fpath, outfile, sep):
     term_dag = dag_from_indented_text("\n".join(concepts_indented))
     children_by_iri = dag_to_narrower(term_dag)
 
-    # Update childrenURI column
+    # Write rows to xlsx-file, write translation directly after each concept.
     col_children_iri = 7
-    for iri, row in zip(children_by_iri, ws.iter_rows(min_row=3, max_col=col_last)):
-        ws.cell(row[0].row, column=1).value = iri
-        for col, stored_value in zip(range(2, col_last), row_by_iri[iri]):
-            ws.cell(row[0].row, column=col).value = stored_value
-        ws.cell(row[0].row, column=col_children_iri).value = ", ".join(
-            children_by_iri[iri]
-        )
+    row = 3
+    for iri in children_by_iri:
+        for lang in row_by_iri[iri]:
+            ws.cell(row, column=1).value = iri
+            for col, stored_value in zip(range(2, col_last), row_by_iri[iri][lang]):
+                ws.cell(row, column=col).value = stored_value
+            ws.cell(row, column=col_children_iri).value = ", ".join(
+                children_by_iri[iri]
+            )
+            row += 1
 
-    # Clear remaining rows.
-    first_row_to_clear = 3 + len(children_by_iri)
-    for row in ws.iter_rows(  # pragma: no branch
-        min_row=first_row_to_clear, max_col=col_last
-    ):
+    while row <= max_row:
+        # Clear remaining rows.
         for col in range(1, col_last):
-            ws.cell(row[0].row, column=col).value = None
-        if row[0].row == max_row:
-            break
+            ws.cell(row, column=col).value = None
+        row += 1
 
     wb.save(outfile)
     print(f"Saved updated file as {outfile}")
@@ -249,7 +251,7 @@ def hierarchy_to_indent(fpath, outfile, sep):
                 for old, new, label in zip(old_data, new_data, labels):
                     if (old and new) and (old != new):
                         raise ValueError(
-                            f'Merge conflict for concept {iri} in column {label}. '
+                            f"Merge conflict for concept {iri} in column {label}. "
                             f'New: "{new}" - Before: "{old}"'
                         )
                     merged.append(old if old else new)
