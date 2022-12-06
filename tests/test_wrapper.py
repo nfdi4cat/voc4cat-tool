@@ -13,6 +13,8 @@ CS_CYCLES_TURTLE = "concept-scheme-with-cycles.ttl"
 CS_CYCLES_INDENT = "concept-scheme-with-cycles_indent.xlsx"
 CS_CYCLES_INDENT_IRI = "concept-scheme-with-cycles_indent_iri.xlsx"
 CS_CYCLES_INDENT_DOT = "concept-scheme-with-cycles_indent-by-dot.xlsx"
+CS_CYCLES_MULTI_LANG = "concept-scheme-with-cycles_multilang.xlsx"
+CS_CYCLES_MULTI_LANG_IND = "concept-scheme-with-cycles_multilang_indent_iri.xlsx"
 
 
 def test_main_no_args_entrypoint(monkeypatch, capsys):
@@ -28,6 +30,13 @@ def test_main_no_args(capsys):
     captured = capsys.readouterr()
     assert "usage: voc4cat" in captured.out
     assert exit_code == 0
+
+
+def test_main_unknown_arg(capsys):
+    exit_code = main_cli(["--unknown-arg"])
+    captured = capsys.readouterr()
+    assert "Unknown option: ['--unknown-arg']" in captured.out
+    assert exit_code == 1
 
 
 def test_main_version(capsys):
@@ -86,7 +95,7 @@ def test_add_IRI_variants(datadir, tmp_path, indir, outdir):
     os.chdir(tmp_path)
     main_cli(
         ["--add_IRI", "--no-warn"]
-        + (["--output_directory", outdir] if outdir else [])
+        + (["--output-directory", outdir] if outdir else [])
         + ([str(tmp_path)] if indir else [str(tmp_path / CS_CYCLES_INDENT)])
     )
     if outdir:
@@ -117,6 +126,15 @@ def test_add_IRI_overwrite_warning(datadir, tmp_path):
         main_cli(["--add_IRI", str(tmp_path / CS_CYCLES_INDENT)])
 
 
+def test_hierarchy_from_indent_on_dir(tmp_path, capsys):
+    exit_code = main_cli(["--hierarchy-from-indent", str(tmp_path / "missing.xlsx")])
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "File not found:" in captured.out
+
+    # exit_code = main_cli(["--hierarchy-from-indent", "tmp_path"])
+
+
 @pytest.mark.parametrize(
     "xlsxfile, indent",
     [(CS_CYCLES_INDENT_IRI, None), (CS_CYCLES_INDENT_DOT, "..")],
@@ -145,13 +163,46 @@ def test_hierarchy_from_indent(datadir, tmp_path, xlsxfile, indent):
             else []
         )
         + [
-            "--output_directory",
+            "--output-directory",
             str(tmp_path),
             xlsxfile,
         ]
     )
     os.chdir(tmp_path)
     wb = load_workbook(filename=xlsxfile, read_only=True, data_only=True)
+    ws = wb["Concepts"]
+    for row, expected_row in zip(ws.iter_rows(min_row=3, values_only=True), expected):
+        assert len(row) == expected_len
+        assert row in expected  # We intentionally don't check the row position here!
+
+
+def test_hierarchy_from_indent_multilang(datadir, tmp_path):
+    # fmt: off
+    expected = [  # data in children-IRI-representation
+        ('ex:test/term1', 'term1', 'en', 'def for term1', 'en', 'AltLbl for term1', 'ex:test/term2, ex:test/term3', 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
+        ('ex:test/term1', 'Begr1', 'de', 'Def für Begr1', 'de', 'AltLbl für Begr1', 'ex:test/term2, ex:test/term3', 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
+        # ('ex:test/term1', 'Begr1', 'de', 'Def für Begr1', 'de', 'für Begr1', None, None, None),  # noqa:E501
+        ('ex:test/term2', 'term2', 'en', 'def for term2', 'en', 'AltLbl for term2', 'ex:test/term4', 'Prov for term2', 'ex:XYZ/term2'),  # noqa:E501
+        ('ex:test/term3', 'term3', 'en', 'def for term3', 'en', 'AltLbl for term3', 'ex:test/term4', 'Prov for term3', 'ex:XYZ/term3'),  # noqa:E501
+        ('ex:test/term4', 'term4', 'en', 'def for term4', 'en', 'AltLbl for term4', None,            'Prov for term4', 'ex:XYZ/term4'),  # noqa:E501
+        ('ex:test/term4', 'Begr4', 'de', 'Def für Begr4', 'de', 'AltLbl für Begr4', None,            'Prov for term4', 'ex:XYZ/term4'),  # noqa:E501
+        (None, None, None, None, None, None, None, None, None)
+    ]
+    # fmt: on
+    expected_len = len(expected[0])
+    os.chdir(datadir)
+    main_cli(
+        [
+            "--hierarchy-from-indent",
+            "--output-directory",
+            str(tmp_path),
+            CS_CYCLES_MULTI_LANG_IND,
+        ]
+    )
+    os.chdir(tmp_path)
+    wb = load_workbook(
+        filename=CS_CYCLES_MULTI_LANG_IND, read_only=True, data_only=True
+    )
     ws = wb["Concepts"]
     for row, expected_row in zip(ws.iter_rows(min_row=3, values_only=True), expected):
         assert len(row) == expected_len
@@ -210,7 +261,7 @@ def test_hierarchy_to_indent(datadir, tmp_path, indent):
             else []
         )
         + [
-            "--output_directory",
+            "--output-directory",
             str(tmp_path),
             CS_CYCLES,
         ]
@@ -231,6 +282,66 @@ def test_hierarchy_to_indent(datadir, tmp_path, indent):
             assert row[col].value == expected_row[col]
 
 
+def test_hierarchy_to_indent_multilanguage(datadir, tmp_path):
+    # fmt: off
+    expected_rows = [  # data in children-IRI-representation
+        ('ex:test/term1', 'term1',     'en', 'def for term1', 'en', 'AltLbl for term1', None, 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
+        ('ex:test/term1', 'Begr1',     'de', 'Def für Begr1', 'de', 'AltLbl für Begr1', None, 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
+        ('ex:test/term3', '..term3',   'en', 'def for term3', 'en', 'AltLbl for term3', None, 'Prov for term3', 'ex:XYZ/term3'),  # noqa:E501
+        ('ex:test/term4', '....term4', 'en', 'def for term4', 'en', 'AltLbl for term4', None, 'Prov for term4', 'ex:XYZ/term4'),  # noqa:E501
+        ('ex:test/term4', '....Begr4', 'de', 'Def für Begr4', 'de', 'AltLbl für Begr4', None, 'Prov for term4', 'ex:XYZ/term4'),  # noqa:E501
+        ('ex:test/term2', 'term2',     'en', 'def for term2', 'en', 'AltLbl for term2', None, 'Prov for term2', 'ex:XYZ/term2'),  # noqa:E501
+        ('ex:test/term4', '..term4',   'en', None, None, None, None, None, None),
+        ('ex:test/term1', 'term1',     'en', None, None, None, None, None, None),
+        ('ex:test/term2', '..term2',   'en', None, None, None, None, None, None),
+        (None, None, None, None, None, None, None, None, None),
+    ]
+    # fmt: on
+    expected_levels = [0, 0, 1, 2, 2, 0, 1, 0, 1, 0]
+    assert len(expected_rows) == len(expected_levels)
+    os.chdir(datadir)
+    main_cli(
+        [
+            "--hierarchy-to-indent",
+            "--output-directory",
+            str(tmp_path),
+            CS_CYCLES_MULTI_LANG,
+        ]
+    )
+    os.chdir(tmp_path)
+    wb = load_workbook(filename=CS_CYCLES_MULTI_LANG, read_only=True)
+    ws = wb["Concepts"]
+    for row, expected_row, expected_level in zip(
+        ws.iter_rows(min_row=3), expected_rows, expected_levels
+    ):
+        # Excel-indent
+        assert int(row[1].alignment.indent) == expected_level
+
+        for col in range(len(expected_rows[0])):
+            if col == 1:  # Excel-indent
+                assert row[col].value == expected_row[col].strip(".")
+                continue
+            assert row[col].value == expected_row[col]
+
+
+def test_hierarchy_to_indent_merge(datadir, tmp_path):
+    shutil.copy(datadir / CS_CYCLES_MULTI_LANG, tmp_path)
+    os.chdir(tmp_path)
+    # change excel file: Delete vocabulary base IRI
+    wb = load_workbook(filename=CS_CYCLES_MULTI_LANG)
+    ws = wb["Concepts"]
+    ws.cell(row=8, column=8).value = "Contradicting def."
+    iri = ws.cell(row=8, column=1).value
+    new_filename = "indent_merge_problem.xlsx"
+    wb.save(new_filename)
+    wb.close()
+    with pytest.raises(ValueError) as excinfo:
+        main_cli(["--hierarchy-to-indent", "--no-warn", str(tmp_path / new_filename)])
+    assert f"Merge conflict for concept {iri} in column" in str(
+        excinfo.value  # noqa: WPS441
+    )
+
+
 @pytest.mark.parametrize(
     "outdir",
     [None, "out"],
@@ -240,7 +351,7 @@ def test_outdir_variants(datadir, tmp_path, outdir):
     shutil.copy(datadir / CS_CYCLES_INDENT_IRI, tmp_path)
     cmd = ["--hierarchy-from-indent"]
     if outdir:
-        cmd.extend(["--output_directory", str(tmp_path / outdir)])
+        cmd.extend(["--output-directory", str(tmp_path / outdir)])
     cmd.append(str(tmp_path / CS_CYCLES_INDENT_IRI))
     # print(f"\n>>> cmd {cmd}")
     os.chdir(tmp_path)
@@ -276,7 +387,7 @@ def test_run_ontospy(datadir, tmp_path, test_file):
     shutil.copy(datadir / CS_CYCLES_TURTLE, tmp_path)
     outdir = tmp_path / "ontospy"
     # To test the code-path, outdir is created automatically here.
-    main_cli(["--docs", "--output_directory", str(outdir), str(dst)])
+    main_cli(["--docs", "--output-directory", str(outdir), str(dst)])
     assert (outdir / Path(CS_CYCLES_TURTLE).stem / "dendro" / "index.html").exists()
     assert (outdir / Path(CS_CYCLES_TURTLE).stem / "docs" / "index.html").exists()
 
@@ -362,8 +473,8 @@ def test_run_vocexcel_badfile(datadir, tmp_path, caplog):
     shutil.copy(datadir / CS_CYCLES_INDENT, tmp_path)
     os.chdir(tmp_path)
     exit_code = main_cli([CS_CYCLES_INDENT])
-    assert exit_code == 1
-    # Note tge next message is logged by vocexcel so it may change.
+    assert exit_code > 0
+    # The next message is logged by vocexcel so it may change.
     assert "VIOLATION: Validation Result in MinCountConstraintComponent" in caplog.text
 
 
@@ -402,7 +513,7 @@ def test_run_vocexcel_outputdir(datadir, tmp_path, outputdir, testfile):
     log = "test-run.log"
     main_cli(
         ["--logfile", str(log)]
-        + (["--output_directory", str(outputdir)] if outputdir else [])
+        + (["--output-directory", str(outputdir)] if outputdir else [])
         + [str(tmp_path)]
     )
     outdir = tmp_path / outputdir

@@ -42,7 +42,6 @@ def is_file_available(fname, ftype):
     if not isinstance(ftype, list):
         ftype = [ftype]
     if fname is None or not os.path.exists(fname):
-        print(f"File not found: {fname}")
         return False
     if "excel" in ftype and fname.suffix.lower().endswith(tuple(EXCEL_FILE_ENDINGS)):
         return True
@@ -279,9 +278,7 @@ def hierarchy_to_indent(fpath, outfile, sep):
     row = 3
     for (iri, level) in concept_levels:
         for transl_no, lang in enumerate(row_by_iri[iri]):
-            print(iri, lang, row)
             if transl_no and (iri, lang) in iri_written:  # case 1
-                print(f"Skip repeating row in other language {iri}@{lang} in row {row}")
                 continue
             ws.cell(row, 1).value = iri
             concept_text = row_by_iri[iri][lang][0]
@@ -294,7 +291,6 @@ def hierarchy_to_indent(fpath, outfile, sep):
             ws.cell(row, 3).value = lang
 
             if (iri, lang) in iri_written:  # case 2
-                print(f"Skipping repeating details of {iri}@{lang} in row {row}")
                 for col, stored_value in zip(
                     range(4, col_last + 1), row_by_iri[iri][lang][2:]
                 ):
@@ -447,7 +443,7 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
-        "--output_directory",
+        "--output-directory",
         help=(
             "Specify directory where files should be written to. "
             "The directory is created if required."
@@ -475,8 +471,8 @@ def main_cli(args=None):
         "-l",
         "--logfile",
         help=(
-            "The file to write logging output to. If -od/--output_directory is also "
-            "given, the file is placed in that diretory."
+            "The file to write logging output to. If -od/--output-directory is also "
+            "given, the file is placed in that directory."
         ),
         type=Path,
         required=False,
@@ -536,10 +532,14 @@ def main_cli(args=None):
         ),
     )
 
-    args_wrapper, _ = parser.parse_known_args(args)
+    args_wrapper, unknown = parser.parse_known_args(args)
     vocexcel_args = args_wrapper.vocexcel_options or []
 
     err = 0  # return error code
+
+    if unknown:
+        print(f"Unknown option: {unknown}")
+        return 1
 
     if not has_args:
         # show help if no args are given
@@ -582,9 +582,10 @@ def main_cli(args=None):
         elif args_wrapper.file_to_preprocess.is_dir():
             # processing all files in directory is not supported for now.
             raise NotImplementedError(
-                "Processing all files in directory not yet implemented."
+                "Processing all files in directory not implemented for this option."
             )
-        else:  # File not found
+        else:
+            print(f"File not found: {args_wrapper.file_to_preprocess}.")
             return 1
         if args_wrapper.hierarchy_from_indent:
             hierarchy_from_indent(args_wrapper.file_to_preprocess, outfile, sep)
@@ -671,48 +672,13 @@ def main_cli(args=None):
             turtle_files = glob.glob(os.path.join(dir_, "*.ttl")) + glob.glob(
                 os.path.join(dir_, "*.turtle")
             )
-
-            print("\nCalling VocExcel for Excel files")
-            for xlf in glob.glob(os.path.join(dir_, "*.xlsx")):
-                print(f"  {xlf}")
-                locargs = list(vocexcel_args)
-                locargs.append(xlf)
-                fprefix, fsuffix = str(xlf).rsplit(".", 1)
-                fname = os.path.split(fprefix)[1]  # split off leading dirs
-                if outdir is None:
-                    outfile = Path(f"{fprefix}.ttl")
-                else:
-                    outfile = Path(outdir) / Path(f"{fname}.ttl")
-                    locargs = ["--outputfile", str(outfile)] + locargs
-                err += run_vocexcel(locargs)
-
-            print("Calling VocExcel for turtle files")
-            for ttlf in turtle_files:
-                print(f"  {ttlf}")
-                locargs = list(vocexcel_args)
-                locargs.append(ttlf)
-                fprefix, fsuffix = str(ttlf).rsplit(".", 1)
-                fname = os.path.split(fprefix)[1]  # split off leading dirs
-                if outdir is None:
-                    outfile = Path(f"{fprefix}.xlsx")
-                else:
-                    outfile = Path(outdir) / Path(f"{fname}.xlsx")
-                    locargs = ["--outputfile", str(outfile)] + locargs
-                err += run_vocexcel(locargs)
-
-            if args_wrapper.docs and (args_wrapper.forward or turtle_files):
-                infile = args_wrapper.file_to_preprocess
-                doc_path = infile if outdir is None else outdir
-                err += run_ontospy(infile, doc_path)
-
-        elif is_file_available(args_wrapper.file_to_preprocess, ftype=["excel", "rdf"]):
-            print(f"Calling VocExcel for file {args_wrapper.file_to_preprocess}")
-            file_to_process = str(args_wrapper.file_to_preprocess)
-            err += run_vocexcel(vocexcel_args[:] + [file_to_process])
-            if args_wrapper.docs:
-                infile = Path(args_wrapper.file_to_preprocess).with_suffix(".ttl")
-                doc_path = outdir if outdir is not None else infile.parent
-                err += run_ontospy(infile, doc_path)
+            xlsx_files = glob.glob(os.path.join(dir_, "*.xlsx"))
+        elif is_file_available(args_wrapper.file_to_preprocess, ftype=["excel"]):
+            turtle_files = []
+            xlsx_files = [str(args_wrapper.file_to_preprocess)]
+        elif is_file_available(args_wrapper.file_to_preprocess, ftype=["rdf"]):
+            turtle_files = [str(args_wrapper.file_to_preprocess)]
+            xlsx_files = []
         else:
             if os.path.exists(args_wrapper.file_to_preprocess):
                 print(f"Cannot convert file {args_wrapper.file_to_preprocess}")
@@ -723,7 +689,50 @@ def main_cli(args=None):
                 print(f"Files for processing must end with one of {endings}.")
             else:
                 print(f"File not found: {args_wrapper.file_to_preprocess}.")
-            err = 1
+            return 1
+
+        if xlsx_files:
+            print("\nCalling VocExcel for Excel files")
+        for xlf in xlsx_files:
+            print(f"  {xlf}")
+            locargs = list(vocexcel_args)
+            locargs.append(xlf)
+            fprefix, fsuffix = str(xlf).rsplit(".", 1)
+            fname = os.path.split(fprefix)[1]  # split off leading dirs
+            if outdir is None:
+                outfile = Path(f"{fprefix}.ttl")
+            else:
+                outfile = Path(outdir) / Path(f"{fname}.ttl")
+                locargs = ["--outputfile", str(outfile)] + locargs
+            err += run_vocexcel(locargs)
+
+        if turtle_files:
+            print("Calling VocExcel for turtle files")
+        for ttlf in turtle_files:
+            print(f"  {ttlf}")
+            locargs = list(vocexcel_args)
+            locargs.append(ttlf)
+            fprefix, fsuffix = str(ttlf).rsplit(".", 1)
+            fname = os.path.split(fprefix)[1]  # split off leading dirs
+            if outdir is None:
+                outfile = Path(f"{fprefix}.xlsx")
+            else:
+                outfile = Path(outdir) / Path(f"{fname}.xlsx")
+                locargs = ["--outputfile", str(outfile)] + locargs
+            err += run_vocexcel(locargs)
+
+        if (
+            args_wrapper.docs
+            and (args_wrapper.forward or turtle_files)
+            and os.path.isdir(args_wrapper.file_to_preprocess)
+        ):
+            infile = args_wrapper.file_to_preprocess
+            doc_path = infile if outdir is None else outdir
+            err += run_ontospy(infile, doc_path)
+        else:
+            infile = Path(args_wrapper.file_to_preprocess).with_suffix(".ttl")
+            doc_path = outdir if outdir is not None else infile.parent
+            err += run_ontospy(infile, doc_path)
     else:
         raise AssertionError("This part should never be reached!")
 
