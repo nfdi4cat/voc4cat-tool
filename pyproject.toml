@@ -68,7 +68,7 @@ dev = [
 
 [project.scripts]
 voc4cat = "voc4cat.wrapper:main_cli"
-merge_vocab = "voc4cat.merge_vocab:run"
+merge_vocab = "voc4cat.merge_vocab:main_cli"
 
 #[tool.setuptools.packages.find]
 #where = ["src"]
