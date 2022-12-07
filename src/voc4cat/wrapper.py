@@ -11,6 +11,7 @@ import datetime
 import glob
 import os
 import sys
+from collections import defaultdict
 from pathlib import Path
 from warnings import warn
 
@@ -41,7 +42,6 @@ def is_file_available(fname, ftype):
     if not isinstance(ftype, list):
         ftype = [ftype]
     if fname is None or not os.path.exists(fname):
-        print(f"File not found: {fname}")
         return False
     if "excel" in ftype and fname.suffix.lower().endswith(tuple(EXCEL_FILE_ENDINGS)):
         return True
@@ -134,14 +134,16 @@ def hierarchy_from_indent(fpath, outfile, sep):
     subsequent_empty_rows = 0
     ws = wb["Concepts"]
     concepts_indented = []
-    row_by_iri = {}
+    row_by_iri = defaultdict(dict)
     # read concepts, determine their indentation level, then clear indentation
     col_last = 9
     max_row = 0
     for row in ws.iter_rows(min_row=3, max_col=col_last):  # pragma: no branch
         iri = row[0].value
-        row_no = row[0].row
         if iri and row[1].value:
+            row_no = row[0].row
+            lang = row[2].value
+
             if sep is None:  # Excel indentation
                 level = int(row[1].alignment.indent)
                 ws.cell(row_no, column=2).alignment = Alignment(indent=0)
@@ -153,23 +155,24 @@ def hierarchy_from_indent(fpath, outfile, sep):
                 ws.cell(row_no, column=2).alignment = Alignment(indent=0)
             concepts_indented.append(level * " " + iri)
 
-            # TODO think about how to handle language.
             if iri in row_by_iri:  # merge needed
                 # compare fields, merge if one is empty, error if different values
                 new_data = [
                     ws.cell(row_no, col_no).value for col_no in range(2, col_last)
                 ]
+                old_data = row_by_iri[iri].get(lang, [None] * (len(new_data)))
                 merged = []
-                for old, new in zip(row_by_iri[iri], new_data):
+                labels = ["ChildrenIRI", "Provenance", "SourceVocabURL"]
+                for old, new, label in zip(old_data, new_data, labels):
                     if (old and new) and (old != new):
                         raise ValueError(
                             f"Cannot merge rows for {iri}. "
                             "Resolve differences manually."
                         )
                     merged.append(old if old else new)
-                row_by_iri[iri] = merged
+                row_by_iri[iri][lang] = merged
             else:
-                row_by_iri[iri] = [
+                row_by_iri[iri][lang] = [
                     ws.cell(row_no, col_no).value for col_no in range(2, col_last)
                 ]
             max_row = row_no
@@ -184,25 +187,24 @@ def hierarchy_from_indent(fpath, outfile, sep):
     term_dag = dag_from_indented_text("\n".join(concepts_indented))
     children_by_iri = dag_to_narrower(term_dag)
 
-    # Update childrenURI column
+    # Write rows to xlsx-file, write translation directly after each concept.
     col_children_iri = 7
-    for iri, row in zip(children_by_iri, ws.iter_rows(min_row=3, max_col=col_last)):
-        ws.cell(row[0].row, column=1).value = iri
-        for col, stored_value in zip(range(2, col_last), row_by_iri[iri]):
-            ws.cell(row[0].row, column=col).value = stored_value
-        ws.cell(row[0].row, column=col_children_iri).value = ", ".join(
-            children_by_iri[iri]
-        )
+    row = 3
+    for iri in children_by_iri:
+        for lang in row_by_iri[iri]:
+            ws.cell(row, column=1).value = iri
+            for col, stored_value in zip(range(2, col_last), row_by_iri[iri][lang]):
+                ws.cell(row, column=col).value = stored_value
+            ws.cell(row, column=col_children_iri).value = ", ".join(
+                children_by_iri[iri]
+            )
+            row += 1
 
-    # Clear remaining rows.
-    first_row_to_clear = 3 + len(children_by_iri)
-    for row in ws.iter_rows(  # pragma: no branch
-        min_row=first_row_to_clear, max_col=col_last
-    ):
+    while row <= max_row:
+        # Clear remaining rows.
         for col in range(1, col_last):
-            ws.cell(row[0].row, column=col).value = None
-        if row[0].row == max_row:
-            break
+            ws.cell(row, column=col).value = None
+        row += 1
 
     wb.save(outfile)
     print(f"Saved updated file as {outfile}")
@@ -223,7 +225,7 @@ def hierarchy_to_indent(fpath, outfile, sep):
 
     concept_children_dict = {}
     subsequent_empty_rows = 0
-    row_by_iri = {}
+    row_by_iri = defaultdict(dict)
     col_last = 9
     # read all IRI, preferred labels, childrenURIs from the sheet
     for rows_total, row in enumerate(  # pragma: no branch
@@ -231,12 +233,32 @@ def hierarchy_to_indent(fpath, outfile, sep):
     ):
         if row[0] and row[1]:
             iri = row[0]
+            lang = row[2]
             if not row[6]:
                 childrenURIs = []
             else:
                 childrenURIs = [c.strip() for c in row[6].split(",")]
-            concept_children_dict[iri] = childrenURIs
-            row_by_iri[iri] = [row[col] for col in range(1, col_last)]
+            # We need to check if ChildrenIRI, Provenance & Source Vocab URL
+            # are consistent across languages since SKOS has no support for
+            # per language statements. (SKOS-XL would add this)
+            if iri in row_by_iri:  # merge needed
+                # compare fields, merge if one is empty, error if different values
+                new_data = [row[col_no] for col_no in range(6, col_last)]
+                old_data = row_by_iri[iri][list(row_by_iri[iri].keys())[0]][5:]
+                merged = []
+                labels = ["ChildrenIRI", "Provenance", "SourceVocabURL"]
+                for old, new, label in zip(old_data, new_data, labels):
+                    if (old and new) and (old != new):
+                        raise ValueError(
+                            f"Merge conflict for concept {iri} in column {label}. "
+                            f'New: "{new}" - Before: "{old}"'
+                        )
+                    merged.append(old if old else new)
+                row_by_iri[iri][lang] = [row[col] for col in range(1, 6)] + merged
+            else:
+                row_by_iri[iri][lang] = [row[col] for col in range(1, col_last)]
+                concept_children_dict[iri] = childrenURIs
+
         else:
             # stop processing a sheet after 3 empty rows
             if subsequent_empty_rows < 2:
@@ -249,28 +271,41 @@ def hierarchy_to_indent(fpath, outfile, sep):
     term_dag = dag_from_narrower(concept_children_dict)
     concept_levels = dag_to_node_levels(term_dag)
 
-    # Set cell values by breaking them down into individual cells
+    # Write indented rows to xlsx-file but
+    # 1 - each concept translation only once
+    # 2 - details only once per concept and language
     iri_written = []
-    for row, (iri, level) in zip(
-        ws.iter_rows(min_row=3, max_col=col_last), concept_levels
-    ):
-        row[0].value = iri
-        concept_text = row_by_iri[iri][0]
-        if sep is None:
-            row[1].value = concept_text
-            row[1].alignment = Alignment(indent=level)
-        else:
-            row[1].value = sep * level + concept_text
-            row[1].alignment = Alignment(indent=0)
-        row[2].value = row_by_iri[iri][1]
-        for col, stored_value in zip(range(4, col_last + 1), row_by_iri[iri][2:]):
-            if iri in iri_written:
-                ws.cell(row[0].row, column=col).value = None
+    row = 3
+    for (iri, level) in concept_levels:
+        for transl_no, lang in enumerate(row_by_iri[iri]):
+            if transl_no and (iri, lang) in iri_written:  # case 1
+                continue
+            ws.cell(row, 1).value = iri
+            concept_text = row_by_iri[iri][lang][0]
+            if sep is None:
+                ws.cell(row, 2).value = concept_text
+                ws.cell(row, 2).alignment = Alignment(indent=level)
             else:
-                ws.cell(row[0].row, column=col).value = stored_value
+                ws.cell(row, 2).value = sep * level + concept_text
+                ws.cell(row, 2).alignment = Alignment(indent=0)
+            ws.cell(row, 3).value = lang
+
+            if (iri, lang) in iri_written:  # case 2
+                for col, stored_value in zip(
+                    range(4, col_last + 1), row_by_iri[iri][lang][2:]
+                ):
+                    ws.cell(ws.cell(row, 1).row, column=col).value = None
+                row += 1
+                continue
+            else:
+                for col, stored_value in zip(
+                    range(4, col_last + 1), row_by_iri[iri][lang][2:]
+                ):
+                    ws.cell(ws.cell(row, 1).row, column=col).value = stored_value
             # clear children IRI column G
-            ws.cell(row[0].row, column=7).value = None
-        iri_written.append(iri)
+            ws.cell(ws.cell(row, 1).row, column=7).value = None
+            row += 1
+            iri_written.append((iri, lang))
 
     wb.save(outfile)
     print(f"Saved updated file as {outfile}")
@@ -408,7 +443,7 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
-        "--output_directory",
+        "--output-directory",
         help=(
             "Specify directory where files should be written to. "
             "The directory is created if required."
@@ -436,8 +471,8 @@ def main_cli(args=None):
         "-l",
         "--logfile",
         help=(
-            "The file to write logging output to. If -od/--output_directory is also "
-            "given, the file is placed in that diretory."
+            "The file to write logging output to. If -od/--output-directory is also "
+            "given, the file is placed in that directory."
         ),
         type=Path,
         required=False,
@@ -497,10 +532,14 @@ def main_cli(args=None):
         ),
     )
 
-    args_wrapper, _ = parser.parse_known_args(args)
+    args_wrapper, unknown = parser.parse_known_args(args)
     vocexcel_args = args_wrapper.vocexcel_options or []
 
     err = 0  # return error code
+
+    if unknown:
+        print(f"Unknown option: {unknown}")
+        return 1
 
     if not has_args:
         # show help if no args are given
@@ -540,9 +579,14 @@ def main_cli(args=None):
                 outfile = args_wrapper.file_to_preprocess
             else:
                 outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
-        else:
+        elif args_wrapper.file_to_preprocess.is_dir():
             # processing all files in directory is not supported for now.
-            raise NotImplementedError()
+            raise NotImplementedError(
+                "Processing all files in directory not implemented for this option."
+            )
+        else:
+            print(f"File not found: {args_wrapper.file_to_preprocess}.")
+            return 1
         if args_wrapper.hierarchy_from_indent:
             hierarchy_from_indent(args_wrapper.file_to_preprocess, outfile, sep)
         else:
@@ -628,48 +672,13 @@ def main_cli(args=None):
             turtle_files = glob.glob(os.path.join(dir_, "*.ttl")) + glob.glob(
                 os.path.join(dir_, "*.turtle")
             )
-
-            print("\nCalling VocExcel for Excel files")
-            for xlf in glob.glob(os.path.join(dir_, "*.xlsx")):
-                print(f"  {xlf}")
-                locargs = list(vocexcel_args)
-                locargs.append(xlf)
-                fprefix, fsuffix = str(xlf).rsplit(".", 1)
-                fname = os.path.split(fprefix)[1]  # split off leading dirs
-                if outdir is None:
-                    outfile = Path(f"{fprefix}.ttl")
-                else:
-                    outfile = Path(outdir) / Path(f"{fname}.ttl")
-                    locargs = ["--outputfile", str(outfile)] + locargs
-                err += run_vocexcel(locargs)
-
-            print("Calling VocExcel for turtle files")
-            for ttlf in turtle_files:
-                print(f"  {ttlf}")
-                locargs = list(vocexcel_args)
-                locargs.append(ttlf)
-                fprefix, fsuffix = str(ttlf).rsplit(".", 1)
-                fname = os.path.split(fprefix)[1]  # split off leading dirs
-                if outdir is None:
-                    outfile = Path(f"{fprefix}.xlsx")
-                else:
-                    outfile = Path(outdir) / Path(f"{fname}.xlsx")
-                    locargs = ["--outputfile", str(outfile)] + locargs
-                err += run_vocexcel(locargs)
-
-            if args_wrapper.docs and (args_wrapper.forward or turtle_files):
-                infile = args_wrapper.file_to_preprocess
-                doc_path = infile if outdir is None else outdir
-                err += run_ontospy(infile, doc_path)
-
-        elif is_file_available(args_wrapper.file_to_preprocess, ftype=["excel", "rdf"]):
-            print(f"Calling VocExcel for file {args_wrapper.file_to_preprocess}")
-            file_to_process = str(args_wrapper.file_to_preprocess)
-            err += run_vocexcel(vocexcel_args[:] + [file_to_process])
-            if args_wrapper.docs:
-                infile = Path(args_wrapper.file_to_preprocess).with_suffix(".ttl")
-                doc_path = outdir if outdir is not None else infile.parent
-                err += run_ontospy(infile, doc_path)
+            xlsx_files = glob.glob(os.path.join(dir_, "*.xlsx"))
+        elif is_file_available(args_wrapper.file_to_preprocess, ftype=["excel"]):
+            turtle_files = []
+            xlsx_files = [str(args_wrapper.file_to_preprocess)]
+        elif is_file_available(args_wrapper.file_to_preprocess, ftype=["rdf"]):
+            turtle_files = [str(args_wrapper.file_to_preprocess)]
+            xlsx_files = []
         else:
             if os.path.exists(args_wrapper.file_to_preprocess):
                 print(f"Cannot convert file {args_wrapper.file_to_preprocess}")
@@ -679,8 +688,51 @@ def main_cli(args=None):
                 )
                 print(f"Files for processing must end with one of {endings}.")
             else:
-                print("File not found: {args_wrapper.file_to_preprocess}.")
-            err = 1
+                print(f"File not found: {args_wrapper.file_to_preprocess}.")
+            return 1
+
+        if xlsx_files:
+            print("\nCalling VocExcel for Excel files")
+        for xlf in xlsx_files:
+            print(f"  {xlf}")
+            locargs = list(vocexcel_args)
+            locargs.append(xlf)
+            fprefix, fsuffix = str(xlf).rsplit(".", 1)
+            fname = os.path.split(fprefix)[1]  # split off leading dirs
+            if outdir is None:
+                outfile = Path(f"{fprefix}.ttl")
+            else:
+                outfile = Path(outdir) / Path(f"{fname}.ttl")
+                locargs = ["--outputfile", str(outfile)] + locargs
+            err += run_vocexcel(locargs)
+
+        if turtle_files:
+            print("Calling VocExcel for turtle files")
+        for ttlf in turtle_files:
+            print(f"  {ttlf}")
+            locargs = list(vocexcel_args)
+            locargs.append(ttlf)
+            fprefix, fsuffix = str(ttlf).rsplit(".", 1)
+            fname = os.path.split(fprefix)[1]  # split off leading dirs
+            if outdir is None:
+                outfile = Path(f"{fprefix}.xlsx")
+            else:
+                outfile = Path(outdir) / Path(f"{fname}.xlsx")
+                locargs = ["--outputfile", str(outfile)] + locargs
+            err += run_vocexcel(locargs)
+
+        if (
+            args_wrapper.docs
+            and (args_wrapper.forward or turtle_files)
+            and os.path.isdir(args_wrapper.file_to_preprocess)
+        ):
+            infile = args_wrapper.file_to_preprocess
+            doc_path = infile if outdir is None else outdir
+            err += run_ontospy(infile, doc_path)
+        else:
+            infile = Path(args_wrapper.file_to_preprocess).with_suffix(".ttl")
+            doc_path = outdir if outdir is not None else infile.parent
+            err += run_ontospy(infile, doc_path)
     else:
         raise AssertionError("This part should never be reached!")
 
