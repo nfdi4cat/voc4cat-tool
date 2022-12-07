@@ -401,9 +401,6 @@ def test_run_ontospy_checks(tmp_path, capsys):
         f"No turtle file(s) found to document with Ontospy in {tmp_path}"
         in captured.out
     )
-
-    # def test_run_ontospy_check_file(tmp_path, capsys):
-    #     """Check handling of missing dir/file."""
     exit_code = run_ontospy(tmp_path / CS_CYCLES_TURTLE, tmp_path)
     captured = capsys.readouterr()
     assert exit_code == 1
