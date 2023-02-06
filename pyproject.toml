@@ -139,7 +139,7 @@ parallel = true
 branch = true
 source = ["voc4cat"]
 omit = [
-    "src/voc4cat/_version.py",
+    "voc4cat/_version.py",
 ]
 
 [tool.coverage.paths]
@@ -163,9 +163,6 @@ exclude_lines = [
     "raise NotImplementedError",
     "return NotImplemented",
     "if __name__ == .__main__.:",
-]
-omit = [
-    "src/voc4cat/_version.py",
 ]
 
 [tool.coverage.html]
