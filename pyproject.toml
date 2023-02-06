@@ -137,8 +137,6 @@ addopts = "--strict-markers --strict-config --tb=short"
 # https://coverage.readthedocs.io/en/latest/config.html
 parallel = true
 branch = true
-# Use relative file paths to make combine coverage data easier
-#relative_files = true
 source = ["voc4cat"]
 omit = [
     "src/voc4cat/_version.py",
@@ -165,6 +163,9 @@ exclude_lines = [
     "raise NotImplementedError",
     "return NotImplemented",
     "if __name__ == .__main__.:",
+]
+omit = [
+    "src/voc4cat/_version.py",
 ]
 
 [tool.coverage.html]
