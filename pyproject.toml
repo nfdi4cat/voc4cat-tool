@@ -138,10 +138,16 @@ addopts = "--strict-markers --strict-config --tb=short"
 parallel = true
 branch = true
 # Use relative file paths to make combine coverage data easier
-relative_files = true
+#relative_files = true
 source = ["voc4cat"]
 omit = [
     "src/voc4cat/_version.py",
+]
+
+[tool.coverage.paths]
+source = [
+    "src",
+    # ".tox/**/site-packages",
 ]
 
 [tool.coverage.report]
