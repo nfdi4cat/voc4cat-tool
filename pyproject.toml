@@ -145,8 +145,10 @@ omit = [
 ]
 
 [tool.coverage.paths]
+# Specify where coverage schould look for source files.
 source = [
     "src",
+    "**/site-packages", # for not using tox
     # ".tox/**/site-packages",
 ]
 
