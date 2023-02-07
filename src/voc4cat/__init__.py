@@ -3,7 +3,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 try:
     __version__ = version("voc4cat")
-except PackageNotFoundError:
+except PackageNotFoundError:  # pragma: no cover
     # package is not installed
     try:
         from ._version import version as __version__

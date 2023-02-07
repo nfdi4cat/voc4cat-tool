@@ -53,7 +53,7 @@ documentation = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/voc4
 [project.optional-dependencies]
 tests = [
   "pytest",
-  "pytest-cov",
+  "coverage",
 ]
 lint = [
   "black",
@@ -109,13 +109,6 @@ src_paths = ["src", "tests"]
 [tool.pylint.format]
 max-line-length = "88"
 
-[tool.coverage.run]
-# https://coverage.readthedocs.io/en/latest/config.html
-branch = true
-omit = [
-    "src/voc4cat/_version.py",
-]
-
 [tool.pytest.ini_options]
 # pytest configuration:
 # https://docs.pytest.org/en/stable/customize.html
@@ -138,15 +131,24 @@ norecursedirs = "dist build .tox .git .cache __pycache__ .venv"
 # --tb=short
 # Execute doctests in classes, functions, and test modules (pytest)
 # --doctest-modules
-# Coverage (pytest-cov)
-# --cov=src/voc4cat
-# --cov=tests
-# --cov-branch
-# --cov-report=term:skip-covered
-# --cov-report=html
-# Failing due to coverage makes no sense for voc4cat currently.
-# --cov-fail-under=100
-addopts = "--strict-markers --strict-config --tb=short --cov=src/voc4cat --cov=tests --cov-branch --cov-report=term:skip-covered --cov-report=html"
+addopts = "--strict-markers --strict-config --tb=short"
+
+[tool.coverage.run]
+# https://coverage.readthedocs.io/en/latest/config.html
+parallel = true
+branch = true
+source = ["voc4cat"]
+omit = [
+    "**/voc4cat/_version.py",
+]
+
+[tool.coverage.paths]
+# Specify where coverage schould look for source files.
+source = [
+    "src",
+    "**/site-packages", # for not using tox
+    # ".tox/**/site-packages",
+]
 
 [tool.coverage.report]
 # Show in report which lines are not covered

@@ -38,7 +38,7 @@ coverage:
   script:
     # Install package including tests-extras as editable to determine coverage
     - pip install -e .[tests]
-    - pytest -q --cov=src tests
+    - python -m coverage run -m pytest
     - coverage xml
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
