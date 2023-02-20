@@ -730,9 +730,8 @@ def main_cli(args=None):
             doc_path = outdir if outdir is not None else infile.parent
             err += run_ontospy(infile, doc_path)
     else:
-        # Unknown voc4cat option and no call to vocexcel made.
-        if unknown_option:
-            print(f"Unknown option: {unknown_option}")
+        # Unknown voc4cat option
+        print(f"Unknown option: {unknown_option}")
         return 1
 
     return err
