@@ -328,7 +328,7 @@ def run_ontospy(file_path, output_path):
     elif Path(file_path).exists():
         turtle_files = [file_path]
     else:
-        print(f"File/dir not found: {file_path}")
+        print(f"File/dir not found (ontospy): {file_path}")
         return 1
 
     for turtle_file in turtle_files:
@@ -532,14 +532,10 @@ def main_cli(args=None):
         ),
     )
 
-    args_wrapper, unknown = parser.parse_known_args(args)
+    args_wrapper, unknown_option = parser.parse_known_args(args)
     vocexcel_args = args_wrapper.vocexcel_options or []
 
     err = 0  # return error code
-
-    if unknown:
-        print(f"Unknown option: {unknown}")
-        return 1
 
     if not has_args:
         # show help if no args are given
@@ -729,12 +725,14 @@ def main_cli(args=None):
             infile = args_wrapper.file_to_preprocess
             doc_path = infile if outdir is None else outdir
             err += run_ontospy(infile, doc_path)
-        else:
+        elif args_wrapper.docs:
             infile = Path(args_wrapper.file_to_preprocess).with_suffix(".ttl")
             doc_path = outdir if outdir is not None else infile.parent
             err += run_ontospy(infile, doc_path)
     else:
-        raise AssertionError("This part should never be reached!")
+        # Unknown voc4cat option
+        print(f"Unknown option: {unknown_option}")
+        return 1
 
     return err
 

@@ -404,7 +404,7 @@ def test_run_ontospy_checks(tmp_path, capsys):
     exit_code = run_ontospy(tmp_path / CS_CYCLES_TURTLE, tmp_path)
     captured = capsys.readouterr()
     assert exit_code == 1
-    assert f"File/dir not found: {tmp_path/CS_CYCLES_TURTLE}" in captured.out
+    assert f"File/dir not found (ontospy): {tmp_path/CS_CYCLES_TURTLE}" in captured.out
 
 
 @pytest.mark.parametrize(
