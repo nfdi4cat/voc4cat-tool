@@ -532,13 +532,10 @@ def main_cli(args=None):
         ),
     )
 
-    args_wrapper, unknown = parser.parse_known_args(args)
+    args_wrapper, unknown_option = parser.parse_known_args(args)
     vocexcel_args = args_wrapper.vocexcel_options or []
 
     err = 0  # return error code
-
-    if unknown:
-        print(f"Option unknown to voc4cat (forwarded to vocexcel): {unknown}")
 
     if not has_args:
         # show help if no args are given
@@ -733,7 +730,10 @@ def main_cli(args=None):
             doc_path = outdir if outdir is not None else infile.parent
             err += run_ontospy(infile, doc_path)
     else:
-        raise AssertionError("This part should never be reached!")
+        # Unknown voc4cat option and no call to vocexcel made.
+        if unknown_option:
+            print(f"Unknown option: {unknown_option}")
+        return 1
 
     return err
 
