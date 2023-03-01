@@ -12,6 +12,7 @@ import glob
 import os
 import sys
 from collections import defaultdict
+from itertools import count
 from pathlib import Path
 from warnings import warn
 
@@ -114,6 +115,90 @@ def add_IRI(fpath, outfile):
                     subsequent_empty_rows += 1
                 else:
                     break
+
+    wb.save(outfile)
+    print(f"Saved updated file as {outfile}")
+    return 0
+
+
+# def load_prefixes(wb):
+#     ws = wb["Prefix Sheet"]
+#     namespace_prefixes = {}
+#     # iterate over first two columns; skip header and start from row 3
+#     for row in ws.iter_rows(min_row=3, max_col=2):  # pragma: no branch
+#         if row[0].value and row[1].value:
+#             prefix, namespace = row[0].value.rstrip(":"), row[1].value
+#             namespace_prefixes[namespace] = prefix
+#     return namespace_prefixes
+
+
+def make_ids(fpath, outfile, search_prefix, start_id):
+    """
+    Replace all prefix:suffix CURIs using IDs counting up from start_id
+
+    If new_prefix is None the new IRI is a concatenation of VOC_BASE_IRI and ID.
+    If new_prefix is given the new IRI is the CURI new_prefix:ID.
+    """
+    print(f"\nReplacing {search_prefix}:... IRIs.")
+    wb = openpyxl.load_workbook(fpath)
+    is_supported_template(wb)
+    VOC_BASE_IRI = wb["Concept Scheme"].cell(row=2, column=2).value
+    if VOC_BASE_IRI is None:
+        VOC_BASE_IRI = "https://example.org/"
+        wb["Concept Scheme"].cell(row=2, column=2).value = VOC_BASE_IRI
+    if not VOC_BASE_IRI.endswith("/"):
+        VOC_BASE_IRI += "/"
+
+    try:
+        start_id = int(start_id)
+    except ValueError:
+        start_id = -1
+    if start_id <= 0:
+        raise ValueError(
+            'For option --make-ids the "start_id" must be an integer greater than 0.'
+        )
+
+    id_gen = count(int(start_id))
+    replaced_iris = {}
+    # process primary iri column in both worksheets
+    for sheet in ["Concepts", "Collections"]:
+        ws = wb[sheet]
+        # iterate over first two columns; skip header and start from row 3
+        for row in ws.iter_rows(min_row=3, max_col=2):  # pragma: no branch
+            if row[0].value:
+                iri = str(row[0].value)
+                if iri.startswith(search_prefix):
+                    iri_new = VOC_BASE_IRI + str(next(id_gen))
+                    print(f"[{sheet}] Replaced CURI {iri} by {iri_new}")
+                    replaced_iris[iri] = iri_new
+                    # TODO Check elsewhere, code was unnecessary complex: ws.cell(row[0].row, column=1).value = iri_new
+                    row[0].value = iri_new
+
+    # replace iri by new_iri in all columns where it might be referenced
+    cols_to_update = {
+        "Concepts": [6],
+        "Collections": [3],
+        "Additional Concept Features": [1, 2, 3, 4, 5],
+    }
+    for sheet, cols in cols_to_update.items():
+        subsequent_empty_rows = 0
+        ws = wb[sheet]
+        # iterate over first two columns; skip header and start from row 3
+        for row in ws.iter_rows(min_row=3, max_col=1 + max(cols)):  # pragma: no branch
+            # stop processing a sheet after 3 empty rows
+            if subsequent_empty_rows < 3:
+                subsequent_empty_rows += 1
+            else:
+                break
+            for col in cols:
+                if row[col].value:
+                    iris = [iri.strip() for iri in str(row[col].value).split(",")]
+                    new_iris = [replaced_iris.get(iri, iri) for iri in iris]
+                    print(
+                        f"[{sheet}] Replaced {len(new_iris)} CURIs in cell {row[col].coordinate}"
+                    )
+                    row[col].value = ", ".join(new_iris)
+                    subsequent_empty_rows = 0
 
     wb.save(outfile)
     print(f"Saved updated file as {outfile}")
@@ -276,7 +361,7 @@ def hierarchy_to_indent(fpath, outfile, sep):
     # 2 - details only once per concept and language
     iri_written = []
     row = 3
-    for (iri, level) in concept_levels:
+    for iri, level in concept_levels:
         for transl_no, lang in enumerate(row_by_iri[iri]):
             if transl_no and (iri, lang) in iri_written:  # case 1
                 continue
@@ -415,7 +500,6 @@ def run_vocexcel(args=None):
 
 
 def main_cli(args=None):
-
     if args is None:  # voc4cat run via entrypoint
         args = sys.argv[1:]
 
@@ -440,6 +524,17 @@ def main_cli(args=None):
             "if none is present."
         ),
         action="store_true",
+    )
+    parser.add_argument(
+        "--make-ids",
+        help=(
+            "Specify prefix to search and replace by ID-based vocabulary IRIs. "
+            "The prefix and the start ID (positive interger) are required."
+        ),
+        nargs=2,
+        metavar=("prefix", "start-ID"),
+        type=str,
+        required=False,
     )
 
     parser.add_argument(
@@ -588,12 +683,12 @@ def main_cli(args=None):
         else:
             hierarchy_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
 
-    elif args_wrapper.add_IRI or args_wrapper.check:
+    elif args_wrapper.add_IRI or args_wrapper.make_ids or args_wrapper.check:
         funcs = [
             m
             for m, to_run in zip(
-                [add_IRI, check],
-                [args_wrapper.add_IRI, args_wrapper.check],
+                [add_IRI, make_ids, check],
+                [args_wrapper.add_IRI, args_wrapper.make_ids, args_wrapper.check],
             )
             if to_run
         ]
@@ -612,7 +707,10 @@ def main_cli(args=None):
                 for func in funcs:
                     if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
                         return 1
-                    err += func(infile, outfile)
+                    if args_wrapper.make_ids:
+                        err += func(infile, outfile, *args_wrapper.make_ids)
+                    else:
+                        err += func(infile, outfile)
                     infile = outfile
                 if args_wrapper.forward:
                     print(f"\nCalling VocExcel for forwarded Excel file {infile}")
@@ -637,7 +735,10 @@ def main_cli(args=None):
             for func in funcs:
                 if not may_overwrite(args_wrapper.no_warn, infile, outfile, func):
                     return 1
-                err += func(infile, outfile)
+                if args_wrapper.make_ids:
+                    err += func(infile, outfile, *args_wrapper.make_ids)
+                else:
+                    err += func(infile, outfile)
                 infile = outfile
             if args_wrapper.forward:
                 print(f"\nCalling VocExcel for forwarded Excel file {infile}")
