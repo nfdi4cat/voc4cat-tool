@@ -17,7 +17,6 @@ from pathlib import Path
 from warnings import warn
 
 import openpyxl
-from django.utils.text import slugify
 from openpyxl.styles import Alignment, PatternFill
 from rdflib import URIRef
 from vocexcel.convert import main as vocexcel_main
@@ -74,51 +73,11 @@ def is_supported_template(wb):
 def may_overwrite(no_warn, xlf, outfile, func):
     if not no_warn and os.path.exists(outfile) and Path(xlf) == Path(outfile):
         warn(
-            f'Option "{func.__name__}" will overwrite the existing file {outfile}\n'
+            f'Option "--{func.__name__.replace("_", "-")}" will overwrite the existing file {outfile}\n'
             "Run again with --no-warn option to overwrite the file."
         )
         return False
     return True
-
-
-def add_IRI(fpath, outfile):
-    """
-    Add IRIs from preferred label in col A of sheets Concepts & Collections.
-
-    Safe and valid IRIs are created using django's slugify function.
-    Column A is only updated for the rows where the cell is empty.
-    """
-    print(f"\nRunning add_IRI for file {fpath}")
-    wb = openpyxl.load_workbook(fpath)
-    is_supported_template(wb)
-    VOC_BASE_IRI = wb["Concept Scheme"].cell(row=2, column=2).value
-    if VOC_BASE_IRI is None:
-        VOC_BASE_IRI = "https://example.org/"
-        wb["Concept Scheme"].cell(row=2, column=2).value = VOC_BASE_IRI
-    if not VOC_BASE_IRI.endswith("/"):
-        VOC_BASE_IRI += "/"
-
-    # process both worksheets
-    subsequent_empty_rows = 0
-    for sheet in ["Concepts", "Collections"]:
-        ws = wb[sheet]
-        # iterate over first two columns; skip header and start from row 3
-        for row in ws.iter_rows(min_row=3, max_col=2):  # pragma: no branch
-            if not row[0].value and row[1].value:
-                concept_iri = VOC_BASE_IRI + slugify(row[1].value)
-                concept_iri += "-coll" if sheet == "Collections" else ""
-                row[0].value = concept_iri
-                subsequent_empty_rows = 0
-            else:
-                # stop processing a sheet after 3 empty rows
-                if subsequent_empty_rows < 2:
-                    subsequent_empty_rows += 1
-                else:
-                    break
-
-    wb.save(outfile)
-    print(f"Saved updated file as {outfile}")
-    return 0
 
 
 # def load_prefixes(wb):
@@ -516,15 +475,6 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
-        "-i",
-        "--add_IRI",
-        help=(
-            "Add IRI (http://example.org/...) for concepts and collections "
-            "if none is present."
-        ),
-        action="store_true",
-    )
-    parser.add_argument(
         "--make-ids",
         help=(
             "Specify prefix to search and replace by ID-based vocabulary IRIs. "
@@ -682,12 +632,12 @@ def main_cli(args=None):
         else:
             hierarchy_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
 
-    elif args_wrapper.add_IRI or args_wrapper.make_ids or args_wrapper.check:
+    elif args_wrapper.make_ids or args_wrapper.check:
         funcs = [
             m
             for m, to_run in zip(
-                [add_IRI, make_ids, check],
-                [args_wrapper.add_IRI, args_wrapper.make_ids, args_wrapper.check],
+                [make_ids, check],
+                [args_wrapper.make_ids, args_wrapper.check],
             )
             if to_run
         ]
