@@ -8,6 +8,7 @@ from openpyxl.reader.excel import load_workbook
 
 from voc4cat.wrapper import main_cli, run_ontospy
 
+CS_SIMPLE = "concept-scheme-simple.xlsx"
 CS_CYCLES = "concept-scheme-with-cycles.xlsx"
 CS_CYCLES_TURTLE = "concept-scheme-with-cycles.ttl"
 CS_CYCLES_INDENT = "concept-scheme-with-cycles_indent.xlsx"
@@ -124,6 +125,88 @@ def test_add_IRI_overwrite_warning(datadir, tmp_path):
         UserWarning, match='Option "add_IRI" will overwrite the existing file'
     ):
         main_cli(["--add_IRI", str(tmp_path / CS_CYCLES_INDENT)])
+
+
+def test_make_ids_no_voc_base_iri(datadir, tmp_path):
+    shutil.copy(datadir / CS_SIMPLE, tmp_path)
+    os.chdir(tmp_path)
+    # change excel file: Delete vocabulary base IRI
+    wb = load_workbook(filename=CS_SIMPLE)
+    ws = wb["Concept Scheme"]
+    ws.cell(row=2, column=2).value = None
+    new_filename = "no_voc_base_iri.xlsx"
+    wb.save(new_filename)
+    wb.close()
+
+    main_cli(["--make-ids", "na", "1001", "--no-warn", str(tmp_path / new_filename)])
+    wb = load_workbook(filename=new_filename, read_only=True, data_only=True)
+    ws = wb["Concept Scheme"]
+    assert ws.cell(row=2, column=2).value == "https://example.org/"
+
+
+def test_make_ids_invalid_id(datadir):
+    with pytest.raises(ValueError) as excinfo:
+        main_cli(["--make-ids", "ex", "###", "--no-warn", str(datadir / CS_SIMPLE)])
+    assert (
+        'For option --make-ids the "start_id" must be an integer greater than 0.'
+        in str(excinfo.value)  # noqa: WPS441
+    )
+
+
+@pytest.mark.parametrize(
+    "indir, outdir",
+    [(True, ""), (True, "out"), (False, ""), (False, "out")],
+    ids=[
+        "in:dir, out:default",
+        "in:dir, out:dir",
+        "in:file, out:default",
+        "in:file, out:dir",
+    ],
+)
+def test_make_ids_variants(datadir, tmp_path, indir, outdir):
+    # fmt: off
+    expected_concepts = [
+        ("ex:test/1001", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/1002, ex:test/1003",),  # noqa:E501
+        ("ex:test/1002", "term2", "en", "def for term2", "en", "AltLbl for term2", None,),  # noqa:E501
+        ("ex:test/1003", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/1004",),  # noqa:E501
+        ("ex:test/1004", "term4", "en", "def for term4", "en", "AltLbl for term4", None, ),  # noqa:E501
+        ("ex:test/1005", "term5", "en", "def for term5", "en", "AltLbl for term5", None, ),  # noqa:E501
+        ("ex:test/1006", "term6", "en", "def for term6", "en", "AltLbl for term6", None,),  # noqa:E501
+    ]
+    expected_collections = [
+        ("ex:test/1007", "con", "def for con", "ex:test/1001, ex:test/1002, ex:test/1003, ex:test/1004",),  # noqa:E501
+    ]
+    expected_additional = [
+        (None, "ex:test/1002", "ex:test/1003", "ex:test/1004", "ex:test/1005", "ex:test/1006", ),  # noqa:E501
+    ]
+    # fmt: on
+    shutil.copy(datadir / CS_SIMPLE, tmp_path)
+    os.chdir(tmp_path)
+    main_cli(
+        ["--make-ids", "ex", "1001", "--no-warn"]
+        + (["--output-directory", outdir] if outdir else [])
+        + ([str(tmp_path)] if indir else [str(tmp_path / CS_SIMPLE)])
+    )
+    if outdir:
+        xlsxfile = tmp_path / outdir / CS_SIMPLE
+    else:
+        xlsxfile = tmp_path / CS_SIMPLE
+    wb = load_workbook(filename=xlsxfile, read_only=True, data_only=True)
+    ws = wb["Concepts"]
+    for row, expected_row in zip(
+        ws.iter_rows(min_row=3, max_col=7, values_only=True), expected_concepts
+    ):
+        assert row == expected_row
+    ws = wb["Collections"]
+    for row, expected_row in zip(
+        ws.iter_rows(min_row=3, max_col=4, values_only=True), expected_collections
+    ):
+        assert row == expected_row
+    ws = wb["Additional Concept Features"]
+    for row, expected_row in zip(
+        ws.iter_rows(min_row=3, max_col=6, values_only=True), expected_additional
+    ):
+        assert row == expected_row
 
 
 def test_hierarchy_from_indent_on_dir(tmp_path, capsys):

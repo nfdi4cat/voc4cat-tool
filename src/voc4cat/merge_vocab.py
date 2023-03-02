@@ -34,7 +34,6 @@ def main(ttl_inbox, vocab):
 
 
 def main_cli(args=None):
-
     if args is None:  # script run via entrypoint
         args = sys.argv[1:]
 

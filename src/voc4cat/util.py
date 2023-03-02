@@ -101,7 +101,6 @@ def _node_levels(sl, root_node, level=0, sep="  ", out=None):
     out.append((root_node, level))
     for sn in successors:
         if sn in sl:
-
             _node_levels(sl, sn, level=level + 1, sep=sep, out=out)
         else:
             out.append((sn, level + 1))
