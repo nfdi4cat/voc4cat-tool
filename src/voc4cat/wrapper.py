@@ -107,7 +107,7 @@ def add_IRI(fpath, outfile):
             if not row[0].value and row[1].value:
                 concept_iri = VOC_BASE_IRI + slugify(row[1].value)
                 concept_iri += "-coll" if sheet == "Collections" else ""
-                ws.cell(row[0].row, column=1).value = concept_iri
+                row[0].value = concept_iri
                 subsequent_empty_rows = 0
             else:
                 # stop processing a sheet after 3 empty rows
@@ -171,7 +171,6 @@ def make_ids(fpath, outfile, search_prefix, start_id):
                     iri_new = VOC_BASE_IRI + str(next(id_gen))
                     print(f"[{sheet}] Replaced CURI {iri} by {iri_new}")
                     replaced_iris[iri] = iri_new
-                    # TODO Check elsewhere, code was unnecessary complex: ws.cell(row[0].row, column=1).value = iri_new
                     row[0].value = iri_new
 
     # replace iri by new_iri in all columns where it might be referenced
