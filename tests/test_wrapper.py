@@ -47,84 +47,28 @@ def test_main_version(capsys):
     assert exit_code == 0
 
 
-def test_add_IRI_missing_file(capsys):
+def test_make_ids_missing_file(capsys):
     # Try to run a command that would overwrite the input file with the output file
-    exit_code = main_cli(["--add_IRI", "missing.xyz"])
+    exit_code = main_cli(["--make-ids", "ex", "1", "missing.xyz"])
     captured = capsys.readouterr()
     assert "Expected xlsx-file or directory but got:" in captured.out
     assert exit_code == 1
 
 
-def test_add_IRI_no_voc_base_iri(datadir, tmp_path):
-    shutil.copy(datadir / CS_CYCLES, tmp_path)
-    os.chdir(tmp_path)
-    # change excel file: Delete vocabulary base IRI
-    wb = load_workbook(filename=CS_CYCLES)
-    ws = wb["Concept Scheme"]
-    ws.cell(row=2, column=2).value = None
-    new_filename = "no_voc_base_iri.xlsx"
-    wb.save(new_filename)
-    wb.close()
-
-    main_cli(["--add_IRI", "--no-warn", str(tmp_path / new_filename)])
-    wb = load_workbook(filename=new_filename, read_only=True, data_only=True)
-    ws = wb["Concept Scheme"]
-    assert ws.cell(row=2, column=2).value == "https://example.org/"
-
-
-@pytest.mark.parametrize(
-    "indir, outdir",
-    [(True, ""), (True, "out"), (False, ""), (False, "out")],
-    ids=[
-        "in:dir, out:default",
-        "in:dir, out:dir",
-        "in:file, out:default",
-        "in:file, out:dir",
-    ],
-)
-def test_add_IRI_variants(datadir, tmp_path, indir, outdir):
-    expected = [
-        ("ex:test/term1", "term1"),
-        ("ex:test/term3", "term3"),
-        ("ex:test/term4", "term4"),
-        ("ex:test/term2", "term2"),
-        ("ex:test/term4", "term4"),
-        ("ex:test/term1", "term1"),
-        ("ex:test/term2", "term2"),
-    ]
-    shutil.copy(datadir / CS_CYCLES_INDENT, tmp_path)
-    os.chdir(tmp_path)
-    main_cli(
-        ["--add_IRI", "--no-warn"]
-        + (["--output-directory", outdir] if outdir else [])
-        + ([str(tmp_path)] if indir else [str(tmp_path / CS_CYCLES_INDENT)])
-    )
-    if outdir:
-        xlsxfile = tmp_path / outdir / CS_CYCLES_INDENT
-    else:
-        xlsxfile = tmp_path / CS_CYCLES_INDENT
-    wb = load_workbook(filename=xlsxfile, read_only=True, data_only=True)
-    ws = wb["Concepts"]
-    for row, expected_row in zip(
-        ws.iter_rows(min_row=3, max_col=2, values_only=True), expected
-    ):
-        assert row == expected_row
-
-
-def test_add_IRI_overwrite_warning(datadir, tmp_path):
-    shutil.copy(datadir / CS_CYCLES_INDENT, tmp_path / CS_CYCLES_INDENT)
+def test_make_ids_overwrite_warning(datadir, tmp_path):
+    shutil.copy(datadir / CS_SIMPLE, tmp_path / CS_SIMPLE)
     os.chdir(tmp_path)
     # Try to run a command that would overwrite the input file with the output file
     # a) dir as input:
     with pytest.warns(
-        UserWarning, match='Option "add_IRI" will overwrite the existing file'
+        UserWarning, match='Option "--make-ids" will overwrite the existing file'
     ):
-        main_cli(["--add_IRI", str(tmp_path)])
+        main_cli(["--make-ids", "ex", "1", str(tmp_path)])
     # b) file as input
     with pytest.warns(
-        UserWarning, match='Option "add_IRI" will overwrite the existing file'
+        UserWarning, match='Option "--make-ids" will overwrite the existing file'
     ):
-        main_cli(["--add_IRI", str(tmp_path / CS_CYCLES_INDENT)])
+        main_cli(["--make-ids", "ex", "1", str(tmp_path / CS_SIMPLE)])
 
 
 def test_make_ids_no_voc_base_iri(datadir, tmp_path):
