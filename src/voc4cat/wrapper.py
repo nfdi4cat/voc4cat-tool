@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
-"""
-A wrapper to extend VocExcel with more commands.
+"""A wrapper to extend VocExcel with more commands."""
 
-The new commands may be run either before or after VocExcel.
-
-Copyright (c) 2022 David Linke (ORCID: 0000-0002-5898-1820)
-"""
 import argparse
 import datetime
 import glob
