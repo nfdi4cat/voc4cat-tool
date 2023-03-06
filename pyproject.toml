@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 [project]
 # Storing project metadata in pyproject.toml https://peps.python.org/pep-0621/
 name = "voc4cat"
-description = "Vocabulary management for NFDI4Cat."
+description = "SKOS vocabulary management tool of NFDI4Cat."
 authors = [
     {name = "David Linke", email = "david.linke@catalysis.de"}
 ]
@@ -28,11 +28,12 @@ classifiers = [
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
 ]
 
 dependencies = [
   # install vocexcel directly from a specific branch from github
-  "vocexcel @ git+https://github.com/nfdi4cat/VocExcel.git@nfdi4cat-dev",
+  "vocexcel @ git+https://github.com/nfdi4cat/VocExcel.git@nfdi4cat-main",
   "networkx >= 2.8",
   "openpyxl >= 3.0.9",
   "pillow >= 9.1.0",
@@ -43,10 +44,10 @@ dependencies = [
 dynamic = ["version"]
 
 [project.urls]
-homepage = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/voc4cat-tool/"
-repository = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/voc4cat-tool/"
-documentation = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/voc4cat-tool/"
-# changelog = "https://gitlab.fokus.fraunhofer.de/nfdi4cat/ta1-ontologies/voc4cat-tool/CHANGELOG.md"
+homepage = "https://github.com/nfdi4cat/voc4cat-tool/"
+repository = "https://github.com/nfdi4cat/voc4cat-tool/"
+documentation = "https://github.com/nfdi4cat/voc4cat-tool/"
+changelog = "https://github.com/nfdi4cat/voc4cat-tool/CHANGELOG.md"
 
 [project.optional-dependencies]
 tests = [
@@ -164,6 +165,6 @@ exclude_lines = [
 ]
 
 [tool.coverage.html]
-# directory where to write the HTML report files.
+# Directory where to write the HTML report files.
 directory = ".htmlcov"
 title = "voc4cat coverage report"
