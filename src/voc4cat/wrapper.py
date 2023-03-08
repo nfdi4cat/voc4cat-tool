@@ -7,7 +7,7 @@ import glob
 import os
 import sys
 from collections import defaultdict
-from itertools import count
+from itertools import count, zip_longest
 from pathlib import Path
 from warnings import warn
 
@@ -68,7 +68,8 @@ def is_supported_template(wb):
 def may_overwrite(no_warn, xlf, outfile, func):
     if not no_warn and os.path.exists(outfile) and Path(xlf) == Path(outfile):
         warn(
-            f'Option "--{func.__name__.replace("_", "-")}" will overwrite the existing file {outfile}\n'
+            f'Option "--{func.__name__.replace("_", "-")}" '
+            f"will overwrite the existing file {outfile}\n"
             "Run again with --no-warn option to overwrite the file."
         )
         return False
@@ -94,14 +95,13 @@ def make_ids(fpath, outfile, search_prefix, start_id):
     If new_prefix is given the new IRI is the CURI new_prefix:ID.
     """
     print(f"\nReplacing {search_prefix}:... IRIs.")
-    wb = openpyxl.load_workbook(fpath)
+    # Load in data_only mode to get cell values not formulas.
+    wb = openpyxl.load_workbook(fpath, data_only=True)
     is_supported_template(wb)
     VOC_BASE_IRI = wb["Concept Scheme"].cell(row=2, column=2).value
     if VOC_BASE_IRI is None:
         VOC_BASE_IRI = "https://example.org/"
         wb["Concept Scheme"].cell(row=2, column=2).value = VOC_BASE_IRI
-    if not VOC_BASE_IRI.endswith("/"):
-        VOC_BASE_IRI += "/"
 
     try:
         start_id = int(start_id)
@@ -121,37 +121,41 @@ def make_ids(fpath, outfile, search_prefix, start_id):
         for row in ws.iter_rows(min_row=3, max_col=2):  # pragma: no branch
             if row[0].value:
                 iri = str(row[0].value)
-                if iri.startswith(search_prefix):
-                    iri_new = VOC_BASE_IRI + str(next(id_gen))
+                if not iri.startswith(search_prefix):
+                    continue
+                if iri in replaced_iris:
+                    iri_new = replaced_iris[iri]
+                else:
+                    iri_new = VOC_BASE_IRI + f"{next(id_gen):07d}"
                     print(f"[{sheet}] Replaced CURI {iri} by {iri_new}")
                     replaced_iris[iri] = iri_new
-                    row[0].value = iri_new
+                row[0].value = iri_new
 
     # replace iri by new_iri in all columns where it might be referenced
     cols_to_update = {
         "Concepts": [6],
         "Collections": [3],
-        "Additional Concept Features": [1, 2, 3, 4, 5],
+        "Additional Concept Features": [0, 1, 2, 3, 4, 5],
     }
     for sheet, cols in cols_to_update.items():
-        subsequent_empty_rows = 0
         ws = wb[sheet]
         # iterate over first two columns; skip header and start from row 3
         for row in ws.iter_rows(min_row=3, max_col=1 + max(cols)):  # pragma: no branch
             # stop processing a sheet after 3 empty rows
-            if subsequent_empty_rows < 3:
-                subsequent_empty_rows += 1
-            else:
-                break
             for col in cols:
                 if row[col].value:
                     iris = [iri.strip() for iri in str(row[col].value).split(",")]
-                    new_iris = [replaced_iris.get(iri, iri) for iri in iris]
-                    print(
-                        f"[{sheet}] Replaced {len(new_iris)} CURIs in cell {row[col].coordinate}"
+                    count_new_iris = [1 for iri in iris if iri in replaced_iris].count(
+                        1
                     )
-                    row[col].value = ", ".join(new_iris)
-                    subsequent_empty_rows = 0
+                    if count_new_iris:
+                        new_iris = [replaced_iris.get(iri, iri) for iri in iris]
+                        print(
+                            f"[{sheet}] Replaced {count_new_iris} CURIs "
+                            f"in cell {row[col].coordinate}"
+                        )
+                        row[col].value = ", ".join(new_iris)
+                    # subsequent_empty_rows = 0
 
     wb.save(outfile)
     print(f"Saved updated file as {outfile}")
@@ -166,7 +170,8 @@ def hierarchy_from_indent(fpath, outfile, sep):
     Excel indent which is also the default if sep is None.
     """
     print(f"\nReading concepts from file {fpath}")
-    wb = openpyxl.load_workbook(fpath)
+    # Load in data_only mode to get cell values not formulas.
+    wb = openpyxl.load_workbook(fpath, data_only=True)
     is_supported_template(wb)
     # process both worksheets
     subsequent_empty_rows = 0
@@ -200,8 +205,7 @@ def hierarchy_from_indent(fpath, outfile, sep):
                 ]
                 old_data = row_by_iri[iri].get(lang, [None] * (len(new_data)))
                 merged = []
-                labels = ["ChildrenIRI", "Provenance", "SourceVocabURL"]
-                for old, new, label in zip(old_data, new_data, labels):
+                for old, new in zip(old_data, new_data, strict=True):
                     if (old and new) and (old != new):
                         raise ValueError(
                             f"Cannot merge rows for {iri}. "
@@ -231,7 +235,9 @@ def hierarchy_from_indent(fpath, outfile, sep):
     for iri in children_by_iri:
         for lang in row_by_iri[iri]:
             ws.cell(row, column=1).value = iri
-            for col, stored_value in zip(range(2, col_last), row_by_iri[iri][lang]):
+            for col, stored_value in zip_longest(
+                range(2, col_last), row_by_iri[iri][lang]
+            ):
                 ws.cell(row, column=col).value = stored_value
             ws.cell(row, column=col_children_iri).value = ", ".join(
                 children_by_iri[iri]
@@ -284,11 +290,10 @@ def hierarchy_to_indent(fpath, outfile, sep):
                 new_data = [row[col_no] for col_no in range(6, col_last)]
                 old_data = row_by_iri[iri][list(row_by_iri[iri].keys())[0]][5:]
                 merged = []
-                labels = ["ChildrenIRI", "Provenance", "SourceVocabURL"]
-                for old, new, label in zip(old_data, new_data, labels):
+                for old, new in zip(old_data, new_data):
                     if (old and new) and (old != new):
                         raise ValueError(
-                            f"Merge conflict for concept {iri} in column {label}. "
+                            f"Merge conflict for concept {iri}. "
                             f'New: "{new}" - Before: "{old}"'
                         )
                     merged.append(old if old else new)
@@ -329,19 +334,19 @@ def hierarchy_to_indent(fpath, outfile, sep):
             ws.cell(row, 3).value = lang
 
             if (iri, lang) in iri_written:  # case 2
-                for col, stored_value in zip(
+                for col, stored_value in zip_longest(
                     range(4, col_last + 1), row_by_iri[iri][lang][2:]
                 ):
-                    ws.cell(ws.cell(row, 1).row, column=col).value = None
+                    ws.cell(row, column=col).value = None
                 row += 1
                 continue
             else:
-                for col, stored_value in zip(
+                for col, stored_value in zip_longest(
                     range(4, col_last + 1), row_by_iri[iri][lang][2:]
                 ):
-                    ws.cell(ws.cell(row, 1).row, column=col).value = stored_value
+                    ws.cell(row, column=col).value = stored_value
             # clear children IRI column G
-            ws.cell(ws.cell(row, 1).row, column=7).value = None
+            ws.cell(row, column=7).value = None
             row += 1
             iri_written.append((iri, lang))
 
@@ -473,7 +478,8 @@ def main_cli(args=None):
         "--make-ids",
         help=(
             "Specify prefix to search and replace by ID-based vocabulary IRIs. "
-            "The prefix and the start ID (positive interger) are required."
+            "The prefix and a start ID (positive integer) are required."
+            "The IDs have a length of 7 and are left padded with 0 if shorter."
         ),
         nargs=2,
         metavar=("prefix", "start-ID"),
