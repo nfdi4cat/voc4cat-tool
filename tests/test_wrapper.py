@@ -110,18 +110,18 @@ def test_make_ids_invalid_id(datadir):
 def test_make_ids_variants(datadir, tmp_path, indir, outdir):
     # fmt: off
     expected_concepts = [
-        ("ex:test/1001", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/1002, ex:test/1003",),  # noqa:E501
-        ("ex:test/1002", "term2", "en", "def for term2", "en", "AltLbl for term2", None,),  # noqa:E501
-        ("ex:test/1003", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/1004",),  # noqa:E501
-        ("ex:test/1004", "term4", "en", "def for term4", "en", "AltLbl for term4", None, ),  # noqa:E501
-        ("ex:test/1005", "term5", "en", "def for term5", "en", "AltLbl for term5", None, ),  # noqa:E501
-        ("ex:test/1006", "term6", "en", "def for term6", "en", "AltLbl for term6", None,),  # noqa:E501
+        ("ex:test/0001001", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/0001002, ex:test/0001003",),  # noqa:E501
+        ("ex:test/0001002", "term2", "en", "def for term2", "en", "AltLbl for term2", None,),  # noqa:E501
+        ("ex:test/0001003", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/0001004",),  # noqa:E501
+        ("ex:test/0001004", "term4", "en", "def for term4", "en", "AltLbl for term4", None, ),  # noqa:E501
+        ("ex:test/0001005", "term5", "en", "def for term5", "en", "AltLbl for term5", None, ),  # noqa:E501
+        ("ex:test/0001006", "term6", "en", "def for term6", "en", "AltLbl for term6", None,),  # noqa:E501
     ]
     expected_collections = [
-        ("ex:test/1007", "con", "def for con", "ex:test/1001, ex:test/1002, ex:test/1003, ex:test/1004",),  # noqa:E501
+        ("ex:test/0001007", "con", "def for con", "ex:test/0001001, ex:test/0001002, ex:test/0001003, ex:test/0001004",),  # noqa:E501
     ]
     expected_additional = [
-        (None, "ex:test/1002", "ex:test/1003", "ex:test/1004", "ex:test/1005", "ex:test/1006", ),  # noqa:E501
+        ("ex:test/0001001", "ex:test/0001002", "ex:test/0001003", "ex:test/0001004", "ex:test/0001005", "ex:test/0001006", ),  # noqa:E501
     ]
     # fmt: on
     shutil.copy(datadir / CS_SIMPLE, tmp_path)
@@ -149,6 +149,30 @@ def test_make_ids_variants(datadir, tmp_path, indir, outdir):
     ws = wb["Additional Concept Features"]
     for row, expected_row in zip(
         ws.iter_rows(min_row=3, max_col=6, values_only=True), expected_additional
+    ):
+        assert row == expected_row
+
+
+def test_make_ids_multilang(tmp_path, datadir):
+    # fmt: off
+    expected_concepts = [
+        ("ex:test/0001001", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/0001002, ex:test/0001003",),  # noqa:E501
+        ("ex:test/0001002", "term2", "en", "def for term2", "en", "AltLbl for term2", "ex:test/0001004",),  # noqa:E501
+        ("ex:test/0001003", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/0001004",),  # noqa:E501
+        ("ex:test/0001004", "term4", "en", "def for term4", "en", "AltLbl for term4", None, ),  # noqa:E501
+        ('ex:test/0001004', 'Begr4', 'de', 'Def für Begr4', 'de', 'AltLbl für Begr4', None, ),  # noqa:E501
+        ('ex:test/0001001', 'Begr1', 'de', 'Def für Begr1', 'de', 'AltLbl für Begr1', None, ),  # noqa:E501
+    ]
+    # fmt: on
+    main_cli(
+        ["--make-ids", "ex", "1001", "--output-directory"]
+        + [str(tmp_path), str(datadir / CS_CYCLES_MULTI_LANG)]
+    )
+    xlsxfile = tmp_path / CS_CYCLES_MULTI_LANG
+    wb = load_workbook(filename=xlsxfile, read_only=True, data_only=True)
+    ws = wb["Concepts"]
+    for row, expected_row in zip(
+        ws.iter_rows(min_row=3, max_col=7, values_only=True), expected_concepts
     ):
         assert row == expected_row
 
@@ -208,7 +232,6 @@ def test_hierarchy_from_indent_multilang(datadir, tmp_path):
     expected = [  # data in children-IRI-representation
         ('ex:test/term1', 'term1', 'en', 'def for term1', 'en', 'AltLbl for term1', 'ex:test/term2, ex:test/term3', 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
         ('ex:test/term1', 'Begr1', 'de', 'Def für Begr1', 'de', 'AltLbl für Begr1', 'ex:test/term2, ex:test/term3', 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
-        # ('ex:test/term1', 'Begr1', 'de', 'Def für Begr1', 'de', 'für Begr1', None, None, None),  # noqa:E501
         ('ex:test/term2', 'term2', 'en', 'def for term2', 'en', 'AltLbl for term2', 'ex:test/term4', 'Prov for term2', 'ex:XYZ/term2'),  # noqa:E501
         ('ex:test/term3', 'term3', 'en', 'def for term3', 'en', 'AltLbl for term3', 'ex:test/term4', 'Prov for term3', 'ex:XYZ/term3'),  # noqa:E501
         ('ex:test/term4', 'term4', 'en', 'def for term4', 'en', 'AltLbl for term4', None,            'Prov for term4', 'ex:XYZ/term4'),  # noqa:E501
@@ -364,9 +387,7 @@ def test_hierarchy_to_indent_merge(datadir, tmp_path):
     wb.close()
     with pytest.raises(ValueError) as excinfo:
         main_cli(["--hierarchy-to-indent", "--no-warn", str(tmp_path / new_filename)])
-    assert f"Merge conflict for concept {iri} in column" in str(
-        excinfo.value  # noqa: WPS441
-    )
+    assert f"Merge conflict for concept {iri}" in str(excinfo.value)  # noqa: WPS441
 
 
 @pytest.mark.parametrize(
