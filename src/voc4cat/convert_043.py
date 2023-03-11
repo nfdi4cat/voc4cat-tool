@@ -153,6 +153,7 @@ def extract_concepts_and_collections(
             if (
                 cell.value is None
                 or cell.value == "Concepts"
+                or cell.value == "Concepts*"
                 or cell.value == "Concept IRI*"
             ):
                 pass
@@ -206,6 +207,7 @@ def extract_concepts_and_collections(
                 cell.value is None
                 or cell.value == "Collections"
                 or cell.value == "Collection URI"
+                or cell.value == "Collection IRI"
             ):
                 pass
             else:
