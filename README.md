@@ -2,7 +2,7 @@
 
 ## Overview
 
-**[voc4cat](https://github.com/nfdi4cat/voc4cat-playground)** is a vocabulary for catalysis developed in NFDI4Cat.
+**[voc4cat](https://github.com/nfdi4cat/voc4cat)** is the vocabulary for catalysis developed in NFDI4Cat.
 
 Related to voc4cat we developed a **toolbox for collaboratively maintaining SKOS vocabularies on github using Excel** (xlsx) as user-friendly interface. It consists of several parts:
 

@@ -36,7 +36,7 @@ def test_main_no_args(capsys):
 def test_main_unknown_arg(capsys):
     exit_code = main_cli(["--unknown-arg"])
     captured = capsys.readouterr()
-    assert "Unknown option: ['--unknown-arg']" in captured.out
+    assert "Unknown voc4cat option: ['--unknown-arg']" in captured.out
     assert exit_code == 1
 
 

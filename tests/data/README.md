@@ -1,1 +1,1 @@
-This folder holds xlsx files used in the tests.
+This folder holds data files used in the tests.
