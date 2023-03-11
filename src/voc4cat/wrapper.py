@@ -568,9 +568,11 @@ def main_cli(args=None):
         help="Either the file to process or a directory with files to process.",
     )
 
+    # This is only a trick to display a meaningful help text.
+    # vocexcel options will not be available in args_wrapper.vocexcel_options
     parser.add_argument(
         "vocexcel_options",
-        nargs="?",  # allow 0 or 1 file name as argument
+        nargs="?",
         help=(
             "Options to forward to vocexcel. Run vocexcel --help to see what "
             "is available."
@@ -578,7 +580,7 @@ def main_cli(args=None):
     )
 
     args_wrapper, unknown_option = parser.parse_known_args(args)
-    vocexcel_args = args_wrapper.vocexcel_options or []
+    vocexcel_args = unknown_option or []
 
     err = 0  # return error code
 
@@ -782,7 +784,7 @@ def main_cli(args=None):
             err += run_ontospy(infile, doc_path)
     else:
         # Unknown voc4cat option
-        print(f"Unknown option: {unknown_option}")
+        print(f"Unknown voc4cat option: {unknown_option}")
         return 1
 
     return err
