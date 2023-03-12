@@ -1,21 +1,17 @@
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.2.0
+    rev: v4.4.0
     hooks:
     -   id: check-yaml
     -   id: end-of-file-fixer
     -   id: trailing-whitespace
 -   repo: https://github.com/psf/black
-    rev: 22.3.0
+    rev: 23.1.0
     hooks:
     -   id: black
         entry: black
-- repo: local
-  hooks:
-  - id: update-requirements-txt
-    name: update-requirements-txt
-    description: 'Generate requirements.txt based on poetry.lock'
-    entry: poetry
-    args: [export, --without-hashes, --format, requirements.txt, --output, requirements.txt]
-    language: system
-    pass_filenames: false
+-   repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+    - id: isort
+      name: isort (python)
