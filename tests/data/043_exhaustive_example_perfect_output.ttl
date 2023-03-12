@@ -50,4 +50,3 @@ cs: a skos:ConceptScheme ;
     skos:prefLabel "example exhaustive preferred label"@en ;
     skos:relatedMatch <http://example.org/example_related_match> ;
     skos:topConceptOf cs: .
-

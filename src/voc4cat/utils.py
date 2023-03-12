@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Tuple
+
 from openpyxl import load_workbook as _load_workbook
 from openpyxl.workbook.workbook import Workbook
 
