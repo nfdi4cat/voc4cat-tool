@@ -512,7 +512,6 @@ def main(args=None):
     )
 
     parser.add_argument(
-        "-lp",
         "--listprofiles",
         help="This flag, if set, must be the only flag supplied. It will cause the program to list all the vocabulary"
         " profiles that this converter, indicating both their URI and their short token for use with the"
@@ -528,7 +527,7 @@ def main(args=None):
     )
 
     parser.add_argument(
-        "-val", "--validate", help="Validate output file", action="store_true"
+        "--validate", help="Validate output file", action="store_true"
     )
 
     parser.add_argument(
@@ -542,7 +541,6 @@ def main(args=None):
     )
 
     parser.add_argument(
-        "-ot",
         "--outputtype",
         help="The format of the vocabulary output.",
         choices=["file", "string"],
@@ -557,7 +555,6 @@ def main(args=None):
     )
 
     parser.add_argument(
-        "-of",
         "--outputformat",
         help="An optionally-provided output format for RDF files. Only relevant in Excel-to-RDf conversions.",
         required=False,
@@ -575,7 +572,7 @@ def main(args=None):
     parser.add_argument(
         "-t",
         "--templatefile",
-        help="An optionally-provided Excel-template file to be used in SKOS-> Excel converion.",
+        help="An optionally-provided Excel-template file to be used in SKOS-> Excel conversion.",
         type=Path,
         required=False,
     )
