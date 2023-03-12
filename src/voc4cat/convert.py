@@ -15,57 +15,62 @@ try:
     from convert_021 import (
         extract_concepts_and_collections as extract_concepts_and_collections_021,
     )
+    from convert_030 import extract_concept_scheme as extract_concept_scheme_030
     from convert_030 import (
         extract_concepts_and_collections as extract_concepts_and_collections_030,
-        extract_concept_scheme as extract_concept_scheme_030,
     )
+    from convert_040 import extract_concept_scheme as extract_concept_scheme_040
     from convert_040 import (
         extract_concepts_and_collections as extract_concepts_and_collections_040,
-        extract_concept_scheme as extract_concept_scheme_040,
     )
+    from convert_043 import create_prefix_dict
+    from convert_043 import extract_concept_scheme as extract_concept_scheme_043
     from convert_043 import (
         extract_concepts_and_collections as extract_concepts_and_collections_043,
-        create_prefix_dict,
-        extract_concept_scheme as extract_concept_scheme_043,
     )
     from utils import (
-        ConversionError,
-        load_workbook,
-        get_template_version,
-        KNOWN_FILE_ENDINGS,
-        RDF_FILE_ENDINGS,
-        KNOWN_TEMPLATE_VERSIONS,
         EXCEL_FILE_ENDINGS,
+        KNOWN_FILE_ENDINGS,
+        KNOWN_TEMPLATE_VERSIONS,
+        RDF_FILE_ENDINGS,
+        ConversionError,
+        get_template_version,
+        load_workbook,
     )
 except ImportError:
     sys.path.append("..")
     from vocexcel import models, profiles
-
     from vocexcel.convert_021 import (
         extract_concepts_and_collections as extract_concepts_and_collections_021,
     )
     from vocexcel.convert_030 import (
-        extract_concepts_and_collections as extract_concepts_and_collections_030,
         extract_concept_scheme as extract_concept_scheme_030,
+    )
+    from vocexcel.convert_030 import (
+        extract_concepts_and_collections as extract_concepts_and_collections_030,
+    )
+    from vocexcel.convert_040 import (
+        extract_concept_scheme as extract_concept_scheme_040,
     )
     from vocexcel.convert_040 import (
         extract_concepts_and_collections as extract_concepts_and_collections_040,
-        extract_concept_scheme as extract_concept_scheme_040,
+    )
+    from vocexcel.convert_043 import create_prefix_dict
+    from vocexcel.convert_043 import (
+        extract_concept_scheme as extract_concept_scheme_043,
     )
     from vocexcel.convert_043 import (
         extract_concepts_and_collections as extract_concepts_and_collections_043,
-        create_prefix_dict,
-        extract_concept_scheme as extract_concept_scheme_043,
     )
     from vocexcel.utils import (
-        ConversionError,
-        load_workbook,
-        load_template,
-        get_template_version,
-        KNOWN_FILE_ENDINGS,
-        RDF_FILE_ENDINGS,
-        KNOWN_TEMPLATE_VERSIONS,
         EXCEL_FILE_ENDINGS,
+        KNOWN_FILE_ENDINGS,
+        KNOWN_TEMPLATE_VERSIONS,
+        RDF_FILE_ENDINGS,
+        ConversionError,
+        get_template_version,
+        load_template,
+        load_workbook,
     )
 
 TEMPLATE_VERSION = None
@@ -288,7 +293,7 @@ def rdf_to_excel(
     )
     # the RDF is valid so extract data and create Excel
     from rdflib import Graph
-    from rdflib.namespace import DCAT, DCTERMS, PROV, RDF, RDFS, SKOS, OWL
+    from rdflib.namespace import DCAT, DCTERMS, OWL, PROV, RDF, RDFS, SKOS
 
     g = Graph().parse(
         str(file_to_convert_path), format=RDF_FILE_ENDINGS[file_to_convert_path.suffix]
@@ -494,7 +499,6 @@ def log_msg(result: Dict, log_file: str) -> str:
 
 
 def main(args=None):
-
     if args is None:  # vocexcel run via entrypoint
         args = sys.argv[1:]
 
@@ -526,9 +530,7 @@ def main(args=None):
         help="The Excel file to convert to a SKOS vocabulary in RDF or an RDF file to convert to an Excel file",
     )
 
-    parser.add_argument(
-        "--validate", help="Validate output file", action="store_true"
-    )
+    parser.add_argument("--validate", help="Validate output file", action="store_true")
 
     parser.add_argument(
         "-p",
