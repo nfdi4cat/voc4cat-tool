@@ -601,8 +601,37 @@ def test_forwarding_3stages(datadir, tmp_path, test_file):
     [CS_CYCLES, ""],
     ids=["single file", "dir of files"],
 )
+def test_forwarding_3stages_outdir(datadir, tmp_path, test_file):
+    """Check file by voc4cat, write it to output folder, forward to vocexcel & ontospy.
+
+    Related: #issue106
+    """
+    os.chdir(tmp_path)
+    main_cli(
+        [
+            "--check",
+            "--forward",
+            "--output-directory",
+            str(tmp_path),
+            "--logfile",
+            "test.log",
+            "--docs",
+            str(datadir / test_file),
+        ]
+    )
+    assert (tmp_path / CS_CYCLES).with_suffix(".ttl").exists()
+    assert (tmp_path / Path(CS_CYCLES).stem / "dendro" / "index.html").exists()
+    assert (tmp_path / Path(CS_CYCLES).stem / "docs" / "index.html").exists()
+    assert (tmp_path / "test.log").exists()
+
+
+@pytest.mark.parametrize(
+    "test_file",
+    [CS_CYCLES, ""],
+    ids=["single file", "dir of files"],
+)
 def test_forwarding_2stages(datadir, tmp_path, test_file):
-    """Use voc4cat to run vocexcel then foward result to ontospy."""
+    """Use voc4cat to run vocexcel then forward result to ontospy."""
     dst = tmp_path / test_file
     shutil.copy(datadir / CS_CYCLES, tmp_path)
     os.chdir(tmp_path)
