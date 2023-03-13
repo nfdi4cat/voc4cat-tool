@@ -445,6 +445,11 @@ def check(fpath, outfile):
         return 1
 
     print("All checks passed successfully.")
+
+    if fpath != outfile:  # Save to new directory (important for --forward option)
+        wb.save(outfile)
+        print(f"Saved checked file as {outfile}")
+
     return 0
 
 
@@ -698,9 +703,9 @@ def main_cli(args=None):
                 locargs.append(str(infile))
                 err += run_vocexcel(locargs)
             if args_wrapper.docs:
-                infile = Path(infile).with_suffix(".ttl") if outdir is None else outfile
+                infile = infile if outdir is None else outfile
                 doc_path = infile.parent if outdir is None else outdir
-                err += run_ontospy(infile, doc_path)
+                err += run_ontospy(infile.with_suffix(".ttl"), doc_path)
         else:
             print(
                 "Expected xlsx-file or directory but got: {0}".format(
