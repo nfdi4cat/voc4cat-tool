@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 from operator import itemgetter
 from warnings import warn
 
 import networkx as nx
 
 
-def _get_edges(text_with_level, base_level):  # noqa: WPS231
+def _get_edges(text_with_level, base_level):
     edges = []
     level_parent_map = {}
     for concept, level in text_with_level:
@@ -32,7 +31,7 @@ def get_concept_and_level_from_indented_line(line, sep):
     level = len(split_line) - 1
     concept = split_line[level]
     if sep is not None and len(sep) > 1 and concept.startswith(sep[0]):
-        warn(f'Line "{concept}": Incomplete separator "{sep}"?')
+        warn(f'Line "{concept}": Incomplete separator "{sep}"?', stacklevel=1)
     return concept, level
 
 
@@ -47,9 +46,8 @@ def dag_from_indented_text(text, sep=" "):
         if concept not in nodes:
             nodes.append(concept)
         if text_with_level and (level - 1) > text_with_level[-1][1]:
-            raise ValueError(
-                f'Indentation inreases by more than one level for "{concept}".'
-            )
+            msg = f'Indentation increases by more than one level for "{concept}".'
+            raise ValueError(msg)
         text_with_level.append((concept, level))
 
     if text_with_level:
@@ -57,9 +55,8 @@ def dag_from_indented_text(text, sep=" "):
         # Check if first line is at base level.
         concept, level = text_with_level[0]
         if base_level != level:
-            raise ValueError(
-                f'First line "{concept}" must be at lowest indentation level.'
-            )
+            msg = f'First line "{concept}" must be at lowest indentation level.'
+            raise ValueError(msg)
     else:
         base_level = 0
 
@@ -161,9 +158,8 @@ def dag_from_narrower(narrower):
         for child in children:
             # check for undefined children
             if child not in nodes:
-                raise ValueError(
-                    f'Concept "{child}" needs to defined if used as narrower concept.'
-                )
+                msg = f'Concept "{child}" needs to defined if used as narrower concept.'
+                raise ValueError(msg)
             edges.append((concept, child))
 
     dag = nx.DiGraph()

@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
 import pytest
-
 from voc4cat.util import (
     dag_from_indented_text,
     dag_from_narrower,
@@ -231,11 +229,10 @@ a2
 
 def test_undefined_child():
     narower = {"a1": [], "a2": ["c"]}
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(
+        ValueError, match='Concept "c" needs to defined if used as narrower concept.'
+    ):
         dag_from_narrower(narower)
-    assert 'Concept "c" needs to defined if used as narrower concept.' in str(
-        excinfo.value  # noqa: WPS441
-    )
 
 
 def test_empty_text():
@@ -260,20 +257,18 @@ def test_none_as_sep():
 
 def test_bad_dedent():
     text = " x1\nx2"
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(
+        ValueError, match='First line "x1" must be at lowest indentation level.'
+    ):
         dag_from_indented_text(text)
-    assert 'First line "x1" must be at lowest indentation level.' in str(
-        excinfo.value  # noqa: WPS441
-    )
 
 
 def test_bad_indent():
     text = "x1\n--x2"
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(
+        ValueError, match='Indentation increases by more than one level for "x2"'
+    ):
         dag_from_indented_text(text, sep="-")
-    assert 'Indentation inreases by more than one level for "x2"' in str(
-        excinfo.value  # noqa: WPS441
-    )
 
 
 def test_non_matching_indent_warning():

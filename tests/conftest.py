@@ -2,7 +2,7 @@
 import pytest
 
 
-@pytest.fixture
+@pytest.fixture()
 def datadir():
     """DATADIR as a LocalPath"""
     from pathlib import Path

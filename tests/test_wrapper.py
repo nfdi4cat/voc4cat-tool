@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 import os
 import shutil
 from pathlib import Path
 
 import pytest
 from openpyxl.reader.excel import load_workbook
-
 from voc4cat.wrapper import main_cli, run_ontospy
 
 CS_SIMPLE = "concept-scheme-simple.xlsx"
@@ -89,16 +87,15 @@ def test_make_ids_no_voc_base_iri(datadir, tmp_path):
 
 
 def test_make_ids_invalid_id(datadir):
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(
+        ValueError,
+        match='For option --make-ids the "start_id" must be an integer greater than 0.',
+    ):
         main_cli(["--make-ids", "ex", "###", "--no-warn", str(datadir / CS_SIMPLE)])
-    assert (
-        'For option --make-ids the "start_id" must be an integer greater than 0.'
-        in str(excinfo.value)  # noqa: WPS441
-    )
 
 
 @pytest.mark.parametrize(
-    "indir, outdir",
+    ("indir", "outdir"),
     [(True, ""), (True, "out"), (False, ""), (False, "out")],
     ids=[
         "in:dir, out:default",
@@ -110,18 +107,18 @@ def test_make_ids_invalid_id(datadir):
 def test_make_ids_variants(datadir, tmp_path, indir, outdir):
     # fmt: off
     expected_concepts = [
-        ("ex:test/0001001", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/0001002, ex:test/0001003",),  # noqa:E501
-        ("ex:test/0001002", "term2", "en", "def for term2", "en", "AltLbl for term2", None,),  # noqa:E501
-        ("ex:test/0001003", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/0001004",),  # noqa:E501
-        ("ex:test/0001004", "term4", "en", "def for term4", "en", "AltLbl for term4", None, ),  # noqa:E501
-        ("ex:test/0001005", "term5", "en", "def for term5", "en", "AltLbl for term5", None, ),  # noqa:E501
-        ("ex:test/0001006", "term6", "en", "def for term6", "en", "AltLbl for term6", None,),  # noqa:E501
+        ("ex:test/0001001", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/0001002, ex:test/0001003",),
+        ("ex:test/0001002", "term2", "en", "def for term2", "en", "AltLbl for term2", None,),
+        ("ex:test/0001003", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/0001004",),
+        ("ex:test/0001004", "term4", "en", "def for term4", "en", "AltLbl for term4", None, ),
+        ("ex:test/0001005", "term5", "en", "def for term5", "en", "AltLbl for term5", None, ),
+        ("ex:test/0001006", "term6", "en", "def for term6", "en", "AltLbl for term6", None,),
     ]
     expected_collections = [
-        ("ex:test/0001007", "con", "def for con", "ex:test/0001001, ex:test/0001002, ex:test/0001003, ex:test/0001004",),  # noqa:E501
+        ("ex:test/0001007", "con", "def for con", "ex:test/0001001, ex:test/0001002, ex:test/0001003, ex:test/0001004",),
     ]
     expected_additional = [
-        ("ex:test/0001001", "ex:test/0001002", "ex:test/0001003", "ex:test/0001004", "ex:test/0001005", "ex:test/0001006", ),  # noqa:E501
+        ("ex:test/0001001", "ex:test/0001002", "ex:test/0001003", "ex:test/0001004", "ex:test/0001005", "ex:test/0001006", ),
     ]
     # fmt: on
     shutil.copy(datadir / CS_SIMPLE, tmp_path)
@@ -131,10 +128,7 @@ def test_make_ids_variants(datadir, tmp_path, indir, outdir):
         + (["--output-directory", outdir] if outdir else [])
         + ([str(tmp_path)] if indir else [str(tmp_path / CS_SIMPLE)])
     )
-    if outdir:
-        xlsxfile = tmp_path / outdir / CS_SIMPLE
-    else:
-        xlsxfile = tmp_path / CS_SIMPLE
+    xlsxfile = tmp_path / outdir / CS_SIMPLE if outdir else tmp_path / CS_SIMPLE
     wb = load_workbook(filename=xlsxfile, read_only=True, data_only=True)
     ws = wb["Concepts"]
     for row, expected_row in zip(
@@ -156,17 +150,23 @@ def test_make_ids_variants(datadir, tmp_path, indir, outdir):
 def test_make_ids_multilang(tmp_path, datadir):
     # fmt: off
     expected_concepts = [
-        ("ex:test/0001001", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/0001002, ex:test/0001003",),  # noqa:E501
-        ("ex:test/0001002", "term2", "en", "def for term2", "en", "AltLbl for term2", "ex:test/0001004",),  # noqa:E501
-        ("ex:test/0001003", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/0001004",),  # noqa:E501
-        ("ex:test/0001004", "term4", "en", "def for term4", "en", "AltLbl for term4", None, ),  # noqa:E501
-        ('ex:test/0001004', 'Begr4', 'de', 'Def für Begr4', 'de', 'AltLbl für Begr4', None, ),  # noqa:E501
-        ('ex:test/0001001', 'Begr1', 'de', 'Def für Begr1', 'de', 'AltLbl für Begr1', None, ),  # noqa:E501
+        ("ex:test/0001001", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/0001002, ex:test/0001003",),
+        ("ex:test/0001002", "term2", "en", "def for term2", "en", "AltLbl for term2", "ex:test/0001004",),
+        ("ex:test/0001003", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/0001004",),
+        ("ex:test/0001004", "term4", "en", "def for term4", "en", "AltLbl for term4", None, ),
+        ("ex:test/0001004", "Begr4", "de", "Def für Begr4", "de", "AltLbl für Begr4", None, ),
+        ("ex:test/0001001", "Begr1", "de", "Def für Begr1", "de", "AltLbl für Begr1", None, ),
     ]
     # fmt: on
     main_cli(
-        ["--make-ids", "ex", "1001", "--output-directory"]
-        + [str(tmp_path), str(datadir / CS_CYCLES_MULTI_LANG)]
+        [
+            "--make-ids",
+            "ex",
+            "1001",
+            "--output-directory",
+            str(tmp_path),
+            str(datadir / CS_CYCLES_MULTI_LANG),
+        ]
     )
     xlsxfile = tmp_path / CS_CYCLES_MULTI_LANG
     wb = load_workbook(filename=xlsxfile, read_only=True, data_only=True)
@@ -187,17 +187,17 @@ def test_hierarchy_from_indent_on_dir(tmp_path, capsys):
 
 
 @pytest.mark.parametrize(
-    "xlsxfile, indent",
+    ("xlsxfile", "indent"),
     [(CS_CYCLES_INDENT_IRI, None), (CS_CYCLES_INDENT_DOT, "..")],
     ids=["indent:Excel", "indent:dots"],
 )
 def test_hierarchy_from_indent(datadir, tmp_path, xlsxfile, indent):
     # fmt: off
     expected = [  # data in children-IRI-representation
-        ('ex:test/term1', 'term1', 'en', 'def for term1', 'en', 'AltLbl for term1', 'ex:test/term2, ex:test/term3', 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
-        ('ex:test/term2', 'term2', 'en', 'def for term2', 'en', 'AltLbl for term2', 'ex:test/term4',                'Prov for term2', 'ex:XYZ/term2'),  # noqa:E501
-        ('ex:test/term3', 'term3', 'en', 'def for term3', 'en', 'AltLbl for term3', 'ex:test/term4',                'Prov for term3', 'ex:XYZ/term3'),  # noqa:E501
-        ('ex:test/term4', 'term4', 'en', 'def for term4', 'en', 'AltLbl for term4', None,                           'Prov for term4', 'ex:XYZ/term4'),  # noqa:E501
+        ("ex:test/term1", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/term2, ex:test/term3", "Prov for term1", "ex:XYZ/term1"),
+        ("ex:test/term2", "term2", "en", "def for term2", "en", "AltLbl for term2", "ex:test/term4",                "Prov for term2", "ex:XYZ/term2"),
+        ("ex:test/term3", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/term4",                "Prov for term3", "ex:XYZ/term3"),
+        ("ex:test/term4", "term4", "en", "def for term4", "en", "AltLbl for term4", None,                           "Prov for term4", "ex:XYZ/term4"),
         (None, None, None, None, None, None, None, None, None)
     ]
     # fmt: on
@@ -222,7 +222,7 @@ def test_hierarchy_from_indent(datadir, tmp_path, xlsxfile, indent):
     os.chdir(tmp_path)
     wb = load_workbook(filename=xlsxfile, read_only=True, data_only=True)
     ws = wb["Concepts"]
-    for row, expected_row in zip(ws.iter_rows(min_row=3, values_only=True), expected):
+    for row, _expected_row in zip(ws.iter_rows(min_row=3, values_only=True), expected):
         assert len(row) == expected_len
         assert row in expected  # We intentionally don't check the row position here!
 
@@ -230,12 +230,12 @@ def test_hierarchy_from_indent(datadir, tmp_path, xlsxfile, indent):
 def test_hierarchy_from_indent_multilang(datadir, tmp_path):
     # fmt: off
     expected = [  # data in children-IRI-representation
-        ('ex:test/term1', 'term1', 'en', 'def for term1', 'en', 'AltLbl for term1', 'ex:test/term2, ex:test/term3', 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
-        ('ex:test/term1', 'Begr1', 'de', 'Def für Begr1', 'de', 'AltLbl für Begr1', 'ex:test/term2, ex:test/term3', 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
-        ('ex:test/term2', 'term2', 'en', 'def for term2', 'en', 'AltLbl for term2', 'ex:test/term4', 'Prov for term2', 'ex:XYZ/term2'),  # noqa:E501
-        ('ex:test/term3', 'term3', 'en', 'def for term3', 'en', 'AltLbl for term3', 'ex:test/term4', 'Prov for term3', 'ex:XYZ/term3'),  # noqa:E501
-        ('ex:test/term4', 'term4', 'en', 'def for term4', 'en', 'AltLbl for term4', None,            'Prov for term4', 'ex:XYZ/term4'),  # noqa:E501
-        ('ex:test/term4', 'Begr4', 'de', 'Def für Begr4', 'de', 'AltLbl für Begr4', None,            'Prov for term4', 'ex:XYZ/term4'),  # noqa:E501
+        ("ex:test/term1", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/term2, ex:test/term3", "Prov for term1", "ex:XYZ/term1"),
+        ("ex:test/term1", "Begr1", "de", "Def für Begr1", "de", "AltLbl für Begr1", "ex:test/term2, ex:test/term3", "Prov for term1", "ex:XYZ/term1"),
+        ("ex:test/term2", "term2", "en", "def for term2", "en", "AltLbl for term2", "ex:test/term4", "Prov for term2", "ex:XYZ/term2"),
+        ("ex:test/term3", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/term4", "Prov for term3", "ex:XYZ/term3"),
+        ("ex:test/term4", "term4", "en", "def for term4", "en", "AltLbl for term4", None,            "Prov for term4", "ex:XYZ/term4"),
+        ("ex:test/term4", "Begr4", "de", "Def für Begr4", "de", "AltLbl für Begr4", None,            "Prov for term4", "ex:XYZ/term4"),
         (None, None, None, None, None, None, None, None, None)
     ]
     # fmt: on
@@ -254,7 +254,7 @@ def test_hierarchy_from_indent_multilang(datadir, tmp_path):
         filename=CS_CYCLES_MULTI_LANG_IND, read_only=True, data_only=True
     )
     ws = wb["Concepts"]
-    for row, expected_row in zip(ws.iter_rows(min_row=3, values_only=True), expected):
+    for row, _expected_row in zip(ws.iter_rows(min_row=3, values_only=True), expected):
         assert len(row) == expected_len
         assert row in expected  # We intentionally don't check the row position here!
 
@@ -270,11 +270,10 @@ def test_hierarchy_from_indent_merge(datadir, tmp_path):
     new_filename = "indent_merge_problem.xlsx"
     wb.save(new_filename)
     wb.close()
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(
+        ValueError, match=f"Cannot merge rows for {iri}. Resolve differences manually."
+    ):
         main_cli(["--hierarchy-from-indent", "--no-warn", str(tmp_path / new_filename)])
-    assert f"Cannot merge rows for {iri}. Resolve differences manually." in str(
-        excinfo.value  # noqa: WPS441
-    )
 
 
 @pytest.mark.parametrize(
@@ -285,13 +284,13 @@ def test_hierarchy_from_indent_merge(datadir, tmp_path):
 def test_hierarchy_to_indent(datadir, tmp_path, indent):
     # fmt: off
     expected_rows = [  # data in children-IRI-representation
-        ('ex:test/term1', 'term1',     'en', 'def for term1', 'en', 'AltLbl for term1', None, 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
-        ('ex:test/term3', '..term3',   'en', 'def for term3', 'en', 'AltLbl for term3', None, 'Prov for term3', 'ex:XYZ/term3'),  # noqa:E501
-        ('ex:test/term4', '....term4', 'en', 'def for term4', 'en', 'AltLbl for term4', None, 'Prov for term4', 'ex:XYZ/term4'),  # noqa:E501
-        ('ex:test/term2', 'term2',     'en', 'def for term2', 'en', 'AltLbl for term2', None, 'Prov for term2', 'ex:XYZ/term2'),  # noqa:E501
-        ('ex:test/term4', '..term4',   'en', None, None, None, None, None, None),
-        ('ex:test/term1', 'term1',     'en', None, None, None, None, None, None),
-        ('ex:test/term2', '..term2',   'en', None, None, None, None, None, None),
+        ("ex:test/term1", "term1",     "en", "def for term1", "en", "AltLbl for term1", None, "Prov for term1", "ex:XYZ/term1"),
+        ("ex:test/term3", "..term3",   "en", "def for term3", "en", "AltLbl for term3", None, "Prov for term3", "ex:XYZ/term3"),
+        ("ex:test/term4", "....term4", "en", "def for term4", "en", "AltLbl for term4", None, "Prov for term4", "ex:XYZ/term4"),
+        ("ex:test/term2", "term2",     "en", "def for term2", "en", "AltLbl for term2", None, "Prov for term2", "ex:XYZ/term2"),
+        ("ex:test/term4", "..term4",   "en", None, None, None, None, None, None),
+        ("ex:test/term1", "term1",     "en", None, None, None, None, None, None),
+        ("ex:test/term2", "..term2",   "en", None, None, None, None, None, None),
         (None, None, None, None, None, None, None, None, None),
     ]
     # fmt: on
@@ -335,15 +334,15 @@ def test_hierarchy_to_indent(datadir, tmp_path, indent):
 def test_hierarchy_to_indent_multilanguage(datadir, tmp_path):
     # fmt: off
     expected_rows = [  # data in children-IRI-representation
-        ('ex:test/term1', 'term1',     'en', 'def for term1', 'en', 'AltLbl for term1', None, 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
-        ('ex:test/term1', 'Begr1',     'de', 'Def für Begr1', 'de', 'AltLbl für Begr1', None, 'Prov for term1', 'ex:XYZ/term1'),  # noqa:E501
-        ('ex:test/term3', '..term3',   'en', 'def for term3', 'en', 'AltLbl for term3', None, 'Prov for term3', 'ex:XYZ/term3'),  # noqa:E501
-        ('ex:test/term4', '....term4', 'en', 'def for term4', 'en', 'AltLbl for term4', None, 'Prov for term4', 'ex:XYZ/term4'),  # noqa:E501
-        ('ex:test/term4', '....Begr4', 'de', 'Def für Begr4', 'de', 'AltLbl für Begr4', None, 'Prov for term4', 'ex:XYZ/term4'),  # noqa:E501
-        ('ex:test/term2', 'term2',     'en', 'def for term2', 'en', 'AltLbl for term2', None, 'Prov for term2', 'ex:XYZ/term2'),  # noqa:E501
-        ('ex:test/term4', '..term4',   'en', None, None, None, None, None, None),
-        ('ex:test/term1', 'term1',     'en', None, None, None, None, None, None),
-        ('ex:test/term2', '..term2',   'en', None, None, None, None, None, None),
+        ("ex:test/term1", "term1",     "en", "def for term1", "en", "AltLbl for term1", None, "Prov for term1", "ex:XYZ/term1"),
+        ("ex:test/term1", "Begr1",     "de", "Def für Begr1", "de", "AltLbl für Begr1", None, "Prov for term1", "ex:XYZ/term1"),
+        ("ex:test/term3", "..term3",   "en", "def for term3", "en", "AltLbl for term3", None, "Prov for term3", "ex:XYZ/term3"),
+        ("ex:test/term4", "....term4", "en", "def for term4", "en", "AltLbl for term4", None, "Prov for term4", "ex:XYZ/term4"),
+        ("ex:test/term4", "....Begr4", "de", "Def für Begr4", "de", "AltLbl für Begr4", None, "Prov for term4", "ex:XYZ/term4"),
+        ("ex:test/term2", "term2",     "en", "def for term2", "en", "AltLbl for term2", None, "Prov for term2", "ex:XYZ/term2"),
+        ("ex:test/term4", "..term4",   "en", None, None, None, None, None, None),
+        ("ex:test/term1", "term1",     "en", None, None, None, None, None, None),
+        ("ex:test/term2", "..term2",   "en", None, None, None, None, None, None),
         (None, None, None, None, None, None, None, None, None),
     ]
     # fmt: on
@@ -385,9 +384,8 @@ def test_hierarchy_to_indent_merge(datadir, tmp_path):
     new_filename = "indent_merge_problem.xlsx"
     wb.save(new_filename)
     wb.close()
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(ValueError, match=f"Merge conflict for concept {iri}"):
         main_cli(["--hierarchy-to-indent", "--no-warn", str(tmp_path / new_filename)])
-    assert f"Merge conflict for concept {iri}" in str(excinfo.value)  # noqa: WPS441
 
 
 @pytest.mark.parametrize(
@@ -456,7 +454,7 @@ def test_run_ontospy_checks(tmp_path, capsys):
 
 
 @pytest.mark.parametrize(
-    "test_file,err,msg",
+    ("test_file", "err", "msg"),
     [
         (CS_CYCLES, 0, "All checks passed successfully."),
         (
@@ -468,7 +466,7 @@ def test_run_ontospy_checks(tmp_path, capsys):
     ],
     ids=["no error", "with error"],
 )
-def test_check(datadir, tmp_path, capsys, test_file, err, msg):
+def test_check(datadir, tmp_path, capsys, test_file, err, msg):  # noqa: PLR0913
     dst = tmp_path / test_file
     shutil.copy(datadir / test_file, dst)
     exit_code = main_cli(["--check", "--no-warn", str(dst)])
@@ -496,11 +494,10 @@ def test_nonexisting_file(datadir, capsys):
 
 def test_no_separator(datadir):
     os.chdir(datadir)
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(
+        ValueError, match="Setting the indent separator to zero length is not allowed."
+    ):
         main_cli(["--indent-separator", "", CS_CYCLES])
-    assert "Setting the indent separator to zero length is not allowed." in str(
-        excinfo.value  # noqa: WPS441
-    )
 
 
 def test_duplicates(datadir, tmp_path, capsys):
@@ -541,7 +538,7 @@ def test_run_vocexcel(datadir, tmp_path, test_file):
 
 
 @pytest.mark.parametrize(
-    "outputdir,testfile",
+    ("outputdir", "testfile"),
     [
         ("out", CS_CYCLES),
         ("", CS_CYCLES),

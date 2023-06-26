@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 """A wrapper to extend VocExcel with more commands."""
 
 import argparse
-import datetime
 import glob
 import os
 import sys
@@ -30,7 +28,6 @@ from voc4cat.util import (
 ORGANISATIONS["NFDI4Cat"] = URIRef("http://example.org/nfdi4cat/")
 ORGANISATIONS["LIKAT"] = URIRef("https://www.catalysis.de/")
 ORGANISATIONS_INVERSE.update({v: k for k, v in ORGANISATIONS.items()})
-NOW = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
 
 
 def is_file_available(fname, ftype):
@@ -56,8 +53,7 @@ def has_file_in_more_than_one_format(dir_):
     if len(file_names) == len(unique_file_names):
         return False
     seen = set()
-    duplicates = [x for x in file_names if x in seen or seen.add(x)]
-    return duplicates
+    return [x for x in file_names if x in seen or seen.add(x)]
 
 
 def is_supported_template(wb):
@@ -70,7 +66,8 @@ def may_overwrite(no_warn, xlf, outfile, func):
         warn(
             f'Option "--{func.__name__.replace("_", "-")}" '
             f"will overwrite the existing file {outfile}\n"
-            "Run again with --no-warn option to overwrite the file."
+            "Run again with --no-warn option to overwrite the file.",
+            stacklevel=1,
         )
         return False
     return True
@@ -98,19 +95,18 @@ def make_ids(fpath, outfile, search_prefix, start_id):
     # Load in data_only mode to get cell values not formulas.
     wb = openpyxl.load_workbook(fpath, data_only=True)
     is_supported_template(wb)
-    VOC_BASE_IRI = wb["Concept Scheme"].cell(row=2, column=2).value
-    if VOC_BASE_IRI is None:
-        VOC_BASE_IRI = "https://example.org/"
-        wb["Concept Scheme"].cell(row=2, column=2).value = VOC_BASE_IRI
+    voc_base_iri = wb["Concept Scheme"].cell(row=2, column=2).value
+    if voc_base_iri is None:
+        voc_base_iri = "https://example.org/"
+        wb["Concept Scheme"].cell(row=2, column=2).value = voc_base_iri
 
     try:
         start_id = int(start_id)
     except ValueError:
         start_id = -1
     if start_id <= 0:
-        raise ValueError(
-            'For option --make-ids the "start_id" must be an integer greater than 0.'
-        )
+        msg = 'For option --make-ids the "start_id" must be an integer greater than 0.'
+        raise ValueError(msg)
 
     id_gen = count(int(start_id))
     replaced_iris = {}
@@ -126,7 +122,7 @@ def make_ids(fpath, outfile, search_prefix, start_id):
                 if iri in replaced_iris:
                     iri_new = replaced_iris[iri]
                 else:
-                    iri_new = VOC_BASE_IRI + f"{next(id_gen):07d}"
+                    iri_new = voc_base_iri + f"{next(id_gen):07d}"
                     print(f"[{sheet}] Replaced CURI {iri} by {iri_new}")
                     replaced_iris[iri] = iri_new
                 row[0].value = iri_new
@@ -207,10 +203,8 @@ def hierarchy_from_indent(fpath, outfile, sep):
                 merged = []
                 for old, new in zip(old_data, new_data, strict=True):
                     if (old and new) and (old != new):
-                        raise ValueError(
-                            f"Cannot merge rows for {iri}. "
-                            "Resolve differences manually."
-                        )
+                        msg = f"Cannot merge rows for {iri}. Resolve differences manually."
+                        raise ValueError(msg)
                     merged.append(old if old else new)
                 row_by_iri[iri][lang] = merged
             else:
@@ -218,13 +212,13 @@ def hierarchy_from_indent(fpath, outfile, sep):
                     ws.cell(row_no, col_no).value for col_no in range(2, col_last)
                 ]
             max_row = row_no
+
+        # stop processing a sheet after 3 empty rows
+        elif subsequent_empty_rows < 2:  # noqa: PLR2004
+            subsequent_empty_rows += 1
         else:
-            # stop processing a sheet after 3 empty rows
-            if subsequent_empty_rows < 2:
-                subsequent_empty_rows += 1
-            else:
-                subsequent_empty_rows = 0
-                break
+            subsequent_empty_rows = 0
+            break
 
     term_dag = dag_from_indented_text("\n".join(concepts_indented))
     children_by_iri = dag_to_narrower(term_dag)
@@ -271,17 +265,14 @@ def hierarchy_to_indent(fpath, outfile, sep):
     subsequent_empty_rows = 0
     row_by_iri = defaultdict(dict)
     col_last = 9
-    # read all IRI, preferred labels, childrenURIs from the sheet
+    # read all IRI, preferred labels, children_uris from the sheet
     for rows_total, row in enumerate(  # pragma: no branch
         ws.iter_rows(min_row=3, max_col=col_last, values_only=True)
     ):
         if row[0] and row[1]:
             iri = row[0]
             lang = row[2]
-            if not row[6]:
-                childrenURIs = []
-            else:
-                childrenURIs = [c.strip() for c in row[6].split(",")]
+            children_uris = [] if not row[6] else [c.strip() for c in row[6].split(",")]
             # We need to check if ChildrenIRI, Provenance & Source Vocab URL
             # are consistent across languages since SKOS has no support for
             # per language statements. (SKOS-XL would add this)
@@ -292,24 +283,23 @@ def hierarchy_to_indent(fpath, outfile, sep):
                 merged = []
                 for old, new in zip(old_data, new_data):
                     if (old and new) and (old != new):
-                        raise ValueError(
-                            f"Merge conflict for concept {iri}. "
-                            f'New: "{new}" - Before: "{old}"'
-                        )
+                        msg = f'Merge conflict for concept {iri}. New: "{new}" - Before: "{old}"'
+                        raise ValueError(msg)
                     merged.append(old if old else new)
                 row_by_iri[iri][lang] = [row[col] for col in range(1, 6)] + merged
             else:
                 row_by_iri[iri][lang] = [row[col] for col in range(1, col_last)]
-                concept_children_dict[iri] = childrenURIs
+                concept_children_dict[iri] = children_uris
 
+        # stop processing a sheet after 3 empty rows
+        elif subsequent_empty_rows < 2:  # noqa: PLR2004
+            subsequent_empty_rows += 1
         else:
-            # stop processing a sheet after 3 empty rows
-            if subsequent_empty_rows < 2:
-                subsequent_empty_rows += 1
-            else:
-                subsequent_empty_rows = 0
-                rows_total = rows_total - 2
-                break
+            subsequent_empty_rows = 0
+            rows_total -= 2  # noqa: PLW2901
+            break
+    else:
+        pass
 
     term_dag = dag_from_narrower(concept_children_dict)
     concept_levels = dag_to_node_levels(term_dag)
@@ -334,17 +324,17 @@ def hierarchy_to_indent(fpath, outfile, sep):
             ws.cell(row, 3).value = lang
 
             if (iri, lang) in iri_written:  # case 2
-                for col, stored_value in zip_longest(
+                for col, _ in zip_longest(
                     range(4, col_last + 1), row_by_iri[iri][lang][2:]
                 ):
                     ws.cell(row, column=col).value = None
                 row += 1
                 continue
-            else:
-                for col, stored_value in zip_longest(
-                    range(4, col_last + 1), row_by_iri[iri][lang][2:]
-                ):
-                    ws.cell(row, column=col).value = stored_value
+
+            for col, stored_value in zip_longest(
+                range(4, col_last + 1), row_by_iri[iri][lang][2:]
+            ):
+                ws.cell(row, column=col).value = stored_value
             # clear children IRI column G
             ws.cell(row, column=7).value = None
             row += 1
@@ -406,38 +396,38 @@ def check(fpath, outfile):
     color = PatternFill("solid", start_color="00FFCC00")  # orange
 
     subsequent_empty_rows = 0
-    seen_conceptIRIs = []
+    seen_concept_iris = []
     failed_check = False
     for row in ws.iter_rows(min_row=3, max_col=3):  # pragma: no branch
         if row[0].value and row[1].value:
-            conceptIRI, _, lang = [
+            concept_iri, _, lang = (
                 c.value.strip() if c.value is not None else "" for c in row
-            ]
+            )
 
-            new_conceptIRI = f'"{conceptIRI}"@{lang.lower()}'
-            if new_conceptIRI in seen_conceptIRIs:
+            new_concept_iri = f'"{concept_iri}"@{lang.lower()}'
+            if new_concept_iri in seen_concept_iris:
                 failed_check = True
                 print(
-                    f'ERROR: Same Concept IRI "{conceptIRI}" used more than once for '
+                    f'ERROR: Same Concept IRI "{concept_iri}" used more than once for '
                     f'language "{lang}"'
                 )
                 # colorize problematic cells
                 row[0].fill = color
                 row[2].fill = color
-                seen_in_row = 3 + seen_conceptIRIs.index(new_conceptIRI)
+                seen_in_row = 3 + seen_concept_iris.index(new_concept_iri)
                 ws[f"A{seen_in_row}"].fill = color
                 ws[f"C{seen_in_row}"].fill = color
             else:
-                seen_conceptIRIs.append(new_conceptIRI)
+                seen_concept_iris.append(new_concept_iri)
 
             subsequent_empty_rows = 0
+
+        # stop processing a sheet after 3 empty rows
+        elif subsequent_empty_rows < 2:  # noqa: PLR2004
+            subsequent_empty_rows += 1
         else:
-            # stop processing a sheet after 3 empty rows
-            if subsequent_empty_rows < 2:
-                subsequent_empty_rows += 1
-            else:
-                subsequent_empty_rows = 0
-                break
+            subsequent_empty_rows = 0
+            break
 
     if failed_check:
         wb.save(outfile)
@@ -466,7 +456,7 @@ def main_cli(args=None):
     if args is None:  # voc4cat run via entrypoint
         args = sys.argv[1:]
 
-    has_args = True if args else False
+    has_args = bool(args)
 
     parser = argparse.ArgumentParser(
         prog="voc4cat", formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -610,9 +600,8 @@ def main_cli(args=None):
     if args_wrapper.indent_separator is not None:
         sep = args_wrapper.indent_separator
         if not len(sep):
-            raise ValueError(
-                "Setting the indent separator to zero length is not allowed."
-            )
+            msg = "Setting the indent separator to zero length is not allowed."
+            raise ValueError(msg)
     else:  # Excel's default indent / openpyxl.styles.Alignment(indent=0)
         sep = None
 
@@ -627,11 +616,10 @@ def main_cli(args=None):
                 outfile = args_wrapper.file_to_preprocess
             else:
                 outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
-        elif args_wrapper.file_to_preprocess.is_dir():
+        elif args_wrapper.file_to_preprocess.is_dir(): # pragma: no cover
             # processing all files in directory is not supported for now.
-            raise NotImplementedError(
-                "Processing all files in directory not implemented for this option."
-            )
+            msg = "Processing all files in directory not implemented for this option."
+            raise NotImplementedError(msg)
         else:
             print(f"File not found: {args_wrapper.file_to_preprocess}.")
             return 1
@@ -708,7 +696,7 @@ def main_cli(args=None):
                 err += run_ontospy(infile.with_suffix(".ttl"), doc_path)
         else:
             print(
-                "Expected xlsx-file or directory but got: {0}".format(
+                "Expected xlsx-file or directory but got: {}".format(
                     args_wrapper.file_to_preprocess
                 )
             )
@@ -716,7 +704,7 @@ def main_cli(args=None):
     elif args_wrapper and args_wrapper.file_to_preprocess:
         if os.path.isdir(args_wrapper.file_to_preprocess):
             dir_ = args_wrapper.file_to_preprocess
-            if duplicates := has_file_in_more_than_one_format(dir_):  # noqa: WPS332
+            if duplicates := has_file_in_more_than_one_format(dir_):
                 print(
                     "Files may only be present in one format. Found more than one "
                     "format for:\n  " + "\n  ".join(duplicates)
@@ -757,7 +745,7 @@ def main_cli(args=None):
                 outfile = Path(f"{fprefix}.ttl")
             else:
                 outfile = Path(outdir) / Path(f"{fname}.ttl")
-                locargs = ["--outputfile", str(outfile)] + locargs
+                locargs = ["--outputfile", str(outfile), *locargs]
             err += run_vocexcel(locargs)
 
         if turtle_files:
@@ -772,7 +760,7 @@ def main_cli(args=None):
                 outfile = Path(f"{fprefix}.xlsx")
             else:
                 outfile = Path(outdir) / Path(f"{fname}.xlsx")
-                locargs = ["--outputfile", str(outfile)] + locargs
+                locargs = ["--outputfile", str(outfile), *locargs]
             err += run_vocexcel(locargs)
 
         if (

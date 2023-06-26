@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # This script is mainly useful for CI.
 import os
 import shutil
@@ -16,14 +15,14 @@ def main(ttl_inbox, vocab):
     retcode = 0
     for p in os.listdir(ttl_inbox):
         new = ttl_inbox / Path(p)
-        if not new.suffix == ".ttl" or new.is_dir():
+        if new.suffix != ".ttl" or new.is_dir():
             print(f'Skipping "{new}"')
             continue
         if os.path.exists(vocab / Path(new).name):
             exists = vocab / Path(new).name
             cmd = ["git", "merge-file", "--theirs", str(exists), str(exists), str(new)]
-            print("Running cmd: {0}".format(" ".join(cmd)))
-            outp = subprocess.run(cmd, capture_output=True)
+            print("Running cmd: {}".format(" ".join(cmd)))
+            outp = subprocess.run(cmd, capture_output=True)  # noqa: S603
             print(outp.stdout)
             if retcode := outp.returncode != 0:
                 break
@@ -37,13 +36,12 @@ def main_cli(args=None):
     if args is None:  # script run via entrypoint
         args = sys.argv[1:]
 
-    if len(args) != 2:
+    if len(args) != 2:  # noqa: PLR2004
         print("Usage: python merge_vocab.py <outbox_dir> <vocab_dir>")
         return 1
     outbox, vocab = args
     if os.path.exists(outbox) and os.path.exists(vocab):
-        retcode = main(Path(outbox), Path(vocab))
-        return retcode
+        return main(Path(outbox), Path(vocab))
 
     print(f'This script requires both folders to exist: "{outbox}" and "{vocab}"')
     return 1
