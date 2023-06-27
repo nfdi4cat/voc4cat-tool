@@ -22,6 +22,6 @@ Earlier template versions which are not listed here should not be used.
 
 # Vocabulary config file template "idranges.toml"
 
-With this files ranges of integer IDs can be pre-alloated to specific contributors.
-Also OCID and ROR ID can be specified for each contributor.
-The file also holds other config parameters for a vocabulary, e.g. the length of the ID.
+With this cofig file ranges of integer IDs can be pre-allocated to specific contributors.
+Also ORCID and ROR ID can be specified for each contributor.
+The file moreover holds other config parameters for a vocabulary, e.g. the length of the ID.
