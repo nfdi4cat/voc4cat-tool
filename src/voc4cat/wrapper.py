@@ -345,13 +345,13 @@ def hierarchy_to_indent(fpath, outfile, sep):
     return 0
 
 
-def run_ontospy(file_path, output_path):
+def run_ontospy(file_path, output_path, theme="spacelab"):
     """
     Generate Ontospy documentation for a file or directory of files.
     """
     import ontospy
     from ontospy.gendocs.viz.viz_d3dendogram import Dataviz
-    from ontospy.gendocs.viz.viz_html_single import HTMLVisualizer
+    from ontospy.gendocs.viz.viz_html_multi import KompleteViz
 
     if Path(file_path).is_dir():
         turtle_files = glob.glob(f"{file_path}/*.ttl")
@@ -365,16 +365,19 @@ def run_ontospy(file_path, output_path):
         return 1
 
     for turtle_file in turtle_files:
+
+        title = os.environ.pop("VOCAB_TITLE", None)
+
         print(f"\nBuilding ontospy documentation for {turtle_file}")
         specific_output_path = Path(output_path) / Path(turtle_file).stem
 
         g = ontospy.Ontospy(Path(turtle_file).resolve().as_uri())
 
-        docs = HTMLVisualizer(g)
+        docs = KompleteViz(g, title=title, theme=theme)
         docs_path = os.path.join(specific_output_path, "docs")
         docs.build(docs_path)  # => build and save docs/visualization.
 
-        viz = Dataviz(g)
+        viz = Dataviz(g, title=title)
         viz_path = os.path.join(specific_output_path, "dendro")
         viz.build(viz_path)  # => build and save docs/visualization.
 
