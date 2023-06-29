@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Dict, Literal, Union
@@ -161,6 +162,10 @@ def validate_with_profile(
         )
 
 
+def export_info_to_env(cs):
+    os.environ["VOCAB_TITLE"] = cs.title
+
+
 def excel_to_rdf(
     file_to_convert_path: Path,
     profile="vocpub",
@@ -245,6 +250,9 @@ def excel_to_rdf(
             message_level=message_level,
             log_file=log_file,
         )
+
+    # Export some meta data to env vars
+    export_info_to_env(cs)
 
     # Write out the file
     if output_type == "graph":
@@ -457,6 +465,9 @@ def rdf_to_excel(
             else None,
         ).to_excel(wb, row_no)
         row_no += 1
+
+    # Export some meta data to env vars
+    export_info_to_env(cs)
 
     if output_file_path is not None:
         dest = output_file_path
