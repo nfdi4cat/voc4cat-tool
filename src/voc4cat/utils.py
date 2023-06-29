@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple
+from typing import List, Tuple
 
 from openpyxl import load_workbook as _load_workbook
 from openpyxl.workbook.workbook import Workbook
@@ -90,7 +90,7 @@ def string_is_http_iri(s: str) -> Tuple[bool, str]:
         return True, ""
 
 
-def all_strings_in_list_are_iris(l_: []) -> Tuple[bool, str]:
+def all_strings_in_list_are_iris(l_: List) -> Tuple[bool, str]:
     messages = []
     if l_ is not None:
         for item in l_:
