@@ -67,14 +67,11 @@ def get_template_version(wb: Workbook) -> str:
 
 def split_and_tidy(cell_value: str):
     # note this may not work in list of things that contain commas. Need to consider revising
-    # to allow comma-seperated values where it'll split in commas but not in things enclosed in quotes.
+    # to allow comma-separated values where it'll split in commas but not in things enclosed in quotes.
     if cell_value == "" or cell_value is None:
         return []
-    return (
-        [x.strip() for x in cell_value.strip().split(",")]
-        if cell_value is not None
-        else []
-    )
+    entries = [x.strip() for x in cell_value.strip().split(",")]
+    return [x for x in entries if x]
 
 
 def string_is_http_iri(s: str) -> Tuple[bool, str]:
