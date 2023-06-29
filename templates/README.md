@@ -2,7 +2,15 @@
 
 The templates here match structure-wise with the templates in [VocExcel](https://github.com/nfdi4cat/VocExcel) of the same version number.
 
-## Version 0.4.3, Revision 2023-03a
+## Version 0.4.3
+
+### Revision 2023-06a
+
+The following has changed compared to the last revision.
+
+- Corrected the pre-defined prefix for voc4cat.
+
+### Revision 2023-03a
 
 The following is different in the voc4cat-template (`voc4cat_template_043.xlsx`):
 
@@ -16,11 +24,11 @@ The following is different in the voc4cat-template (`voc4cat_template_043.xlsx`)
 
 The identical template `voc4cat_template_043.xlsx` is included in [voc4cat-tool/templates](https://github.com/nfdi4cat/voc4cat-template/tree/main/templates).
 
-## Earlier Excel template versions
+## Earlier template versions
 
 Earlier template versions which are not listed here should not be used.
 
-# Vocabulary config file template "idranges.toml"
+# Vocabulary configuration file template "idranges.toml"
 
 With this cofig file ranges of integer IDs can be pre-allocated to specific contributors.
 Also ORCID and ROR ID can be specified for each contributor.
