@@ -1,4 +1,3 @@
-import logging
 from typing import List, Tuple
 
 from openpyxl.worksheet.worksheet import Worksheet
@@ -6,13 +5,13 @@ from pydantic import ValidationError
 
 try:
     import models
-    from utils import ConversionError, load_workbook, split_and_tidy
+    from utils import ConversionError, split_and_tidy
 except:
     import sys
 
     sys.path.append("..")
     from vocexcel import models
-    from vocexcel.utils import ConversionError, load_workbook, split_and_tidy
+    from vocexcel.utils import ConversionError, split_and_tidy
 
 
 # Checking how many colon's in string
@@ -65,17 +64,15 @@ def using_prefix_and_namespace_non_list_output(cell_value, prefix, s: Worksheet,
             if split_c_prefix in prefix:
                 c = prefix[split_c_prefix] + split_c_added_component
             else:
-                print(
-                    f"the prefix used: '{split_c_prefix}' in sheet {s} and row {row} "
-                    f"isn't included in the prefix sheet"
+                raise ConversionError(
+                    f"The prefix '{split_c_prefix}' used in sheet {s} and row {row} "
+                    f"isn't included in the prefix sheet."
                 )
-                raise Exception
         else:
-            print(
+            raise ConversionError(
                 f"Something doesn't look right on row {row} and sheet {s}. "
-                f"Likely this isn't in http form or more colons are used than normal"
+                f"The problematic cell value is '{c}'. Correct URL form used?"
             )
-            raise Exception
     return c
 
 
@@ -92,50 +89,43 @@ def using_prefix_and_namespace_cs(cell_value, prefix):
             if split_c_prefix in prefix:
                 c = prefix[split_c_prefix] + split_c_added_component
             else:
-                print(
-                    f"the prefix used: '{split_c_prefix}' in the concept scheme page"
-                    f"isn't included in the prefix sheet"
+                raise ConversionError(
+                    f"The prefix '{split_c_prefix}' used in the concept scheme page"
+                    "isn't included in the prefix sheet."
                 )
-                raise Exception
         else:
-            print(
-                f"Something doesn't look right in the concept scheme page. "
-                f"Likely the cells using prefixes aren't in http form or more colons are used than normal"
+            raise ConversionError(
+                "Something doesn't look right in the concept scheme page. "
+                f"The problematic cell value is '{c}'. Correct URL form used?"
             )
-            raise Exception
     return c
 
 
 # prefix and namespace list with list output
 def using_prefix_and_namespace(cell_value, prefix, s: Worksheet, row):
     variables = []
-    for i in cell_value:
-        if cell_value is not None:
-            try:
-                c = i
-                if c.startswith("http://") or c.startswith("https://"):
-                    pass
-                elif only_one_colon_in_str(c):
-                    split_c_prefix = c.split(":")[0]
-                    split_c_added_component = c.split(":")[1]
+    for c in cell_value:
+        if not c:
+            continue
+        if c.startswith("http://") or c.startswith("https://"):
+            pass
+        elif only_one_colon_in_str(c):
+            split_c_prefix = c.split(":")[0]
+            split_c_added_component = c.split(":")[1]
 
-                    if split_c_prefix in prefix:
-                        c = prefix[split_c_prefix] + split_c_added_component
-                    else:
-                        print(
-                            f"the prefix used: '{split_c_prefix}' in sheet {s} and row {row} "
-                            f"isn't included in the prefix sheet"
-                        )
-                        raise Exception
-                else:
-                    print(
-                        f"Something doesn't look right on row {row} and sheet {s}. "
-                        f"Likely this isn't in http form or more colons are used than normal"
-                    )
-                    raise Exception
-                variables.append(c)
-            except Exception as e:
-                logging.exception(e)
+            if split_c_prefix in prefix:
+                c = prefix[split_c_prefix] + split_c_added_component
+            else:
+                raise ConversionError(
+                    f"The prefix '{split_c_prefix}' used in sheet {s} and row {row} "
+                    "isn't included in the prefix sheet."
+                )
+        else:
+            raise ConversionError(
+                f"Something doesn't look right on row {row} and sheet {s}. "
+                f"The problematic cell value is '{c}'. Correct URL form used?"
+            )
+        variables.append(c)
     return variables
 
 
