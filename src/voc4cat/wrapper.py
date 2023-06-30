@@ -10,6 +10,7 @@ from pathlib import Path
 from warnings import warn
 
 import openpyxl
+import vocexcel
 from openpyxl.styles import Alignment, PatternFill
 from rdflib import URIRef
 from vocexcel.convert import main as vocexcel_main
@@ -366,7 +367,7 @@ def run_ontospy(file_path, output_path, theme="spacelab"):
 
     for turtle_file in turtle_files:
 
-        title = os.environ.pop("VOCAB_TITLE", None)
+        title = vocexcel.convert.VOCAB_TITLE
 
         print(f"\nBuilding ontospy documentation for {turtle_file}")
         specific_output_path = Path(output_path) / Path(turtle_file).stem
