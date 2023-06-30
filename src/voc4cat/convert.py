@@ -9,71 +9,33 @@ import pyshacl
 from colorama import Fore, Style
 from pydantic.error_wrappers import ValidationError
 from pyshacl.pytypes import GraphLike
-from vocexcel import __version__
-
-try:
-    import models
-    import profiles
-    from convert_021 import (
-        extract_concepts_and_collections as extract_concepts_and_collections_021,
-    )
-    from convert_030 import extract_concept_scheme as extract_concept_scheme_030
-    from convert_030 import (
-        extract_concepts_and_collections as extract_concepts_and_collections_030,
-    )
-    from convert_040 import extract_concept_scheme as extract_concept_scheme_040
-    from convert_040 import (
-        extract_concepts_and_collections as extract_concepts_and_collections_040,
-    )
-    from convert_043 import create_prefix_dict
-    from convert_043 import extract_concept_scheme as extract_concept_scheme_043
-    from convert_043 import (
-        extract_concepts_and_collections as extract_concepts_and_collections_043,
-    )
-    from utils import (
-        EXCEL_FILE_ENDINGS,
-        KNOWN_FILE_ENDINGS,
-        KNOWN_TEMPLATE_VERSIONS,
-        RDF_FILE_ENDINGS,
-        ConversionError,
-        get_template_version,
-        load_workbook,
-    )
-except ImportError:
-    sys.path.append("..")
-    from vocexcel import models, profiles
-    from vocexcel.convert_021 import (
-        extract_concepts_and_collections as extract_concepts_and_collections_021,
-    )
-    from vocexcel.convert_030 import (
-        extract_concept_scheme as extract_concept_scheme_030,
-    )
-    from vocexcel.convert_030 import (
-        extract_concepts_and_collections as extract_concepts_and_collections_030,
-    )
-    from vocexcel.convert_040 import (
-        extract_concept_scheme as extract_concept_scheme_040,
-    )
-    from vocexcel.convert_040 import (
-        extract_concepts_and_collections as extract_concepts_and_collections_040,
-    )
-    from vocexcel.convert_043 import create_prefix_dict
-    from vocexcel.convert_043 import (
-        extract_concept_scheme as extract_concept_scheme_043,
-    )
-    from vocexcel.convert_043 import (
-        extract_concepts_and_collections as extract_concepts_and_collections_043,
-    )
-    from vocexcel.utils import (
-        EXCEL_FILE_ENDINGS,
-        KNOWN_FILE_ENDINGS,
-        KNOWN_TEMPLATE_VERSIONS,
-        RDF_FILE_ENDINGS,
-        ConversionError,
-        get_template_version,
-        load_template,
-        load_workbook,
-    )
+from vocexcel import __version__, models, profiles
+from vocexcel.convert_021 import (
+    extract_concepts_and_collections as extract_concepts_and_collections_021,
+)
+from vocexcel.convert_030 import extract_concept_scheme as extract_concept_scheme_030
+from vocexcel.convert_030 import (
+    extract_concepts_and_collections as extract_concepts_and_collections_030,
+)
+from vocexcel.convert_040 import extract_concept_scheme as extract_concept_scheme_040
+from vocexcel.convert_040 import (
+    extract_concepts_and_collections as extract_concepts_and_collections_040,
+)
+from vocexcel.convert_043 import create_prefix_dict
+from vocexcel.convert_043 import extract_concept_scheme as extract_concept_scheme_043
+from vocexcel.convert_043 import (
+    extract_concepts_and_collections as extract_concepts_and_collections_043,
+)
+from vocexcel.utils import (
+    EXCEL_FILE_ENDINGS,
+    KNOWN_FILE_ENDINGS,
+    KNOWN_TEMPLATE_VERSIONS,
+    RDF_FILE_ENDINGS,
+    ConversionError,
+    get_template_version,
+    load_template,
+    load_workbook,
+)
 
 TEMPLATE_VERSION = None
 

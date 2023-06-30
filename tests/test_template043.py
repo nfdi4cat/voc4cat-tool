@@ -1,11 +1,8 @@
-import sys
 from pathlib import Path
 
 import pytest
 from rdflib import Graph, Literal, URIRef, compare
 from rdflib.namespace import DCTERMS, SKOS
-
-sys.path.append(str(Path(__file__).parent.parent.absolute()))
 from vocexcel import convert
 from vocexcel.utils import ConversionError
 
