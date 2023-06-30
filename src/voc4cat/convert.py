@@ -9,6 +9,7 @@ import pyshacl
 from colorama import Fore, Style
 from pydantic.error_wrappers import ValidationError
 from pyshacl.pytypes import GraphLike
+from vocexcel import __version__
 
 try:
     import models
@@ -630,8 +631,7 @@ def main(args=None):
 
         print(s.rstrip())
     elif args.version:
-        # not sure what to do here, just removing the errors
-        print(TEMPLATE_VERSION)
+        print(__version__)
     elif args.file_to_convert:
         if not args.file_to_convert.name.endswith(tuple(KNOWN_FILE_ENDINGS)):
             print(
