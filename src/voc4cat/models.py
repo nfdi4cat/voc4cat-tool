@@ -6,14 +6,7 @@ from openpyxl import Workbook
 from pydantic import BaseModel, validator
 from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import DCAT, DCTERMS, OWL, RDF, RDFS, SKOS, XSD
-
-try:
-    from utils import all_strings_in_list_are_iris, string_is_http_iri
-except:
-    import sys
-
-    sys.path.append("..")
-    from vocexcel.utils import all_strings_in_list_are_iris, string_is_http_iri
+from vocexcel.utils import all_strings_in_list_are_iris, string_is_http_iri
 
 ORGANISATIONS = {
     "CGI": URIRef("https://linked.data.gov.au/org/cgi"),
