@@ -38,6 +38,7 @@ from vocexcel.utils import (
 )
 
 TEMPLATE_VERSION = None
+VOCAB_TITLE = ""
 
 
 def validate_with_profile(
@@ -125,10 +126,6 @@ def validate_with_profile(
         )
 
 
-def export_info_to_env(cs):
-    os.environ["VOCAB_TITLE"] = cs.title
-
-
 def excel_to_rdf(
     file_to_convert_path: Path,
     profile="vocpub",
@@ -214,8 +211,9 @@ def excel_to_rdf(
             log_file=log_file,
         )
 
-    # Export some meta data to env vars
-    export_info_to_env(cs)
+    # Make title as global available (this is a hack!)
+    global VOCAB_TITLE
+    VOCAB_TITLE = cs.title
 
     # Write out the file
     if output_type == "graph":
@@ -429,8 +427,9 @@ def rdf_to_excel(
         ).to_excel(wb, row_no)
         row_no += 1
 
-    # Export some meta data to env vars
-    export_info_to_env(cs)
+    # Make title as global available (this is a hack!)
+    global VOCAB_TITLE
+    VOCAB_TITLE = cs.title
 
     if output_file_path is not None:
         dest = output_file_path
