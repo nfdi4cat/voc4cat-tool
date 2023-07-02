@@ -1,4 +1,4 @@
-Example files showing what voc4cat can do:
+Example files showing typical conversions with voc4cat:
 
 - `Photocatalysis_LIKAT_template043_orig-fixed.xlsx`
   - A draft of a photocatalysis vocabulary: This has still the original structure and contents; only spelling and link errors were fixed.

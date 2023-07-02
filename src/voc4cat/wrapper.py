@@ -346,35 +346,64 @@ def hierarchy_to_indent(fpath, outfile, sep):
     return 0
 
 
-def run_ontospy(file_path, output_path, theme="spacelab"):
+def run_pylode(file_path, output_path):
     """
-    Generate Ontospy documentation for a file or directory of files.
+    Generate pyLODE documentation.
     """
-    import ontospy
-    from ontospy.gendocs.viz.viz_d3dendogram import Dataviz
-    from ontospy.gendocs.viz.viz_html_multi import KompleteViz
+    import pylode
 
-    if Path(file_path).is_dir():
-        turtle_files = glob.glob(f"{file_path}/*.ttl")
-        if not turtle_files:
-            print(f"No turtle file(s) found to document with Ontospy in {file_path}")
-            return 1
-    elif Path(file_path).exists():
-        turtle_files = [file_path]
-    else:
-        print(f"File/dir not found (ontospy): {file_path}")
+    turtle_files = find_files_to_document(file_path)
+    if not turtle_files:
         return 1
 
     for turtle_file in turtle_files:
+        print(f"\nBuilding pyLODE documentation for {turtle_file}")
+        filename = Path(turtle_file) # .resolve())
+        outdir = output_path / filename.with_suffix("").name
+        outdir.mkdir(exist_ok=True)
+        outfile = outdir / "index.html"
+        # breakpoint()
+        html = pylode.MakeDocco(
+            # we use str(abs path) because pyLODE 2.x does not find the file otherwise
+            input_data_file=str(filename.resolve()),
+            outputformat="html",
+            profile="vocpub",
+        )
+        html.document(destination=outfile)
+        # Fix html-doc: Do not show overview section with black div for image.
+        with open(outfile) as html_file:
+            content = html_file.read()
+        content = content.replace(
+            '<section id="overview">',
+            '<section id="overview" style="display: none;">',
+        )
+        with open(outfile, "w") as html_file:
+            html_file.write(content)
+        print(f"Done!\n=> {outfile.resolve().as_uri()}")
+    return 0
 
+
+def run_ontospy(file_path, output_path):
+    """
+    Generate ontospy documentation (single-page html & dendrogram).
+    """
+    import ontospy
+    from ontospy.gendocs.viz.viz_d3dendogram import Dataviz
+    from ontospy.gendocs.viz.viz_html_single import HTMLVisualizer
+
+    turtle_files = find_files_to_document(file_path)
+    if not turtle_files:
+        return 1
+
+    for turtle_file in turtle_files:
         title = vocexcel.convert.VOCAB_TITLE
 
         print(f"\nBuilding ontospy documentation for {turtle_file}")
-        specific_output_path = Path(output_path) / Path(turtle_file).stem
+        specific_output_path = (Path(output_path) / Path(turtle_file).stem).resolve()
 
         g = ontospy.Ontospy(Path(turtle_file).resolve().as_uri())
 
-        docs = KompleteViz(g, title=title, theme=theme)
+        docs = HTMLVisualizer(g, title=title)
         docs_path = os.path.join(specific_output_path, "docs")
         docs.build(docs_path)  # => build and save docs/visualization.
 
@@ -383,6 +412,34 @@ def run_ontospy(file_path, output_path, theme="spacelab"):
         viz.build(viz_path)  # => build and save docs/visualization.
 
     return 0
+
+
+def find_files_to_document(file_path):
+    if Path(file_path).is_dir():
+        turtle_files = glob.glob(f"{file_path}/*.ttl")
+        if not turtle_files:
+            print(f"No turtle file(s) found to document in {file_path}")
+            turtle_files = []
+    elif Path(file_path).exists():
+        turtle_files = [file_path]
+    else:
+        print(f"File/dir not found (for docs): {file_path}")
+        turtle_files = []
+    return turtle_files
+
+
+def build_docs(file_path, output_path, doc_builder):
+    """
+    Generate documentation for a file or directory of files.
+    """
+    if doc_builder == "ontospy":
+        errcode = run_ontospy(file_path, output_path)
+    elif doc_builder == "pylode":
+        errcode = run_pylode(file_path, output_path)
+    else:
+        print(f"Unsupported document builder '{doc_builder}'.")
+        errcode = 1
+    return errcode
 
 
 def check(fpath, outfile):
@@ -507,8 +564,9 @@ def main_cli(args=None):
 
     parser.add_argument(
         "--docs",
-        help=("Build documentation and dendrogram-visualization with ontospy."),
-        action="store_true",
+        help=('Build html documentation. Supported options: "pylode" or "ontospy."'),
+        type=str,
+        required=False,
     )
 
     parser.add_argument(
@@ -620,7 +678,7 @@ def main_cli(args=None):
                 outfile = args_wrapper.file_to_preprocess
             else:
                 outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
-        elif args_wrapper.file_to_preprocess.is_dir(): # pragma: no cover
+        elif args_wrapper.file_to_preprocess.is_dir():  # pragma: no cover
             # processing all files in directory is not supported for now.
             msg = "Processing all files in directory not implemented for this option."
             raise NotImplementedError(msg)
@@ -671,7 +729,7 @@ def main_cli(args=None):
             if args_wrapper.docs and args_wrapper.forward and to_build_docs:
                 indir = args_wrapper.file_to_preprocess if outdir is None else outdir
                 doc_path = infile.parent if outdir is None else outdir
-                err += run_ontospy(indir, doc_path)
+                err += build_docs(indir, doc_path, args_wrapper.docs)
 
         elif is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
             fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
@@ -697,7 +755,7 @@ def main_cli(args=None):
             if args_wrapper.docs:
                 infile = infile if outdir is None else outfile
                 doc_path = infile.parent if outdir is None else outdir
-                err += run_ontospy(infile.with_suffix(".ttl"), doc_path)
+                err += build_docs(infile.with_suffix(".ttl"), doc_path, args_wrapper.docs)
         else:
             print(
                 "Expected xlsx-file or directory but got: {}".format(
@@ -774,11 +832,11 @@ def main_cli(args=None):
         ):
             infile = args_wrapper.file_to_preprocess
             doc_path = infile if outdir is None else outdir
-            err += run_ontospy(infile, doc_path)
+            err += build_docs(infile, doc_path, args_wrapper.docs)
         elif args_wrapper.docs:
             infile = Path(args_wrapper.file_to_preprocess).with_suffix(".ttl")
             doc_path = outdir if outdir is not None else infile.parent
-            err += run_ontospy(infile, doc_path)
+            err += build_docs(infile, doc_path, args_wrapper.docs)
     else:
         # Unknown voc4cat option
         print(f"Unknown voc4cat option: {unknown_option}")

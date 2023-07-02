@@ -20,7 +20,7 @@ To support what is not provided by the original VocExcel project we have develop
 - Checking our NFDI4Cat-Excel template
 - Enriching our NFDI4Cat-Excel template (e.g. add IRIs)
 - Processing all files in a folder at once
-- Generating documentation (with [ontospy](http://lambdamusic.github.io/Ontospy/))
+- Generating documentation (with [pyLODE](https://github.com/RDFLib/pyLODE) or [ontospy](http://lambdamusic.github.io/Ontospy/))
 - Support for expressing concept-hierarchies by indentation.
 
 Since mid 2022 voc4cat should be used with our VocExcel fork [nfdi4cat/VocExcel](https://github.com/nfdi4cat/VocExcel). The original project (now at [RDFlib/VocExcel](https://github.com/RDFLib/VocExcel)) changed its templates substantially which made it too cumbersome to keep our code and the customized templates compatible.
@@ -111,7 +111,7 @@ It is also possible to create an xlsx file from a turtle file. Optionally a cust
 Options that are specific for VocExcel can be put at the end of a `voc4cat` command.
 Here is an example that forwards the `-e 3` and `-m 3` options to VocExcel and moreover demonstrates a complex combination of options (as used in CI):
 
-`voc4cat --check --forward --docs --output-directory outbox inbox-excel-vocabs/ -e 3 -m 3`
+`voc4cat --check --forward --docs pylode --output-directory outbox inbox-excel-vocabs/ -e 3 -m 3`
 
 ## Feedback and code contributions
 
