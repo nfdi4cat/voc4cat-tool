@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from openpyxl.reader.excel import load_workbook
-from voc4cat.wrapper import main_cli, run_ontospy
+from voc4cat.wrapper import build_docs, main_cli
 
 CS_SIMPLE = "concept-scheme-simple.xlsx"
 CS_CYCLES = "concept-scheme-with-cycles.xlsx"
@@ -427,30 +427,48 @@ def test_outdir_variants(datadir, tmp_path, outdir):
     [CS_CYCLES_TURTLE, ""],
     ids=["single file", "dir of files"],
 )
-def test_run_ontospy(datadir, tmp_path, test_file):
+def test_build_docs_ontospy(datadir, tmp_path, test_file):
     """Check that ontospy generates the expected output."""
     dst = tmp_path / test_file
     shutil.copy(datadir / CS_CYCLES_TURTLE, tmp_path)
     outdir = tmp_path / "ontospy"
     # To test the code-path, outdir is created automatically here.
-    main_cli(["--docs", "--output-directory", str(outdir), str(dst)])
+    main_cli(["--docs", "ontospy", "--output-directory", str(outdir), str(dst)])
     assert (outdir / Path(CS_CYCLES_TURTLE).stem / "dendro" / "index.html").exists()
     assert (outdir / Path(CS_CYCLES_TURTLE).stem / "docs" / "index.html").exists()
 
 
-def test_run_ontospy_checks(tmp_path, capsys):
-    """Check handling of missing dir/file."""
-    exit_code = run_ontospy(tmp_path, tmp_path)
+@pytest.mark.parametrize(
+    "doc_builder",
+    ["pylode", "ontospy"],
+)
+def test_build_docs(tmp_path, capsys, doc_builder):
+    """Check handling of missing dir/file on documentation build."""
+    exit_code = build_docs(tmp_path, tmp_path, doc_builder)
     captured = capsys.readouterr()
     assert exit_code == 1
     assert (
-        f"No turtle file(s) found to document with Ontospy in {tmp_path}"
+        f"No turtle file(s) found to document in {tmp_path}"
         in captured.out
     )
-    exit_code = run_ontospy(tmp_path / CS_CYCLES_TURTLE, tmp_path)
+    exit_code = build_docs(tmp_path / CS_CYCLES_TURTLE, tmp_path, doc_builder)
     captured = capsys.readouterr()
     assert exit_code == 1
-    assert f"File/dir not found (ontospy): {tmp_path/CS_CYCLES_TURTLE}" in captured.out
+    assert f"File/dir not found (for docs): {tmp_path/CS_CYCLES_TURTLE}" in captured.out
+
+    exit_code = build_docs(tmp_path / CS_CYCLES_TURTLE, tmp_path, "ontospy")
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert f"File/dir not found (for docs): {tmp_path/CS_CYCLES_TURTLE}" in captured.out
+
+
+def test_build_docs_unknown_builder(tmp_path, capsys):
+    """Check handling of unknown documentation builder."""
+    unknown_doc_builder = "123doc"
+    exit_code = build_docs(tmp_path, tmp_path, unknown_doc_builder)
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert f"Unsupported document builder '{unknown_doc_builder}'." in captured.out
 
 
 @pytest.mark.parametrize(
@@ -572,7 +590,7 @@ def test_run_vocexcel_outputdir(datadir, tmp_path, outputdir, testfile):
     ids=["single file", "dir of files"],
 )
 def test_forwarding_3stages(datadir, tmp_path, test_file):
-    """Check a file by voc4cat then forward it to vocexcel then to ontospy."""
+    """Check a file by voc4cat then forward it to vocexcel then to pyLODE."""
     dst = tmp_path / test_file
     shutil.copy(datadir / CS_CYCLES, tmp_path)
     os.chdir(tmp_path)
@@ -584,12 +602,12 @@ def test_forwarding_3stages(datadir, tmp_path, test_file):
             "test.log",
             "--no-warn",
             "--docs",
+            "pylode",
             str(dst),
         ]
     )
     assert (tmp_path / CS_CYCLES).with_suffix(".ttl").exists()
-    assert (tmp_path / Path(CS_CYCLES).stem / "dendro" / "index.html").exists()
-    assert (tmp_path / Path(CS_CYCLES).stem / "docs" / "index.html").exists()
+    assert (tmp_path / Path(CS_CYCLES).stem / "index.html").exists()
     assert (tmp_path / "test.log").exists()
 
 
@@ -599,7 +617,7 @@ def test_forwarding_3stages(datadir, tmp_path, test_file):
     ids=["single file", "dir of files"],
 )
 def test_forwarding_3stages_outdir(datadir, tmp_path, test_file):
-    """Check file by voc4cat, write it to output folder, forward to vocexcel & ontospy.
+    """Check file by voc4cat, write it to output folder, forward to vocexcel & pyLODE.
 
     Related: #issue106
     """
@@ -613,12 +631,12 @@ def test_forwarding_3stages_outdir(datadir, tmp_path, test_file):
             "--logfile",
             "test.log",
             "--docs",
+            "pylode",
             str(datadir / test_file),
         ]
     )
     assert (tmp_path / CS_CYCLES).with_suffix(".ttl").exists()
-    assert (tmp_path / Path(CS_CYCLES).stem / "dendro" / "index.html").exists()
-    assert (tmp_path / Path(CS_CYCLES).stem / "docs" / "index.html").exists()
+    assert (tmp_path / Path(CS_CYCLES).stem / "index.html").exists()
     assert (tmp_path / "test.log").exists()
 
 
@@ -639,6 +657,7 @@ def test_forwarding_2stages(datadir, tmp_path, test_file):
             "test.log",
             "--no-warn",
             "--docs",
+            "ontospy",
             str(dst),
         ]
     )

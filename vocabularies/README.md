@@ -1,1 +1,1 @@
-Directory to collect the vocabularies in rdf/turtle format that were created using the vocexcel4cat workflow and its CI/CD pipeline.
+Directory to collect the vocabularies in rdf/turtle format that were created using the voc4cat-workflow and its CI/CD pipeline.

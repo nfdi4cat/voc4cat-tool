@@ -38,6 +38,7 @@ dependencies = [
   "openpyxl >= 3.0.9",
   "pillow >= 9.1.0",
   "ontospy >= 2.1.0",
+  "pyLODE < 3.0.0",
 ]
 
 #dynamic = ["version", "readme"]
