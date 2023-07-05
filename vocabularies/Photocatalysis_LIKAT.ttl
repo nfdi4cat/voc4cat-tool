@@ -1531,4 +1531,3 @@ cs: a skos:ConceptScheme ;
         <http://example.org/nfdi4cat/photo/temperature-in-a-co2-photoreduction-experiment> ;
     skos:prefLabel "Photocatalytic CO2 reduction"@en ;
     dcat:contactPoint "Nikolaos Moustakas / David Linke / Jennifer Strunk" .
-
