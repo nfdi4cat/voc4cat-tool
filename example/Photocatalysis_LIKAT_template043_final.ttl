@@ -1640,4 +1640,3 @@ cs: a skos:ConceptScheme ;
         cs:0001135 ;
     skos:prefLabel "Photocatalytic CO2 reduction"@en ;
     dcat:contactPoint "Nikolaos Moustakas / David Linke / Jennifer Strunk" .
-

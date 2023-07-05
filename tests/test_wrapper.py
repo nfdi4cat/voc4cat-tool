@@ -447,10 +447,7 @@ def test_build_docs(tmp_path, capsys, doc_builder):
     exit_code = build_docs(tmp_path, tmp_path, doc_builder)
     captured = capsys.readouterr()
     assert exit_code == 1
-    assert (
-        f"No turtle file(s) found to document in {tmp_path}"
-        in captured.out
-    )
+    assert f"No turtle file(s) found to document in {tmp_path}" in captured.out
     exit_code = build_docs(tmp_path / CS_CYCLES_TURTLE, tmp_path, doc_builder)
     captured = capsys.readouterr()
     assert exit_code == 1

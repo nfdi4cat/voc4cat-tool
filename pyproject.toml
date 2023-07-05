@@ -9,7 +9,14 @@ build-backend = "hatchling.build"
 name = "voc4cat"
 description = "SKOS vocabulary management tool of NFDI4Cat."
 authors = [
-    {name = "David Linke", email = "david.linke@catalysis.de"}
+  # Authors sorted by number of commits as of 2023-07-04
+  {author = "David Linke", email = "david.linke@catalysis.de"},
+  {author = "Peter Philips", email = "peter.philips@surroundaustralia.com"},
+  {author = "Nicholas Car", email = "nicholas.car@surroundaustralia.com"},
+  {author = "Jamie Feiss", email = "jamie.feiss@surroundaustralia.com"},
+]
+maintainers = [
+  {author = "David Linke", email = "david.linke@catalysis.de"},
 ]
 license = {file = "LICENSE"}
 readme = "README.md"
@@ -18,11 +25,11 @@ requires-python = ">=3.8"
 keywords = ["packaging", "dependency", "infer", "pyproject.toml"]
 
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Programming Language :: Python",
   "Environment :: Console",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: MIT License",
+  "License :: OSI Approved :: BSD License",
   "Operating System :: POSIX :: Linux",
   "Operating System :: Microsoft :: Windows",
   "Programming Language :: Python :: 3.8",
@@ -32,13 +39,14 @@ classifiers = [
 ]
 
 dependencies = [
-  # install vocexcel directly from a specific branch from github
-  "vocexcel @ git+https://github.com/nfdi4cat/VocExcel.git@nfdi4cat-main",
   "networkx >= 2.8",
   "openpyxl >= 3.0.9",
   "pillow >= 9.1.0",
   "ontospy >= 2.1.0",
   "pyLODE < 3.0.0",
+  "rdflib >= 6.1.1",
+  "pydantic < 2.0.0",
+  "pyshacl >= 0.18.1",
 ]
 
 #dynamic = ["version", "readme"]
@@ -66,6 +74,7 @@ dev = [
 
 [project.scripts]
 voc4cat = "voc4cat.wrapper:main_cli"
+vocexcel = "voc4cat.convert:main"
 merge_vocab = "voc4cat.merge_vocab:main_cli"
 
 #[tool.setuptools.packages.find]
@@ -99,9 +108,6 @@ source = "vcs"
 
 [tool.hatch.build.hooks.vcs]
 version-file = "src/voc4cat/_version.py"
-
-[tool.pylint.format]
-max-line-length = "88"
 
 [tool.pytest.ini_options]
 # pytest configuration:
@@ -167,9 +173,15 @@ title = "voc4cat coverage report"
 
 [tool.ruff]
 # https://beta.ruff.rs/docs/configuration/
+
+exclude = [
+    "__pycache__",
+    "*.egg",
+    ".*",
+]
 ignore = [
-    "E501",  # line too long, handled by black
     "B905",  # zip() without an explicit strict= parameter set. (requires python >= 3.10)
+    "E501",  # line too long
 ]
 # Same as Black.
 line-length = 88
