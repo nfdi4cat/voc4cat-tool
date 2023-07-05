@@ -6,7 +6,8 @@ from openpyxl import Workbook
 from pydantic import BaseModel, validator
 from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import DCAT, DCTERMS, OWL, RDF, RDFS, SKOS, XSD
-from vocexcel.utils import all_strings_in_list_are_iris, string_is_http_iri
+
+from voc4cat.utils import all_strings_in_list_are_iris, string_is_http_iri
 
 ORGANISATIONS = {
     "CGI": URIRef("https://linked.data.gov.au/org/cgi"),
@@ -39,27 +40,22 @@ class ConceptScheme(BaseModel):
     @validator("creator")
     def creator_must_be_from_list(cls, v):
         if v not in ORGANISATIONS.keys():
-            raise ValueError(
-                f"Organisations must selected from the Organisations list: {', '.join(ORGANISATIONS)}"
-            )
+            msg = f"Organisations must selected from the Organisations list: {', '.join(ORGANISATIONS)}"
+            raise ValueError(msg)
         return v
 
     @validator("publisher")
     def publisher_must_be_from_list(cls, v):
         if v not in ORGANISATIONS.keys():
-            raise ValueError(
-                f"Organisations must selected from the Organisations list: {', '.join(ORGANISATIONS)}"
-            )
+            msg = f"Organisations must selected from the Organisations list: {', '.join(ORGANISATIONS)}"
+            raise ValueError(msg)
         return v
 
     def to_graph(self):
         g = Graph()
         v = URIRef(self.uri)
         # For dcterms:identifier
-        if "#" in v:
-            identifier = v.split("#")[-1]
-        else:
-            identifier = v.split("/")[-1]
+        identifier = v.split("#")[-1] if "#" in v else v.split("/")[-1]
         g.add((v, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
 
         g.add((v, RDF.type, SKOS.ConceptScheme))
@@ -179,10 +175,7 @@ class Concept(BaseModel):
 
         g.add((c, RDF.type, SKOS.Concept))
         # For dcterms:identifier
-        if "#" in c:
-            identifier = c.split("#")[-1]
-        else:
-            identifier = c.split("/")[-1]
+        identifier = c.split("#")[-1] if "#" in c else c.split("/")[-1]
         g.add((c, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
 
         if not self.pl_language_code:
@@ -244,7 +237,7 @@ class Concept(BaseModel):
         definitions = {
             lang: d for d, lang in zip(self.definition, self.def_language_code)
         }
-        fully_translated = [l for l in pref_labels.keys() if l in definitions.keys()]
+        fully_translated = [l for l in pref_labels if l in definitions]
         partially_translated = [
             l
             for l in chain(pref_labels.keys(), definitions.keys())
@@ -268,8 +261,8 @@ class Concept(BaseModel):
             if first_row_exported:
                 row_no_concepts += 1
                 continue
-            else:
-                first_row_exported = True
+
+            first_row_exported = True
             ws[f"F{row_no_concepts}"] = ",\n".join(self.alt_labels)
             ws[f"G{row_no_concepts}"] = ",\n".join(self.children)
             ws[f"I{row_no_concepts}"] = self.home_vocab_uri
@@ -296,8 +289,9 @@ class Collection(BaseModel):
 
     @validator("members")
     def members_must_by_iris(cls, v):
-        if any([not i.startswith("http") for i in v]):
-            raise ValueError("The members of a Collection must be a list of IRIs")
+        if any(not i.startswith("http") for i in v):
+            msg = "The members of a Collection must be a list of IRIs"
+            raise ValueError(msg)
         return v
 
     def to_graph(self):
@@ -305,10 +299,7 @@ class Collection(BaseModel):
         c = URIRef(self.uri)
         g.add((c, RDF.type, SKOS.Collection))
         # for dcterms:identifier
-        if "#" in c:
-            identifier = c.split("#")[-1]
-        else:
-            identifier = c.split("/")[-1]
+        identifier = c.split("#")[-1] if "#" in c else c.split("/")[-1]
         g.add((c, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
 
         g.add((c, SKOS.prefLabel, Literal(self.pref_label, lang="en")))

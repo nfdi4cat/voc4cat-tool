@@ -71,7 +71,7 @@ VOC_PUB_PROFILE = Profile(
     "Vocabulary Publication Profile",
     "SKOS ConceptSchemes, Collections & Concepts as well as additional Dublin Core Terms & schema.org "
     "annotation properties to be used to publish vocabularies.",
-    RDF_MEDIA_TYPES + [HTML_MEDIA_TYPE, "text/markdown"],
+    [*RDF_MEDIA_TYPES, HTML_MEDIA_TYPE, "text/markdown"],
     HTML_MEDIA_TYPE,
     languages=["en"],
     default_language="en",

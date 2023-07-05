@@ -1,4 +1,4 @@
-from vocexcel.utils import split_and_tidy
+from voc4cat.utils import split_and_tidy
 
 
 def test_default_action():

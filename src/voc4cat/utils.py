@@ -14,7 +14,7 @@ RDF_FILE_ENDINGS = {
     ".nt": "nt",
     ".n3": "n3",
 }
-KNOWN_FILE_ENDINGS = [str(x) for x in RDF_FILE_ENDINGS.keys()] + EXCEL_FILE_ENDINGS
+KNOWN_FILE_ENDINGS = [str(x) for x in RDF_FILE_ENDINGS] + EXCEL_FILE_ENDINGS
 KNOWN_TEMPLATE_VERSIONS = ["0.2.1", "0.3.0", "0.4.0", "0.4.1", "0.4.2", "0.4.3"]
 LATEST_TEMPLATE = KNOWN_TEMPLATE_VERSIONS[-1]
 
@@ -25,24 +25,23 @@ class ConversionError(Exception):
 
 def load_workbook(file_path: Path) -> Workbook:
     if not file_path.name.lower().endswith(tuple(EXCEL_FILE_ENDINGS)):
-        raise ValueError("Files for conversion to RDF must be Excel files ending .xlsx")
+        msg = "Files for conversion to RDF must be Excel files ending .xlsx"
+        raise ValueError(msg)
     return _load_workbook(filename=str(file_path), data_only=True)
 
 
 def load_template(file_path: Path) -> Workbook:
     if not file_path.name.lower().endswith(tuple(EXCEL_FILE_ENDINGS)):
-        raise ValueError(
-            "Template files for RDF-to-Excel conversion must be Excel files ending .xlsx"
-        )
+        msg = "Template files for RDF-to-Excel conversion must be Excel files ending .xlsx"
+        raise ValueError(msg)
     if get_template_version(load_workbook(file_path)) != LATEST_TEMPLATE:
-        raise ValueError(
-            f"Template files for RDF-to-Excel conversion must be of latest version ({LATEST_TEMPLATE})"
-        )
+        msg = f"Template files for RDF-to-Excel conversion must be of latest version ({LATEST_TEMPLATE})"
+        raise ValueError(msg)
     return _load_workbook(filename=str(file_path), data_only=True)
 
 
 def get_template_version(wb: Workbook) -> str:
-    # try 0.4.0 location
+    # try 0.4.3 location
     try:
         intro_sheet = wb["Introduction"]
         if intro_sheet["J11"].value in KNOWN_TEMPLATE_VERSIONS:
@@ -50,19 +49,9 @@ def get_template_version(wb: Workbook) -> str:
     except Exception:
         pass
 
-    # try 0.2.1 & 0.3.0 locations
-    try:
-        # older template version
-        pi = wb["program info"]
-        if pi["B2"].value in KNOWN_TEMPLATE_VERSIONS:
-            return pi["B2"].value
-    except Exception:
-        pass
-
     # if we get here, the template version is either unknown or can't be located
-    raise Exception(
-        "The version of the Excel template you are using cannot be determined"
-    )
+    msg = "The version of the Excel template you are using cannot be determined"
+    raise Exception(msg)
 
 
 def split_and_tidy(cell_value: str):
@@ -86,8 +75,8 @@ def string_is_http_iri(s: str) -> Tuple[bool, str]:
 
     if len(messages) > 0:
         return False, " and ".join(messages)
-    else:
-        return True, ""
+
+    return True, ""
 
 
 def all_strings_in_list_are_iris(l_: List) -> Tuple[bool, str]:
@@ -100,5 +89,5 @@ def all_strings_in_list_are_iris(l_: List) -> Tuple[bool, str]:
 
     if len(messages) > 0:
         return False, " and ".join(messages)
-    else:
-        return True, ""
+
+    return True, ""

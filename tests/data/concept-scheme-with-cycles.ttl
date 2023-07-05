@@ -75,4 +75,3 @@ cs: a skos:ConceptScheme ;
     skos:hasTopConcept <http://example.org/test/term1> ;
     skos:prefLabel "voc4cat-test-data"@en ;
     dcat:contactPoint "David Linke" .
-

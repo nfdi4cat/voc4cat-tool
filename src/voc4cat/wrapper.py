@@ -10,14 +10,13 @@ from pathlib import Path
 from warnings import warn
 
 import openpyxl
-import vocexcel
 from openpyxl.styles import Alignment, PatternFill
 from rdflib import URIRef
-from vocexcel.convert import main as vocexcel_main
-from vocexcel.models import ORGANISATIONS, ORGANISATIONS_INVERSE
-from vocexcel.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDINGS
 
+import voc4cat
 from voc4cat import __version__
+from voc4cat.convert import main as vocexcel_main
+from voc4cat.models import ORGANISATIONS, ORGANISATIONS_INVERSE
 from voc4cat.util import (
     dag_from_indented_text,
     dag_from_narrower,
@@ -25,6 +24,7 @@ from voc4cat.util import (
     dag_to_node_levels,
     get_concept_and_level_from_indented_line,
 )
+from voc4cat.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDINGS
 
 ORGANISATIONS["NFDI4Cat"] = URIRef("http://example.org/nfdi4cat/")
 ORGANISATIONS["LIKAT"] = URIRef("https://www.catalysis.de/")
@@ -358,7 +358,7 @@ def run_pylode(file_path, output_path):
 
     for turtle_file in turtle_files:
         print(f"\nBuilding pyLODE documentation for {turtle_file}")
-        filename = Path(turtle_file) # .resolve())
+        filename = Path(turtle_file)  # .resolve())
         outdir = output_path / filename.with_suffix("").name
         outdir.mkdir(exist_ok=True)
         outfile = outdir / "index.html"
@@ -396,7 +396,7 @@ def run_ontospy(file_path, output_path):
         return 1
 
     for turtle_file in turtle_files:
-        title = vocexcel.convert.VOCAB_TITLE
+        title = voc4cat.convert.VOCAB_TITLE
 
         print(f"\nBuilding ontospy documentation for {turtle_file}")
         specific_output_path = (Path(output_path) / Path(turtle_file).stem).resolve()
@@ -755,7 +755,9 @@ def main_cli(args=None):
             if args_wrapper.docs:
                 infile = infile if outdir is None else outfile
                 doc_path = infile.parent if outdir is None else outdir
-                err += build_docs(infile.with_suffix(".ttl"), doc_path, args_wrapper.docs)
+                err += build_docs(
+                    infile.with_suffix(".ttl"), doc_path, args_wrapper.docs
+                )
         else:
             print(
                 "Expected xlsx-file or directory but got: {}".format(

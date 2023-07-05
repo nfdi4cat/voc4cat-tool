@@ -1,10 +1,10 @@
 import pytest
 from pydantic.error_wrappers import ValidationError
-from vocexcel.models import *
+from voc4cat.models import *
 
 
 def test_vocabulary_valid():
-    v = ConceptScheme(
+    ConceptScheme(
         uri="https://linked.data.gov.au/def/borehole-start-point",
         title="Borehole Start Point",
         description="Indicates the nature of the borehole start point location",
@@ -21,7 +21,7 @@ def test_vocabulary_valid():
 
 def test_vocabulary_invalid_uri():
     with pytest.raises(ValidationError):
-        v = ConceptScheme(
+        ConceptScheme(
             uri="ftp://linked.data.gov.au/def/borehole-start-point",
             title="Borehole Start Point",
             description="Indicates the nature of the borehole start point location",
@@ -38,7 +38,7 @@ def test_vocabulary_invalid_uri():
 
 def test_vocabulary_invalid_created_date():
     with pytest.raises(ValidationError):
-        v = ConceptScheme(
+        ConceptScheme(
             uri="https://linked.data.gov.au/def/borehole-start-point",
             title="Borehole Start Point",
             description="Indicates the nature of the borehole start point location",
@@ -55,7 +55,7 @@ def test_vocabulary_invalid_created_date():
 
 def test_vocabulary_invalid_publisher():
     with pytest.raises(ValidationError):
-        v = ConceptScheme(
+        ConceptScheme(
             uri="https://linked.data.gov.au/def/borehole-start-point",
             title="Borehole Start Point",
             description="Indicates the nature of the borehole start point location",
@@ -123,16 +123,16 @@ def test_concept_iri():
     # other_ids
     # home_vocab_uri
     # provenance
-    with pytest.raises(ValidationError) as e:
-        c = Concept(
+    with pytest.raises(ValidationError):
+        Concept(
             uri="https://example.com/thing/x",
             pref_label="Thing X",
             definition="Fake def for Thing X",
             children=["broken iri", "http://example.com/working-iri"],  # non-IRI string
         )
 
-    with pytest.raises(ValidationError) as e:
-        c = Concept(
+    with pytest.raises(ValidationError):
+        Concept(
             uri="https://example.com/thing/x",
             pref_label="Thing X",
             definition="Fake def for Thing X",
@@ -142,8 +142,8 @@ def test_concept_iri():
             ],  # IRI starts ftp
         )
 
-    with pytest.raises(ValidationError) as e:
-        c = Concept(
+    with pytest.raises(ValidationError):
+        Concept(
             uri="https://example.com/thing/x",
             pref_label="Thing X",
             definition="Fake def for Thing X",
@@ -154,8 +154,8 @@ def test_concept_iri():
         )
 
     # valid children, invalid related_match
-    with pytest.raises(ValidationError) as e:
-        c = Concept(
+    with pytest.raises(ValidationError):
+        Concept(
             uri="https://example.com/thing/x",
             pref_label="Thing X",
             definition="Fake def for Thing X",

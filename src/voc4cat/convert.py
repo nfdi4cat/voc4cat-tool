@@ -1,6 +1,5 @@
 import argparse
 import logging
-import os
 import sys
 from pathlib import Path
 from typing import Dict, Literal, Union
@@ -9,24 +8,14 @@ import pyshacl
 from colorama import Fore, Style
 from pydantic.error_wrappers import ValidationError
 from pyshacl.pytypes import GraphLike
-from vocexcel import __version__, models, profiles
-from vocexcel.convert_021 import (
-    extract_concepts_and_collections as extract_concepts_and_collections_021,
-)
-from vocexcel.convert_030 import extract_concept_scheme as extract_concept_scheme_030
-from vocexcel.convert_030 import (
-    extract_concepts_and_collections as extract_concepts_and_collections_030,
-)
-from vocexcel.convert_040 import extract_concept_scheme as extract_concept_scheme_040
-from vocexcel.convert_040 import (
-    extract_concepts_and_collections as extract_concepts_and_collections_040,
-)
-from vocexcel.convert_043 import create_prefix_dict
-from vocexcel.convert_043 import extract_concept_scheme as extract_concept_scheme_043
-from vocexcel.convert_043 import (
+
+from voc4cat import __version__, models, profiles
+from voc4cat.convert_043 import create_prefix_dict
+from voc4cat.convert_043 import extract_concept_scheme as extract_concept_scheme_043
+from voc4cat.convert_043 import (
     extract_concepts_and_collections as extract_concepts_and_collections_043,
 )
-from vocexcel.utils import (
+from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
     KNOWN_FILE_ENDINGS,
     KNOWN_TEMPLATE_VERSIONS,
@@ -49,12 +38,11 @@ def validate_with_profile(
     log_file=None,
 ):
     if profile not in profiles.PROFILES.keys():
-        raise ValueError(
-            "The profile chosen for conversion must be one of '{}'. 'vocpub' is default".format(
-                "', '".join(profiles.PROFILES.keys())
-            )
+        msg = "The profile chosen for conversion must be one of '{}'. 'vocpub' is default".format(
+            "', '".join(profiles.PROFILES.keys())
         )
-    allow_warnings = True if error_level > 1 else False
+        raise ValueError(msg)
+    allow_warnings = error_level > 1
 
     # validate the RDF file
     conforms, results_graph, results_text = pyshacl.validate(
@@ -65,9 +53,9 @@ def validate_with_profile(
 
     logging_level = logging.INFO
 
-    if message_level == 3:
+    if message_level == 3:  # noqa: PLR2004
         logging_level = logging.ERROR
-    elif message_level == 2:
+    elif message_level == 2:  # noqa: PLR2004
         logging_level = logging.WARNING
 
     if log_file:
@@ -113,17 +101,16 @@ def validate_with_profile(
 
     error_messages = []
 
-    if error_level == 3:
+    if error_level == 3:  # noqa: PLR2004
         error_messages = violation_list
-    elif error_level == 2:
+    elif error_level == 2:  # noqa: PLR2004
         error_messages = warning_list + violation_list
     else:  # error_level == 1
         error_messages = info_list + warning_list + violation_list
 
     if len(error_messages) > 0:
-        raise ConversionError(
-            f"The file you supplied is not valid according to the {profile} profile."
-        )
+        msg = f"The file you supplied is not valid according to the {profile} profile."
+        raise ConversionError(msg)
 
 
 def excel_to_rdf(
@@ -144,58 +131,25 @@ def excel_to_rdf(
 
     # test that we have a valid template variable.
     if template_version not in KNOWN_TEMPLATE_VERSIONS:
-        raise ValueError(
-            f"Unknown Template Version. Known Template Versions are {', '.join(KNOWN_TEMPLATE_VERSIONS)},"
-            f" you supplied {template_version}"
+        msg = f"Unknown Template Version. Known Template Versions are {', '.join(KNOWN_TEMPLATE_VERSIONS)}, you supplied {template_version}"
+        raise ValueError(msg)
+
+    # template_version == "0.4.3":
+    try:
+        sheet = wb["Concept Scheme"]
+        concept_sheet = wb["Concepts"]
+        additional_concept_sheet = wb["Additional Concept Features"]
+        collection_sheet = wb["Collections"]
+        prefix_sheet = wb["Prefix Sheet"]
+        prefix = create_prefix_dict(prefix_sheet)
+
+        concepts, collections = extract_concepts_and_collections_043(
+            concept_sheet, additional_concept_sheet, collection_sheet, prefix
         )
-
-    # The way the voc is made - which Excel sheets to use - is dependent on the particular template version
-    elif template_version == "0.3.0" or template_version == "0.2.1":
-        sheet = wb["vocabulary" if sheet_name is None else sheet_name]
-        # read from the vocabulary sheet of the workbook unless given a specific sheet
-
-        if template_version == "0.2.1":
-            concepts, collections = extract_concepts_and_collections_021(sheet)
-        elif template_version == "0.3.0":
-            concepts, collections = extract_concepts_and_collections_030(sheet)
-
-        try:
-            cs = extract_concept_scheme_030(sheet)
-        except ValidationError as e:
-            raise ConversionError(f"ConceptScheme processing error: {e}")
-
-    elif (
-        template_version == "0.4.0"
-        or template_version == "0.4.1"
-        or template_version == "0.4.2"
-    ):
-        try:
-            sheet = wb["Concept Scheme"]
-            concept_sheet = wb["Concepts"]
-            additional_concept_sheet = wb["Additional Concept Features"]
-            collection_sheet = wb["Collections"]
-
-            concepts, collections = extract_concepts_and_collections_040(
-                concept_sheet, additional_concept_sheet, collection_sheet
-            )
-            cs = extract_concept_scheme_040(sheet)
-        except ValidationError as e:
-            raise ConversionError(f"ConceptScheme processing error: {e}")
-    elif template_version == "0.4.3":
-        try:
-            sheet = wb["Concept Scheme"]
-            concept_sheet = wb["Concepts"]
-            additional_concept_sheet = wb["Additional Concept Features"]
-            collection_sheet = wb["Collections"]
-            prefix_sheet = wb["Prefix Sheet"]
-            prefix = create_prefix_dict(prefix_sheet)
-
-            concepts, collections = extract_concepts_and_collections_043(
-                concept_sheet, additional_concept_sheet, collection_sheet, prefix
-            )
-            cs = extract_concept_scheme_043(sheet, prefix)
-        except ValidationError as e:
-            raise ConversionError(f"ConceptScheme processing error: {e}")
+        cs = extract_concept_scheme_043(sheet, prefix)
+    except ValidationError as e:
+        msg = f"ConceptScheme processing error: {e}"
+        raise ConversionError(msg)
 
     # Build the total vocab
     vocab_graph = models.Vocabulary(
@@ -212,27 +166,27 @@ def excel_to_rdf(
         )
 
     # Make title as global available (this is a hack!)
-    global VOCAB_TITLE
+    global VOCAB_TITLE  # noqa: PLW0603
     VOCAB_TITLE = cs.title
 
     # Write out the file
     if output_type == "graph":
         return vocab_graph
-    elif output_type == "string":
+    if output_type == "string":
         return vocab_graph.serialize(format=output_format)
-    else:  # output_format == "file":
-        if output_file_path is not None:
-            dest = output_file_path
+    # output_format == "file":
+    if output_file_path is not None:
+        dest = output_file_path
+    else:
+        if output_format == "xml":
+            suffix = ".rdf"
+        elif output_format == "json-ld":
+            suffix = ".json-ld"
         else:
-            if output_format == "xml":
-                suffix = ".rdf"
-            elif output_format == "json-ld":
-                suffix = ".json-ld"
-            else:
-                suffix = ".ttl"
-            dest = file_to_convert_path.with_suffix(suffix)
-        vocab_graph.serialize(destination=str(dest), format=output_format)
-        return dest
+            suffix = ".ttl"
+        dest = file_to_convert_path.with_suffix(suffix)
+    vocab_graph.serialize(destination=str(dest), format=output_format)
+    return dest
 
 
 def rdf_to_excel(
@@ -247,11 +201,10 @@ def rdf_to_excel(
     if type(file_to_convert_path) is str:
         file_to_convert_path = Path(file_to_convert_path)
     if not file_to_convert_path.name.endswith(tuple(RDF_FILE_ENDINGS.keys())):
-        raise ValueError(
-            "Files for conversion to Excel must end with one of the RDF file formats: '{}'".format(
-                "', '".join(RDF_FILE_ENDINGS.keys())
-            )
+        msg = "Files for conversion to Excel must end with one of the RDF file formats: '{}'".format(
+            "', '".join(RDF_FILE_ENDINGS.keys())
         )
+        raise ValueError(msg)
 
     validate_with_profile(
         str(file_to_convert_path),
@@ -475,7 +428,7 @@ def main(args=None):
     if args is None:  # vocexcel run via entrypoint
         args = sys.argv[1:]
 
-    has_args = True if args else False
+    has_args = bool(args)
 
     parser = argparse.ArgumentParser(
         prog="vocexcel", formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -591,8 +544,10 @@ def main(args=None):
             s += f"{k}\t{v.uri}\n"
 
         print(s.rstrip())
+        return None
     elif args.version:
         print(__version__)
+        return None
     elif args.file_to_convert:
         if not args.file_to_convert.name.endswith(tuple(KNOWN_FILE_ENDINGS)):
             print(
@@ -623,7 +578,7 @@ def main(args=None):
                 else:
                     print(f"Output is file {o}")
             except ConversionError as err:
-                logging.error("{0}".format(err))
+                logging.error(f"{err}")
                 return 1
 
         else:  # RDF file ending
@@ -642,8 +597,9 @@ def main(args=None):
                 else:
                     print(f"Output is file {o}")
             except ConversionError as err:
-                logging.error("{0}".format(err))
+                logging.error(f"{err}")
                 return 1
+    return None
 
 
 if __name__ == "__main__":

@@ -2,8 +2,9 @@ from typing import List, Tuple
 
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import ValidationError
-from vocexcel import models
-from vocexcel.utils import ConversionError, split_and_tidy
+
+from voc4cat import models
+from voc4cat.utils import ConversionError, split_and_tidy
 
 
 # Checking how many colon's in string
@@ -37,9 +38,8 @@ def create_prefix_dict(s: Worksheet):
                 try:
                     prefix_dict[s[f"A{row}"].value] = s[f"B{row}"].value
                 except Exception as e:
-                    raise ConversionError(
-                        f"Prefix processing error, sheet {s}, row {row}, error: {e}"
-                    )
+                    msg = f"Prefix processing error, sheet {s}, row {row}, error: {e}"
+                    raise ConversionError(msg)
     return prefix_dict
 
 
@@ -47,7 +47,7 @@ def create_prefix_dict(s: Worksheet):
 def using_prefix_and_namespace_non_list_output(cell_value, prefix, s: Worksheet, row):
     c = cell_value
     if c is not None:
-        if c.startswith("http://") or c.startswith("https://"):
+        if c.startswith(("http://", "https://")):
             pass
         elif only_one_colon_in_str(c):
             split_c_prefix = c.split(":")[0]
@@ -56,15 +56,11 @@ def using_prefix_and_namespace_non_list_output(cell_value, prefix, s: Worksheet,
             if split_c_prefix in prefix:
                 c = prefix[split_c_prefix] + split_c_added_component
             else:
-                raise ConversionError(
-                    f"The prefix '{split_c_prefix}' used in sheet {s} and row {row} "
-                    f"isn't included in the prefix sheet."
-                )
+                msg = f"The prefix '{split_c_prefix}' used in sheet {s} and row {row} isn't included in the prefix sheet."
+                raise ConversionError(msg)
         else:
-            raise ConversionError(
-                f"Something doesn't look right on row {row} and sheet {s}. "
-                f"The problematic cell value is '{c}'. Correct URL form used?"
-            )
+            msg = f"Something doesn't look right on row {row} and sheet {s}. The problematic cell value is '{c}'. Correct URL form used?"
+            raise ConversionError(msg)
     return c
 
 
@@ -72,7 +68,7 @@ def using_prefix_and_namespace_non_list_output(cell_value, prefix, s: Worksheet,
 def using_prefix_and_namespace_cs(cell_value, prefix):
     c = cell_value
     if c is not None:
-        if c.startswith("http://") or c.startswith("https://"):
+        if c.startswith(("http://", "https://")):
             pass
         elif only_one_colon_in_str(c):
             split_c_prefix = c.split(":")[0]
@@ -81,15 +77,11 @@ def using_prefix_and_namespace_cs(cell_value, prefix):
             if split_c_prefix in prefix:
                 c = prefix[split_c_prefix] + split_c_added_component
             else:
-                raise ConversionError(
-                    f"The prefix '{split_c_prefix}' used in the concept scheme page"
-                    "isn't included in the prefix sheet."
-                )
+                msg = f"The prefix '{split_c_prefix}' used in the concept scheme pageisn't included in the prefix sheet."
+                raise ConversionError(msg)
         else:
-            raise ConversionError(
-                "Something doesn't look right in the concept scheme page. "
-                f"The problematic cell value is '{c}'. Correct URL form used?"
-            )
+            msg = "Something doesn't look right in the concept scheme page. The problematic cell value is '{c}'. Correct URL form used?"
+            raise ConversionError(msg)
     return c
 
 
@@ -99,7 +91,7 @@ def using_prefix_and_namespace(cell_value, prefix, s: Worksheet, row):
     for c in cell_value:
         if not c:
             continue
-        if c.startswith("http://") or c.startswith("https://"):
+        if c.startswith(("http://", "https://")):
             pass
         elif only_one_colon_in_str(c):
             split_c_prefix = c.split(":")[0]
@@ -108,15 +100,14 @@ def using_prefix_and_namespace(cell_value, prefix, s: Worksheet, row):
             if split_c_prefix in prefix:
                 c = prefix[split_c_prefix] + split_c_added_component
             else:
-                raise ConversionError(
-                    f"The prefix '{split_c_prefix}' used in sheet {s} and row {row} "
-                    "isn't included in the prefix sheet."
-                )
+                msg = f"The prefix '{split_c_prefix}' used in sheet {s} and row {row} isn't included in the prefix sheet."
+                raise ConversionError(msg)
         else:
-            raise ConversionError(
+            msg = (
                 f"Something doesn't look right on row {row} and sheet {s}. "
                 f"The problematic cell value is '{c}'. Correct URL form used?"
             )
+            raise ConversionError(msg)
         variables.append(c)
     return variables
 
@@ -176,9 +167,8 @@ def extract_concepts_and_collections(
                     )
                     concepts.append(c)
                 except ValidationError as e:
-                    raise ConversionError(
-                        f"Concept processing error likely at sheet {q}, row {row}, and has error: {e}"
-                    )
+                    msg = f"Concept processing error likely at sheet {q}, row {row}, and has error: {e}"
+                    raise ConversionError(msg)
 
     # iterating over the collections page
     for col in s.iter_cols(max_col=1):
@@ -204,9 +194,8 @@ def extract_concepts_and_collections(
                     )
                     collections.append(c)
                 except ValidationError as e:
-                    raise ConversionError(
-                        f"Collection processing error, likely at sheet {s}, row {row}, and has error: {e}"
-                    )
+                    msg = f"Collection processing error, likely at sheet {s}, row {row}, and has error: {e}"
+                    raise ConversionError(msg)
     return concepts, collections
 
 
@@ -224,4 +213,4 @@ def extract_concept_scheme(sheet: Worksheet, prefix):
         custodian=sheet["B11"].value,
         pid=sheet["B12"].value,
     )
-    return cs
+    return cs  # noqa: RET504
