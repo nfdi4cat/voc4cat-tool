@@ -1,5 +1,6 @@
 from typing import List, Tuple
 
+from curies import Converter
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import ValidationError
 
@@ -27,19 +28,15 @@ def create_prefix_dict(s: Worksheet):
     for col in s.iter_cols(max_col=1):
         for cell in col:
             row = cell.row
-            if (
-                cell.value is None
-                or cell.value == "Prefix"
-                or cell.value == "Prefix Sheet"
-            ):
-                pass
-            else:
-                # dynamically allocate the prefix sheet
-                try:
-                    prefix_dict[s[f"A{row}"].value] = s[f"B{row}"].value
-                except Exception as e:
-                    msg = f"Prefix processing error, sheet {s}, row {row}, error: {e}"
-                    raise ConversionError(msg)
+            if cell.value is None or cell.value in ["Prefix", "Prefix Sheet"]:
+                continue
+
+            # dynamically allocate the prefix sheet
+            try:
+                prefix_dict[s[f"A{row}"].value] = s[f"B{row}"].value
+            except Exception as exc:
+                msg = f"Prefix processing error, sheet {s}, row {row}, error: {exc}"
+                raise ConversionError(msg) from exc
     return prefix_dict
 
 
@@ -85,36 +82,8 @@ def using_prefix_and_namespace_cs(cell_value, prefix):
     return c
 
 
-# prefix and namespace list with list output
-def using_prefix_and_namespace(cell_value, prefix, s: Worksheet, row):
-    variables = []
-    for c in cell_value:
-        if not c:
-            continue
-        if c.startswith(("http://", "https://")):
-            pass
-        elif only_one_colon_in_str(c):
-            split_c_prefix = c.split(":")[0]
-            split_c_added_component = c.split(":")[1]
-
-            if split_c_prefix in prefix:
-                c = prefix[split_c_prefix] + split_c_added_component
-            else:
-                msg = f"The prefix '{split_c_prefix}' used in sheet {s} and row {row} isn't included in the prefix sheet."
-                raise ConversionError(msg)
-        else:
-            msg = (
-                f"Something doesn't look right on row {row} and sheet {s}. "
-                f"The problematic cell value is '{c}'. Correct URL form used?"
-            )
-            raise ConversionError(msg)
-        variables.append(c)
-    return variables
-
-
-# template version 0.4.3 using prefixes
 def extract_concepts_and_collections(
-    q: Worksheet, r: Worksheet, s: Worksheet, prefix
+    q: Worksheet, r: Worksheet, s: Worksheet, prefix_converter: Converter
 ) -> Tuple[List[models.Concept], List[models.Collection]]:
     concepts = []
     collections = []
@@ -122,86 +91,77 @@ def extract_concepts_and_collections(
     for col in q.iter_cols(max_col=1):
         for cell in col:
             row = cell.row
-            if (
-                cell.value is None
-                or cell.value == "Concepts"
-                or cell.value == "Concepts*"
-                or cell.value == "Concept IRI*"
-            ):
-                pass
-            else:
-                try:
-                    c = models.Concept(
-                        uri=using_prefix_and_namespace_non_list_output(
-                            q[f"A{row}"].value, prefix, q, row
-                        ),
-                        pref_label=q[f"B{row}"].value,
-                        pl_language_code=split_and_tidy(q[f"C{row}"].value),
-                        definition=q[f"D{row}"].value,
-                        def_language_code=split_and_tidy(q[f"E{row}"].value),
-                        alt_labels=split_and_tidy(q[f"F{row}"].value),
-                        children=using_prefix_and_namespace(
-                            split_and_tidy(q[f"G{row}"].value), prefix, q, row
-                        ),
-                        provenance=q[f"H{row}"].value,
-                        # Note in the new template, home_vocab_uri is synonymous with source vocab uri
-                        home_vocab_uri=using_prefix_and_namespace_non_list_output(
-                            q[f"I{row}"].value, prefix, q, row
-                        ),
-                        # additional concept features sheets
-                        related_match=using_prefix_and_namespace(
-                            split_and_tidy(r[f"B{row}"].value), prefix, r, row
-                        ),
-                        close_match=using_prefix_and_namespace(
-                            split_and_tidy(r[f"C{row}"].value), prefix, r, row
-                        ),
-                        exact_match=using_prefix_and_namespace(
-                            split_and_tidy(r[f"D{row}"].value), prefix, r, row
-                        ),
-                        narrow_match=using_prefix_and_namespace(
-                            split_and_tidy(r[f"E{row}"].value), prefix, r, row
-                        ),
-                        broad_match=using_prefix_and_namespace(
-                            split_and_tidy(r[f"F{row}"].value), prefix, r, row
-                        ),
-                    )
-                    concepts.append(c)
-                except ValidationError as e:
-                    msg = f"Concept processing error likely at sheet {q}, row {row}, and has error: {e}"
-                    raise ConversionError(msg)
+            if cell.value is None or cell.value in [
+                "Concepts",
+                "Concepts*",
+                "Concept IRI*",
+            ]:
+                continue
+
+            uri = q[f"A{row}"].value
+            clean_uri = (prefix_converter.expand(uri) or uri) if uri else None
+            home_vocab_uri = q[f"I{row}"].value
+            clean_home_vocab_uri = (
+                (prefix_converter.expand(home_vocab_uri) or home_vocab_uri)
+                if home_vocab_uri
+                else None
+            )
+            try:
+                c = models.Concept(
+                    uri=clean_uri,
+                    pref_label=q[f"B{row}"].value,
+                    pl_language_code=split_and_tidy(q[f"C{row}"].value),
+                    definition=q[f"D{row}"].value,
+                    def_language_code=split_and_tidy(q[f"E{row}"].value),
+                    alt_labels=split_and_tidy(q[f"F{row}"].value),
+                    children=q[f"G{row}"].value,
+                    provenance=q[f"H{row}"].value,
+                    # Note in the new template, home_vocab_uri is synonymous with source vocab uri
+                    home_vocab_uri=clean_home_vocab_uri,
+                    # additional concept features sheets
+                    related_match=r[f"B{row}"].value,
+                    close_match=r[f"C{row}"].value,
+                    exact_match=r[f"D{row}"].value,
+                    narrow_match=r[f"E{row}"].value,
+                    broad_match=r[f"F{row}"].value,
+                )
+                concepts.append(c)
+            except ValidationError as exc:
+                msg = f"Concept processing error likely at sheet {q}, row {row}, and has error: {exc}"
+                raise ConversionError(msg) from exc
 
     # iterating over the collections page
     for col in s.iter_cols(max_col=1):
         for cell in col:
             row = cell.row
-            if (
-                cell.value is None
-                or cell.value == "Collections"
-                or cell.value == "Collection URI"
-                or cell.value == "Collection IRI"
-            ):
-                pass
-            else:
-                try:
-                    c = models.Collection(
-                        uri=using_prefix_and_namespace_cs(s[f"A{row}"].value, prefix),
-                        pref_label=s[f"B{row}"].value,
-                        definition=s[f"C{row}"].value,
-                        members=using_prefix_and_namespace(
-                            split_and_tidy(s[f"D{row}"].value), prefix, s, row
-                        ),
-                        provenance=s[f"E{row}"].value,
-                    )
-                    collections.append(c)
-                except ValidationError as e:
-                    msg = f"Collection processing error, likely at sheet {s}, row {row}, and has error: {e}"
-                    raise ConversionError(msg)
+            if cell.value is None or cell.value in [
+                "Collections",
+                "Collection URI",
+                "Collection IRI",
+            ]:
+                continue
+
+            try:
+                uri = s[f"A{row}"].value
+                c = models.Collection(
+                    uri=(prefix_converter.expand(uri) or uri) if uri else None,
+                    pref_label=s[f"B{row}"].value,
+                    definition=s[f"C{row}"].value,
+                    members=s[f"D{row}"].value,
+                    provenance=s[f"E{row}"].value,
+                )
+                collections.append(c)
+            except ValidationError as exc:
+                msg = f"Collection processing error, likely at sheet {s}, row {row}, and has error: {exc}"
+                raise ConversionError(msg) from exc
+
     return concepts, collections
 
 
-def extract_concept_scheme(sheet: Worksheet, prefix):
+def extract_concept_scheme(sheet: Worksheet, prefix_converter: Converter):
+    uri = sheet["B2"].value
     cs = models.ConceptScheme(
-        uri=using_prefix_and_namespace_cs(sheet["B2"].value, prefix),
+        uri=(prefix_converter.expand(uri) or uri) if uri else None,
         title=sheet["B3"].value,
         description=sheet["B4"].value,
         created=sheet["B5"].value,

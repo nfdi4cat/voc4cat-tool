@@ -6,12 +6,18 @@ from typing import Dict, Literal, Union
 
 import pyshacl
 from colorama import Fore, Style
+from curies import Converter
 from pydantic.error_wrappers import ValidationError
 from pyshacl.pytypes import GraphLike
+from rdflib import Graph
+from rdflib.namespace import DCAT, DCTERMS, OWL, PROV, RDF, RDFS, SKOS
 
+import voc4cat
 from voc4cat import __version__, models, profiles
 from voc4cat.convert_043 import create_prefix_dict
-from voc4cat.convert_043 import extract_concept_scheme as extract_concept_scheme_043
+from voc4cat.convert_043 import (
+    extract_concept_scheme as extract_concept_scheme_043,
+)
 from voc4cat.convert_043 import (
     extract_concepts_and_collections as extract_concepts_and_collections_043,
 )
@@ -116,7 +122,6 @@ def validate_with_profile(
 def excel_to_rdf(
     file_to_convert_path: Path,
     profile="vocpub",
-    sheet_name=None,
     output_type: Literal["file", "string", "graph"] = "file",
     output_file_path=None,
     output_format: Literal["turtle", "xml", "json-ld"] = "turtle",
@@ -134,6 +139,9 @@ def excel_to_rdf(
         msg = f"Unknown Template Version. Known Template Versions are {', '.join(KNOWN_TEMPLATE_VERSIONS)}, you supplied {template_version}"
         raise ValueError(msg)
 
+    voc4cat.models.reset_curies(create_prefix_dict(wb["Prefix Sheet"]))
+    # print(f"DBG: Prefixmap imported from xlsx. {voc4cat.models.curies_converter.prefix_map}")
+
     # template_version == "0.4.3":
     try:
         sheet = wb["Concept Scheme"]
@@ -141,20 +149,26 @@ def excel_to_rdf(
         additional_concept_sheet = wb["Additional Concept Features"]
         collection_sheet = wb["Collections"]
         prefix_sheet = wb["Prefix Sheet"]
-        prefix = create_prefix_dict(prefix_sheet)
+        prefix_converter_xlsx = Converter.from_prefix_map(
+            create_prefix_dict(prefix_sheet)
+        )
 
         concepts, collections = extract_concepts_and_collections_043(
-            concept_sheet, additional_concept_sheet, collection_sheet, prefix
+            concept_sheet,
+            additional_concept_sheet,
+            collection_sheet,
+            prefix_converter_xlsx,
         )
-        cs = extract_concept_scheme_043(sheet, prefix)
-    except ValidationError as e:
-        msg = f"ConceptScheme processing error: {e}"
-        raise ConversionError(msg)
+        cs = extract_concept_scheme_043(sheet, prefix_converter_xlsx)
+    except ValidationError as exc:
+        msg = f"ConceptScheme processing error: {exc}"
+        raise ConversionError(msg) from exc
 
     # Build the total vocab
-    vocab_graph = models.Vocabulary(
+    vocab = models.Vocabulary(
         concept_scheme=cs, concepts=concepts, collections=collections
-    ).to_graph()
+    )
+    vocab_graph = vocab.to_graph()
 
     if validate:
         validate_with_profile(
@@ -165,7 +179,7 @@ def excel_to_rdf(
             log_file=log_file,
         )
 
-    # Make title as global available (this is a hack!)
+    # Store title as global available (this is a hack!)
     global VOCAB_TITLE  # noqa: PLW0603
     VOCAB_TITLE = cs.title
 
@@ -214,9 +228,6 @@ def rdf_to_excel(
         log_file=log_file,
     )
     # the RDF is valid so extract data and create Excel
-    from rdflib import Graph
-    from rdflib.namespace import DCAT, DCTERMS, OWL, PROV, RDF, RDFS, SKOS
-
     g = Graph().parse(
         str(file_to_convert_path), format=RDF_FILE_ENDINGS[file_to_convert_path.suffix]
     )
@@ -265,7 +276,6 @@ def rdf_to_excel(
             elif p == RDFS.seeAlso:
                 holder["pid"] = str(o)
 
-    # from models import ConceptScheme, Concept, Collection
     cs = models.ConceptScheme(
         uri=holder["uri"],
         title=holder["title"],
@@ -354,7 +364,10 @@ def rdf_to_excel(
     row_no = 3
 
     for s in g.subjects(RDF.type, SKOS.Collection):
-        holder = {"uri": str(s), "members": []}
+        holder = {
+            "uri": str(s),
+            "members": [],
+        }
         for p, o in g.predicate_objects(s):
             if p == SKOS.prefLabel:
                 holder["pref_label"] = o.toPython()
@@ -381,7 +394,7 @@ def rdf_to_excel(
         row_no += 1
 
     # Make title as global available (this is a hack!)
-    global VOCAB_TITLE
+    global VOCAB_TITLE  # noqa: PLW0603
     VOCAB_TITLE = cs.title
 
     if output_file_path is not None:
@@ -544,10 +557,8 @@ def main(args=None):
             s += f"{k}\t{v.uri}\n"
 
         print(s.rstrip())
-        return None
     elif args.version:
         print(__version__)
-        return None
     elif args.file_to_convert:
         if not args.file_to_convert.name.endswith(tuple(KNOWN_FILE_ENDINGS)):
             print(
@@ -564,7 +575,6 @@ def main(args=None):
                 o = excel_to_rdf(
                     args.file_to_convert,
                     profile=args.profile,
-                    sheet_name=args.sheet,
                     output_type=args.outputtype,
                     output_file_path=args.outputfile,
                     output_format=args.outputformat,
@@ -577,8 +587,8 @@ def main(args=None):
                     print(o)
                 else:
                     print(f"Output is file {o}")
-            except ConversionError as err:
-                logging.error(f"{err}")
+            except ConversionError:
+                logging.exception("Error converting from Excel to RDF.")
                 return 1
 
         else:  # RDF file ending
@@ -596,8 +606,8 @@ def main(args=None):
                     print(o)
                 else:
                     print(f"Output is file {o}")
-            except ConversionError as err:
-                logging.error(f"{err}")
+            except ConversionError:
+                logging.exeption("Error converting from RDF to Excel.")
                 return 1
     return None
 

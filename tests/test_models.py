@@ -1,6 +1,7 @@
 import pytest
 from pydantic.error_wrappers import ValidationError
-from voc4cat.models import *
+from rdflib import Graph
+from voc4cat.models import Concept, ConceptScheme
 
 
 def test_vocabulary_valid():
@@ -78,7 +79,6 @@ def test_concept():
     # definition
     # def_language_code
     # children
-    # other_ids
     # home_vocab_uri
     # provenance
     c = Concept(
@@ -86,14 +86,12 @@ def test_concept():
         pref_label="Thing X",
         definition="Fake def for Thing X",
         children=["https://example.com/thing/y", "https://example.com/thing/z"],
-        other_ids=["XX", "XXX"],
         close_match=[
             "https://example.com/thing/other",
             "https://example.com/thing/otherother",
         ],
     )
     actual = c.to_graph()
-    print(actual)
     expected = Graph().parse(
         data="""@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
         @prefix dcterms: <http://purl.org/dc/terms/> .
@@ -104,10 +102,10 @@ def test_concept():
     skos:closeMatch <https://example.com/thing/other>, <https://example.com/thing/otherother> ;
     skos:definition "Fake def for Thing X"@en ;
     skos:narrower <https://example.com/thing/y>, <https://example.com/thing/z> ;
-    skos:notation "XX", "XXX" ;
     dcterms:identifier "x"^^xsd:token ;
     skos:prefLabel "Thing X"@en ."""
     )
+
     assert actual.isomorphic(expected)
 
 
@@ -120,7 +118,6 @@ def test_concept_iri():
     # definition
     # def_language_code
     # children
-    # other_ids
     # home_vocab_uri
     # provenance
     with pytest.raises(ValidationError):
