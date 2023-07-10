@@ -8,18 +8,6 @@ from voc4cat import models
 from voc4cat.utils import ConversionError, split_and_tidy
 
 
-# Checking how many colon's in string
-def only_one_colon_in_str(string):
-    counter = 0
-    for character in string:
-        if character == ":":
-            counter += 1
-    if counter != 1:
-        return False
-    return True
-
-
-# function in creating a dictionary / recalling from a dictionary.
 def create_prefix_dict(s: Worksheet):
     # create an empty dict
     prefix_dict = {}
@@ -38,48 +26,6 @@ def create_prefix_dict(s: Worksheet):
                 msg = f"Prefix processing error, sheet {s}, row {row}, error: {exc}"
                 raise ConversionError(msg) from exc
     return prefix_dict
-
-
-# prefix and namespace use without list output
-def using_prefix_and_namespace_non_list_output(cell_value, prefix, s: Worksheet, row):
-    c = cell_value
-    if c is not None:
-        if c.startswith(("http://", "https://")):
-            pass
-        elif only_one_colon_in_str(c):
-            split_c_prefix = c.split(":")[0]
-            split_c_added_component = c.split(":")[1]
-
-            if split_c_prefix in prefix:
-                c = prefix[split_c_prefix] + split_c_added_component
-            else:
-                msg = f"The prefix '{split_c_prefix}' used in sheet {s} and row {row} isn't included in the prefix sheet."
-                raise ConversionError(msg)
-        else:
-            msg = f"Something doesn't look right on row {row} and sheet {s}. The problematic cell value is '{c}'. Correct URL form used?"
-            raise ConversionError(msg)
-    return c
-
-
-# specifically just for concept scheme
-def using_prefix_and_namespace_cs(cell_value, prefix):
-    c = cell_value
-    if c is not None:
-        if c.startswith(("http://", "https://")):
-            pass
-        elif only_one_colon_in_str(c):
-            split_c_prefix = c.split(":")[0]
-            split_c_added_component = c.split(":")[1]
-
-            if split_c_prefix in prefix:
-                c = prefix[split_c_prefix] + split_c_added_component
-            else:
-                msg = f"The prefix '{split_c_prefix}' used in the concept scheme pageisn't included in the prefix sheet."
-                raise ConversionError(msg)
-        else:
-            msg = "Something doesn't look right in the concept scheme page. The problematic cell value is '{c}'. Correct URL form used?"
-            raise ConversionError(msg)
-    return c
 
 
 def extract_concepts_and_collections(
