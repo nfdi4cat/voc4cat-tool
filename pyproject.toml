@@ -48,6 +48,7 @@ dependencies = [
   "pyLODE < 3.0.0",
   "pyshacl >= 0.18.1",
   "rdflib >= 6.1.1",
+  "tomli>=1.1.0; python_version < '3.11'",
 ]
 
 #dynamic = ["version", "readme"]

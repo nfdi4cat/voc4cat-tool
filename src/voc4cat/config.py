@@ -1,11 +1,16 @@
 # This module is used to share the configuration in across voc4cat.
 
+import sys
 from pathlib import Path
 
-import tomllib
 from curies import Converter
 from rdflib import Graph
 from rdflib.namespace import NamespaceManager
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 VOCAB_TITLE = ""
 CONFIG_FILE = Path("idranges.toml").resolve()
