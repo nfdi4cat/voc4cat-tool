@@ -393,6 +393,9 @@ def rdf_to_excel(
         ).to_excel(wb, row_no)
         row_no += 1
 
+    # Write the prefix_map used in the conversion to the prefix sheet.
+    write_prefix_sheet(wb, config.curies_converter.prefix_map)
+
     # Store title in config (re-used in ontospy docs generation)
     config.VOCAB_TITLE = cs.title
 

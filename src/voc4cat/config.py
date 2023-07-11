@@ -10,9 +10,11 @@ from rdflib.namespace import NamespaceManager
 VOCAB_TITLE = ""
 CONFIG_FILE = Path("idranges.toml").resolve()
 
-def load_config(fp:Path):
+
+def load_config(fp: Path):
     with fp.open(mode="rb") as fp:
         return tomllib.load(fp)
+
 
 idranges = load_config(CONFIG_FILE) if CONFIG_FILE.exists() else {}
 
