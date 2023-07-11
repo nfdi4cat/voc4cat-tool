@@ -1,6 +1,7 @@
 from typing import List, Tuple
 
 from curies import Converter
+from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import ValidationError
 
@@ -26,6 +27,19 @@ def create_prefix_dict(s: Worksheet):
                 msg = f"Prefix processing error, sheet {s}, row {row}, error: {exc}"
                 raise ConversionError(msg) from exc
     return prefix_dict
+
+
+def write_prefix_sheet(wb: Workbook, prefix_map):
+    """
+    Write prefix_dict to prefix sheet
+    """
+    ws = wb["Prefix Sheet"]
+
+    # Clear the sheet except for the header.
+    ws.delete_rows(2, ws.max_row - 1)
+
+    for prefix, iri in prefix_map.items():
+        ws.append([prefix, iri])
 
 
 def extract_concepts_and_collections(
