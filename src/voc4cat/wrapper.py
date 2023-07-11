@@ -11,12 +11,9 @@ from warnings import warn
 
 import openpyxl
 from openpyxl.styles import Alignment, PatternFill
-from rdflib import URIRef
 
-import voc4cat
-from voc4cat import __version__
+from voc4cat import __version__, config
 from voc4cat.convert import main as vocexcel_main
-from voc4cat.models import ORGANISATIONS, ORGANISATIONS_INVERSE
 from voc4cat.util import (
     dag_from_indented_text,
     dag_from_narrower,
@@ -25,10 +22,6 @@ from voc4cat.util import (
     get_concept_and_level_from_indented_line,
 )
 from voc4cat.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDINGS
-
-ORGANISATIONS["NFDI4Cat"] = URIRef("http://example.org/nfdi4cat/")
-ORGANISATIONS["LIKAT"] = URIRef("https://www.catalysis.de/")
-ORGANISATIONS_INVERSE.update({v: k for k, v in ORGANISATIONS.items()})
 
 
 def is_file_available(fname, ftype):
@@ -396,7 +389,7 @@ def run_ontospy(file_path, output_path):
         return 1
 
     for turtle_file in turtle_files:
-        title = voc4cat.convert.VOCAB_TITLE
+        title = config.VOCAB_TITLE
 
         print(f"\nBuilding ontospy documentation for {turtle_file}")
         specific_output_path = (Path(output_path) / Path(turtle_file).stem).resolve()

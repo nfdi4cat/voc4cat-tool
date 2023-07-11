@@ -8,7 +8,12 @@ from pydantic import AnyHttpUrl, BaseModel, validator
 from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import DCAT, DCTERMS, OWL, RDF, RDFS, SKOS, XSD, NamespaceManager
 
+from voc4cat import config
+
 ORGANISATIONS = {
+    "NFDI4Cat": URIRef("http://example.org/nfdi4cat/"),
+    "LIKAT": URIRef("https://www.catalysis.de/"),
+    # from rdflib.vocexcel
     "CGI": URIRef("https://linked.data.gov.au/org/cgi"),
     "GA": URIRef("https://linked.data.gov.au/org/ga"),
     "GGIC": URIRef("https://linked.data.gov.au/org/ggic"),
@@ -22,25 +27,28 @@ ORGANISATIONS = {
 
 ORGANISATIONS_INVERSE = {uref: name for name, uref in ORGANISATIONS.items()}
 
-namespace_manager = NamespaceManager(Graph())
-# Initialize curies-converter with default namespace of rdflib.Graph
-curies_converter = Converter.from_prefix_map(
-    {prefix: str(url) for prefix, url in namespace_manager.namespaces()}
-)
 
+def reset_curies(curies_map: dict) -> None:
+    """
+    Reset prefix-map to rdflib's default plus the ones given in curies_map.
 
-def reset_curies(curies_map={}):
-    global namespace_manager  # noqa: PLW0603
-    global curies_converter  # noqa: PLW0603
-
+    Lit: https://rdflib.readthedocs.io/en/stable/apidocs/rdflib.namespace.html#rdflib.namespace.NamespaceManager
+    """
     namespace_manager = NamespaceManager(Graph())
-    # Initialize curies-converter with default namespace of rdflib.Graph
     curies_converter = Converter.from_prefix_map(
         {prefix: str(url) for prefix, url in namespace_manager.namespaces()}
     )
     for prefix, url in curies_map.items():
-        curies_converter.add_prefix(prefix, url)  # , prefix_synonyms=[...])
+        if prefix in curies_converter.prefix_map:
+            if curies_converter.prefix_map[prefix] != url:
+                msg = 'Prefix "{prefix}" is already used for "{curies_converter.prefix_map[prefix]}".'
+                raise ValueError(msg)
+            continue
+        curies_converter.add_prefix(prefix, url)
         namespace_manager.bind(prefix, url)
+    # Update voc4at.config
+    config.curies_converter = curies_converter
+    config.namespace_manager = namespace_manager
 
 
 # === "External" validators used by more than one pydantic model ===
@@ -55,8 +63,8 @@ def split_curie_list(cls, v):
 
 
 def normalise_curie_to_uri(cls, v):
-    v = curies_converter.standardize_curie(v) or v
-    v_as_uri = curies_converter.expand(v) or v
+    v = config.curies_converter.standardize_curie(v) or v
+    v_as_uri = config.curies_converter.expand(v) or v
     if not v_as_uri.startswith("http"):
         msg = f'"{v}" is not a valid URI or CURIE.'
         raise ValueError(msg)
@@ -129,21 +137,18 @@ class ConceptScheme(BaseModel):
             else:
                 g.add((v, RDFS.seeAlso, Literal(self.pid)))
 
-        # By default the standard prefixes are defined including SKOS, DCAT etc.
-        # https://rdflib.readthedocs.io/en/stable/apidocs/rdflib.namespace.html#rdflib.namespace.NamespaceManager
+        # TODO Unclear why this bind was made here. All tests pass without it. Plan: Remove if no issues occur.
+        # config.namespace_manager.bind(
+        #     "",
+        #     str(v).split("#")[0] if "#" in str(v) else "/".join(str(v).split("/")[:-1]),
+        # )
 
-        namespace_manager.bind("cs", v)
-        namespace_manager.bind(  # what is this bind good for?
-            "",
-            str(v).split("#")[0] if "#" in str(v) else "/".join(str(v).split("/")[:-1]),
-        )
-        g.namespace_manager = namespace_manager
-
+        g.namespace_manager = config.namespace_manager
         return g
 
     def to_excel(self, wb: Workbook):
         ws = wb["Concept Scheme"]
-        ws["B2"] = curies_converter.compress(self.uri) or self.uri
+        ws["B2"] = config.curies_converter.compress(self.uri) or self.uri
         ws["B3"] = self.title
         ws["B4"] = self.description
         ws["B5"] = self.created.isoformat()
@@ -266,7 +271,9 @@ class Concept(BaseModel):
 
         first_row_exported = False
         for lang in chain(fully_translated, partially_translated):
-            ws[f"A{row_no_concepts}"] = curies_converter.compress(self.uri) or self.uri
+            ws[f"A{row_no_concepts}"] = (
+                config.curies_converter.compress(self.uri) or self.uri
+            )
             ws[f"B{row_no_concepts}"] = pref_labels.get(lang, "")
             ws[f"C{row_no_concepts}"] = lang
             ws[f"D{row_no_concepts}"] = definitions.get(lang, "")
@@ -280,10 +287,16 @@ class Concept(BaseModel):
             first_row_exported = True
             ws[f"F{row_no_concepts}"] = ",\n".join(self.alt_labels)
             ws[f"G{row_no_concepts}"] = ",\n".join(
-                [(curies_converter.compress(uri) or uri) for uri in self.children]
+                [
+                    (config.curies_converter.compress(uri) or uri)
+                    for uri in self.children
+                ]
             )
             ws[f"I{row_no_concepts}"] = (
-                (curies_converter.compress(self.home_vocab_uri) or self.home_vocab_uri)
+                (
+                    config.curies_converter.compress(self.home_vocab_uri)
+                    or self.home_vocab_uri
+                )
                 if self.home_vocab_uri
                 else None
             )
@@ -291,21 +304,29 @@ class Concept(BaseModel):
 
         ws = wb["Additional Concept Features"]
 
-        ws[f"A{row_no_features}"] = curies_converter.compress(self.uri) or self.uri
+        ws[f"A{row_no_features}"] = (
+            config.curies_converter.compress(self.uri) or self.uri
+        )
         ws[f"B{row_no_features}"] = ",\n".join(
-            [(curies_converter.compress(uri) or uri) for uri in self.related_match]
+            [
+                (config.curies_converter.compress(uri) or uri)
+                for uri in self.related_match
+            ]
         )
         ws[f"C{row_no_features}"] = ",\n".join(
-            [(curies_converter.compress(uri) or uri) for uri in self.close_match]
+            [(config.curies_converter.compress(uri) or uri) for uri in self.close_match]
         )
         ws[f"D{row_no_features}"] = ",\n".join(
-            [(curies_converter.compress(uri) or uri) for uri in self.exact_match]
+            [(config.curies_converter.compress(uri) or uri) for uri in self.exact_match]
         )
         ws[f"E{row_no_features}"] = ",\n".join(
-            [(curies_converter.compress(uri) or uri) for uri in self.narrow_match]
+            [
+                (config.curies_converter.compress(uri) or uri)
+                for uri in self.narrow_match
+            ]
         )
         ws[f"F{row_no_features}"] = ",\n".join(
-            [(curies_converter.compress(uri) or uri) for uri in self.broad_match]
+            [(config.curies_converter.compress(uri) or uri) for uri in self.broad_match]
         )
 
         return row_no_concepts
@@ -342,11 +363,11 @@ class Collection(BaseModel):
 
     def to_excel(self, wb: Workbook, row_no: int):
         ws = wb["Collections"]
-        ws[f"A{row_no}"] = curies_converter.compress(self.uri) or self.uri
+        ws[f"A{row_no}"] = config.curies_converter.compress(self.uri) or self.uri
         ws[f"B{row_no}"] = self.pref_label
         ws[f"C{row_no}"] = self.definition
         ws[f"D{row_no}"] = ",\n".join(
-            [(curies_converter.compress(uri) or uri) for uri in self.members]
+            [(config.curies_converter.compress(uri) or uri) for uri in self.members]
         )
         ws[f"E{row_no}"] = self.provenance
 

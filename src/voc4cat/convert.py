@@ -12,9 +12,8 @@ from pyshacl.pytypes import GraphLike
 from rdflib import Graph
 from rdflib.namespace import DCAT, DCTERMS, OWL, PROV, RDF, RDFS, SKOS
 
-import voc4cat
-from voc4cat import __version__, models, profiles
-from voc4cat.convert_043 import create_prefix_dict
+from voc4cat import __version__, config, models, profiles
+from voc4cat.convert_043 import create_prefix_dict, write_prefix_sheet
 from voc4cat.convert_043 import (
     extract_concept_scheme as extract_concept_scheme_043,
 )
@@ -33,7 +32,6 @@ from voc4cat.utils import (
 )
 
 TEMPLATE_VERSION = None
-VOCAB_TITLE = ""
 
 
 def validate_with_profile(
@@ -130,17 +128,16 @@ def excel_to_rdf(
     log_file=None,
     validate=False,
 ):
-    """Converts a sheet within an Excel workbook to an RDF file"""
+    """Converts an Excel workbook to a SKOS vocabulary file"""
     wb = load_workbook(file_to_convert_path)
     template_version = get_template_version(wb)
 
-    # test that we have a valid template variable.
+    # Check that we have a valid template version.
     if template_version not in KNOWN_TEMPLATE_VERSIONS:
         msg = f"Unknown Template Version. Known Template Versions are {', '.join(KNOWN_TEMPLATE_VERSIONS)}, you supplied {template_version}"
         raise ValueError(msg)
 
-    voc4cat.models.reset_curies(create_prefix_dict(wb["Prefix Sheet"]))
-    # print(f"DBG: Prefixmap imported from xlsx. {voc4cat.models.curies_converter.prefix_map}")
+    models.reset_curies(create_prefix_dict(wb["Prefix Sheet"]))
 
     # template_version == "0.4.3":
     try:
@@ -179,9 +176,8 @@ def excel_to_rdf(
             log_file=log_file,
         )
 
-    # Store title as global available (this is a hack!)
-    global VOCAB_TITLE  # noqa: PLW0603
-    VOCAB_TITLE = cs.title
+    # Store title in config (re-used in ontospy docs generation)
+    config.VOCAB_TITLE = cs.title
 
     # Write out the file
     if output_type == "graph":
@@ -231,6 +227,10 @@ def rdf_to_excel(
     g = Graph().parse(
         str(file_to_convert_path), format=RDF_FILE_ENDINGS[file_to_convert_path.suffix]
     )
+    # Update graph with prefix-mappings of the vocabulary
+    vocab_name = file_to_convert_path.stem
+    vocab_config = config.idranges.get(vocab_name, {})
+    models.reset_curies(vocab_config.get("prefix_map", {}))
 
     if template_file_path is None:
         wb = load_template(file_path=(Path(__file__).parent / "blank_043.xlsx"))
@@ -393,9 +393,8 @@ def rdf_to_excel(
         ).to_excel(wb, row_no)
         row_no += 1
 
-    # Make title as global available (this is a hack!)
-    global VOCAB_TITLE  # noqa: PLW0603
-    VOCAB_TITLE = cs.title
+    # Store title in config (re-used in ontospy docs generation)
+    config.VOCAB_TITLE = cs.title
 
     if output_file_path is not None:
         dest = output_file_path

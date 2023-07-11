@@ -7,13 +7,17 @@ single_vocab = true
 
 # ==== Configuration for vocabulary "voc4cat" ====
 
-[[myvocab]]
+[myvocab]
 # Length of integer IDs in vocabulary. IDs will be left-padded with zeros to specified length.
 id_length = 7
 
 # Section to configure checks (useful in CI pipeline)
-[[myvocab.checks]]
+[myvocab.checks]
 no_delete = true
+
+[myvocab.prefix_map]
+ex = "https://example.org/"
+photo = "https://example.org/nfdi4cat/photo/"
 
 # Section of IDranges for coordinating the allocation of numeric ID ranges to
 # contributors for each vocabulary. Each idrange contains the same keys:
