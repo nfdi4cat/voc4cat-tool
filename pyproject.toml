@@ -39,14 +39,15 @@ classifiers = [
 ]
 
 dependencies = [
+  "curies >= 0.5.6",
   "networkx >= 2.8",
   "openpyxl >= 3.0.9",
-  "pillow >= 9.1.0",
   "ontospy >= 2.1.0",
-  "pyLODE < 3.0.0",
-  "rdflib >= 6.1.1",
+  "pillow >= 9.1.0",
   "pydantic < 2.0.0",
+  "pyLODE < 3.0.0",
   "pyshacl >= 0.18.1",
+  "rdflib >= 6.1.1",
 ]
 
 #dynamic = ["version", "readme"]
@@ -221,7 +222,7 @@ select = [
     "SIM", # flake8-simplify
     # flake8-unused-arguments (ARG)
     # flake8-use-pathlib (PTH)
-    # eradicate (ERA) - commented out code
+    # "ERA", # eradicate (ERA) - commented out code
     # pandas-vet (PD)
     "PGH", # pygrep-hooks
     "PL",  # whole Pylint (Convention, Error, Refactor, Warning)

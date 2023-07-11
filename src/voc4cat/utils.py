@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List, Tuple
 
 from openpyxl import load_workbook as _load_workbook
 from openpyxl.workbook.workbook import Workbook
@@ -15,7 +14,7 @@ RDF_FILE_ENDINGS = {
     ".n3": "n3",
 }
 KNOWN_FILE_ENDINGS = [str(x) for x in RDF_FILE_ENDINGS] + EXCEL_FILE_ENDINGS
-KNOWN_TEMPLATE_VERSIONS = ["0.2.1", "0.3.0", "0.4.0", "0.4.1", "0.4.2", "0.4.3"]
+KNOWN_TEMPLATE_VERSIONS = ["0.4.0", "0.4.1", "0.4.2", "0.4.3"]
 LATEST_TEMPLATE = KNOWN_TEMPLATE_VERSIONS[-1]
 
 
@@ -61,33 +60,3 @@ def split_and_tidy(cell_value: str):
         return []
     entries = [x.strip() for x in cell_value.strip().split(",")]
     return [x for x in entries if x]
-
-
-def string_is_http_iri(s: str) -> Tuple[bool, str]:
-    # returns (True, None) if the string (sort of) is an IRI
-    # returns (False, message) otherwise
-    messages = []
-    if not s.startswith("http"):
-        messages.append("HTTP IRIs must start with 'http' or 'https'")
-
-    if " " in s:
-        messages.append("IRIs cannot contain spaces")
-
-    if len(messages) > 0:
-        return False, " and ".join(messages)
-
-    return True, ""
-
-
-def all_strings_in_list_are_iris(l_: List) -> Tuple[bool, str]:
-    messages = []
-    if l_ is not None:
-        for item in l_:
-            r = string_is_http_iri(item)
-            if not r[0]:
-                messages.append(f"Item {item} failed with messages {r[1]}")
-
-    if len(messages) > 0:
-        return False, " and ".join(messages)
-
-    return True, ""

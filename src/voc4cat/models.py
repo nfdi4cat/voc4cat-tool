@@ -2,12 +2,11 @@ import datetime
 from itertools import chain
 from typing import List, Union
 
+from curies import Converter
 from openpyxl import Workbook
-from pydantic import BaseModel, validator
+from pydantic import AnyHttpUrl, BaseModel, validator
 from rdflib import Graph, Literal, URIRef
-from rdflib.namespace import DCAT, DCTERMS, OWL, RDF, RDFS, SKOS, XSD
-
-from voc4cat.utils import all_strings_in_list_are_iris, string_is_http_iri
+from rdflib.namespace import DCAT, DCTERMS, OWL, RDF, RDFS, SKOS, XSD, NamespaceManager
 
 ORGANISATIONS = {
     "CGI": URIRef("https://linked.data.gov.au/org/cgi"),
@@ -23,9 +22,52 @@ ORGANISATIONS = {
 
 ORGANISATIONS_INVERSE = {uref: name for name, uref in ORGANISATIONS.items()}
 
+namespace_manager = NamespaceManager(Graph())
+# Initialize curies-converter with default namespace of rdflib.Graph
+curies_converter = Converter.from_prefix_map(
+    {prefix: str(url) for prefix, url in namespace_manager.namespaces()}
+)
+
+
+def reset_curies(curies_map={}):
+    global namespace_manager  # noqa: PLW0603
+    global curies_converter  # noqa: PLW0603
+
+    namespace_manager = NamespaceManager(Graph())
+    # Initialize curies-converter with default namespace of rdflib.Graph
+    curies_converter = Converter.from_prefix_map(
+        {prefix: str(url) for prefix, url in namespace_manager.namespaces()}
+    )
+    for prefix, url in curies_map.items():
+        curies_converter.add_prefix(prefix, url)  # , prefix_synonyms=[...])
+        namespace_manager.bind(prefix, url)
+
+
+# === "External" validators used by more than one pydantic model ===
+
+
+def split_curie_list(cls, v):
+    if v is None:
+        return []
+    if type(v) is list:
+        return v
+    return (p.strip() for p in v.split(","))
+
+
+def normalise_curie_to_uri(cls, v):
+    v = curies_converter.standardize_curie(v) or v
+    v_as_uri = curies_converter.expand(v) or v
+    if not v_as_uri.startswith("http"):
+        msg = f'"{v}" is not a valid URI or CURIE.'
+        raise ValueError(msg)
+    return v_as_uri
+
+
+# === Pydantic models ===
+
 
 class ConceptScheme(BaseModel):
-    uri: str
+    uri: AnyHttpUrl
     title: str
     description: str
     created: datetime.date
@@ -40,14 +82,14 @@ class ConceptScheme(BaseModel):
     @validator("creator")
     def creator_must_be_from_list(cls, v):
         if v not in ORGANISATIONS.keys():
-            msg = f"Organisations must selected from the Organisations list: {', '.join(ORGANISATIONS)}"
+            msg = f"Organisations must be selected from the Organisations list: {', '.join(ORGANISATIONS)}"
             raise ValueError(msg)
         return v
 
     @validator("publisher")
     def publisher_must_be_from_list(cls, v):
         if v not in ORGANISATIONS.keys():
-            msg = f"Organisations must selected from the Organisations list: {', '.join(ORGANISATIONS)}"
+            msg = f"Organisations must be selected from the Organisations list: {', '.join(ORGANISATIONS)}"
             raise ValueError(msg)
         return v
 
@@ -82,28 +124,26 @@ class ConceptScheme(BaseModel):
         if self.custodian is not None:
             g.add((v, DCAT.contactPoint, Literal(self.custodian)))
         if self.pid is not None:
-            # adding to the graph depending on if the pid is a URI or a literal
-            if string_is_http_iri(self.pid)[0]:
+            if self.pid.startswith("http"):
                 g.add((v, RDFS.seeAlso, URIRef(self.pid)))
             else:
                 g.add((v, RDFS.seeAlso, Literal(self.pid)))
 
-        # bind non-core prefixes
-        g.bind("cs", v)
-        g.bind(
+        # By default the standard prefixes are defined including SKOS, DCAT etc.
+        # https://rdflib.readthedocs.io/en/stable/apidocs/rdflib.namespace.html#rdflib.namespace.NamespaceManager
+
+        namespace_manager.bind("cs", v)
+        namespace_manager.bind(  # what is this bind good for?
             "",
             str(v).split("#")[0] if "#" in str(v) else "/".join(str(v).split("/")[:-1]),
         )
-        g.bind("dcat", DCAT)
-        g.bind("dcterms", DCTERMS)
-        g.bind("skos", SKOS)
-        g.bind("owl", OWL)
+        g.namespace_manager = namespace_manager
 
         return g
 
     def to_excel(self, wb: Workbook):
         ws = wb["Concept Scheme"]
-        ws["B2"] = self.uri
+        ws["B2"] = curies_converter.compress(self.uri) or self.uri
         ws["B3"] = self.title
         ws["B4"] = self.description
         ws["B5"] = self.created.isoformat()
@@ -117,57 +157,37 @@ class ConceptScheme(BaseModel):
 
 
 class Concept(BaseModel):
-    uri: str
+    uri: AnyHttpUrl
     pref_label: Union[str, List[str]]
     alt_labels: List[str] = []
     pl_language_code: List[str] = []
     definition: Union[str, List[str]]
     def_language_code: List[str] = []
-    children: List[str] = []
-    other_ids: List[str] = []
-    home_vocab_uri: str = None
+    children: List[AnyHttpUrl] = []
+    home_vocab_uri: AnyHttpUrl | None = None
     provenance: str = None
-    related_match: List[str] = []
-    close_match: List[str] = []
-    exact_match: List[str] = []
-    narrow_match: List[str] = []
-    broad_match: List[str] = []
+    related_match: List[AnyHttpUrl] = []
+    close_match: List[AnyHttpUrl] = []
+    exact_match: List[AnyHttpUrl] = []
+    narrow_match: List[AnyHttpUrl] = []
+    broad_match: List[AnyHttpUrl] = []
 
-    @validator("children")
-    def each_child_must_be_an_iri(cls, elem):
-        r = all_strings_in_list_are_iris(elem)
-        assert r[0], r[1]
-        return elem
-
-    @validator("related_match")
-    def each_rm_must_be_an_iri(cls, elem):
-        r = all_strings_in_list_are_iris(elem)
-        assert r[0], r[1]
-        return elem
-
-    @validator("close_match")
-    def each_cm_must_be_an_iri(cls, elem):
-        r = all_strings_in_list_are_iris(elem)
-        assert r[0], r[1]
-        return elem
-
-    @validator("exact_match")
-    def each_em_must_be_an_iri(cls, elem):
-        r = all_strings_in_list_are_iris(elem)
-        assert r[0], r[1]
-        return elem
-
-    @validator("narrow_match")
-    def each_nm_must_be_an_iri(cls, elem):
-        r = all_strings_in_list_are_iris(elem)
-        assert r[0], r[1]
-        return elem
-
-    @validator("broad_match")
-    def each_bm_must_be_an_iri(cls, elem):
-        r = all_strings_in_list_are_iris(elem)
-        assert r[0], r[1]
-        return elem
+    # We validate with a reusable (external) validators. With a pre-validator,
+    # which is applied before all others, we split and to convert from CURIE to URI.
+    _uri_list_fields = [
+        "children",
+        "related_match",
+        "close_match",
+        "exact_match",
+        "narrow_match",
+        "broad_match",
+    ]
+    _split_uri_list = validator(*_uri_list_fields, pre=True, allow_reuse=True)(
+        split_curie_list
+    )
+    _normalize_uri = validator(
+        "uri", *_uri_list_fields, each_item=True, pre=True, allow_reuse=True
+    )(normalise_curie_to_uri)
 
     def to_graph(self):
         g = Graph()
@@ -194,9 +214,6 @@ class Concept(BaseModel):
         for child in self.children:
             g.add((c, SKOS.narrower, URIRef(child)))
             g.add((URIRef(child), SKOS.broader, c))
-        if self.other_ids is not None:
-            for other_id in self.other_ids:
-                g.add((c, SKOS.notation, Literal(other_id)))
         if self.home_vocab_uri is not None:
             g.add((c, RDFS.isDefinedBy, URIRef(self.home_vocab_uri)))
         if self.provenance is not None:
@@ -226,8 +243,6 @@ class Concept(BaseModel):
         Non-labels like Children, Provenance are reported only for the first
         language. If "en" is among the used languages, it is reported first.
         """
-        # Note: "self.other_ids" is no longer supported in template 0.4.3
-
         ws = wb["Concepts"]
 
         # determine the languages with full and patial translation
@@ -237,11 +252,11 @@ class Concept(BaseModel):
         definitions = {
             lang: d for d, lang in zip(self.definition, self.def_language_code)
         }
-        fully_translated = [l for l in pref_labels if l in definitions]
+        fully_translated = [lbl for lbl in pref_labels if lbl in definitions]
         partially_translated = [
-            l
-            for l in chain(pref_labels.keys(), definitions.keys())
-            if l not in fully_translated
+            lbl
+            for lbl in chain(pref_labels.keys(), definitions.keys())
+            if lbl not in fully_translated
         ]
 
         # put "en" first if available
@@ -251,7 +266,7 @@ class Concept(BaseModel):
 
         first_row_exported = False
         for lang in chain(fully_translated, partially_translated):
-            ws[f"A{row_no_concepts}"] = self.uri
+            ws[f"A{row_no_concepts}"] = curies_converter.compress(self.uri) or self.uri
             ws[f"B{row_no_concepts}"] = pref_labels.get(lang, "")
             ws[f"C{row_no_concepts}"] = lang
             ws[f"D{row_no_concepts}"] = definitions.get(lang, "")
@@ -264,35 +279,49 @@ class Concept(BaseModel):
 
             first_row_exported = True
             ws[f"F{row_no_concepts}"] = ",\n".join(self.alt_labels)
-            ws[f"G{row_no_concepts}"] = ",\n".join(self.children)
-            ws[f"I{row_no_concepts}"] = self.home_vocab_uri
+            ws[f"G{row_no_concepts}"] = ",\n".join(
+                [(curies_converter.compress(uri) or uri) for uri in self.children]
+            )
+            ws[f"I{row_no_concepts}"] = (
+                (curies_converter.compress(self.home_vocab_uri) or self.home_vocab_uri)
+                if self.home_vocab_uri
+                else None
+            )
             row_no_concepts += 1
 
         ws = wb["Additional Concept Features"]
 
-        ws[f"A{row_no_features}"] = self.uri
-        ws[f"B{row_no_features}"] = ",\n".join(self.related_match)
-        ws[f"C{row_no_features}"] = ",\n".join(self.close_match)
-        ws[f"D{row_no_features}"] = ",\n".join(self.exact_match)
-        ws[f"E{row_no_features}"] = ",\n".join(self.narrow_match)
-        ws[f"F{row_no_features}"] = ",\n".join(self.broad_match)
+        ws[f"A{row_no_features}"] = curies_converter.compress(self.uri) or self.uri
+        ws[f"B{row_no_features}"] = ",\n".join(
+            [(curies_converter.compress(uri) or uri) for uri in self.related_match]
+        )
+        ws[f"C{row_no_features}"] = ",\n".join(
+            [(curies_converter.compress(uri) or uri) for uri in self.close_match]
+        )
+        ws[f"D{row_no_features}"] = ",\n".join(
+            [(curies_converter.compress(uri) or uri) for uri in self.exact_match]
+        )
+        ws[f"E{row_no_features}"] = ",\n".join(
+            [(curies_converter.compress(uri) or uri) for uri in self.narrow_match]
+        )
+        ws[f"F{row_no_features}"] = ",\n".join(
+            [(curies_converter.compress(uri) or uri) for uri in self.broad_match]
+        )
 
         return row_no_concepts
 
 
 class Collection(BaseModel):
-    uri: str
+    uri: AnyHttpUrl
     pref_label: str
     definition: str
-    members: List[str]
+    members: List[AnyHttpUrl]
     provenance: str = None
 
-    @validator("members")
-    def members_must_by_iris(cls, v):
-        if any(not i.startswith("http") for i in v):
-            msg = "The members of a Collection must be a list of IRIs"
-            raise ValueError(msg)
-        return v
+    _split_uri_list = validator("members", pre=True, allow_reuse=True)(split_curie_list)
+    _normalize_uri = validator(
+        "uri", "members", each_item=True, pre=True, allow_reuse=True
+    )(normalise_curie_to_uri)
 
     def to_graph(self):
         g = Graph()
@@ -313,10 +342,12 @@ class Collection(BaseModel):
 
     def to_excel(self, wb: Workbook, row_no: int):
         ws = wb["Collections"]
-        ws[f"A{row_no}"] = self.uri
+        ws[f"A{row_no}"] = curies_converter.compress(self.uri) or self.uri
         ws[f"B{row_no}"] = self.pref_label
         ws[f"C{row_no}"] = self.definition
-        ws[f"D{row_no}"] = ",\n".join(self.members)
+        ws[f"D{row_no}"] = ",\n".join(
+            [(curies_converter.compress(uri) or uri) for uri in self.members]
+        )
         ws[f"E{row_no}"] = self.provenance
 
 

@@ -130,7 +130,6 @@ def dag_to_node_levels(termgraph, baselevel=0):
 
     node_levels = []
     for subgraph in subgraphs:
-        # print(f"\nsubgraph: {subgraph}")
         # We need a clean subgraph without cylces for creating an indented tree.
         subgraph_clean = subgraph.copy()
         subgraph_clean.remove_edges_from(broken_edges)
