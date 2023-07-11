@@ -241,3 +241,7 @@ target-version = "py38"
 [tool.ruff.mccabe]
 # Flake8-mccabe uses a default level of 7, ruff of 10.
 max-complexity = 10
+
+[tool.ruff.pep8-naming]
+# Allow Pydantic's `@validator` decorator to trigger class method treatment.
+classmethod-decorators = ["classmethod", "pydantic.validator"]
