@@ -113,7 +113,7 @@ def make_ids(fpath, outfile, search_prefix, start_id):
     If new_prefix is None the new IRI is a concatenation of VOC_BASE_IRI and ID.
     If new_prefix is given the new IRI is the CURI new_prefix:ID.
     """
-    print(f"\nReplacing {search_prefix}:... IRIs.")
+    logger.info("\nReplacing {search_prefix}:... IRIs.")
     # Load in data_only mode to get cell values not formulas.
     wb = openpyxl.load_workbook(fpath, data_only=True)
     is_supported_template(wb)
@@ -145,7 +145,8 @@ def make_ids(fpath, outfile, search_prefix, start_id):
                     iri_new = replaced_iris[iri]
                 else:
                     iri_new = voc_base_iri + f"{next(id_gen):07d}"
-                    print(f"[{sheet}] Replaced CURI {iri} by {iri_new}")
+                    msg = f"[{sheet}] Replaced CURI {iri} by {iri_new}"
+                    logger.debug(msg)
                     replaced_iris[iri] = iri_new
                 row[0].value = iri_new
 
@@ -168,15 +169,16 @@ def make_ids(fpath, outfile, search_prefix, start_id):
                     )
                     if count_new_iris:
                         new_iris = [replaced_iris.get(iri, iri) for iri in iris]
-                        print(
+                        msg = (
                             f"[{sheet}] Replaced {count_new_iris} CURIs "
                             f"in cell {row[col].coordinate}"
                         )
+                        logger.debug(msg)
                         row[col].value = ", ".join(new_iris)
                     # subsequent_empty_rows = 0
 
     wb.save(outfile)
-    print(f"Saved updated file as {outfile}")
+    logger.info("Saved updated file as %s", outfile)
     return 0
 
 
@@ -187,7 +189,7 @@ def hierarchy_from_indent(fpath, outfile, sep):
     If separator character(s) are given they will be replaced with
     Excel indent which is also the default if sep is None.
     """
-    print(f"\nReading concepts from file {fpath}")
+    logger.info("Reading concepts from file %s", fpath)
     # Load in data_only mode to get cell values not formulas.
     wb = openpyxl.load_workbook(fpath, data_only=True)
     is_supported_template(wb)
@@ -267,7 +269,7 @@ def hierarchy_from_indent(fpath, outfile, sep):
         row += 1
 
     wb.save(outfile)
-    print(f"Saved updated file as {outfile}")
+    logger.info("Saved updated file as %s", outfile)
     return 0
 
 
@@ -278,7 +280,7 @@ def hierarchy_to_indent(fpath, outfile, sep):
     If separator character(s) are given they will be used.
     If sep is None, Excel indent will be used.
     """
-    print(f"\nReading concepts from file {fpath}")
+    logger.info("Reading concepts from file %s", fpath)
     wb = openpyxl.load_workbook(fpath)
     is_supported_template(wb)
     ws = wb["Concepts"]
@@ -363,7 +365,7 @@ def hierarchy_to_indent(fpath, outfile, sep):
             iri_written.append((iri, lang))
 
     wb.save(outfile)
-    print(f"Saved updated file as {outfile}")
+    logger.info("Saved updated file as %s", outfile)
     return 0
 
 
@@ -378,7 +380,7 @@ def run_pylode(file_path, output_path):
         return 1
 
     for turtle_file in turtle_files:
-        print(f"\nBuilding pyLODE documentation for {turtle_file}")
+        logger.info("Building pyLODE documentation for %s", turtle_file)
         filename = Path(turtle_file)  # .resolve())
         outdir = output_path / filename.with_suffix("").name
         outdir.mkdir(exist_ok=True)
@@ -400,7 +402,7 @@ def run_pylode(file_path, output_path):
         )
         with open(outfile, "w") as html_file:
             html_file.write(content)
-        print(f"Done!\n=> {outfile.resolve().as_uri()}")
+        logger.info("Done!\n=> %s", outfile.resolve().as_uri())
     return 0
 
 
@@ -419,7 +421,7 @@ def run_ontospy(file_path, output_path):
     for turtle_file in turtle_files:
         title = config.VOCAB_TITLE
 
-        print(f"\nBuilding ontospy documentation for {turtle_file}")
+        logger.info("Building ontospy documentation for %s", turtle_file)
         specific_output_path = (Path(output_path) / Path(turtle_file).stem).resolve()
 
         g = ontospy.Ontospy(Path(turtle_file).resolve().as_uri())
@@ -439,12 +441,12 @@ def find_files_to_document(file_path):
     if Path(file_path).is_dir():
         turtle_files = glob.glob(f"{file_path}/*.ttl")
         if not turtle_files:
-            print(f"No turtle file(s) found to document in {file_path}")
+            logger.warning("No turtle file(s) found to document in %s", file_path)
             turtle_files = []
     elif Path(file_path).exists():
         turtle_files = [file_path]
     else:
-        print(f"File/dir not found (for docs): {file_path}")
+        logger.warning("File/dir not found (for docs): %s", file_path)
         turtle_files = []
     return turtle_files
 
@@ -458,7 +460,7 @@ def build_docs(file_path, output_path, doc_builder):
     elif doc_builder == "pylode":
         errcode = run_pylode(file_path, output_path)
     else:
-        print(f"Unsupported document builder '{doc_builder}'.")
+        logger.error("Unsupported document builder '%s'.", doc_builder)
         errcode = 1
     return errcode
 
@@ -471,7 +473,7 @@ def check(fpath, outfile):
     - The "Concept IRI" must be unique; this is the case when no language
       is used more than once per concept.
     """
-    print(f"\nRunning check of Concepts sheet for file {fpath}")
+    logger.info("Running check of Concepts sheet for file %s", fpath)
     wb = openpyxl.load_workbook(fpath)
     is_supported_template(wb)
     ws = wb["Concepts"]
@@ -489,10 +491,11 @@ def check(fpath, outfile):
             new_concept_iri = f'"{concept_iri}"@{lang.lower()}'
             if new_concept_iri in seen_concept_iris:
                 failed_check = True
-                print(
+                msg = (
                     f'ERROR: Same Concept IRI "{concept_iri}" used more than once for '
                     f'language "{lang}"'
                 )
+                logger.error(msg)
                 # colorize problematic cells
                 row[0].fill = color
                 row[2].fill = color
@@ -513,14 +516,15 @@ def check(fpath, outfile):
 
     if failed_check:
         wb.save(outfile)
-        print(f"Saved file with highlighted errors as {outfile}")
+        logger.info("Saved file with highlighted errors as %s", outfile)
         return 1
 
-    print("All checks passed successfully.")
+    logger.info("All checks passed successfully.")
 
     if fpath != outfile:  # Save to new directory (important for --forward option)
         wb.save(outfile)
-        print(f"Saved checked file as {outfile}")
+        msg = f"Saved checked file as {outfile}"
+        logger.info(msg)
 
     return 0
 

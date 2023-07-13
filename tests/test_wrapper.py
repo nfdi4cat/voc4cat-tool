@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -442,30 +443,31 @@ def test_build_docs_ontospy(datadir, tmp_path, test_file):
     "doc_builder",
     ["pylode", "ontospy"],
 )
-def test_build_docs(tmp_path, capsys, doc_builder):
+def test_build_docs(tmp_path, caplog, doc_builder):
     """Check handling of missing dir/file on documentation build."""
-    exit_code = build_docs(tmp_path, tmp_path, doc_builder)
-    captured = capsys.readouterr()
+    with caplog.at_level(logging.INFO):
+        exit_code = build_docs(tmp_path, tmp_path, doc_builder)
     assert exit_code == 1
-    assert f"No turtle file(s) found to document in {tmp_path}" in captured.out
-    exit_code = build_docs(tmp_path / CS_CYCLES_TURTLE, tmp_path, doc_builder)
-    captured = capsys.readouterr()
+    assert f"No turtle file(s) found to document in {tmp_path}" in caplog.text
+
+    with caplog.at_level(logging.INFO):
+        exit_code = build_docs(tmp_path / CS_CYCLES_TURTLE, tmp_path, doc_builder)
     assert exit_code == 1
-    assert f"File/dir not found (for docs): {tmp_path/CS_CYCLES_TURTLE}" in captured.out
+    assert f"File/dir not found (for docs): {tmp_path/CS_CYCLES_TURTLE}" in caplog.text
 
-    exit_code = build_docs(tmp_path / CS_CYCLES_TURTLE, tmp_path, "ontospy")
-    captured = capsys.readouterr()
+    with caplog.at_level(logging.INFO):
+        exit_code = build_docs(tmp_path / CS_CYCLES_TURTLE, tmp_path, "ontospy")
     assert exit_code == 1
-    assert f"File/dir not found (for docs): {tmp_path/CS_CYCLES_TURTLE}" in captured.out
+    assert f"File/dir not found (for docs): {tmp_path/CS_CYCLES_TURTLE}" in caplog.text
 
 
-def test_build_docs_unknown_builder(tmp_path, capsys):
+def test_build_docs_unknown_builder(tmp_path, caplog):
     """Check handling of unknown documentation builder."""
     unknown_doc_builder = "123doc"
-    exit_code = build_docs(tmp_path, tmp_path, unknown_doc_builder)
-    captured = capsys.readouterr()
+    with caplog.at_level(logging.INFO):
+        exit_code = build_docs(tmp_path, tmp_path, unknown_doc_builder)
     assert exit_code == 1
-    assert f"Unsupported document builder '{unknown_doc_builder}'." in captured.out
+    assert f"Unsupported document builder '{unknown_doc_builder}'." in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -481,14 +483,14 @@ def test_build_docs_unknown_builder(tmp_path, capsys):
     ],
     ids=["no error", "with error"],
 )
-def test_check(datadir, tmp_path, capsys, test_file, err, msg):  # noqa: PLR0913
+def test_check(datadir, tmp_path, caplog, test_file, err, msg):  # noqa: PLR0913
     dst = tmp_path / test_file
     shutil.copy(datadir / test_file, dst)
-    exit_code = main_cli(["--check", "--no-warn", str(dst)])
-    captured = capsys.readouterr()
-    # TODO check that erroneous cells get colored.
+    with caplog.at_level(logging.INFO):
+        exit_code = main_cli(["--check", "--no-warn", str(dst)])
     assert exit_code == err
-    assert msg in captured.out
+    assert msg in caplog.text
+    # TODO check that erroneous cells get colored.
 
 
 def test_unsupported_filetype(datadir, capsys):

@@ -248,7 +248,7 @@ max-complexity = 10
 classmethod-decorators = ["classmethod", "pydantic.validator"]
 
 [tool.codespell]
-skip = "pyproject.toml,./vocabularies,./example,./tests/data,./tmp"
+skip = "*.xlsx,pyproject.toml,./vocabularies,./example,./tests/data,./tmp"
 # Note: words have to be lowercased for the ignore-words-list
 ignore-words-list = "linke"
 quiet-level = 3

@@ -4,7 +4,7 @@ Example files showing typical conversions with voc4cat:
   - A draft of a photocatalysis vocabulary: This has still the original structure and contents; only spelling and link errors were fixed.
   - The hierarchy was created with voc4cat 0.30 by the `-r` / `--add-related` option from the extra column on the right in sheets Concepts & Collections. Note, this option was removed in 0.4.0 to foster using numeric IDs.
 - `Photocatalysis_LIKAT_template043_textids.xlsx`
-  - Same contents as the first file but the extra column in the sheets Concepts & Collections was removed. The concepts were sorted by IRI (this was done to assign IDs in a reproducible way to domonstrate round-tripping, see below).
+  - Same contents as the first file but the extra column in the sheets Concepts & Collections was removed. The concepts were sorted by IRI (this was done to assign IDs in a reproducible way to demonstrate round-tripping, see below).
 - `Photocatalysis_LIKAT_template043_final.xlsx`
   - This file was generate from the previous one by replacing the textual IDs with numeric ones using the `--make-ids` option added in version 0.4.0.
 - `Photocatalysis_LIKAT_template043_final.ttl`
