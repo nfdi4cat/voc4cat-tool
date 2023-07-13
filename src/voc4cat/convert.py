@@ -33,6 +33,8 @@ from voc4cat.utils import (
 
 TEMPLATE_VERSION = None
 
+logger = logging.getLogger(__name__)
+
 
 def validate_with_profile(
     data_graph: Union[GraphLike, str, bytes],
@@ -54,20 +56,6 @@ def validate_with_profile(
         shacl_graph=str(Path(__file__).parent / "validator.vocpub.ttl"),
         allow_warnings=allow_warnings,
     )
-
-    logging_level = logging.INFO
-
-    if message_level == 3:  # noqa: PLR2004
-        logging_level = logging.ERROR
-    elif message_level == 2:  # noqa: PLR2004
-        logging_level = logging.WARNING
-
-    if log_file:
-        logging.basicConfig(
-            level=logging_level, format="%(message)s", filename=log_file, force=True
-        )
-    else:
-        logging.basicConfig(level=logging_level, format="%(message)s")
 
     info_list = []
     warning_list = []
@@ -92,15 +80,15 @@ def validate_with_profile(
                 elif p == SH.value:
                     result_dict["value"] = str(o)
             result_message_formatted = log_msg(result_dict, log_file)
-            result_message = log_msg(result_dict, "placeholder")
+            result_message = log_msg(result_dict, colored=True)
             if result_dict["resultSeverity"] == str(SH.Info):
-                logging.info(result_message_formatted)
+                logger.info(result_message_formatted)
                 info_list.append(result_message)
             elif result_dict["resultSeverity"] == str(SH.Warning):
-                logging.warning(result_message_formatted)
+                logger.warning(result_message_formatted)
                 warning_list.append(result_message)
             elif result_dict["resultSeverity"] == str(SH.Violation):
-                logging.error(result_message_formatted)
+                logger.error(result_message_formatted)
                 violation_list.append(result_message)
 
     error_messages = []
@@ -125,7 +113,6 @@ def excel_to_rdf(
     output_format: Literal["turtle", "xml", "json-ld"] = "turtle",
     error_level=1,
     message_level=1,
-    log_file=None,
     validate=False,
 ):
     """Converts an Excel workbook to a SKOS vocabulary file"""
@@ -173,7 +160,6 @@ def excel_to_rdf(
             profile=profile,
             error_level=error_level,
             message_level=message_level,
-            log_file=log_file,
         )
 
     # Store title in config (re-used in ontospy docs generation)
@@ -206,7 +192,6 @@ def rdf_to_excel(
     template_file_path=None,
     error_level=1,
     message_level=1,
-    log_file=None,
 ):
     if type(file_to_convert_path) is str:
         file_to_convert_path = Path(file_to_convert_path)
@@ -221,7 +206,6 @@ def rdf_to_excel(
         profile=profile,
         error_level=error_level,
         message_level=message_level,
-        log_file=log_file,
     )
     # the RDF is valid so extract data and create Excel
     g = Graph().parse(
@@ -407,7 +391,7 @@ def rdf_to_excel(
     return dest
 
 
-def log_msg(result: Dict, log_file: str) -> str:
+def log_msg(result: Dict, colored: bool = False) -> str:
     from rdflib.namespace import SH
 
     formatted_msg = ""
@@ -421,26 +405,27 @@ def log_msg(result: Dict, log_file: str) -> str:
     if result["resultSeverity"] == str(SH.Info):
         formatted_msg = (
             f"INFO: {message}"
-            if log_file
+            if colored
             else Fore.BLUE + "INFO: " + Style.RESET_ALL + message
         )
     elif result["resultSeverity"] == str(SH.Warning):
         formatted_msg = (
             f"WARNING: {message}"
-            if log_file
+            if colored
             else Fore.YELLOW + "WARNING: " + Style.RESET_ALL + message
         )
     elif result["resultSeverity"] == str(SH.Violation):
         formatted_msg = (
             f"VIOLATION: {message}"
-            if log_file
+            if colored
             else Fore.RED + "VIOLATION: " + Style.RESET_ALL + message
         )
     return formatted_msg
 
 
 def main(args=None):
-    if args is None:  # vocexcel run via entrypoint
+    run_via_entrypoint = args is None  # vocexcel run via entrypoint?
+    if run_via_entrypoint:
         args = sys.argv[1:]
 
     has_args = bool(args)
@@ -553,6 +538,13 @@ def main(args=None):
         parser.print_help()
         parser.exit()
 
+    if args.logfile:
+        # We import here to avoid a cyclic import when this is used via wrapper.main
+        from voc4cat.wrapper import setup_logging
+        setup_logging(logfile=args.logfile)
+    elif run_via_entrypoint:
+        setup_logging()
+
     if args.listprofiles:
         s = "Profiles\nToken\tIRI\n-----\t-----\n"
         for k, v in profiles.PROFILES.items():
@@ -582,7 +574,6 @@ def main(args=None):
                     output_format=args.outputformat,
                     error_level=int(args.errorlevel),
                     message_level=int(args.messagelevel),
-                    log_file=args.logfile,
                     validate=True,
                 )
                 if args.outputtype == "string":
@@ -590,7 +581,7 @@ def main(args=None):
                 else:
                     print(f"Output is file {o}")
             except ConversionError:
-                logging.exception("Error converting from Excel to RDF.")
+                logger.exception("Error converting from Excel to RDF.")
                 return 1
 
         else:  # RDF file ending
@@ -602,19 +593,19 @@ def main(args=None):
                     template_file_path=args.templatefile,
                     error_level=int(args.errorlevel),
                     message_level=int(args.messagelevel),
-                    log_file=args.logfile,
                 )
                 if args.outputtype == "string":
                     print(o)
                 else:
                     print(f"Output is file {o}")
             except ConversionError:
-                logging.exeption("Error converting from RDF to Excel.")
+                logger.exception("Error converting from RDF to Excel.")
                 return 1
     return None
 
 
 if __name__ == "__main__":
+    setup_logging()
     retval = main(sys.argv[1:])
     if retval is not None:
         sys.exit(retval)
