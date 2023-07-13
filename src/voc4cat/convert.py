@@ -541,6 +541,7 @@ def main(args=None):
     if args.logfile:
         # We import here to avoid a cyclic import when this is used via wrapper.main
         from voc4cat.wrapper import setup_logging
+
         setup_logging(logfile=args.logfile)
     elif run_via_entrypoint:
         setup_logging()
