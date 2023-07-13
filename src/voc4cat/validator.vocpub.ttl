@@ -24,7 +24,7 @@
         sh:path [ sh:inversePath rdf:type ] ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
-        sh:message "Requirement 2.1.2 Each vocabulary _MUST_ be presented as a single skos:ConceptScheme object & Requirment 2.1.3 Each vocabulary MUST be presented in a single file which does not contain information other than that which is directly part of the vocabulary and the file is considered the point-of-truth" ;
+        sh:message "Requirement 2.1.2 Each vocabulary _MUST_ be presented as a single skos:ConceptScheme object & Requirement 2.1.3 Each vocabulary MUST be presented in a single file which does not contain information other than that which is directly part of the vocabulary and the file is considered the point-of-truth" ;
     ] ;
 .
 

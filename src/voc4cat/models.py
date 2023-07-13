@@ -250,7 +250,7 @@ class Concept(BaseModel):
         """
         ws = wb["Concepts"]
 
-        # determine the languages with full and patial translation
+        # determine the languages with full and partial translation
         pref_labels = {
             lang: pl for pl, lang in zip(self.pref_label, self.pl_language_code)
         }

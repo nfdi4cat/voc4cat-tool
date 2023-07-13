@@ -246,3 +246,9 @@ max-complexity = 10
 [tool.ruff.pep8-naming]
 # Allow Pydantic's `@validator` decorator to trigger class method treatment.
 classmethod-decorators = ["classmethod", "pydantic.validator"]
+
+[tool.codespell]
+skip = "pyproject.toml,./vocabularies,./example,./tests/data,./tmp"
+# Note: words have to be lowercased for the ignore-words-list
+ignore-words-list = "linke"
+quiet-level = 3

@@ -67,7 +67,6 @@ Install voc4cat into the virtual environment.
 
 To install including all development tools use `pip install .[dev]` for just the test tools us `pip install .[tests]`. For tests we use [pytest](https://docs.pytest.org).
 
-
 ## Typical use
 
 Show a help message for the voc4cat command line tool with all available options.
@@ -115,7 +114,7 @@ Here is an example that forwards the `-e 3` and `-m 3` options to VocExcel and m
 
 Besides `voc4cat` this project also installs its own version of the `vocexcel` command line tool (for historic reasons). To get help on how to use it type
 
-`voc4excel --help` (or simply `voc4execel`)
+`vocexcel --help` (or simply `vocexcel`)
 
 ## Feedback and code contributions
 
