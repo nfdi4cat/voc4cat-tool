@@ -2,6 +2,7 @@
 
 import argparse
 import glob
+import logging
 import os
 import sys
 from collections import defaultdict
@@ -22,6 +23,33 @@ from voc4cat.util import (
     get_concept_and_level_from_indented_line,
 )
 from voc4cat.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDINGS
+
+logger = logging.getLogger(__name__)
+
+
+def setup_logging(verbosity: int = logging.INFO, logfile: Path | None = None):
+    """Setup logging to console and optionally a file.
+
+    The default loglevel is INFO.
+    """
+    loglevel = os.getenv("LOGLEVEL", "").strip().upper()
+    if loglevel in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+        loglevel_value = getattr(logging, loglevel)
+    else:
+        loglevel_value = 10 * verbosity
+    logging.basicConfig(level=loglevel_value, format="%(message)s")
+
+    if logfile is None:
+        return
+
+    fh = logging.FileHandler(logfile)
+    fh.setLevel(loglevel_value)
+    formatter = logging.Formatter(
+        fmt="%(asctime)s|%(name)-20s|%(levelname)-8s|%(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
 
 
 def is_file_available(fname, ftype):
@@ -618,6 +646,19 @@ def main_cli(args=None):
         help="Either the file to process or a directory with files to process.",
     )
 
+    # Add options to control logging verbosity?
+    # parser.add_argument('-v', '--verbose',
+    #                     action='count',
+    #                     dest='verbosity',
+    #                     default=2,
+    #                     help="Give more output. Option is additive, and can be used up to 3 times.")
+    # parser.add_argument('-q', '--quiet',
+    #                     action='store_const',
+    #                     const=-1,
+    #                     default=2,
+    #                     dest='verbosity',
+    #                     help="Give less output. Option is additive, and can be used up to 3 times")
+
     # This is only a trick to display a meaningful help text.
     # vocexcel options will not be available in args_wrapper.vocexcel_options
     parser.add_argument(
@@ -644,13 +685,14 @@ def main_cli(args=None):
         os.makedirs(outdir, exist_ok=True)
 
     logfile = args_wrapper.logfile
-    if logfile is not None:
+    if logfile is None:
+        setup_logging()
+    else:
         if outdir is not None:
             logfile = Path(outdir) / logfile
         elif not logfile.parents[0].exists():
             os.makedirs(logfile.parents[0], exist_ok=True)
-        vocexcel_args.append("--logfile")
-        vocexcel_args.append(str(logfile))
+        setup_logging(logfile=logfile)
 
     if args_wrapper.indent_separator is not None:
         sep = args_wrapper.indent_separator
@@ -841,5 +883,9 @@ def main_cli(args=None):
 
 
 if __name__ == "__main__":
-    err = main_cli(sys.argv[1:])
+    try:
+        err = main_cli(sys.argv[1:])
+    except Exception:
+        logger.exception()
+        err = 2
     sys.exit(err)
