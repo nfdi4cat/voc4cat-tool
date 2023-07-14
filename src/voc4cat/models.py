@@ -243,7 +243,7 @@ class Concept(BaseModel):
 
     def to_excel(self, wb: Workbook, row_no_features: int, row_no_concepts: int):
         """ "
-        Export Concept to Excel using on row per language
+        Export Concept to Excel using one row per language
 
         Non-labels like Children, Provenance are reported only for the first
         language. If "en" is among the used languages, it is reported first.
