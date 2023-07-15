@@ -1,21 +1,22 @@
-# Documentation of the TOML format: https://toml.io/en/latest
-
 # ==== General Configuration ====
+# Documentation of the TOML format: https://toml.io/en/latest
 
 # Allow only a single vocabulary (default) or multiple vocabularies in the repository.
 single_vocab = true
 
-# ==== Configuration for vocabulary "voc4cat" ====
+# ==== Configuration for vocabulary "myvocab" ====
 
-[myvocab]
+# The name of the vocabulary is used as section name.
+# It should match the filename-stem of the vocabulary files.
+[vocabs.myvocab]
 # Length of integer IDs in vocabulary. IDs will be left-padded with zeros to specified length.
 id_length = 7
 
 # Section to configure checks (useful in CI pipeline)
-[myvocab.checks]
+[vocabs.myvocab.checks]
 no_delete = true
 
-[myvocab.prefix_map]
+[vocabs.myvocab.prefix_map]
 ex = "https://example.org/"
 photo = "https://example.org/nfdi4cat/photo/"
 
@@ -28,14 +29,14 @@ photo = "https://example.org/nfdi4cat/photo/"
 #   orcid = "<string>"            - contributor's ORCID, e.g. "0000-0001-2345-6789"
 #   organisation_ror_id = "<url>" - ROR of home organisation, e.g. "https://ror.org/04fa4r544"
 
-[[myvocab.idrange]]
+[[vocabs.myvocab.idrange]]
 first_id = 1
 last_id = 10
 gh_username = "sofia-garcia"
 orcid = "0000-0001-2345-6789"
 organisation_ror_id = "https://ror.org/04fa4r544"
 
-[[myvocab.idrange]]
+[[vocabs.myvocab.idrange]]
 first_id = 11
 last_id = 20
 gh_username = "n.n."
