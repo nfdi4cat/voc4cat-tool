@@ -213,7 +213,7 @@ def rdf_to_excel(
     )
     # Update graph with prefix-mappings of the vocabulary
     vocab_name = file_to_convert_path.stem
-    vocab_config = config.idranges.get(vocab_name, {})
+    vocab_config = config.idranges.vocabs.get(vocab_name, {})
     models.reset_curies(vocab_config.get("prefix_map", {}))
 
     if template_file_path is None:

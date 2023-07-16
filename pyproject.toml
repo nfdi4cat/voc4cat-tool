@@ -39,6 +39,7 @@ classifiers = [
 ]
 
 dependencies = [
+  "base32-crockford >= 0.3.0",
   "curies >= 0.5.6",
   "networkx >= 2.8",
   "openpyxl >= 3.0.9",
@@ -245,7 +246,9 @@ max-complexity = 10
 
 [tool.ruff.pep8-naming]
 # Allow Pydantic's `@validator` decorator to trigger class method treatment.
-classmethod-decorators = ["classmethod", "pydantic.validator"]
+classmethod-decorators = [
+  "classmethod", "pydantic.validator", "pydantic.root_validator"
+]
 
 [tool.codespell]
 skip = "*.xlsx,pyproject.toml,./vocabularies,./example,./tests/data,./tmp"
