@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Generator
+from typing import Any, ClassVar, Generator
 
 import base32_crockford
 from pydantic import BaseConfig, HttpUrl
@@ -39,7 +39,7 @@ class Orcid(HttpUrl):
     [1]  ORCID Support, [Structure of the ORCID Identifier](https://support.orcid.org/hc/en-us/articles/360006897674), accessed 2023-02-22.
     """
 
-    allowed_schemes = {"https"}
+    allowed_schemes: ClassVar[set(str)] = {"https"}
 
     @classmethod
     def __get_validators__(cls) -> Generator[AnyCallable, None, None]:
@@ -102,7 +102,7 @@ class Ror(HttpUrl):
     [1] Research Organization Registry, [ROR identifier pattern](https://ror.readme.io/docs/ror-identifier-pattern), April 2023.
     """
 
-    allowed_schemes = {"https"}
+    allowed_schemes: ClassVar[set(str)] = {"https"}
 
     @classmethod
     def __get_validators__(cls) -> Generator[AnyCallable, None, None]:
