@@ -65,10 +65,17 @@ def split_curie_list(cls, v):
 
 
 def normalise_curie_to_uri(cls, v):
-    v = config.curies_converter.standardize_curie(v) or v
-    v_as_uri = config.curies_converter.expand(v) or v
+    # Commented out code fails due curies issue/behaviour for invalid URLs
+    # This will fail for e.g. "www.wikipedia.de" (url without protocol)
+    # v_as_uri = config.curies_converter.expand(v) or v
+    try:
+        v = config.curies_converter.standardize_curie(v) or v
+        v_as_uri = config.curies_converter.expand(v) or v
+    except ValueError:
+        # We keep the problematic value and let pydantic validate it.
+        v_as_uri = v
     if not v_as_uri.startswith("http"):
-        msg = f'"{v}" is not a valid URI or CURIE.'
+        msg = f'"{v}" is not a valid IRI (missing URL scheme).'
         raise ValueError(msg)
     return v_as_uri
 
@@ -253,7 +260,12 @@ class Concept(BaseModel):
         split_curie_list
     )
     _normalize_uri = validator(
-        "uri", *_uri_list_fields, each_item=True, pre=True, allow_reuse=True
+        "uri",
+        "source_vocab",
+        *_uri_list_fields,
+        each_item=True,
+        pre=True,
+        allow_reuse=True,
     )(normalise_curie_to_uri)
 
     _check_uri_vs_config = root_validator(allow_reuse=True)(check_uri_vs_config)

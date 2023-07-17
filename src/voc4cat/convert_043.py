@@ -62,28 +62,8 @@ def extract_concepts_and_collections(
             ]:
                 continue
 
-            uri = q[f"A{row}"].value
-            clean_uri = (prefix_converter.expand(uri) or uri) if uri else None
-
-            source_vocab = q[f"I{row}"].value
-            # Commented out code fails due curies issue/behaviour for invalid URLs
-            # This will fail for e.g. "www.wikipedia.de" (url without protocol)
-            # clean_home_vocab_uri = (
-            #     (prefix_converter.expand(source_vocab) or source_vocab)
-            #     if source_vocab else None)
-            if source_vocab:
-                try:
-                    clean_home_vocab_uri = (
-                        prefix_converter.expand(source_vocab) or source_vocab
-                    )
-                except ValueError:
-                    # We keep the problematic value and let pydantic validate it.
-                    clean_home_vocab_uri = source_vocab
-            else:
-                clean_home_vocab_uri = None
-
             concept_data = {
-                "uri": clean_uri,
+                "uri": q[f"A{row}"].value,
                 "pref_label": q[f"B{row}"].value,
                 "pl_language_code": split_and_tidy(q[f"C{row}"].value),
                 "definition": q[f"D{row}"].value,
@@ -92,7 +72,7 @@ def extract_concepts_and_collections(
                 "children": q[f"G{row}"].value,
                 "provenance": q[f"H{row}"].value,
                 # Note in the new template, source_vocab is synonymous with source vocab uri
-                "source_vocab": clean_home_vocab_uri,
+                "source_vocab": q[f"I{row}"].value,
                 # additional concept features sheets
                 "related_match": r[f"B{row}"].value,
                 "close_match": r[f"C{row}"].value,
@@ -119,16 +99,17 @@ def extract_concepts_and_collections(
             ]:
                 continue
 
+            data_collection = {
+                "uri": s[f"A{row}"].value,
+                "pref_label": s[f"B{row}"].value,
+                "definition": s[f"C{row}"].value,
+                "members": s[f"D{row}"].value,
+                "provenance": s[f"E{row}"].value,
+                "vocab_name": vocab_name,
+            }
+
             try:
-                uri = s[f"A{row}"].value
-                c = models.Collection(
-                    uri=(prefix_converter.expand(uri) or uri) if uri else None,
-                    pref_label=s[f"B{row}"].value,
-                    definition=s[f"C{row}"].value,
-                    members=s[f"D{row}"].value,
-                    provenance=s[f"E{row}"].value,
-                    vocab_name=vocab_name,
-                )
+                c = models.Collection(**data_collection)
                 collections.append(c)
             except ValidationError as exc:
                 msg = f"Collection processing error, likely at sheet {s}, row {row}, and has error: {exc}"

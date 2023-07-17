@@ -123,7 +123,6 @@ logger.debug("Config imported from %s", CONFIG_FILE)
 # pre-compile regex patterns for ID part of IRIs for each vocabulary
 id_patterns = {}
 for name in idranges.vocabs:
-    print(name)
     voc = idranges.vocabs.get(name)
     if (id_length := voc.id_length) > 0:
         id_patterns[name] = re.compile(r"(?P<identifier>[0-9]{%i})$" % id_length)
