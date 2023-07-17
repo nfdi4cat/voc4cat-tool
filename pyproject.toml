@@ -247,7 +247,9 @@ max-complexity = 10
 [tool.ruff.pep8-naming]
 # Allow Pydantic's `@validator` decorator to trigger class method treatment.
 classmethod-decorators = [
-  "classmethod", "pydantic.validator", "pydantic.root_validator"
+  "classmethod",
+  # for pydantic 1.x
+  "pydantic.validator", "pydantic.class_validators.root_validator"
 ]
 
 [tool.codespell]
