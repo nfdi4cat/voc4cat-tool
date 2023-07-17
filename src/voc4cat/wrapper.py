@@ -466,7 +466,7 @@ def build_docs(file_path, output_path, doc_builder):
     return errcode
 
 
-def check_xlsx(fpath:Path, outfile:Path) -> int:
+def check_xlsx(fpath: Path, outfile: Path) -> int:
     """
     Complex checks of the xlsx file not handled by pydantic model validation
 
@@ -494,7 +494,7 @@ def check_xlsx(fpath:Path, outfile:Path) -> int:
                 c.value.strip() if c.value is not None else "" for c in row
             )
             # Check that IRI is valid.
-#            config.idranges
+            #            config.idranges
             # Check that IRI is used for exactly one concept.
             new_concept_iri = f'"{concept_iri}"@{lang.lower()}'
             if new_concept_iri in seen_concept_iris:

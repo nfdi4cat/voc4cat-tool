@@ -43,7 +43,11 @@ def write_prefix_sheet(wb: Workbook, prefix_map):
 
 
 def extract_concepts_and_collections(
-    q: Worksheet, r: Worksheet, s: Worksheet, prefix_converter: Converter
+    q: Worksheet,
+    r: Worksheet,
+    s: Worksheet,
+    prefix_converter: Converter,
+    vocab_name: str = "",
 ) -> Tuple[List[models.Concept], List[models.Collection]]:
     concepts = []
     collections = []
@@ -60,35 +64,49 @@ def extract_concepts_and_collections(
 
             uri = q[f"A{row}"].value
             clean_uri = (prefix_converter.expand(uri) or uri) if uri else None
-            home_vocab_uri = q[f"I{row}"].value
-            clean_home_vocab_uri = (
-                (prefix_converter.expand(home_vocab_uri) or home_vocab_uri)
-                if home_vocab_uri
-                else None
-            )
+
+            source_vocab = q[f"I{row}"].value
+            # Commented out code fails due curies issue/behaviour for invalid URLs
+            # This will fail for e.g. "www.wikipedia.de" (url without protocol)
+            # clean_home_vocab_uri = (
+            #     (prefix_converter.expand(source_vocab) or source_vocab)
+            #     if source_vocab else None)
+            if source_vocab:
+                try:
+                    clean_home_vocab_uri = (
+                        prefix_converter.expand(source_vocab) or source_vocab
+                    )
+                except ValueError:
+                    # We keep the problematic value and let pydantic validate it.
+                    clean_home_vocab_uri = source_vocab
+            else:
+                clean_home_vocab_uri = None
+
+            concept_data = {
+                "uri": clean_uri,
+                "pref_label": q[f"B{row}"].value,
+                "pl_language_code": split_and_tidy(q[f"C{row}"].value),
+                "definition": q[f"D{row}"].value,
+                "def_language_code": split_and_tidy(q[f"E{row}"].value),
+                "alt_labels": split_and_tidy(q[f"F{row}"].value),
+                "children": q[f"G{row}"].value,
+                "provenance": q[f"H{row}"].value,
+                # Note in the new template, source_vocab is synonymous with source vocab uri
+                "source_vocab": clean_home_vocab_uri,
+                # additional concept features sheets
+                "related_match": r[f"B{row}"].value,
+                "close_match": r[f"C{row}"].value,
+                "exact_match": r[f"D{row}"].value,
+                "narrow_match": r[f"E{row}"].value,
+                "broad_match": r[f"F{row}"].value,
+                "vocab_name": vocab_name,
+            }
             try:
-                c = models.Concept(
-                    uri=clean_uri,
-                    pref_label=q[f"B{row}"].value,
-                    pl_language_code=split_and_tidy(q[f"C{row}"].value),
-                    definition=q[f"D{row}"].value,
-                    def_language_code=split_and_tidy(q[f"E{row}"].value),
-                    alt_labels=split_and_tidy(q[f"F{row}"].value),
-                    children=q[f"G{row}"].value,
-                    provenance=q[f"H{row}"].value,
-                    # Note in the new template, home_vocab_uri is synonymous with source vocab uri
-                    home_vocab_uri=clean_home_vocab_uri,
-                    # additional concept features sheets
-                    related_match=r[f"B{row}"].value,
-                    close_match=r[f"C{row}"].value,
-                    exact_match=r[f"D{row}"].value,
-                    narrow_match=r[f"E{row}"].value,
-                    broad_match=r[f"F{row}"].value,
-                )
-                concepts.append(c)
+                c = models.Concept(**concept_data)
             except ValidationError as exc:
                 msg = f"Concept processing error likely at sheet {q}, row {row}, and has error: {exc}"
                 raise ConversionError(msg) from exc
+            concepts.append(c)
 
     # iterating over the collections page
     for col in s.iter_cols(max_col=1):
@@ -109,6 +127,7 @@ def extract_concepts_and_collections(
                     definition=s[f"C{row}"].value,
                     members=s[f"D{row}"].value,
                     provenance=s[f"E{row}"].value,
+                    vocab_name=vocab_name,
                 )
                 collections.append(c)
             except ValidationError as exc:
@@ -118,7 +137,9 @@ def extract_concepts_and_collections(
     return concepts, collections
 
 
-def extract_concept_scheme(sheet: Worksheet, prefix_converter: Converter):
+def extract_concept_scheme(
+    sheet: Worksheet, prefix_converter: Converter, vocab_name: str = ""
+):
     uri = sheet["B2"].value
     cs = models.ConceptScheme(
         uri=(prefix_converter.expand(uri) or uri) if uri else None,
@@ -132,5 +153,6 @@ def extract_concept_scheme(sheet: Worksheet, prefix_converter: Converter):
         provenance=sheet["B10"].value,
         custodian=sheet["B11"].value,
         pid=sheet["B12"].value,
+        vocab_name=vocab_name,
     )
     return cs  # noqa: RET504

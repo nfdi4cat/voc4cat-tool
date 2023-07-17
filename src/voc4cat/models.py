@@ -4,7 +4,7 @@ from typing import List, Union
 
 from curies import Converter
 from openpyxl import Workbook
-from pydantic import AnyHttpUrl, BaseModel, validator
+from pydantic import AnyHttpUrl, BaseModel, Field, root_validator, validator
 from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import DCAT, DCTERMS, OWL, RDF, RDFS, SKOS, XSD, NamespaceManager
 
@@ -26,6 +26,8 @@ ORGANISATIONS = {
 }
 
 ORGANISATIONS_INVERSE = {uref: name for name, uref in ORGANISATIONS.items()}
+
+# TODO log errors in addition to raising exceptions?
 
 
 def reset_curies(curies_map: dict) -> None:
@@ -51,7 +53,7 @@ def reset_curies(curies_map: dict) -> None:
     config.namespace_manager = namespace_manager
 
 
-# === "External" validators used by more than one pydantic model ===
+# === Pydantic validators used by more than one model ===
 
 
 def split_curie_list(cls, v):
@@ -71,6 +73,64 @@ def normalise_curie_to_uri(cls, v):
     return v_as_uri
 
 
+def check_uri_vs_config(cls, values):
+    """Root validator to check if uri starts with permanent_iri_part.
+
+    Note that it will pass validation if permanent_iri_part is empty.
+    """
+    voc_conf = config.idranges.vocabs.get(values["vocab_name"], {})
+    if not voc_conf:
+        return values
+
+    perm_iri_part = getattr(voc_conf, "permanent_iri_part", "")
+    iri, *_fragment = values["uri"].split("#", 1)
+    if not iri.startswith(perm_iri_part):
+        msg = "Invalid IRI %s. It must start with %s"
+        raise ValueError(msg % (iri, perm_iri_part))
+
+    id_pattern = config.id_patterns.get(values["vocab_name"], None)
+    if id_pattern is not None:
+        match = id_pattern.search(iri)
+        if not match:
+            msg = "ID part of %s is not matching the configured pattern of %s digits."
+            raise ValueError(msg, (values["uri"], voc_conf.id_length))
+
+    return values
+
+
+def check_used_id(cls, values):
+    """
+    Root validator to check if the ID part of the IRI is allowed for the actor.
+
+    The first entry in provenance is used as relevant actor. For this actor the
+    allowed ID range(s) are read from the config.
+    """
+    voc_conf = config.idranges.vocabs.get(values["vocab_name"], {})
+    if not voc_conf:
+        return values
+
+    # provenance example value: "0000-0001-2345-6789 Provenance description, ..."
+    actor = values["provenance"].split(",", 1)[0].split(" ", 1)[0].strip()
+    iri, *_fragment = str(values["uri"]).split("#", 1)
+    id_pattern = config.id_patterns.get(values["vocab_name"], None)
+    if id_pattern is not None:
+        match = id_pattern.search(iri)
+        if match:
+            id_ = int(match["identifier"])
+            if actor in config.id_ranges_by_actor:
+                actors_ids = config.id_ranges_by_actor[actor]
+            else:
+                # Because the use of provenance is not well defined and it is not validated
+                # a GitHub name may be in incorrect case in the provenance field. (#122)
+                # So we look up for lower-cased actor as well:
+                actors_ids = config.id_ranges_by_actor[actor.lower()]
+            allowed = any(first < id_ <= last for first, last in actors_ids)
+            if not allowed:
+                msg = 'ID of %s is not in allowed ID range(s) of actor "%s".'
+                raise ValueError(msg % (values["uri"], actor))
+    return values
+
+
 # === Pydantic models ===
 
 
@@ -86,6 +146,7 @@ class ConceptScheme(BaseModel):
     version: str = None
     custodian: str = None
     pid: str = None
+    vocab_name: str = Field("", exclude=True)
 
     @validator("creator")
     def creator_must_be_from_list(cls, v):
@@ -169,13 +230,14 @@ class Concept(BaseModel):
     definition: Union[str, List[str]]
     def_language_code: List[str] = []
     children: List[AnyHttpUrl] = []
-    home_vocab_uri: AnyHttpUrl | None = None
+    source_vocab: AnyHttpUrl | None = None
     provenance: str = None
     related_match: List[AnyHttpUrl] = []
     close_match: List[AnyHttpUrl] = []
     exact_match: List[AnyHttpUrl] = []
     narrow_match: List[AnyHttpUrl] = []
     broad_match: List[AnyHttpUrl] = []
+    vocab_name: str = Field("", exclude=True)
 
     # We validate with a reusable (external) validators. With a pre-validator,
     # which is applied before all others, we split and to convert from CURIE to URI.
@@ -193,6 +255,9 @@ class Concept(BaseModel):
     _normalize_uri = validator(
         "uri", *_uri_list_fields, each_item=True, pre=True, allow_reuse=True
     )(normalise_curie_to_uri)
+
+    _check_uri_vs_config = root_validator(allow_reuse=True)(check_uri_vs_config)
+    _check_used_id = root_validator(allow_reuse=True)(check_used_id)
 
     def to_graph(self):
         g = Graph()
@@ -219,8 +284,8 @@ class Concept(BaseModel):
         for child in self.children:
             g.add((c, SKOS.narrower, URIRef(child)))
             g.add((URIRef(child), SKOS.broader, c))
-        if self.home_vocab_uri is not None:
-            g.add((c, RDFS.isDefinedBy, URIRef(self.home_vocab_uri)))
+        if self.source_vocab is not None:
+            g.add((c, RDFS.isDefinedBy, URIRef(self.source_vocab)))
         if self.provenance is not None:
             g.add((c, DCTERMS.provenance, Literal(self.provenance, lang="en")))
         if self.related_match is not None:
@@ -294,10 +359,10 @@ class Concept(BaseModel):
             )
             ws[f"I{row_no_concepts}"] = (
                 (
-                    config.curies_converter.compress(self.home_vocab_uri)
-                    or self.home_vocab_uri
+                    config.curies_converter.compress(self.source_vocab)
+                    or self.source_vocab
                 )
-                if self.home_vocab_uri
+                if self.source_vocab
                 else None
             )
             row_no_concepts += 1
@@ -338,11 +403,15 @@ class Collection(BaseModel):
     definition: str
     members: List[AnyHttpUrl]
     provenance: str = None
+    vocab_name: str = Field("", exclude=True)
 
     _split_uri_list = validator("members", pre=True, allow_reuse=True)(split_curie_list)
     _normalize_uri = validator(
         "uri", "members", each_item=True, pre=True, allow_reuse=True
     )(normalise_curie_to_uri)
+
+    _check_uri_vs_config = root_validator(allow_reuse=True)(check_uri_vs_config)
+    _check_used_id = root_validator(allow_reuse=True)(check_used_id)
 
     def to_graph(self):
         g = Graph()

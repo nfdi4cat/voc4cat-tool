@@ -79,7 +79,7 @@ def test_concept():
     # definition
     # def_language_code
     # children
-    # home_vocab_uri
+    # source_vocab
     # provenance
     c = Concept(
         uri="https://example.com/thing/x",
@@ -118,7 +118,7 @@ def test_concept_iri():
     # definition
     # def_language_code
     # children
-    # home_vocab_uri
+    # source_vocab
     # provenance
     with pytest.raises(ValidationError):
         Concept(
