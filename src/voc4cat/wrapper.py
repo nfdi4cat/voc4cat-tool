@@ -494,7 +494,7 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
                 c.value.strip() if c.value is not None else "" for c in row
             )
             # Check that IRI is valid.
-            #            config.idranges
+            #            config.IDRANGES
             # Check that IRI is used for exactly one concept.
             new_concept_iri = f'"{concept_iri}"@{lang.lower()}'
             if new_concept_iri in seen_concept_iris:

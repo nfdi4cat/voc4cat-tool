@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 # === Configuration that is not imported from idranges.toml ===
 
 VOCAB_TITLE: str = ""
-CONFIG_FILE: Path = Path("idranges.toml").resolve()
 CI_RUN: bool = os.getenv("GITHUB_ACTIONS")
 
 namespace_manager = NamespaceManager(Graph())
@@ -51,18 +50,17 @@ class IdrangeItem(BaseModel):
 
     @root_validator  # validates the model not a single field
     def order_of_ids(cls, values):
-        if "first_id" in values:
-            first, last = values["first_id"], values.get("last_id", "? (missing)")
-            if last <= first:
-                msg = f"last_id ({last}) must be greater than first_id ({first})."
-                raise ValueError(msg)
+        first, last = values["first_id"], values.get("last_id", "? (missing)")
+        if last <= first:
+            msg = f"last_id ({last}) must be greater than first_id ({first})."
+            raise ValueError(msg)
 
         orcid = values.get("orcid", "")
         gh = values.get("gh_name", "")
         if not (orcid or gh):
             msg = (
-                "ID range requires a github name or an ORCID "
-                f"(range: {first}-{last})."
+                "ID range requires a GitHub name or an ORCID "
+                f"(range: {first!s}-{last!s})."
             )
             raise ValueError(msg)
         return values
@@ -89,7 +87,7 @@ class Vocab(BaseModel):
             new_ids = set(range(idr.first_id, idr.last_id + 1))
             reused = list(ids_defined & new_ids)
             if reused:
-                msg = f"Overlapping ID ranges for IDs {min(reused)}-{max(reused)}"
+                msg = f"Overlapping ID ranges for IDs {min(reused)}-{max(reused)}."
                 raise ValueError(msg)
             ids_defined = ids_defined | new_ids
         return value
@@ -98,43 +96,57 @@ class Vocab(BaseModel):
 class IDrangeConfig(BaseModel):
     single_vocab: bool = False
     vocabs: dict[constr(to_lower=True), Vocab] = {}
-    default_config: bool = (
-        False  # True if initialized as default (not from config file)
-    )
+    default_config: bool = False
 
     @root_validator
     def check_names_not_empty(cls, values):
-        if values["single_vocab"] and len(values["vocabs"]) > 1:
+        if values["single_vocab"] and len(values.get("vocabs", [])) > 1:
             msg = 'Inconsistent config: "single_vocab" is true but multiple vocabularies are found.'
             raise ValueError(msg)
         return values
 
 
-def load_config():
-    with CONFIG_FILE.open(mode="rb") as fp:
-        conf = tomllib.load(fp)
-    return IDrangeConfig(**conf)
-
-
-idranges = load_config() if CONFIG_FILE.exists() else IDrangeConfig(default_config=True)
-
-logger.debug("Config imported from %s", CONFIG_FILE)
-
-# pre-compile regex patterns for ID part of IRIs for each vocabulary
 id_patterns = {}
-for name in idranges.vocabs:
-    voc = idranges.vocabs.get(name)
-    if (id_length := voc.id_length) > 0:
-        id_patterns[name] = re.compile(r"(?P<identifier>[0-9]{%i})$" % id_length)
-
 id_ranges_by_actor = defaultdict(list)
-for name in idranges.vocabs:
-    voc = idranges.vocabs.get(name)
-    for idr in voc.id_range:
-        rng = (idr.first_id, idr.last_id)
-        if idr.orcid:
-            id_ranges_by_actor[str(idr.orcid)].append(rng)
-        if idr.gh_name:
-            id_ranges_by_actor[str(idr.gh_name)].append(rng)
-        if idr.ror_id:
-            id_ranges_by_actor[str(idr.ror_id)].append(rng)
+
+
+def load_config(config_file: Path | None = None):
+    global ID_PATTERNS, ID_RANGES_BY_ACTOR  # noqa: PLW0603
+    if (config_file is None) or not config_file.exists():
+        if config_file is not None:
+            logger.warning('Configuration file "%s" not found.', config_file)
+        ID_PATTERNS = {}  # noqa: PLW0603
+        ID_RANGES_BY_ACTOR = defaultdict(list)  # noqa: PLW0603
+        return IDrangeConfig(default_config=True)
+
+    with config_file.open(mode="rb") as fp:
+        conf = tomllib.load(fp)
+    logger.debug("Config loaded from %s", config_file)
+
+    idranges = IDrangeConfig(**conf)
+
+    # pre-compile regex patterns for ID part of IRIs for each vocabulary
+    id_patterns = {}
+    for name in idranges.vocabs:
+        voc = idranges.vocabs.get(name)
+        id_patterns[name] = re.compile(r"(?P<identifier>[0-9]{%i})$" % voc.id_length)
+    ID_PATTERNS = id_patterns
+
+    # create look-up map for ID ranges of all "actors"
+    id_ranges_by_actor = defaultdict(list)
+    for name in idranges.vocabs:
+        voc = idranges.vocabs.get(name)
+        for idr in voc.id_range:
+            rng = (idr.first_id, idr.last_id)
+            if idr.orcid:
+                id_ranges_by_actor[str(idr.orcid)].append(rng)
+            if idr.gh_name:
+                id_ranges_by_actor[str(idr.gh_name)].append(rng)
+            if idr.ror_id:
+                id_ranges_by_actor[str(idr.ror_id)].append(rng)
+    ID_RANGES_BY_ACTOR = id_ranges_by_actor
+
+    return idranges
+
+
+IDRANGES = load_config()

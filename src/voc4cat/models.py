@@ -65,7 +65,7 @@ def split_curie_list(cls, v):
 
 
 def normalise_curie_to_uri(cls, v):
-    # Commented out code fails due curies issue/behaviour for invalid URLs
+    # Commented out code fails due to a curies issue/behavior for invalid URLs
     # This will fail for e.g. "www.wikipedia.de" (url without protocol)
     # v_as_uri = config.curies_converter.expand(v) or v
     try:
@@ -85,7 +85,7 @@ def check_uri_vs_config(cls, values):
 
     Note that it will pass validation if permanent_iri_part is empty.
     """
-    voc_conf = config.idranges.vocabs.get(values["vocab_name"], {})
+    voc_conf = config.IDRANGES.vocabs.get(values["vocab_name"], {})
     if not voc_conf:
         return values
 
@@ -112,7 +112,7 @@ def check_used_id(cls, values):
     The first entry in provenance is used as relevant actor. For this actor the
     allowed ID range(s) are read from the config.
     """
-    voc_conf = config.idranges.vocabs.get(values["vocab_name"], {})
+    voc_conf = config.IDRANGES.vocabs.get(values["vocab_name"], {})
     if not voc_conf:
         return values
 
