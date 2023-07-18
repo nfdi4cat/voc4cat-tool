@@ -43,7 +43,7 @@ def reset_curies(curies_map: dict) -> None:
     for prefix, url in curies_map.items():
         if prefix in curies_converter.prefix_map:
             if curies_converter.prefix_map[prefix] != url:
-                msg = 'Prefix "{prefix}" is already used for "{curies_converter.prefix_map[prefix]}".'
+                msg = f'Prefix "{prefix}" is already used for "{curies_converter.prefix_map[prefix]}".'
                 raise ValueError(msg)
             continue
         curies_converter.add_prefix(prefix, url)
@@ -92,15 +92,15 @@ def check_uri_vs_config(cls, values):
     perm_iri_part = getattr(voc_conf, "permanent_iri_part", "")
     iri, *_fragment = values["uri"].split("#", 1)
     if not iri.startswith(perm_iri_part):
-        msg = "Invalid IRI %s. It must start with %s"
+        msg = "Invalid IRI %s - It must start with %s"
         raise ValueError(msg % (iri, perm_iri_part))
 
-    id_pattern = config.id_patterns.get(values["vocab_name"], None)
+    id_pattern = config.ID_PATTERNS.get(values["vocab_name"], None)
     if id_pattern is not None:
         match = id_pattern.search(iri)
         if not match:
             msg = "ID part of %s is not matching the configured pattern of %s digits."
-            raise ValueError(msg, (values["uri"], voc_conf.id_length))
+            raise ValueError(msg % (str(values["uri"]), voc_conf.id_length))
 
     return values
 
@@ -117,20 +117,23 @@ def check_used_id(cls, values):
         return values
 
     # provenance example value: "0000-0001-2345-6789 Provenance description, ..."
-    actor = values["provenance"].split(",", 1)[0].split(" ", 1)[0].strip()
+    if values["provenance"] is not None:
+        actor = values["provenance"].split(",", 1)[0].split(" ", 1)[0].strip()
+    else:
+        actor = ""
     iri, *_fragment = str(values["uri"]).split("#", 1)
-    id_pattern = config.id_patterns.get(values["vocab_name"], None)
+    id_pattern = config.ID_PATTERNS.get(values["vocab_name"], None)
     if id_pattern is not None:
         match = id_pattern.search(iri)
         if match:
             id_ = int(match["identifier"])
-            if actor in config.id_ranges_by_actor:
-                actors_ids = config.id_ranges_by_actor[actor]
+            if actor in config.ID_RANGES_BY_ACTOR:
+                actors_ids = config.ID_RANGES_BY_ACTOR[actor]
             else:
                 # Because the use of provenance is not well defined and it is not validated
                 # a GitHub name may be in incorrect case in the provenance field. (#122)
                 # So we look up for lower-cased actor as well:
-                actors_ids = config.id_ranges_by_actor[actor.lower()]
+                actors_ids = config.ID_RANGES_BY_ACTOR[actor.lower()]
             allowed = any(first < id_ <= last for first, last in actors_ids)
             if not allowed:
                 msg = 'ID of %s is not in allowed ID range(s) of actor "%s".'
