@@ -19,41 +19,37 @@ class Voc4catError(Exception):
 
 
 def validate_config_has_idrange(vocab_name):
-    if (
-        not config.idranges.default_config
-        and not getattr(config.idranges.vocabs.get(vocab_name, {}), "id_range", [])
-    ):
+    """Check that the vocabulary has at least one id_range."""
+    if config.IDRANGES.default_config:
+        # no detailed config -> no check possible
+        return
+    if not getattr(config.IDRANGES.vocabs.get(vocab_name, {}), "id_range", []):
         msg = "Config for vocabulary %s has no section [vocabs.*.id_range]."
         logger.error(msg, vocab_name)
-        raise ValueError(msg % vocab_name)
+        raise Voc4catError(msg % vocab_name)
 
 
 def check_number_of_files_in_inbox(inbox_dir: Path, idranges: dict | None = None):
     """Check that inbox has not more than one file if single_vocab option is true."""
-    idranges = config.idranges if idranges is None else idranges
+    idranges = config.IDRANGES if idranges is None else idranges
     inbox_files = glob.glob(str(inbox_dir / "*.xlsx"))
     logger.debug("Found %i xlsx files in %s", len(inbox_files), inbox_dir)
     if idranges.single_vocab and len(inbox_files) > 1:
-        msg = (
-            'The single vocabulary option is active but "inbox-excel-vocabs" '
-            "contains %s xlsx files."
-        )
-        logger.error(msg, len(inbox_files))
-        raise Voc4catError(msg % len(inbox_files))
+        msg = 'The single vocabulary option is active but "%s" contains %s xlsx files.'
+        logger.error(msg, inbox_dir, len(inbox_files))
+        raise Voc4catError(msg % (inbox_dir, len(inbox_files)))
 
 
-def validate_name_of_vocabulary(
-    vocab_dir: Path, inbox_dir: Path, idranges: dict | None = None
-):
+def validate_vocabulary_files_for_ci_workflow(vocab_dir: Path, inbox_dir: Path):
     """Check if name of vocabulary is OK"""
 
     # (1) If config: Verify that xlsx-filenames (stem) present in inbox are defined in config
     # (2) If single vocab:
-    # (3) If config: Verify that ttl-filenames (stem) present in /vocabularies are defined in config
+    # (3) If config: Verify that ttl-filenames (stem) present in /vocabularies are defined
+    #     in config
     # All three checks are useful for voc4cat-template but not for voc4at-tool.
 
-    idranges = config.idranges if idranges is None else idranges
-    if not idranges:
+    if config.IDRANGES.default_config or not config.IDRANGES.vocabs:
         logger.warning(
             "To validate vocabulary names an idrange-configuration must be present."
         )
@@ -61,6 +57,7 @@ def validate_name_of_vocabulary(
 
     vocab_files = glob.glob(str(vocab_dir / "*.ttl"))
     inbox_files = glob.glob(str(inbox_dir / "*.xlsx"))
+    # TODO test that inbox has only xlsx files(?) + readme
 
     # By creating a set first duplicates are eliminated.
     vocab_names = list({Path(fp).stem.lower() for fp in vocab_files})
@@ -68,55 +65,48 @@ def validate_name_of_vocabulary(
     logging.debug("vocab name stems: %s", ", ".join(vocab_names))
     logging.debug("inbox name stems: %s", ", ".join(inbox_names))
 
-    vocab_names_config = [name.lower() for name in idranges.vocabs]
-    if not vocab_names_config:
-        return
-
-    logging.debug("config vocab names: %s", ", ".join(vocab_names_config))
+    vocab_names_in_config = [name.lower() for name in config.IDRANGES.vocabs]
+    logging.debug("config vocab names: %s", ", ".join(vocab_names_in_config))
 
     if (
-        idranges.single_vocab
+        config.IDRANGES.single_vocab
         and len(vocab_names) == 1
         and len(inbox_names) == 1
         and vocab_names[0] != inbox_names[0]
     ):
         msg = 'The file in inbox "%s" must match the vocabulary name "%s".'
-        logger.error(
-            msg,
-            vocab_names[0],
-            inbox_names[0],
-        )
-        raise Voc4catError(msg % (vocab_names[0], inbox_names[0]))
-    if len(vocab_names) == 1 and vocab_names[0] not in vocab_names_config:
-        msg = 'Vocabulary "%s" in vocabularies must be also present in config.'
-        logger.error(
-            msg,
-            vocab_names[0],
-        )
-        raise Voc4catError(msg % inbox_names[0])
-    if len(inbox_names) == 1 and inbox_names[0] not in vocab_names_config:
-        msg = 'Vocabulary "%s" in inbox must be also present in config.'
-        logger.error(
-            msg,
-            inbox_names[0],
-        )
-        raise Voc4catError(msg % inbox_names[0])
+        logger.error(msg, inbox_files[0], vocab_names[0])
+        raise Voc4catError(msg % (inbox_files[0], vocab_names[0]))
 
-    # More than one vocabulary is allowed in this repo.
-    # Check if file name stems are present in idranges
-    missing_config = [
+    if len(vocab_names) == 1 and vocab_names[0] not in vocab_names_in_config:
+        msg = 'Vocabulary "%s" in "%s" must be also present in config.'
+        logger.error(msg, vocab_names[0], vocab_dir)
+        raise Voc4catError(msg % (vocab_names[0], vocab_dir))
+
+    if len(inbox_names) == 1 and inbox_names[0] not in vocab_names_in_config:
+        msg = 'New vocabulary "%s" in "%s" must be also present in config.'
+        logger.error(msg, inbox_names[0], inbox_dir)
+        raise Voc4catError(msg % (inbox_names[0], inbox_dir))
+
+    # If more than one vocabulary is allowed, we can only check that all
+    # file name stems are present in config.IDRANGES.
+    missing_in_config = [
         name
         for name in chain(vocab_names, inbox_names)
-        if name not in vocab_names_config
+        if name not in vocab_names_in_config
     ]
-    msg = ('Missing vocabulary id_range config for "%s".',)
-    logger.error(msg, ", ".join(missing_config))
-    raise Voc4catError(msg % ", ".join(missing_config))
+    if missing_in_config:
+        msg = 'Missing vocabulary id_range config for "%s".'
+        logger.error(msg, ", ".join(missing_in_config))
+        raise Voc4catError(msg % ", ".join(missing_in_config))
 
 
 def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
     """
-    Check if concepts or collection were removed from prev_vocab to new_vocab.
+    Validate that concepts/collection were not removed from prev_vocab to new_vocab.
+
+    Logs a warning for removed parts and raises a Voc4catError exception if
+    the configuration [vocabs.prev_vocab.checks] sets allow_delete to True.
     """
     prev = Graph()
     prev.parse(prev_vocab, format="turtle")
@@ -126,11 +116,9 @@ def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
     in_both, in_prev, in_new = compare.graph_diff(prev, new)
     # print("Only in 1st\n", in_prev.serialize(format="turtle"))
     # print("Only in 2nd\n", in_new.serialize(format="turtle"))
-    delete_allowed = (
-        config.idranges.vocabs.get("vocab", {})
-        .get("checks", {})
-        .get("allow_delete", False)
-    )
+
+    voc = config.IDRANGES.vocabs.get(prev_vocab.stem, {})
+    delete_allowed = voc.checks.allow_delete if getattr(voc, "checks", False) else False
     if in_prev:
         removed = 0
         for iri in in_prev.subjects(RDF.type, SKOS.Concept):
@@ -147,21 +135,9 @@ def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
 
 
 if __name__ == "__main__":
-    from voc4cat.config import load_config
     from voc4cat.wrapper import setup_logging
 
     setup_logging(loglevel=logging.DEBUG)
-    repo_root = Path(__file__).parents[2]
-
-    # config.CONFIG_FILE = repo_root / "templates" / "idranges.toml"
-    id_ranges = load_config()
-
-    # check_number_of_files_in_inbox(repo_root / "example", idranges=id_ranges)
-    # check_number_of_files_in_inbox(repo_root / "templates", idranges=id_ranges)
-
-    # validate_name_of_vocabulary(
-    #     repo_root / "vocabularies", repo_root / "templates", idranges=id_ranges
-    # )
 
     check_for_removed_iris(
         prev_vocab=Path("vocabularies/Photocatalysis_LIKAT.ttl"),

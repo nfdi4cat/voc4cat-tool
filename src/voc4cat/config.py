@@ -121,7 +121,7 @@ def load_config(config_file: Path | None = None):
 
     with config_file.open(mode="rb") as fp:
         conf = tomllib.load(fp)
-    logger.debug("Config loaded from %s", config_file)
+    logger.debug("Config loaded from: %s", config_file)
 
     idranges = IDrangeConfig(**conf)
 

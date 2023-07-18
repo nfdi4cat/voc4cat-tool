@@ -1,14 +1,14 @@
 """Tests for voc4cat.config module."""
 
+import logging
+
 import pytest
 from pydantic import ValidationError
 
 VALID_CONFIG = "valid_idranges.toml"
 
-# TODO check logging
 
-
-def test_import(datadir):
+def test_import(datadir, caplog):
     """Standard case of valid jdranges.toml."""
     from voc4cat import config
 
@@ -18,21 +18,28 @@ def test_import(datadir):
     assert config.IDRANGES.default_config is True
 
     # load a valid config
-    config.IDRANGES = config.load_config(datadir / VALID_CONFIG)
+    fpath = datadir / VALID_CONFIG
+    with caplog.at_level(logging.DEBUG):
+        config.IDRANGES = config.load_config(fpath)
+    assert f"Config loaded from: {fpath}" in caplog.text
+
     assert config.IDRANGES.single_vocab is True
     assert config.IDRANGES.default_config is False
     assert len(config.IDRANGES.vocabs) == 1
     assert "myvocab" in config.IDRANGES.vocabs
     assert len(config.IDRANGES.vocabs["myvocab"].id_range) == 3  # noqa: PLR2004
-    # reset globally changed config
+    # Reset the globally changed config.
     config.IDRANGES = config.load_config()
 
 
-def test_non_exisiting_config_file(tmp_path):
+def test_non_exisiting_config_file(tmp_path, caplog):
     """Test for non-existing path to config which initializes defaults"""
     from voc4cat import config
 
-    conf = config.load_config(tmp_path / "does-not-exist.toml")
+    fpath = tmp_path / "does-not-exist.toml"
+    with caplog.at_level(logging.WARNING):
+        conf = config.load_config(fpath)
+    assert f'Configuration file "{fpath}" not found.' in caplog.text
 
     assert conf.single_vocab is False
     assert conf.vocabs == {}
@@ -68,7 +75,6 @@ def test_single_vocab_consistency(datadir):
         prefix_map={},
         id_range=[{"first_id": 1, "last_id": 2, "gh_name": "otto"}],
     )
-    print(extra_vocab)
     conf.vocabs["another_vocab"] = extra_vocab
 
     assert conf.single_vocab is True
