@@ -41,8 +41,6 @@ def validate_with_profile(
     data_graph: Union[GraphLike, str, bytes],
     profile="vocpub",
     error_level=1,
-    message_level=1,
-    log_file=None,
 ):
     if profile not in profiles.PROFILES.keys():
         msg = "The profile chosen for conversion must be one of '{}'. 'vocpub' is default".format(
@@ -80,8 +78,10 @@ def validate_with_profile(
                     result_dict["sourceShape"] = str(o)
                 elif p == SH.value:
                     result_dict["value"] = str(o)
-            result_message_formatted = log_msg(result_dict, log_file)
-            result_message = log_msg(result_dict, colored=True)
+            result_message_formatted = format_log_msg(result_dict)
+            result_message = format_log_msg(
+                result_dict, colored=True
+            )  # output to screen
             if result_dict["resultSeverity"] == str(SH.Info):
                 logger.info(result_message_formatted)
                 info_list.append(result_message)
@@ -113,7 +113,6 @@ def excel_to_rdf(
     output_file_path=None,
     output_format: Literal["turtle", "xml", "json-ld"] = "turtle",
     error_level=1,
-    message_level=1,
     validate=False,
 ):
     """Converts an Excel workbook to a SKOS vocabulary file"""
@@ -167,7 +166,6 @@ def excel_to_rdf(
             vocab_graph,
             profile=profile,
             error_level=error_level,
-            message_level=message_level,
         )
 
     # Store title in config (re-used in ontospy docs generation)
@@ -199,7 +197,6 @@ def rdf_to_excel(
     output_file_path=None,
     template_file_path=None,
     error_level=1,
-    message_level=1,
 ):
     if type(file_to_convert_path) is str:
         file_to_convert_path = Path(file_to_convert_path)
@@ -213,7 +210,6 @@ def rdf_to_excel(
         str(file_to_convert_path),
         profile=profile,
         error_level=error_level,
-        message_level=message_level,
     )
     # the RDF is valid so extract data and create Excel
     g = Graph().parse(
@@ -401,7 +397,7 @@ def rdf_to_excel(
     return dest
 
 
-def log_msg(result: Dict, colored: bool = False) -> str:
+def format_log_msg(result: Dict, colored: bool = False) -> str:
     from rdflib.namespace import SH
 
     formatted_msg = ""
@@ -501,13 +497,6 @@ def main(args=None):
     )
 
     parser.add_argument(
-        "-s",
-        "--sheet",
-        help="The sheet within the target Excel Workbook to process",
-        default="vocabulary",
-    )
-
-    parser.add_argument(
         "-t",
         "--templatefile",
         help="An optionally-provided Excel-template file to be used in SKOS-> Excel conversion.",
@@ -515,20 +504,11 @@ def main(args=None):
         required=False,
     )
 
-    # 1 - info, 2 - warning, 3 - violation
-    # error severity level
+    # validation severity level
     parser.add_argument(
         "-e",
         "--errorlevel",
-        help="The minimum severity level which fails validation",
-        default=1,
-    )
-
-    # print severity level
-    parser.add_argument(
-        "-m",
-        "--messagelevel",
-        help="The minimum severity level printed to console",
+        help="The minimum level which fails validation (1 - info, 2 - warning, 3 - violation)",
         default=1,
     )
 
@@ -584,7 +564,6 @@ def main(args=None):
                     output_file_path=args.outputfile,
                     output_format=args.outputformat,
                     error_level=int(args.errorlevel),
-                    message_level=int(args.messagelevel),
                     validate=True,
                 )
                 if args.outputtype == "string":
@@ -603,7 +582,6 @@ def main(args=None):
                     output_file_path=args.outputfile,
                     template_file_path=args.templatefile,
                     error_level=int(args.errorlevel),
-                    message_level=int(args.messagelevel),
                 )
                 if args.outputtype == "string":
                     print(o)
