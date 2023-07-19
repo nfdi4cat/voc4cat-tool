@@ -477,8 +477,7 @@ def test_build_docs_unknown_builder(tmp_path, caplog):
         (
             CS_CYCLES_INDENT_IRI,
             1,
-            'ERROR: Same Concept IRI "ex:test/term1"'
-            ' used more than once for language "en"',
+            'Same Concept IRI "ex:test/term1" used more than once for language "en"',
         ),
     ],
     ids=["no error", "with error"],

@@ -1,0 +1,33 @@
+single_vocab = true
+
+[vocabs.myvocab]
+id_length = 7
+permanent_iri_part = "https://example.org/"
+
+[vocabs.myvocab.checks]
+allow_delete = false
+
+[vocabs.myvocab.prefix_map]
+ex = "https://example.org/"
+photo = "https://example.org/nfdi4cat/photo/"
+
+[[vocabs.myvocab.id_range]]
+first_id = 1
+last_id = 10
+gh_name = "sofia-garcia"
+orcid = "0000-0001-2345-6789"
+ror_id = "https://ror.org/04fa4r544"
+
+[[vocabs.myvocab.id_range]]
+first_id = 11
+last_id = 20
+gh_name = "unknown"
+orcid = ""
+ror_id = ""
+
+[[vocabs.myvocab.id_range]]
+first_id = 21
+last_id = 30
+gh_name = ""
+orcid = "0000-0002-1825-0097"
+ror_id = ""

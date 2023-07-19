@@ -13,6 +13,7 @@ from rdflib import Graph
 from rdflib.namespace import DCAT, DCTERMS, OWL, PROV, RDF, RDFS, SKOS
 
 from voc4cat import __version__, config, models, profiles
+from voc4cat.checks import validate_config_has_idrange
 from voc4cat.convert_043 import create_prefix_dict, write_prefix_sheet
 from voc4cat.convert_043 import (
     extract_concept_scheme as extract_concept_scheme_043,
@@ -118,6 +119,9 @@ def excel_to_rdf(
     """Converts an Excel workbook to a SKOS vocabulary file"""
     wb = load_workbook(file_to_convert_path)
     template_version = get_template_version(wb)
+    vocab_name = file_to_convert_path.stem.lower()
+    # If config is present, verify that at least one id_range defined.
+    validate_config_has_idrange(vocab_name)
 
     # Check that we have a valid template version.
     if template_version not in KNOWN_TEMPLATE_VERSIONS:
@@ -142,8 +146,12 @@ def excel_to_rdf(
             additional_concept_sheet,
             collection_sheet,
             prefix_converter_xlsx,
+            vocab_name,
         )
-        cs = extract_concept_scheme_043(sheet, prefix_converter_xlsx)
+        cs = extract_concept_scheme_043(
+            sheet,
+            prefix_converter_xlsx,
+        )
     except ValidationError as exc:
         msg = f"ConceptScheme processing error: {exc}"
         raise ConversionError(msg) from exc
@@ -212,9 +220,9 @@ def rdf_to_excel(
         str(file_to_convert_path), format=RDF_FILE_ENDINGS[file_to_convert_path.suffix]
     )
     # Update graph with prefix-mappings of the vocabulary
-    vocab_name = file_to_convert_path.stem
-    vocab_config = config.idranges.get(vocab_name, {})
-    models.reset_curies(vocab_config.get("prefix_map", {}))
+    vocab_name = file_to_convert_path.stem.lower()
+    # If config is present, verify that at least one id_range defined.
+    validate_config_has_idrange(vocab_name)
 
     if template_file_path is None:
         wb = load_template(file_path=(Path(__file__).parent / "blank_043.xlsx"))
@@ -289,7 +297,7 @@ def rdf_to_excel(
             "def_language_code": [],
             "children": [],
             "alt_labels": [],
-            "home_vocab_uri": None,
+            "source_vocab": None,
             "provenance": None,
             "related_match": [],
             "close_match": [],
@@ -309,7 +317,7 @@ def rdf_to_excel(
             elif p == SKOS.altLabel:
                 holder["alt_labels"].append(str(o))
             elif p == RDFS.isDefinedBy:
-                holder["home_vocab_uri"] = str(o)
+                holder["source_vocab"] = str(o)
             elif p == DCTERMS.source:
                 holder["provenance"] = str(o)
             elif p == DCTERMS.provenance:
@@ -335,13 +343,14 @@ def rdf_to_excel(
             def_language_code=holder["def_language_code"],
             children=holder["children"],
             alt_labels=holder["alt_labels"],
-            home_vocab_uri=holder["home_vocab_uri"],
+            source_vocab=holder["source_vocab"],
             provenance=holder["provenance"],
             related_match=holder["related_match"],
             close_match=holder["close_match"],
             exact_match=holder["exact_match"],
             narrow_match=holder["narrow_match"],
             broad_match=holder["broad_match"],
+            vocab_name=vocab_name,
         ).to_excel(wb, row_no_features, row_no_concepts)
         row_no_features += 1
 
@@ -374,6 +383,7 @@ def rdf_to_excel(
             provenance=holder["provenance"]
             if holder.get("provenance") is not None
             else None,
+            vocab_name=vocab_name,
         ).to_excel(wb, row_no)
         row_no += 1
 
@@ -606,6 +616,8 @@ def main(args=None):
 
 
 if __name__ == "__main__":
+    from voc4cat.wrapper import setup_logging
+
     setup_logging()
     retval = main(sys.argv[1:])
     if retval is not None:

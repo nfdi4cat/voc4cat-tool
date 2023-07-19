@@ -27,28 +27,29 @@ from voc4cat.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDIN
 logger = logging.getLogger(__name__)
 
 
-def setup_logging(verbosity: int = logging.INFO, logfile: Path | None = None):
+def setup_logging(loglevel: int = logging.INFO, logfile: Path | None = None):
     """Setup logging to console and optionally a file.
 
     The default loglevel is INFO.
     """
-    loglevel = os.getenv("LOGLEVEL", "").strip().upper()
-    if loglevel in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
-        loglevel_value = getattr(logging, loglevel)
-    else:
-        loglevel_value = 10 * verbosity
-    logging.basicConfig(level=loglevel_value, format="%(message)s")
+    loglevel_name = os.getenv("LOGLEVEL", "").strip().upper()
+    if loglevel_name in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+        loglevel = getattr(logging, loglevel_name, logging.INFO)
+
+    # Setup handler for logging to console
+    logging.basicConfig(level=loglevel, format="%(levelname)-8s|%(message)s")
 
     if logfile is None:
         return
 
+    # Setup handler for logging to file
     fh = logging.FileHandler(logfile)
-    fh.setLevel(loglevel_value)
-    formatter = logging.Formatter(
+    fh.setLevel(loglevel)
+    fh_formatter = logging.Formatter(
         fmt="%(asctime)s|%(name)-20s|%(levelname)-8s|%(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    fh.setFormatter(formatter)
+    fh.setFormatter(fh_formatter)
     logger.addHandler(fh)
 
 
@@ -465,13 +466,18 @@ def build_docs(file_path, output_path, doc_builder):
     return errcode
 
 
-def check(fpath, outfile):
+def check_xlsx(fpath: Path, outfile: Path) -> int:
     """
-    Check vocabulary in Excel sheet
+    Complex checks of the xlsx file not handled by pydantic model validation
+
+    Checks/validation implemented here need/use information from several rows and
+    can therefore not easily done in models.py with pydantic.
 
     For concepts:
-    - The "Concept IRI" must be unique; this is the case when no language
-      is used more than once per concept.
+    - The "Concept IRI" must be unique. However, it can be present in several
+      rows as long as the languages in the rows with the same IRI are
+      different. This condition is fulfilled when no language is used more
+      than once per concept.
     """
     logger.info("Running check of Concepts sheet for file %s", fpath)
     wb = openpyxl.load_workbook(fpath)
@@ -481,27 +487,29 @@ def check(fpath, outfile):
 
     subsequent_empty_rows = 0
     seen_concept_iris = []
-    failed_check = False
+    failed_checks = 0
     for row in ws.iter_rows(min_row=3, max_col=3):  # pragma: no branch
         if row[0].value and row[1].value:
             concept_iri, _, lang = (
                 c.value.strip() if c.value is not None else "" for c in row
             )
-
+            # Check that IRI is valid.
+            #            config.IDRANGES
+            # Check that IRI is used for exactly one concept.
             new_concept_iri = f'"{concept_iri}"@{lang.lower()}'
             if new_concept_iri in seen_concept_iris:
-                failed_check = True
+                failed_checks += 1
                 msg = (
-                    f'ERROR: Same Concept IRI "{concept_iri}" used more than once for '
+                    f'Same Concept IRI "{concept_iri}" used more than once for '
                     f'language "{lang}"'
                 )
                 logger.error(msg)
                 # colorize problematic cells
                 row[0].fill = color
                 row[2].fill = color
-                seen_in_row = 3 + seen_concept_iris.index(new_concept_iri)
-                ws[f"A{seen_in_row}"].fill = color
-                ws[f"C{seen_in_row}"].fill = color
+                previously_seen_in_row = 3 + seen_concept_iris.index(new_concept_iri)
+                ws[f"A{previously_seen_in_row}"].fill = color
+                ws[f"C{previously_seen_in_row}"].fill = color
             else:
                 seen_concept_iris.append(new_concept_iri)
 
@@ -514,7 +522,7 @@ def check(fpath, outfile):
             subsequent_empty_rows = 0
             break
 
-    if failed_check:
+    if failed_checks:
         wb.save(outfile)
         logger.info("Saved file with highlighted errors as %s", outfile)
         return 1
@@ -733,7 +741,7 @@ def main_cli(args=None):
         funcs = [
             m
             for m, to_run in zip(
-                [make_ids, check],
+                [make_ids, check_xlsx],
                 [args_wrapper.make_ids, args_wrapper.check],
             )
             if to_run
