@@ -8,11 +8,10 @@ from pydantic import ValidationError
 VALID_CONFIG = "valid_idranges.toml"
 
 
-def test_import(datadir, caplog):
+def test_import(datadir, caplog, temp_config):
     """Standard case of valid jdranges.toml."""
-    from voc4cat import config
-
     # default config available
+    config = temp_config
     assert config.IDRANGES.single_vocab is False
     assert config.IDRANGES.vocabs == {}
     assert config.IDRANGES.default_config is True
@@ -28,8 +27,6 @@ def test_import(datadir, caplog):
     assert len(config.IDRANGES.vocabs) == 1
     assert "myvocab" in config.IDRANGES.vocabs
     assert len(config.IDRANGES.vocabs["myvocab"].id_range) == 3  # noqa: PLR2004
-    # Reset the globally changed config.
-    config.IDRANGES = config.load_config()
 
 
 def test_non_exisiting_config_file(tmp_path, caplog):

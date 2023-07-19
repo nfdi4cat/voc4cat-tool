@@ -99,4 +99,3 @@
         <http://example.org/test/term6> ;
     skos:prefLabel "voc4cat-test-data"@en ;
     dcat:contactPoint "David Linke" .
-

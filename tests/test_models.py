@@ -20,11 +20,12 @@ def test_reset_curies():
         reset_curies(new)
 
 
-def test_check_uri_vs_config(datadir):
+def test_check_uri_vs_config(datadir, temp_config):
     """
     Tests for pydantic root_validator voc4cat.models.check_uri_vs_config
     """
     # load a valid config
+    config = temp_config
     config.IDRANGES = config.load_config(datadir / VALID_CONFIG)
 
     # Concept IRI matching "permanent_iri_part" from config
@@ -62,9 +63,6 @@ def test_check_uri_vs_config(datadir):
         "ID part of https://example.org/000005 is not matching the configured pattern of 7 digits."
         in str(excinfo.value)
     )
-
-    # Reset the globally changed config.
-    config.IDRANGES = config.load_config()
 
 
 # === From here on: "old" tests from rdflib.vocexcel ===

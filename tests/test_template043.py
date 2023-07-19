@@ -77,7 +77,7 @@ def test_rdf_to_excel():
     ).unlink(missing_ok=True)
     # to debug differences
     # in_both, in_first, in_second = compare.graph_diff(g1, g2)
-    # print("Only in 1st", in_first.serialize(format="turtle"))
-    # print("Only in 2nd", in_second.serialize(format="turtle"))
+    # print("\nOnly in 1st ==>\n", in_first.serialize(format="turtle"))
+    # print("Only in 2nd ==>\n", in_second.serialize(format="turtle"))
 
     assert compare.isomorphic(g1, g2), "Graphs are not Isomorphic"

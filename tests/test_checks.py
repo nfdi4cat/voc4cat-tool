@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 from rdflib import RDF, SKOS, Graph
-from voc4cat import config
 from voc4cat.checks import (
     Voc4catError,
     check_for_removed_iris,
@@ -19,7 +18,7 @@ from voc4cat.checks import (
 VALID_CONFIG = "valid_idranges.toml"
 
 
-def test_validate_config_has_idrange(datadir):
+def test_validate_config_has_idrange(datadir, temp_config):
     """Test voc4cat.checks"""
 
     # default config -> no check possible
@@ -27,6 +26,7 @@ def test_validate_config_has_idrange(datadir):
     assert validate_config_has_idrange(vocab) is None
 
     # Adapt a valid config for the test
+    config = temp_config
     conf = config.load_config(datadir / VALID_CONFIG)
     conf.single_vocab = False
     extra_vocab = config.Vocab(
@@ -46,24 +46,19 @@ def test_validate_config_has_idrange(datadir):
         excinfo.value
     )
 
-    # Reset the globally changed config.
-    config.IDRANGES = config.load_config()
 
-
-def test_check_number_of_files_in_inbox(datadir, tmp_path):
+def test_check_number_of_files_in_inbox(datadir, tmp_path, temp_config):
     # no warning for default config
     assert check_number_of_files_in_inbox(datadir) is None
 
     # Load a valid stricter config
+    config = temp_config
     config.IDRANGES = config.load_config(datadir / VALID_CONFIG)
 
     assert check_number_of_files_in_inbox(tmp_path) is None
     with pytest.raises(Voc4catError) as excinfo:
         check_number_of_files_in_inbox(datadir)
     assert "The single vocabulary option is active but " in str(excinfo.value)
-
-    # Reset the globally changed config.
-    config.IDRANGES = config.load_config()
 
 
 def test_validate_vocabulary_files_for_ci_workflow_default(datadir, caplog):
@@ -76,8 +71,11 @@ def test_validate_vocabulary_files_for_ci_workflow_default(datadir, caplog):
     )
 
 
-def test_validate_vocabulary_files_for_ci_workflow_one_vocab(datadir, tmp_path, caplog):
+def test_validate_vocabulary_files_for_ci_workflow_one_vocab(
+    datadir, tmp_path, temp_config, caplog
+):
     # Load a valid stricter config.
+    config = temp_config
     conf = config.load_config(datadir / VALID_CONFIG)
     conf.vocabs["concept-scheme-simple"] = conf.vocabs.pop("myvocab")
     conf.vocabs["concept-scheme-simple"].checks.allow_delete = True
@@ -107,7 +105,7 @@ def test_validate_vocabulary_files_for_ci_workflow_one_vocab(datadir, tmp_path, 
         f'The file in inbox "{pr_inbox/inbox_file}" must match the vocabulary name "{Path(vocab_file).stem}".'
         in str(excinfo.value)
     )
-    # One vocab but without a config.
+    # One vocab but without idranges specified.
     unconfigured_vocab = "unconfigured_vocab.ttl"
     os.rename(pr_vocab / vocab_file, pr_vocab / unconfigured_vocab)
     os.remove(pr_inbox / inbox_file)
@@ -118,7 +116,7 @@ def test_validate_vocabulary_files_for_ci_workflow_one_vocab(datadir, tmp_path, 
         in str(excinfo.value)
     )
 
-    # One inbox file but without a config.
+    # One inbox file but without idranges specified.
     os.remove(pr_vocab / unconfigured_vocab)
     inbox_file = "concept-scheme-with-cycles.xlsx"
     shutil.copy(datadir / inbox_file, pr_inbox)
@@ -129,14 +127,12 @@ def test_validate_vocabulary_files_for_ci_workflow_one_vocab(datadir, tmp_path, 
         in str(excinfo.value)
     )
 
-    # Reset the globally changed config.
-    config.IDRANGES = config.load_config()
-
 
 def test_validate_vocabulary_files_for_ci_workflow_multi_vocab(
-    datadir, tmp_path, caplog
+    datadir, tmp_path, temp_config, caplog
 ):
     # Load a valid stricter config.
+    config = temp_config
     conf = config.load_config(datadir / VALID_CONFIG)
     conf.vocabs["concept-scheme-simple"] = conf.vocabs.pop("myvocab")
     conf.vocabs["concept-scheme-simple"].checks.allow_delete = True
@@ -158,9 +154,6 @@ def test_validate_vocabulary_files_for_ci_workflow_multi_vocab(
         'Missing vocabulary id_range config for "concept-scheme-with-cycles".'
         in str(excinfo.value)
     )
-
-    # Reset the globally changed config.
-    config.IDRANGES = config.load_config()
 
 
 def test_check_for_removed_iris(datadir, tmp_path):
@@ -188,7 +181,9 @@ def test_check_for_removed_iris(datadir, tmp_path):
         (SKOS.Collection, "Removal of a Collection detected"),
     ],
 )
-def test_check_for_removed_iris_logs(datadir, tmp_path, caplog, skos_el, log_text):
+def test_check_for_removed_iris_logs(  # noqa: PLR0913
+    datadir, tmp_path, temp_config, caplog, skos_el, log_text
+):
     original = datadir / "concept-scheme-simple.ttl"
     # Prepare data with removed concept
     g = Graph()
@@ -199,6 +194,7 @@ def test_check_for_removed_iris_logs(datadir, tmp_path, caplog, skos_el, log_tex
     g.serialize(destination=reduced, format="turtle")
 
     # Change to a config that allows to delete.
+    config = temp_config
     conf = config.load_config(datadir / VALID_CONFIG)
     conf.vocabs["concept-scheme-simple"] = conf.vocabs.pop("myvocab")
     conf.vocabs["concept-scheme-simple"].checks.allow_delete = True
@@ -208,6 +204,3 @@ def test_check_for_removed_iris_logs(datadir, tmp_path, caplog, skos_el, log_tex
     assert log_text in caplog.text
     # no log message for adding content
     assert check_for_removed_iris(reduced, original) is None
-
-    # Reset the globally changed config.
-    config.IDRANGES = config.load_config()
