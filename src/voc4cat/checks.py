@@ -132,14 +132,3 @@ def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
         if not delete_allowed and removed:
             msg = f"Forbidden removal of {removed} concepts/collections detected. See log for IRIs."
             raise Voc4catError(msg)
-
-
-if __name__ == "__main__":
-    from voc4cat.wrapper import setup_logging
-
-    setup_logging(loglevel=logging.DEBUG)
-
-    check_for_removed_iris(
-        prev_vocab=Path("vocabularies/Photocatalysis_LIKAT.ttl"),
-        new_vocab=Path("vocabularies/Photocatalysis_LIKAT_smaller.ttl"),
-    )

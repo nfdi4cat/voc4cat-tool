@@ -1,4 +1,4 @@
-"""A wrapper to extend VocExcel with more commands."""
+"""Born as a wrapper to extend VocExcel with more commands."""
 
 import argparse
 import glob
@@ -14,6 +14,12 @@ import openpyxl
 from openpyxl.styles import Alignment, PatternFill
 
 from voc4cat import __version__, config
+from voc4cat.checks import (
+    Voc4catError,
+    check_for_removed_iris,
+    check_number_of_files_in_inbox,
+    validate_vocabulary_files_for_ci_workflow,
+)
 from voc4cat.convert import main as vocexcel_main
 from voc4cat.util import (
     dag_from_indented_text,
@@ -35,6 +41,9 @@ def setup_logging(loglevel: int = logging.INFO, logfile: Path | None = None):
     loglevel_name = os.getenv("LOGLEVEL", "").strip().upper()
     if loglevel_name in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
         loglevel = getattr(logging, loglevel_name, logging.INFO)
+
+    # Apply constraints. CRITICAL=FATAL=50 is the maximum, NOTSET=0 the minimum.
+    loglevel = min(logging.FATAL, max(loglevel, logging.NOTSET))
 
     # Setup handler for logging to console
     logging.basicConfig(level=loglevel, format="%(levelname)-8s|%(message)s")
@@ -80,7 +89,7 @@ def has_file_in_more_than_one_format(dir_):
 
 
 def is_supported_template(wb):
-    # TODO add check for Excel template version
+    # TODO add check for xlsx template version
     return True
 
 
@@ -188,7 +197,7 @@ def hierarchy_from_indent(fpath, outfile, sep):
     Convert indentation hierarchy of concepts to children-URI form.
 
     If separator character(s) are given they will be replaced with
-    Excel indent which is also the default if sep is None.
+    the xlsx default indent. This is also the default if sep is None.
     """
     logger.info("Reading concepts from file %s", fpath)
     # Load in data_only mode to get cell values not formulas.
@@ -208,7 +217,7 @@ def hierarchy_from_indent(fpath, outfile, sep):
             row_no = row[0].row
             lang = row[2].value
 
-            if sep is None:  # Excel indentation
+            if sep is None:  # xlsx indentation
                 level = int(row[1].alignment.indent)
                 ws.cell(row_no, column=2).alignment = Alignment(indent=0)
             else:
@@ -279,7 +288,7 @@ def hierarchy_to_indent(fpath, outfile, sep):
     Convert concept hierarchy in children-URI form to indentation.
 
     If separator character(s) are given they will be used.
-    If sep is None, Excel indent will be used.
+    If sep is None, xlsx default indent will be used.
     """
     logger.info("Reading concepts from file %s", fpath)
     wb = openpyxl.load_workbook(fpath)
@@ -537,9 +546,38 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     return 0
 
 
+def check_ci_prerun(vocab_dir: Path, inbox_dir: Path) -> int:
+    """
+    Check state of directories in CI.
+    """
+    logger.info("Check-CI pre-run")
+    try:
+        check_number_of_files_in_inbox(inbox_dir)
+    except Voc4catError:
+        logger.exception()
+        return 1
+    try:
+        validate_vocabulary_files_for_ci_workflow(vocab_dir, inbox_dir)
+    except Voc4catError:
+        logger.exception()
+        return 1
+    return 0
+
+
+def check_ci_postrun(prev_vocab_dir: Path, vocab_dir: Path) -> int:
+    """Check for Concept/Collection removals."""
+    logger.info("Check-CI post-run")
+    try:
+        check_for_removed_iris(prev_vocab_dir, vocab_dir)
+    except Voc4catError:
+        logger.exception()
+        return 1
+    return 0
+
+
 def run_vocexcel(args=None):
     if args is None:  # pragma: no cover
-        args = []  # Important! Prevents vocexcel to use args from sys.argv.
+        args = []  # Important! Prevents convert.main to use args from sys.argv.
     retval = vocexcel_main(args)
     if retval is not None:
         return 1
@@ -557,9 +595,8 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
-        "-v",
         "--version",
-        help="The version of this wrapper of VocExcel.",
+        help="The version of voc4cat-tool.",
         action="store_true",
     )
 
@@ -577,6 +614,7 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
+        "-O",
         "--output-directory",
         help=(
             "Specify directory where files should be written to. "
@@ -590,8 +628,14 @@ def main_cli(args=None):
         "-c",
         "--check",
         help=(
-            "Perform various checks on vocabulary in Excel file (detect duplicates,...)"
+            "Perform various checks on vocabulary in xlsx file (detect duplicates,...)"
         ),
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--check-ci",
+        help=("Perform checks on inbox and vocabulary directories in CI pipeline."),
         action="store_true",
     )
 
@@ -616,7 +660,7 @@ def main_cli(args=None):
     parser.add_argument(
         "-f",
         "--forward",
-        help=("Forward file resulting from running other options to vocexcel."),
+        help=("Forward file resulting from running other options to converter."),
         action="store_true",
     )
 
@@ -636,7 +680,7 @@ def main_cli(args=None):
         "--indent-separator",
         help=(
             "Separator character(s) to read/write indented hierarchies "
-            "(default: Excel's indent)."
+            "(default: xlsx indent)."
         ),
         type=str,
         required=False,
@@ -658,26 +702,31 @@ def main_cli(args=None):
         help="Either the file to process or a directory with files to process.",
     )
 
-    # Add options to control logging verbosity?
-    # parser.add_argument('-v', '--verbose',
-    #                     action='count',
-    #                     dest='verbosity',
-    #                     default=2,
-    #                     help="Give more output. Option is additive, and can be used up to 3 times.")
-    # parser.add_argument('-q', '--quiet',
-    #                     action='store_const',
-    #                     const=-1,
-    #                     default=2,
-    #                     dest='verbosity',
-    #                     help="Give less output. Option is additive, and can be used up to 3 times")
+    # options to control logging verbosity
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        dest="verboser",
+        default=0,
+        help="Give more output. Option is additive, and can be used up to 3 times (-vvv).",
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="count",
+        default=0,
+        dest="quieter",
+        help="Give less output. Option is additive, and can be used up to 3 times (-qqq).",
+    )
 
     # This is only a trick to display a meaningful help text.
-    # vocexcel options will not be available in args_wrapper.vocexcel_options
+    # the convert.main options will not be available in args_wrapper.vocexcel_options
     parser.add_argument(
-        "vocexcel_options",
+        "convert.main_options",
         nargs="?",
         help=(
-            "Options to forward to vocexcel. Run vocexcel --help to see what "
+            "Options to forward to convert.main. Run vocexcel --help to see what "
             "is available."
         ),
     )
@@ -696,22 +745,23 @@ def main_cli(args=None):
     if outdir is not None and not os.path.isdir(outdir):
         os.makedirs(outdir, exist_ok=True)
 
+    loglevel = logging.INFO + (args_wrapper.quieter - args_wrapper.verboser) * 10
     logfile = args_wrapper.logfile
     if logfile is None:
-        setup_logging()
+        setup_logging(loglevel)
     else:
         if outdir is not None:
             logfile = Path(outdir) / logfile
         elif not logfile.parents[0].exists():
             os.makedirs(logfile.parents[0], exist_ok=True)
-        setup_logging(logfile=logfile)
+        setup_logging(loglevel, logfile)
 
     if args_wrapper.indent_separator is not None:
         sep = args_wrapper.indent_separator
         if not len(sep):
             msg = "Setting the indent separator to zero length is not allowed."
             raise ValueError(msg)
-    else:  # Excel's default indent / openpyxl.styles.Alignment(indent=0)
+    else:  # xlsx's default indent / openpyxl.styles.Alignment(indent=0)
         sep = None
 
     if args_wrapper.version:
@@ -737,12 +787,12 @@ def main_cli(args=None):
         else:
             hierarchy_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
 
-    elif args_wrapper.make_ids or args_wrapper.check:
+    elif args_wrapper.make_ids or args_wrapper.check or args_wrapper.check_ci:
         funcs = [
             m
             for m, to_run in zip(
-                [make_ids, check_xlsx],
-                [args_wrapper.make_ids, args_wrapper.check],
+                [make_ids, check_xlsx, check_ci_prerun],
+                [args_wrapper.make_ids, args_wrapper.check, args_wrapper.check_ci],
             )
             if to_run
         ]
@@ -763,11 +813,13 @@ def main_cli(args=None):
                         return 1
                     if args_wrapper.make_ids:
                         err += func(infile, outfile, *args_wrapper.make_ids)
+                    elif args_wrapper.check_ci and outdir is not None:
+                        check_ci_prerun(Path(outdir), args_wrapper.file_to_preprocess)
                     else:
                         err += func(infile, outfile)
                     infile = outfile
                 if args_wrapper.forward:
-                    print(f"\nCalling VocExcel for forwarded Excel file {infile}")
+                    print(f"\nCalling convert for forwarded xlsx file {infile}")
                     locargs = list(vocexcel_args)
                     locargs.append(str(infile))
                     err += run_vocexcel(locargs)
@@ -795,7 +847,7 @@ def main_cli(args=None):
                     err += func(infile, outfile)
                 infile = outfile
             if args_wrapper.forward:
-                print(f"\nCalling VocExcel for forwarded Excel file {infile}")
+                print(f"\nCalling convert for forwarded xlsx file {infile}")
                 locargs = list(vocexcel_args)
                 locargs.append(str(infile))
                 err += run_vocexcel(locargs)
@@ -845,7 +897,7 @@ def main_cli(args=None):
             return 1
 
         if xlsx_files:
-            print("\nCalling VocExcel for Excel files")
+            print("\nCalling convert for xlsx files")
         for xlf in xlsx_files:
             print(f"  {xlf}")
             locargs = list(vocexcel_args)
@@ -860,7 +912,7 @@ def main_cli(args=None):
             err += run_vocexcel(locargs)
 
         if turtle_files:
-            print("Calling VocExcel for turtle files")
+            print("Calling convert for turtle files")
         for ttlf in turtle_files:
             print(f"  {ttlf}")
             locargs = list(vocexcel_args)
@@ -873,6 +925,19 @@ def main_cli(args=None):
                 outfile = Path(outdir) / Path(f"{fname}.xlsx")
                 locargs = ["--outputfile", str(outfile), *locargs]
             err += run_vocexcel(locargs)
+
+        if (args_wrapper.check_ci) and config.CI_RUN:
+            # GITHUB_REPOSITORY	- The owner and repository name. For example, nfdi4cat/voc4cat
+            repo_name = os.getenv("GITHUB_REPOSITORY").split("/")[-1]
+            main_branch = Path(".").resolve() / "_main_branch" / repo_name
+            outdir_rel = outdir.relative_to(Path(".").resolve())
+            prev_dir = main_branch.joinpath(outdir_rel)
+            logger.debug(
+                "Looking for changes between %s (previous) and %s (new)",
+                prev_dir,
+                outdir.resolve(),
+            )
+            err += check_ci_postrun(prev_dir, Path(outdir))
 
         if (
             args_wrapper.docs

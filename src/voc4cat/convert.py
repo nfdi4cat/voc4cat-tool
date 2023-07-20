@@ -534,6 +534,8 @@ def main(args=None):
 
         setup_logging(logfile=args.logfile)
     elif run_via_entrypoint:
+        from voc4cat.wrapper import setup_logging
+
         setup_logging()
 
     if args.listprofiles:
