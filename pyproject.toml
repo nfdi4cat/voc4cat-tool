@@ -77,6 +77,7 @@ dev = [
 
 [project.scripts]
 voc4cat = "voc4cat.wrapper:main_cli"
+voc4cat-ng = "voc4cat.cli:start_cli_app"
 vocexcel = "voc4cat.convert:main"
 merge_vocab = "voc4cat.merge_vocab:main_cli"
 
@@ -144,6 +145,7 @@ branch = true
 source = ["voc4cat"]
 omit = [
     "**/voc4cat/_version.py",
+    "**/voc4cat/cli.py"  # in early development
 ]
 
 [tool.coverage.paths]
