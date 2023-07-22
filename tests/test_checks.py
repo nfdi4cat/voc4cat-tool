@@ -42,8 +42,9 @@ def test_validate_config_has_idrange(datadir, temp_config):
     assert validate_config_has_idrange("myvocab") is None
     with pytest.raises(Voc4catError) as excinfo:
         validate_config_has_idrange(vocab)
-    assert f"Config for vocabulary {vocab} has no section [vocabs.*.id_range]." in str(
-        excinfo.value
+    assert (
+        f"Config requires at least one ID range in a section [[vocabs.{vocab}.id_range]]."
+        in str(excinfo.value)
     )
 
 
@@ -66,7 +67,7 @@ def test_validate_vocabulary_files_for_ci_workflow_default(datadir, caplog):
     with caplog.at_level(logging.WARNING):
         validate_vocabulary_files_for_ci_workflow(datadir, datadir)
     assert (
-        "To validate vocabulary names an idrange-configuration must be present."
+        "To validate file names the config requires at least one vocabulary section."
         in caplog.text
     )
 
@@ -169,9 +170,15 @@ def test_check_for_removed_iris(datadir, tmp_path):
 
     with pytest.raises(
         Voc4catError,
-        match=r"Forbidden removal of 1 concepts\/collections detected. See log for IRIs.",
+        match="-> Removal of a Concept detected:",
     ):
         check_for_removed_iris(original, reduced)
+
+    # with pytest.raises(
+    #     Voc4catError,
+    #     match=r"Forbidden removal of 1 concepts\/collections detected. See log for IRIs.",
+    # ):
+    #     check_for_removed_iris(original, reduced)
 
 
 @pytest.mark.parametrize(
