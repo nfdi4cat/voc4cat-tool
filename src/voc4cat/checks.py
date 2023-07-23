@@ -57,23 +57,23 @@ def validate_vocabulary_files_for_ci_workflow(vocab_dir: Path, inbox_dir: Path):
         )
         return
 
-    vocab_files = glob.glob(str(vocab_dir / "*.ttl"))
     inbox_files = glob.glob(str(inbox_dir / "*.xlsx"))
-    inbox_all_files = glob.glob(str(inbox_dir / "*.*"))
+    inbox_md_files = glob.glob(str(inbox_dir / "*.md"))
+    inbox_all_files = glob.glob(str(inbox_dir / "*"))
 
     # Test that inbox has only xlsx files and md or txt doc files
-    if len(inbox_all_files) - len(inbox_files) > 1:
+    if len(inbox_all_files) > len(inbox_files) + len(inbox_md_files):
         if os.getenv("CI_RUN"):
             raise Voc4catError(
                 'Directory "%s" may only contain xlsx files and README.md.' % inbox_dir
             )
-        else:
-            logger.warning(
-                'Directory "%s" should only contain xlsx files and README.md.',
-                inbox_dir,
-            )
+        logger.warning(
+            'Directory "%s" should only contain xlsx files and README.md.',
+            inbox_dir,
+        )
 
     # By creating a set first duplicates are eliminated.
+    vocab_files = glob.glob(str(vocab_dir / "*.ttl"))
     vocab_names = list({Path(fp).stem.lower() for fp in vocab_files})
     inbox_names = list({Path(fp).stem.lower() for fp in inbox_files})
     logging.debug("-> vocab name stems: %s", ", ".join(vocab_names))
@@ -83,6 +83,10 @@ def validate_vocabulary_files_for_ci_workflow(vocab_dir: Path, inbox_dir: Path):
     logging.debug("-> config vocab names: %s", ", ".join(vocab_names_in_config))
 
     if config.IDRANGES.single_vocab:
+        if len(vocab_names) > 1:
+            msg = 'Directory "%s" may contain only a single vocabulary.'
+            raise Voc4catError(msg % vocab_dir)
+
         if (
             len(vocab_names) == 1
             and len(inbox_names) == 1
@@ -98,10 +102,6 @@ def validate_vocabulary_files_for_ci_workflow(vocab_dir: Path, inbox_dir: Path):
         if len(inbox_names) == 1 and inbox_names[0] not in vocab_names_in_config:
             msg = 'New vocabulary "%s" in "%s" must be also present in config.'
             raise Voc4catError(msg % (inbox_names[0], inbox_dir))
-
-        if len(inbox_names) == 1 and len(vocab_names) > 1:
-            msg = 'Directory "%s" may only contain a single vocabulary.'
-            raise Voc4catError(msg % vocab_dir)
 
     # If more than one vocabulary is allowed, we can only check that all
     # file name stems are present in config.IDRANGES.
@@ -140,14 +140,14 @@ def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
             if delete_allowed:
                 logger.warning(msg, iri)
             else:
-                raise Voc4catError(msg % iri)
+                logger.error(msg, iri)
             removed += 1
         for iri in in_prev.subjects(RDF.type, SKOS.Collection):
             msg = "-> Removal of a Collection detected: %s"
             if delete_allowed:
                 logger.warning(msg, iri)
             else:
-                raise Voc4catError(msg % iri)
+                logger.error(msg, iri)
             removed += 1
         if not delete_allowed and removed:
             msg = f"Forbidden removal of {removed} concepts/collections detected. See log for IRIs."

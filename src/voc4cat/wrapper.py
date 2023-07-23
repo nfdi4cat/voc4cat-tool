@@ -475,7 +475,7 @@ def build_docs(file_path, output_path, doc_builder):
     return errcode
 
 
-def check_xlsx(fpath: Path, outfile: Path) -> int:
+def check(fpath: Path, outfile: Path) -> int:
     """
     Complex checks of the xlsx file not handled by pydantic model validation
 
@@ -553,12 +553,12 @@ def check_ci_prerun(vocab_dir: Path, inbox_dir: Path) -> int:
     logger.info("Check-CI pre-run")
     try:
         check_number_of_files_in_inbox(inbox_dir)
-    except Voc4catError:
+    except Voc4catError:  # pragma: no cover
         logger.exception()
         return 1
     try:
         validate_vocabulary_files_for_ci_workflow(vocab_dir, inbox_dir)
-    except Voc4catError:
+    except Voc4catError:  # pragma: no cover
         logger.exception()
         return 1
     return 0
@@ -567,11 +567,14 @@ def check_ci_prerun(vocab_dir: Path, inbox_dir: Path) -> int:
 def check_ci_postrun(prev_vocab_dir: Path, vocab_dir: Path) -> int:
     """Check for Concept/Collection removals."""
     logger.info("Check-CI post-run")
-    try:
-        check_for_removed_iris(prev_vocab_dir, vocab_dir)
-    except Voc4catError:
-        logger.exception()
-        return 1
+    for vocfile in glob.glob(str(vocab_dir / "*.ttl")):
+        prev = prev_vocab_dir / vocfile
+        current = vocab_dir / vocfile
+        try:
+            check_for_removed_iris(prev, current)
+        except Voc4catError:  # pragma: no cover
+            logger.exception()
+            return 1
     return 0
 
 
@@ -634,7 +637,7 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
-        "--check-ci",
+        "--ci-check",
         help=("Perform checks on inbox and vocabulary directories in CI pipeline."),
         action="store_true",
     )
@@ -787,12 +790,12 @@ def main_cli(args=None):
         else:
             hierarchy_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
 
-    elif args_wrapper.make_ids or args_wrapper.check or args_wrapper.check_ci:
+    elif args_wrapper.make_ids or args_wrapper.check or args_wrapper.ci_check:
         funcs = [
             m
             for m, to_run in zip(
-                [make_ids, check_xlsx, check_ci_prerun],
-                [args_wrapper.make_ids, args_wrapper.check, args_wrapper.check_ci],
+                [make_ids, check, check_ci_prerun],
+                [args_wrapper.make_ids, args_wrapper.check, args_wrapper.ci_check],
             )
             if to_run
         ]
@@ -809,20 +812,29 @@ def main_cli(args=None):
                     outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
                 infile = Path(xlf)
                 for func in funcs:
-                    if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
-                        return 1
                     if args_wrapper.make_ids:
+                        if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
+                            return 1
                         err += func(infile, outfile, *args_wrapper.make_ids)
-                    elif args_wrapper.check_ci and outdir is not None:
+                    elif args_wrapper.ci_check and outdir is not None:
                         check_ci_prerun(Path(outdir), args_wrapper.file_to_preprocess)
+                    elif args_wrapper.ci_check:
+                        continue  # not meaningful without outdir
                     else:
+                        if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
+                            return 1
                         err += func(infile, outfile)
                     infile = outfile
+
+                locargs = list(vocexcel_args)
                 if args_wrapper.forward:
                     print(f"\nCalling convert for forwarded xlsx file {infile}")
-                    locargs = list(vocexcel_args)
                     locargs.append(str(infile))
-                    err += run_vocexcel(locargs)
+                else:
+                    locargs.append("--outputfile")
+                    locargs.append(str(outfile.with_suffix(".ttl")))
+                    locargs.append(xlf)
+                err += run_vocexcel(locargs)
                 to_build_docs = True
 
             if args_wrapper.docs and args_wrapper.forward and to_build_docs:
@@ -926,19 +938,6 @@ def main_cli(args=None):
                 locargs = ["--outputfile", str(outfile), *locargs]
             err += run_vocexcel(locargs)
 
-        if (args_wrapper.check_ci) and config.CI_RUN:
-            # GITHUB_REPOSITORY	- The owner and repository name. For example, nfdi4cat/voc4cat
-            repo_name = os.getenv("GITHUB_REPOSITORY").split("/")[-1]
-            main_branch = Path(".").resolve() / "_main_branch" / repo_name
-            outdir_rel = outdir.relative_to(Path(".").resolve())
-            prev_dir = main_branch.joinpath(outdir_rel)
-            logger.debug(
-                "Looking for changes between %s (previous) and %s (new)",
-                prev_dir,
-                outdir.resolve(),
-            )
-            err += check_ci_postrun(prev_dir, Path(outdir))
-
         if (
             args_wrapper.docs
             and (args_wrapper.forward or turtle_files)
@@ -951,10 +950,21 @@ def main_cli(args=None):
             infile = Path(args_wrapper.file_to_preprocess).with_suffix(".ttl")
             doc_path = outdir if outdir is not None else infile.parent
             err += build_docs(infile, doc_path, args_wrapper.docs)
+
     else:
         # Unknown voc4cat option
         print(f"Unknown voc4cat option: {unknown_option}")
         return 1
+
+    if (args_wrapper.ci_check) and os.getenv("CI_RUN") and outdir is not None:
+        main_branch = Path(".").resolve() / "_main_branch"
+        prev_dir = main_branch / "vocabularies"
+        logger.debug(
+            "Looking for changes between %s (previous) and %s (new)",
+            prev_dir,
+            outdir.resolve(),
+        )
+        err += check_ci_postrun(prev_dir, Path(outdir))
 
     return err
 

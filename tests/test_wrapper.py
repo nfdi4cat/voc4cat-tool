@@ -2,12 +2,14 @@ import logging
 import os
 import shutil
 from pathlib import Path
+from unittest import mock
 
 import pytest
 from openpyxl.reader.excel import load_workbook
 from voc4cat.wrapper import build_docs, main_cli
 
 CS_SIMPLE = "concept-scheme-simple.xlsx"
+CS_SIMPLE_TURTLE = "concept-scheme-simple.ttl"
 CS_CYCLES = "concept-scheme-with-cycles.xlsx"
 CS_CYCLES_TURTLE = "concept-scheme-with-cycles.ttl"
 CS_CYCLES_INDENT = "concept-scheme-with-cycles_indent.xlsx"
@@ -492,8 +494,69 @@ def test_check(datadir, tmp_path, caplog, test_file, err, msg):  # noqa: PLR0913
     # TODO check that erroneous cells get colored.
 
 
-def test_unsupported_filetype(datadir, capsys):
+def test_check_overwrite_warning(datadir, tmp_path):
+    shutil.copy(datadir / CS_SIMPLE, tmp_path / CS_SIMPLE)
+    os.chdir(tmp_path)
+    # Try to run a command that would overwrite the input file with the output file
+    # a) dir as input:
+    with pytest.warns(
+        UserWarning, match='Option "--check" will overwrite the existing file'
+    ):
+        main_cli(["--check", str(tmp_path)])
+    # b) file as input
+    with pytest.warns(
+        UserWarning, match='Option "--check" will overwrite the existing file'
+    ):
+        main_cli(["--check", str(tmp_path / CS_SIMPLE)])
+
+
+def test_ci_check_skipped(datadir, tmp_path, caplog):
+    # Test if skipping works if no output-directory is given.
+    dst = tmp_path
+    shutil.copy(datadir / CS_SIMPLE, dst)
+    exit_code = main_cli(["--ci-check", str(dst)])
+    assert exit_code == 0
+
+
+@mock.patch.dict(os.environ, {"CI_RUN": "", "LOGLEVEL": "DEBUG"})
+def test_ci_check_local(datadir, tmp_path, caplog):
+    dst = tmp_path
+    shutil.copy(datadir / CS_SIMPLE, dst)
+    outdir = tmp_path / "out"
+
+    exit_code = main_cli(["--ci-check", "--output-directory", str(outdir), str(dst)])
+    assert exit_code == 0
+
+
+@mock.patch.dict(os.environ, {"CI_RUN": "true"})
+def test_ci_check_in_ci(datadir, tmp_path, temp_config, caplog):
     os.chdir(datadir)
+    print("\nCWD:", Path(os.curdir).resolve())
+
+    dst = tmp_path / "inbox"
+    dst.mkdir()
+    outdir = tmp_path / "vocabularies"
+    main_branch = tmp_path / "_main_branch"
+    (main_branch / "vocabularies").mkdir(parents=True)
+
+    shutil.copy(datadir / CS_SIMPLE, dst / "myvocab.xlsx")
+    shutil.copy(datadir / CS_SIMPLE_TURTLE, main_branch / "vocabularies/myvocab.ttl")
+    shutil.copy(datadir / "valid_idranges.toml", main_branch / "idranges.toml")
+
+    # Load a valid strict config
+    config = temp_config
+    config.load_config(main_branch / "idranges.toml")
+    config.IDRANGES.vocabs["myvocab"].id_length = 2
+    config.IDRANGES.vocabs["myvocab"].permanent_iri_part = "http://example.org/test"
+    config.load_config(config=config.IDRANGES)
+
+    exit_code = main_cli(
+        ["-v", "--ci-check", "--output-directory", str(outdir), str(dst)]
+    )
+    assert exit_code == 0
+
+
+def test_unsupported_filetype(datadir, capsys):
     exit_code = main_cli(["README.md"])
     captured = capsys.readouterr()
     assert exit_code == 1
