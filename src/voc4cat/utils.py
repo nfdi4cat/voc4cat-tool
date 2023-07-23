@@ -1,7 +1,10 @@
+import logging
 from pathlib import Path
 
 from openpyxl import load_workbook as _load_workbook
 from openpyxl.workbook.workbook import Workbook
+
+logger = logging.getLogger(__name__)
 
 EXCEL_FILE_ENDINGS = ["xlsx"]
 RDF_FILE_ENDINGS = {

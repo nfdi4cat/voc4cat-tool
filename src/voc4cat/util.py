@@ -1,7 +1,10 @@
+import logging
 from operator import itemgetter
 from warnings import warn
 
 import networkx as nx
+
+logger = logging.getLogger(__name__)
 
 
 def _get_edges(text_with_level, base_level):
