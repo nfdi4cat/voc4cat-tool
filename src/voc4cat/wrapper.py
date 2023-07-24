@@ -412,7 +412,7 @@ def run_pylode(file_path, output_path):
         )
         with open(outfile, "w") as html_file:
             html_file.write(content)
-        logger.info("Done!\n=> %s", outfile.resolve().as_uri())
+        logger.info("-> %s", outfile.resolve().as_uri())
     return 0
 
 
@@ -567,11 +567,22 @@ def check_ci_prerun(vocab_dir: Path, inbox_dir: Path) -> int:
 def check_ci_postrun(prev_vocab_dir: Path, vocab_dir: Path) -> int:
     """Check for Concept/Collection removals."""
     logger.info("Check-CI post-run")
-    for vocfile in glob.glob(str(vocab_dir / "*.ttl")):
-        prev = prev_vocab_dir / vocfile
-        current = vocab_dir / vocfile
+    for vocfile in glob.glob(str(vocab_dir.resolve() / "*.ttl")):
+        new = Path(vocfile)
+        vocfile_name = Path(vocfile).name
+        prev = prev_vocab_dir / vocfile_name
+        if not prev.exists():
+            logging.debug(
+                '-> previous version of vocabulary "%s" does not exist.', vocfile_name
+            )
+            continue
+        logger.debug(
+            "-> Checking changes between %s (previous) and %s (new)",
+            prev,
+            new,
+        )
         try:
-            check_for_removed_iris(prev, current)
+            check_for_removed_iris(prev, new)
         except Voc4catError:  # pragma: no cover
             logger.exception()
             return 1
@@ -628,7 +639,6 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
-        "-c",
         "--check",
         help=(
             "Perform various checks on vocabulary in xlsx file (detect duplicates,...)"
@@ -640,6 +650,13 @@ def main_cli(args=None):
         "--ci-check",
         help=("Perform checks on inbox and vocabulary directories in CI pipeline."),
         action="store_true",
+    )
+
+    parser.add_argument(
+        "--config",
+        help=('Path to config file (typically "idranges.toml").'),
+        type=str,
+        required=False,
     )
 
     parser.add_argument(
@@ -759,6 +776,15 @@ def main_cli(args=None):
             os.makedirs(logfile.parents[0], exist_ok=True)
         setup_logging(loglevel, logfile)
 
+    # load config from "idranges.toml" in cwd
+    if args_wrapper.config is not None:
+        if Path(args_wrapper.config).exists():
+            config.load_config(config_file=Path(args_wrapper.config))
+        else:
+            msg = "Config file not found at: %s"
+            logger.error(msg, args_wrapper.config)
+            return 1
+
     if args_wrapper.indent_separator is not None:
         sep = args_wrapper.indent_separator
         if not len(sep):
@@ -818,6 +844,7 @@ def main_cli(args=None):
                         err += func(infile, outfile, *args_wrapper.make_ids)
                     elif args_wrapper.ci_check and outdir is not None:
                         check_ci_prerun(Path(outdir), args_wrapper.file_to_preprocess)
+                        continue
                     elif args_wrapper.ci_check:
                         continue  # not meaningful without outdir
                     else:
@@ -828,7 +855,7 @@ def main_cli(args=None):
 
                 locargs = list(vocexcel_args)
                 if args_wrapper.forward:
-                    print(f"\nCalling convert for forwarded xlsx file {infile}")
+                    logger.debug('Calling convert for forwarded xlsx file "%s"', infile)
                     locargs.append(str(infile))
                 else:
                     locargs.append("--outputfile")
@@ -837,7 +864,12 @@ def main_cli(args=None):
                 err += run_vocexcel(locargs)
                 to_build_docs = True
 
-            if args_wrapper.docs and args_wrapper.forward and to_build_docs:
+            if (
+                err == 0
+                and args_wrapper.docs
+                and args_wrapper.forward
+                and to_build_docs
+            ):
                 indir = args_wrapper.file_to_preprocess if outdir is None else outdir
                 doc_path = infile.parent if outdir is None else outdir
                 err += build_docs(indir, doc_path, args_wrapper.docs)
@@ -859,30 +891,30 @@ def main_cli(args=None):
                     err += func(infile, outfile)
                 infile = outfile
             if args_wrapper.forward:
-                print(f"\nCalling convert for forwarded xlsx file {infile}")
+                logger.debug('Calling convert for forwarded xlsx file "%s"', infile)
                 locargs = list(vocexcel_args)
                 locargs.append(str(infile))
                 err += run_vocexcel(locargs)
-            if args_wrapper.docs:
+            if err == 0 and args_wrapper.docs:
                 infile = infile if outdir is None else outfile
                 doc_path = infile.parent if outdir is None else outdir
                 err += build_docs(
                     infile.with_suffix(".ttl"), doc_path, args_wrapper.docs
                 )
         else:
-            print(
-                "Expected xlsx-file or directory but got: {}".format(
-                    args_wrapper.file_to_preprocess
-                )
+            logger.error(
+                "Expected xlsx-file or directory but got: %s",
+                str(args_wrapper.file_to_preprocess),
             )
             return 1
     elif args_wrapper and args_wrapper.file_to_preprocess:
         if os.path.isdir(args_wrapper.file_to_preprocess):
             dir_ = args_wrapper.file_to_preprocess
             if duplicates := has_file_in_more_than_one_format(dir_):
-                print(
+                logger.error(
                     "Files may only be present in one format. Found more than one "
-                    "format for:\n  " + "\n  ".join(duplicates)
+                    'format for: "%s"',
+                    '", "'.join(duplicates),
                 )
                 return 1
 
@@ -898,20 +930,22 @@ def main_cli(args=None):
             xlsx_files = []
         else:
             if os.path.exists(args_wrapper.file_to_preprocess):
-                print(f"Cannot convert file {args_wrapper.file_to_preprocess}")
+                logger.error(
+                    'Cannot convert file "%s"', args_wrapper.file_to_preprocess
+                )
                 endings = ", ".join(
                     [f".{ext}" for ext in EXCEL_FILE_ENDINGS]
                     + list(RDF_FILE_ENDINGS.keys())
                 )
-                print(f"Files for processing must end with one of {endings}.")
+                logger.error("Files for processing must end with one of %s", endings)
             else:
-                print(f"File not found: {args_wrapper.file_to_preprocess}.")
+                logger.error("File not found: %s", args_wrapper.file_to_preprocess)
             return 1
 
         if xlsx_files:
-            print("\nCalling convert for xlsx files")
+            logger.info("Calling convert for xlsx files")
         for xlf in xlsx_files:
-            print(f"  {xlf}")
+            logger.debug("-> %", xlf)
             locargs = list(vocexcel_args)
             locargs.append(xlf)
             fprefix, fsuffix = str(xlf).rsplit(".", 1)
@@ -924,9 +958,9 @@ def main_cli(args=None):
             err += run_vocexcel(locargs)
 
         if turtle_files:
-            print("Calling convert for turtle files")
+            logger.info("Calling convert for turtle files")
         for ttlf in turtle_files:
-            print(f"  {ttlf}")
+            logger.debug("-> %", ttlf)
             locargs = list(vocexcel_args)
             locargs.append(ttlf)
             fprefix, fsuffix = str(ttlf).rsplit(".", 1)
@@ -937,7 +971,8 @@ def main_cli(args=None):
                 outfile = Path(outdir) / Path(f"{fname}.xlsx")
                 locargs = ["--outputfile", str(outfile), *locargs]
             err += run_vocexcel(locargs)
-
+        if err:
+            return 1
         if (
             args_wrapper.docs
             and (args_wrapper.forward or turtle_files)
@@ -953,19 +988,23 @@ def main_cli(args=None):
 
     else:
         # Unknown voc4cat option
-        print(f"Unknown voc4cat option: {unknown_option}")
+        logger.error("Unknown voc4cat option: %s", unknown_option)
         return 1
 
-    if (args_wrapper.ci_check) and os.getenv("CI_RUN") and outdir is not None:
+    if (
+        err == 0
+        and (args_wrapper.ci_check)
+        and os.getenv("CI_RUN")
+        and outdir is not None
+    ):
         main_branch = Path(".").resolve() / "_main_branch"
         prev_dir = main_branch / "vocabularies"
-        logger.debug(
+        logger.info(
             "Looking for changes between %s (previous) and %s (new)",
             prev_dir,
             outdir.resolve(),
         )
         err += check_ci_postrun(prev_dir, Path(outdir))
-
     return err
 
 
@@ -973,6 +1012,6 @@ if __name__ == "__main__":
     try:
         err = main_cli(sys.argv[1:])
     except Exception:
-        logger.exception()
+        logger.exception(msg="Unexpected error in voc4cat.")
         err = 2
     sys.exit(err)

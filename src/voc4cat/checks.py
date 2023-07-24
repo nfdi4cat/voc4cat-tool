@@ -123,9 +123,9 @@ def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
     the configuration [vocabs.prev_vocab.checks] sets allow_delete to True.
     """
     prev = Graph()
-    prev.parse(prev_vocab, format="turtle")
+    prev.parse(prev_vocab.resolve().as_uri(), format="turtle")
     new = Graph()
-    new.parse(new_vocab, format="turtle")
+    new.parse(new_vocab.resolve().as_uri(), format="turtle")
 
     in_both, in_prev, in_new = compare.graph_diff(prev, new)
     # print("Only in 1st\n", in_prev.serialize(format="turtle"))

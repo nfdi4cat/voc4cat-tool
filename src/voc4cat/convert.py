@@ -548,14 +548,13 @@ def main(args=None):
         print(__version__)
     elif args.file_to_convert:
         if not args.file_to_convert.name.endswith(tuple(KNOWN_FILE_ENDINGS)):
-            print(
-                "Files for conversion must either end with .xlsx (Excel) or one of the known RDF file endings, '{}'".format(
-                    "', '".join(RDF_FILE_ENDINGS.keys())
-                )
+            logger.error(
+                'Files for conversion must either end with .xlsx (Excel) or one of the known RDF file endings, "%s"',
+                '", "'.join(RDF_FILE_ENDINGS.keys()),
             )
             parser.exit()
 
-        print(f"Processing file {args.file_to_convert}")
+        logger.info('Processing file "%s"', args.file_to_convert)
 
         if args.file_to_convert.suffix.lower().endswith(tuple(EXCEL_FILE_ENDINGS)):
             try:
@@ -571,7 +570,7 @@ def main(args=None):
                 if args.outputtype == "string":
                     print(o)
                 else:
-                    print(f"Output is file {o}")
+                    logger.info("-> %s", o)
             except ConversionError:
                 logger.exception("Error converting from Excel to RDF.")
                 return 1
@@ -588,7 +587,7 @@ def main(args=None):
                 if args.outputtype == "string":
                     print(o)
                 else:
-                    print(f"Output is file {o}")
+                    logger.info("-> %s", o)
             except ConversionError:
                 logger.exception("Error converting from RDF to Excel.")
                 return 1

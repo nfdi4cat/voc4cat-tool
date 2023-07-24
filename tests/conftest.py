@@ -7,7 +7,7 @@ def datadir():
     """DATADIR as a LocalPath"""
     from pathlib import Path
 
-    return Path(__file__).parent / "data"
+    return Path(__file__).resolve().parent / "data"
 
 
 @pytest.fixture()
