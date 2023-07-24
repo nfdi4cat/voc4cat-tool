@@ -122,6 +122,10 @@ def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
     Logs a warning for removed parts and raises a Voc4catError exception if
     the configuration [vocabs.prev_vocab.checks] sets allow_delete to True.
     """
+    logger.debug(
+        "-> Checking changes between %s (previous) and %s (new)", prev_vocab, new_vocab
+    )
+
     prev = Graph()
     prev.parse(prev_vocab.resolve().as_uri(), format="turtle")
     new = Graph()
@@ -152,3 +156,5 @@ def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
         if not delete_allowed and removed:
             msg = f"Forbidden removal of {removed} concepts/collections detected. See log for IRIs."
             raise Voc4catError(msg)
+    else:
+        logger.debug("-> No removals detected.")

@@ -576,11 +576,6 @@ def check_ci_postrun(prev_vocab_dir: Path, vocab_dir: Path) -> int:
                 '-> previous version of vocabulary "%s" does not exist.', vocfile_name
             )
             continue
-        logger.debug(
-            "-> Checking changes between %s (previous) and %s (new)",
-            prev,
-            new,
-        )
         try:
             check_for_removed_iris(prev, new)
         except Voc4catError:  # pragma: no cover
@@ -820,8 +815,8 @@ def main_cli(args=None):
         funcs = [
             m
             for m, to_run in zip(
-                [make_ids, check, check_ci_prerun],
-                [args_wrapper.make_ids, args_wrapper.check, args_wrapper.ci_check],
+                [make_ids, check],
+                [args_wrapper.make_ids, args_wrapper.check],
             )
             if to_run
         ]
@@ -837,20 +832,22 @@ def main_cli(args=None):
                 else:
                     outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
                 infile = Path(xlf)
+                if args_wrapper.ci_check and outdir is not None:
+                    err = check_ci_prerun(Path(outdir), args_wrapper.file_to_preprocess)
+                    if err:
+                        return 1
+
                 for func in funcs:
                     if args_wrapper.make_ids:
                         if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
                             return 1
                         err += func(infile, outfile, *args_wrapper.make_ids)
-                    elif args_wrapper.ci_check and outdir is not None:
-                        check_ci_prerun(Path(outdir), args_wrapper.file_to_preprocess)
-                        continue
-                    elif args_wrapper.ci_check:
-                        continue  # not meaningful without outdir
                     else:
                         if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
                             return 1
                         err += func(infile, outfile)
+                    if err:
+                        return 1
                     infile = outfile
 
                 locargs = list(vocexcel_args)
@@ -1005,6 +1002,9 @@ def main_cli(args=None):
             outdir.resolve(),
         )
         err += check_ci_postrun(prev_dir, Path(outdir))
+
+    if not err:
+        print("NOTICE  |Voc4cat successfully finished.")
     return err
 
 
