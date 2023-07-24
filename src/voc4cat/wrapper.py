@@ -554,12 +554,12 @@ def check_ci_prerun(vocab_dir: Path, inbox_dir: Path) -> int:
     try:
         check_number_of_files_in_inbox(inbox_dir)
     except Voc4catError:  # pragma: no cover
-        logger.exception()
+        logger.exception("Validation of files in inbox failed.")
         return 1
     try:
         validate_vocabulary_files_for_ci_workflow(vocab_dir, inbox_dir)
     except Voc4catError:  # pragma: no cover
-        logger.exception()
+        logger.exception("Validation of file contents failed.")
         return 1
     return 0
 
@@ -584,7 +584,7 @@ def check_ci_postrun(prev_vocab_dir: Path, vocab_dir: Path) -> int:
         try:
             check_for_removed_iris(prev, new)
         except Voc4catError:  # pragma: no cover
-            logger.exception()
+            logger.exception("Validation failed: Concept/Collection removed.")
             return 1
     return 0
 
@@ -1012,6 +1012,6 @@ if __name__ == "__main__":
     try:
         err = main_cli(sys.argv[1:])
     except Exception:
-        logger.exception(msg="Unexpected error in voc4cat.")
+        logger.exception("Unhandled / unexpected error.")
         err = 2
     sys.exit(err)
