@@ -180,11 +180,13 @@ def test_make_ids_multilang(tmp_path, datadir):
         assert row == expected_row
 
 
-def test_hierarchy_from_indent_on_dir(tmp_path, capsys):
-    exit_code = main_cli(["--hierarchy-from-indent", str(tmp_path / "missing.xlsx")])
-    captured = capsys.readouterr()
+def test_hierarchy_from_indent_on_dir(tmp_path, caplog):
+    with caplog.at_level(logging.ERROR):
+        exit_code = main_cli(
+            ["--hierarchy-from-indent", str(tmp_path / "missing.xlsx")]
+        )
     assert exit_code == 1
-    assert "File not found:" in captured.out
+    assert "File not found:" in caplog.text
 
     # exit_code = main_cli(["--hierarchy-from-indent", "tmp_path"])
 

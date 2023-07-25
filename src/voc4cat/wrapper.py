@@ -806,7 +806,7 @@ def main_cli(args=None):
         print(f"voc4cat {__version__}")
         return err
 
-    elif args_wrapper.hierarchy_from_indent or args_wrapper.hierarchy_to_indent:
+    if args_wrapper.hierarchy_from_indent or args_wrapper.hierarchy_to_indent:
         if is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
             fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
             fname = os.path.split(fprefix)[1]  # split off leading dirs
@@ -819,7 +819,7 @@ def main_cli(args=None):
             msg = "Processing all files in directory not implemented for this option."
             raise NotImplementedError(msg)
         else:
-            logging.err("File not found: %s", args_wrapper.file_to_preprocess)
+            logging.error("File not found: %s", args_wrapper.file_to_preprocess)
             return 1
         if args_wrapper.hierarchy_from_indent:
             hierarchy_from_indent(args_wrapper.file_to_preprocess, outfile, sep)
