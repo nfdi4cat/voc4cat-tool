@@ -1,6 +1,7 @@
 """Born as a wrapper to extend VocExcel with more commands."""
 
 import argparse
+import atexit
 import glob
 import logging
 import os
@@ -31,6 +32,17 @@ from voc4cat.util import (
 from voc4cat.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDINGS
 
 logger = logging.getLogger(__name__)
+
+
+@atexit.register
+def clean_logging_shutdown():
+    """Close logging handlers after final flush of stdout/stderr."""
+    # Flushing is important in gh-actions to get full logs
+    sys.stdout.flush()
+    sys.stderr.flush()
+    for handler in logger.handlers:
+        logger.removeHandler(handler)
+        handler.close()
 
 
 def setup_logging(
@@ -780,7 +792,6 @@ def main_cli(args=None):
         else:
             msg = "Config file not found at: %s"
             logger.error(msg, args_wrapper.config)
-            logging.shutdown()
             return 1
 
     if args_wrapper.indent_separator is not None:
@@ -807,8 +818,7 @@ def main_cli(args=None):
             msg = "Processing all files in directory not implemented for this option."
             raise NotImplementedError(msg)
         else:
-            print(f"File not found: {args_wrapper.file_to_preprocess}.")
-            logging.shutdown()
+            logging.err("File not found: %s", args_wrapper.file_to_preprocess)
             return 1
         if args_wrapper.hierarchy_from_indent:
             hierarchy_from_indent(args_wrapper.file_to_preprocess, outfile, sep)
@@ -839,22 +849,18 @@ def main_cli(args=None):
                 if args_wrapper.ci_check and outdir is not None:
                     err = check_ci_prerun(Path(outdir), args_wrapper.file_to_preprocess)
                     if err:
-                        logging.shutdown()
                         return 1
 
                 for func in funcs:
                     if args_wrapper.make_ids:
                         if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
-                            logging.shutdown()
                             return 1
                         err += func(infile, outfile, *args_wrapper.make_ids)
                     else:
                         if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
-                            logging.shutdown()
                             return 1
                         err += func(infile, outfile)
                     if err:
-                        logging.shutdown()
                         return 1
                     infile = outfile
 
@@ -889,7 +895,6 @@ def main_cli(args=None):
             infile = args_wrapper.file_to_preprocess
             for func in funcs:
                 if not may_overwrite(args_wrapper.no_warn, infile, outfile, func):
-                    logging.shutdown()
                     return 1
                 if args_wrapper.make_ids:
                     err += func(infile, outfile, *args_wrapper.make_ids)
@@ -912,7 +917,6 @@ def main_cli(args=None):
                 "Expected xlsx-file or directory but got: %s",
                 str(args_wrapper.file_to_preprocess),
             )
-            logging.shutdown()
             return 1
     elif args_wrapper and args_wrapper.file_to_preprocess:
         if os.path.isdir(args_wrapper.file_to_preprocess):
@@ -923,7 +927,6 @@ def main_cli(args=None):
                     'format for: "%s"',
                     '", "'.join(duplicates),
                 )
-                logging.shutdown()
                 return 1
 
             turtle_files = glob.glob(os.path.join(dir_, "*.ttl")) + glob.glob(
@@ -948,7 +951,6 @@ def main_cli(args=None):
                 logger.error("Files for processing must end with one of %s", endings)
             else:
                 logger.error("File not found: %s", args_wrapper.file_to_preprocess)
-            logging.shutdown()
             return 1
 
         if xlsx_files:
@@ -981,7 +983,6 @@ def main_cli(args=None):
                 locargs = ["--outputfile", str(outfile), *locargs]
             err += run_vocexcel(locargs)
         if err:
-            logging.shutdown()
             return 1
         if (
             args_wrapper.docs
@@ -999,7 +1000,6 @@ def main_cli(args=None):
     else:
         # Unknown voc4cat option
         logger.error("Unknown voc4cat option: %s", unknown_option)
-        logging.shutdown()
         return 1
 
     if (

@@ -1,4 +1,5 @@
 import argparse
+import atexit
 import logging
 import sys
 from pathlib import Path
@@ -31,10 +32,14 @@ from voc4cat.utils import (
     load_template,
     load_workbook,
 )
+from voc4cat.wrapper import clean_logging_shutdown
 
 TEMPLATE_VERSION = None
 
 logger = logging.getLogger(__name__)
+
+# Required to get full logs in gh-actions
+atexit.register(clean_logging_shutdown)
 
 
 def validate_with_profile(
@@ -599,6 +604,5 @@ if __name__ == "__main__":
 
     setup_logging(logger=logger)
     retval = main(sys.argv[1:])
-    logging.shutdown()
     if retval is not None:
         sys.exit(retval)
