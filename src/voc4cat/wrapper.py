@@ -33,7 +33,9 @@ from voc4cat.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDIN
 logger = logging.getLogger(__name__)
 
 
-def setup_logging(loglevel: int = logging.INFO, logfile: Path | None = None):
+def setup_logging(
+    logger: logging.Logger, loglevel: int = logging.INFO, logfile: Path | None = None
+):
     """Setup logging to console and optionally a file.
 
     The default loglevel is INFO.
@@ -763,13 +765,13 @@ def main_cli(args=None):
     loglevel = logging.INFO + (args_wrapper.quieter - args_wrapper.verboser) * 10
     logfile = args_wrapper.logfile
     if logfile is None:
-        setup_logging(loglevel)
+        setup_logging(logger, loglevel)
     else:
         if outdir is not None:
             logfile = Path(outdir) / logfile
         elif not logfile.parents[0].exists():
             os.makedirs(logfile.parents[0], exist_ok=True)
-        setup_logging(loglevel, logfile)
+        setup_logging(logger, loglevel, logfile)
 
     # load config from "idranges.toml" in cwd
     if args_wrapper.config is not None:

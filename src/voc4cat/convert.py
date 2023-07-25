@@ -532,11 +532,11 @@ def main(args=None):
         # We import here to avoid a cyclic import when this is used via wrapper.main
         from voc4cat.wrapper import setup_logging
 
-        setup_logging(logfile=args.logfile)
+        setup_logging(logger=logger, logfile=args.logfile)
     elif run_via_entrypoint:
         from voc4cat.wrapper import setup_logging
 
-        setup_logging()
+        setup_logging(logger=logger)
 
     if args.listprofiles:
         s = "Profiles\nToken\tIRI\n-----\t-----\n"
@@ -597,7 +597,7 @@ def main(args=None):
 if __name__ == "__main__":
     from voc4cat.wrapper import setup_logging
 
-    setup_logging()
+    setup_logging(logger=logger)
     retval = main(sys.argv[1:])
     if retval is not None:
         sys.exit(retval)

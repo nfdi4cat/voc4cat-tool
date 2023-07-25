@@ -31,7 +31,7 @@ def main(ttl_inbox: Path, vocab: Path) -> int:
             cmd = ["git", "merge-file", "--theirs", str(exists), str(exists), str(new)]
             logger.info("Running cmd: %s", " ".join(cmd))
             outp = subprocess.run(cmd, capture_output=True)  # noqa: S603
-            logger.info(outp.stdout)
+            logger.info("Cmd output: %s", outp.stdout)
             if retcode := outp.returncode != 0:
                 break
         else:
@@ -50,7 +50,7 @@ def main_cli(args=None) -> int:
     parser.add_argument(
         "-l",
         "--logfile",
-        help="The file to write logging output to. It is place in directory outbox_dir.",
+        help="The file to write logging output to. It is placed in outbox_dir.",
         type=Path,
         required=False,
     )
@@ -63,11 +63,11 @@ def main_cli(args=None) -> int:
     logfile = args_merge.logfile
     has_outbox = outbox.exists()
     if logfile is None:
-        setup_logging(loglevel)
+        setup_logging(logger=logger)
     else:
         outbox.mkdir(exist_ok=True, parents=True)
         logfile = Path(outbox) / logfile
-        setup_logging(loglevel, logfile)
+        setup_logging(logger=logger, logfile=logfile)
 
     if not has_outbox or not vocab.exists():
         logger.error(
