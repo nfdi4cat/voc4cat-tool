@@ -1,6 +1,5 @@
 # This script is mainly useful for CI.
 import argparse
-import atexit
 import logging
 import os
 import shutil
@@ -8,14 +7,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from voc4cat.wrapper import clean_logging_shutdown, setup_logging
+from voc4cat.wrapper import setup_logging
 
 logger = logging.getLogger(__name__)
-
-loglevel = logging.INFO
-
-# Required to get full logs in gh-actions
-atexit.register(clean_logging_shutdown)
 
 
 def main(ttl_inbox: Path, vocab: Path) -> int:
@@ -67,11 +61,11 @@ def main_cli(args=None) -> int:
     logfile = args_merge.logfile
     has_outbox = outbox.exists()
     if logfile is None:
-        setup_logging(logger=logger)
+        setup_logging()
     else:
         outbox.mkdir(exist_ok=True, parents=True)
         logfile = Path(outbox) / logfile
-        setup_logging(logger=logger, logfile=logfile)
+        setup_logging(logfile=logfile)
 
     if not has_outbox or not vocab.exists():
         logger.error(

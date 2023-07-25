@@ -1,5 +1,4 @@
 import argparse
-import atexit
 import logging
 import sys
 from pathlib import Path
@@ -531,15 +530,13 @@ def main(args=None):
 
     # We import here to avoid a cyclic import when this is used via wrapper.main
     if args.logfile:
-        from voc4cat.wrapper import clean_logging_shutdown, setup_logging
+        from voc4cat.wrapper import setup_logging
 
-        setup_logging(logger=logger, logfile=args.logfile)
-        atexit.register(clean_logging_shutdown)
+        setup_logging(logfile=args.logfile)
     elif run_via_entrypoint:
-        from voc4cat.wrapper import clean_logging_shutdown, setup_logging
+        from voc4cat.wrapper import setup_logging
 
-        setup_logging(logger=logger)
-        atexit.register(clean_logging_shutdown)
+        setup_logging()
 
     if args.listprofiles:
         s = "Profiles\nToken\tIRI\n-----\t-----\n"
@@ -598,10 +595,9 @@ def main(args=None):
 
 
 if __name__ == "__main__":
-    from voc4cat.wrapper import clean_logging_shutdown, setup_logging
+    from voc4cat.wrapper import setup_logging
 
-    setup_logging(logger=logger)
-    atexit.register(clean_logging_shutdown)
+    setup_logging()
     retval = main(sys.argv[1:])
     if retval is not None:
         sys.exit(retval)

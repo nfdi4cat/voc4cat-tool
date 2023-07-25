@@ -1,7 +1,6 @@
 """Born as a wrapper to extend VocExcel with more commands."""
 
 import argparse
-import atexit
 import glob
 import logging
 import os
@@ -14,7 +13,7 @@ from warnings import warn
 import openpyxl
 from openpyxl.styles import Alignment, PatternFill
 
-from voc4cat import __version__, config
+from voc4cat import __version__, config, setup_logging
 from voc4cat.checks import (
     Voc4catError,
     check_for_removed_iris,
@@ -32,48 +31,6 @@ from voc4cat.util import (
 from voc4cat.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDINGS
 
 logger = logging.getLogger(__name__)
-
-
-@atexit.register
-def clean_logging_shutdown():
-    """Close logging handlers after final flush of stdout/stderr."""
-    # Flushing is important in gh-actions to get full logs
-    sys.stdout.flush()
-    sys.stderr.flush()
-    for handler in logger.handlers:
-        logger.removeHandler(handler)
-        handler.close()
-
-
-def setup_logging(
-    logger: logging.Logger, loglevel: int = logging.INFO, logfile: Path | None = None
-):
-    """Setup logging to console and optionally a file.
-
-    The default loglevel is INFO.
-    """
-    loglevel_name = os.getenv("LOGLEVEL", "").strip().upper()
-    if loglevel_name in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
-        loglevel = getattr(logging, loglevel_name, logging.INFO)
-
-    # Apply constraints. CRITICAL=FATAL=50 is the maximum, NOTSET=0 the minimum.
-    loglevel = min(logging.FATAL, max(loglevel, logging.NOTSET))
-
-    # Setup handler for logging to console
-    logging.basicConfig(level=loglevel, format="%(levelname)-8s|%(message)s")
-
-    if logfile is None:
-        return
-
-    # Setup handler for logging to file
-    fh = logging.FileHandler(logfile)
-    fh.setLevel(loglevel)
-    fh_formatter = logging.Formatter(
-        fmt="%(asctime)s|%(name)-20s|%(levelname)-8s|%(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-    fh.setFormatter(fh_formatter)
-    logger.addHandler(fh)
 
 
 def is_file_available(fname, ftype):
@@ -586,7 +543,7 @@ def check_ci_postrun(prev_vocab_dir: Path, vocab_dir: Path) -> int:
         vocfile_name = Path(vocfile).name
         prev = prev_vocab_dir / vocfile_name
         if not prev.exists():
-            logging.debug(
+            logger.debug(
                 '-> previous version of vocabulary "%s" does not exist.', vocfile_name
             )
             continue
@@ -777,13 +734,13 @@ def main_cli(args=None):
     loglevel = logging.INFO + (args_wrapper.quieter - args_wrapper.verboser) * 10
     logfile = args_wrapper.logfile
     if logfile is None:
-        setup_logging(logger, loglevel)
+        setup_logging(loglevel)
     else:
         if outdir is not None:
             logfile = Path(outdir) / logfile
         elif not logfile.parents[0].exists():
             os.makedirs(logfile.parents[0], exist_ok=True)
-        setup_logging(logger, loglevel, logfile)
+        setup_logging(loglevel, logfile)
 
     # load config from "idranges.toml" in cwd
     if args_wrapper.config is not None:
@@ -819,7 +776,7 @@ def main_cli(args=None):
             msg = "Processing all files in directory not implemented for this option."
             raise NotImplementedError(msg)
         else:
-            logging.error("File not found: %s", args_wrapper.file_to_preprocess)
+            logger.error("File not found: %s", args_wrapper.file_to_preprocess)
             return 1
         if args_wrapper.hierarchy_from_indent:
             hierarchy_from_indent(args_wrapper.file_to_preprocess, outfile, sep)

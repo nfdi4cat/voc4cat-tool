@@ -76,11 +76,11 @@ def validate_vocabulary_files_for_ci_workflow(vocab_dir: Path, inbox_dir: Path):
     vocab_files = glob.glob(str(vocab_dir / "*.ttl"))
     vocab_names = list({Path(fp).stem.lower() for fp in vocab_files})
     inbox_names = list({Path(fp).stem.lower() for fp in inbox_files})
-    logging.debug("-> vocab name stems: %s", ", ".join(vocab_names))
-    logging.debug("-> inbox name stems: %s", ", ".join(inbox_names))
+    logger.debug("-> vocab name stems: %s", ", ".join(vocab_names))
+    logger.debug("-> inbox name stems: %s", ", ".join(inbox_names))
 
     vocab_names_in_config = [name.lower() for name in config.IDRANGES.vocabs]
-    logging.debug("-> config vocab names: %s", ", ".join(vocab_names_in_config))
+    logger.debug("-> config vocab names: %s", ", ".join(vocab_names_in_config))
 
     if config.IDRANGES.single_vocab:
         if len(vocab_names) > 1:
