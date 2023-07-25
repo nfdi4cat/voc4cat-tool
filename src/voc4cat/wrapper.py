@@ -1,4 +1,4 @@
-"""A wrapper to extend VocExcel with more commands."""
+"""Born as a wrapper to extend VocExcel with more commands."""
 
 import argparse
 import glob
@@ -13,7 +13,13 @@ from warnings import warn
 import openpyxl
 from openpyxl.styles import Alignment, PatternFill
 
-from voc4cat import __version__, config
+from voc4cat import __version__, config, setup_logging
+from voc4cat.checks import (
+    Voc4catError,
+    check_for_removed_iris,
+    check_number_of_files_in_inbox,
+    validate_vocabulary_files_for_ci_workflow,
+)
 from voc4cat.convert import main as vocexcel_main
 from voc4cat.util import (
     dag_from_indented_text,
@@ -25,32 +31,6 @@ from voc4cat.util import (
 from voc4cat.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDINGS
 
 logger = logging.getLogger(__name__)
-
-
-def setup_logging(loglevel: int = logging.INFO, logfile: Path | None = None):
-    """Setup logging to console and optionally a file.
-
-    The default loglevel is INFO.
-    """
-    loglevel_name = os.getenv("LOGLEVEL", "").strip().upper()
-    if loglevel_name in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
-        loglevel = getattr(logging, loglevel_name, logging.INFO)
-
-    # Setup handler for logging to console
-    logging.basicConfig(level=loglevel, format="%(levelname)-8s|%(message)s")
-
-    if logfile is None:
-        return
-
-    # Setup handler for logging to file
-    fh = logging.FileHandler(logfile)
-    fh.setLevel(loglevel)
-    fh_formatter = logging.Formatter(
-        fmt="%(asctime)s|%(name)-20s|%(levelname)-8s|%(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
-    fh.setFormatter(fh_formatter)
-    logger.addHandler(fh)
 
 
 def is_file_available(fname, ftype):
@@ -80,7 +60,7 @@ def has_file_in_more_than_one_format(dir_):
 
 
 def is_supported_template(wb):
-    # TODO add check for Excel template version
+    # TODO add check for xlsx template version
     return True
 
 
@@ -188,7 +168,7 @@ def hierarchy_from_indent(fpath, outfile, sep):
     Convert indentation hierarchy of concepts to children-URI form.
 
     If separator character(s) are given they will be replaced with
-    Excel indent which is also the default if sep is None.
+    the xlsx default indent. This is also the default if sep is None.
     """
     logger.info("Reading concepts from file %s", fpath)
     # Load in data_only mode to get cell values not formulas.
@@ -208,7 +188,7 @@ def hierarchy_from_indent(fpath, outfile, sep):
             row_no = row[0].row
             lang = row[2].value
 
-            if sep is None:  # Excel indentation
+            if sep is None:  # xlsx indentation
                 level = int(row[1].alignment.indent)
                 ws.cell(row_no, column=2).alignment = Alignment(indent=0)
             else:
@@ -279,7 +259,7 @@ def hierarchy_to_indent(fpath, outfile, sep):
     Convert concept hierarchy in children-URI form to indentation.
 
     If separator character(s) are given they will be used.
-    If sep is None, Excel indent will be used.
+    If sep is None, xlsx default indent will be used.
     """
     logger.info("Reading concepts from file %s", fpath)
     wb = openpyxl.load_workbook(fpath)
@@ -403,7 +383,7 @@ def run_pylode(file_path, output_path):
         )
         with open(outfile, "w") as html_file:
             html_file.write(content)
-        logger.info("Done!\n=> %s", outfile.resolve().as_uri())
+        logger.info("-> %s", outfile.resolve().as_uri())
     return 0
 
 
@@ -466,7 +446,7 @@ def build_docs(file_path, output_path, doc_builder):
     return errcode
 
 
-def check_xlsx(fpath: Path, outfile: Path) -> int:
+def check(fpath: Path, outfile: Path) -> int:
     """
     Complex checks of the xlsx file not handled by pydantic model validation
 
@@ -537,9 +517,47 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     return 0
 
 
+def check_ci_prerun(vocab_dir: Path, inbox_dir: Path) -> int:
+    """
+    Check state of directories in CI.
+    """
+    logger.info("Check-CI pre-run")
+    try:
+        check_number_of_files_in_inbox(inbox_dir)
+    except Voc4catError:  # pragma: no cover
+        logger.exception("Validation of files in inbox failed.")
+        return 1
+    try:
+        validate_vocabulary_files_for_ci_workflow(vocab_dir, inbox_dir)
+    except Voc4catError:  # pragma: no cover
+        logger.exception("Validation of file contents failed.")
+        return 1
+    return 0
+
+
+def check_ci_postrun(prev_vocab_dir: Path, vocab_dir: Path) -> int:
+    """Check for Concept/Collection removals."""
+    logger.info("Check-CI post-run")
+    for vocfile in glob.glob(str(vocab_dir.resolve() / "*.ttl")):
+        new = Path(vocfile)
+        vocfile_name = Path(vocfile).name
+        prev = prev_vocab_dir / vocfile_name
+        if not prev.exists():
+            logger.debug(
+                '-> previous version of vocabulary "%s" does not exist.', vocfile_name
+            )
+            continue
+        try:
+            check_for_removed_iris(prev, new)
+        except Voc4catError:  # pragma: no cover
+            logger.exception("Validation failed: Concept/Collection removed.")
+            return 1
+    return 0
+
+
 def run_vocexcel(args=None):
     if args is None:  # pragma: no cover
-        args = []  # Important! Prevents vocexcel to use args from sys.argv.
+        args = []  # Important! Prevents convert.main to use args from sys.argv.
     retval = vocexcel_main(args)
     if retval is not None:
         return 1
@@ -557,9 +575,8 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
-        "-v",
         "--version",
-        help="The version of this wrapper of VocExcel.",
+        help="The version of voc4cat-tool.",
         action="store_true",
     )
 
@@ -577,6 +594,7 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
+        "-O",
         "--output-directory",
         help=(
             "Specify directory where files should be written to. "
@@ -587,12 +605,24 @@ def main_cli(args=None):
     )
 
     parser.add_argument(
-        "-c",
         "--check",
         help=(
-            "Perform various checks on vocabulary in Excel file (detect duplicates,...)"
+            "Perform various checks on vocabulary in xlsx file (detect duplicates,...)"
         ),
         action="store_true",
+    )
+
+    parser.add_argument(
+        "--ci-check",
+        help=("Perform checks on inbox and vocabulary directories in CI pipeline."),
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--config",
+        help=('Path to config file (typically "idranges.toml").'),
+        type=str,
+        required=False,
     )
 
     parser.add_argument(
@@ -616,7 +646,7 @@ def main_cli(args=None):
     parser.add_argument(
         "-f",
         "--forward",
-        help=("Forward file resulting from running other options to vocexcel."),
+        help=("Forward file resulting from running other options to converter."),
         action="store_true",
     )
 
@@ -636,7 +666,7 @@ def main_cli(args=None):
         "--indent-separator",
         help=(
             "Separator character(s) to read/write indented hierarchies "
-            "(default: Excel's indent)."
+            "(default: xlsx indent)."
         ),
         type=str,
         required=False,
@@ -658,26 +688,31 @@ def main_cli(args=None):
         help="Either the file to process or a directory with files to process.",
     )
 
-    # Add options to control logging verbosity?
-    # parser.add_argument('-v', '--verbose',
-    #                     action='count',
-    #                     dest='verbosity',
-    #                     default=2,
-    #                     help="Give more output. Option is additive, and can be used up to 3 times.")
-    # parser.add_argument('-q', '--quiet',
-    #                     action='store_const',
-    #                     const=-1,
-    #                     default=2,
-    #                     dest='verbosity',
-    #                     help="Give less output. Option is additive, and can be used up to 3 times")
+    # options to control logging verbosity
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        dest="verboser",
+        default=0,
+        help="Give more output. Option is additive, and can be used up to 3 times (-vvv).",
+    )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="count",
+        default=0,
+        dest="quieter",
+        help="Give less output. Option is additive, and can be used up to 3 times (-qqq).",
+    )
 
     # This is only a trick to display a meaningful help text.
-    # vocexcel options will not be available in args_wrapper.vocexcel_options
+    # the convert.main options will not be available in args_wrapper.vocexcel_options
     parser.add_argument(
-        "vocexcel_options",
+        "convert.main_options",
         nargs="?",
         help=(
-            "Options to forward to vocexcel. Run vocexcel --help to see what "
+            "Options to forward to convert.main. Run vocexcel --help to see what "
             "is available."
         ),
     )
@@ -696,28 +731,39 @@ def main_cli(args=None):
     if outdir is not None and not os.path.isdir(outdir):
         os.makedirs(outdir, exist_ok=True)
 
+    loglevel = logging.INFO + (args_wrapper.quieter - args_wrapper.verboser) * 10
     logfile = args_wrapper.logfile
     if logfile is None:
-        setup_logging()
+        setup_logging(loglevel)
     else:
         if outdir is not None:
             logfile = Path(outdir) / logfile
         elif not logfile.parents[0].exists():
             os.makedirs(logfile.parents[0], exist_ok=True)
-        setup_logging(logfile=logfile)
+        setup_logging(loglevel, logfile)
+
+    # load config from "idranges.toml" in cwd
+    if args_wrapper.config is not None:
+        if Path(args_wrapper.config).exists():
+            config.load_config(config_file=Path(args_wrapper.config))
+        else:
+            msg = "Config file not found at: %s"
+            logger.error(msg, args_wrapper.config)
+            return 1
 
     if args_wrapper.indent_separator is not None:
         sep = args_wrapper.indent_separator
         if not len(sep):
             msg = "Setting the indent separator to zero length is not allowed."
             raise ValueError(msg)
-    else:  # Excel's default indent / openpyxl.styles.Alignment(indent=0)
+    else:  # xlsx's default indent / openpyxl.styles.Alignment(indent=0)
         sep = None
 
     if args_wrapper.version:
         print(f"voc4cat {__version__}")
+        return err
 
-    elif args_wrapper.hierarchy_from_indent or args_wrapper.hierarchy_to_indent:
+    if args_wrapper.hierarchy_from_indent or args_wrapper.hierarchy_to_indent:
         if is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
             fprefix, fsuffix = str(args_wrapper.file_to_preprocess).rsplit(".", 1)
             fname = os.path.split(fprefix)[1]  # split off leading dirs
@@ -730,18 +776,18 @@ def main_cli(args=None):
             msg = "Processing all files in directory not implemented for this option."
             raise NotImplementedError(msg)
         else:
-            print(f"File not found: {args_wrapper.file_to_preprocess}.")
+            logger.error("File not found: %s", args_wrapper.file_to_preprocess)
             return 1
         if args_wrapper.hierarchy_from_indent:
             hierarchy_from_indent(args_wrapper.file_to_preprocess, outfile, sep)
         else:
             hierarchy_to_indent(args_wrapper.file_to_preprocess, outfile, sep)
 
-    elif args_wrapper.make_ids or args_wrapper.check:
+    elif args_wrapper.make_ids or args_wrapper.check or args_wrapper.ci_check:
         funcs = [
             m
             for m, to_run in zip(
-                [make_ids, check_xlsx],
+                [make_ids, check],
                 [args_wrapper.make_ids, args_wrapper.check],
             )
             if to_run
@@ -758,22 +804,41 @@ def main_cli(args=None):
                 else:
                     outfile = Path(outdir) / Path(f"{fname}.{fsuffix}")
                 infile = Path(xlf)
-                for func in funcs:
-                    if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
+                if args_wrapper.ci_check and outdir is not None:
+                    err = check_ci_prerun(Path(outdir), args_wrapper.file_to_preprocess)
+                    if err:
                         return 1
+
+                for func in funcs:
                     if args_wrapper.make_ids:
+                        if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
+                            return 1
                         err += func(infile, outfile, *args_wrapper.make_ids)
                     else:
+                        if not may_overwrite(args_wrapper.no_warn, xlf, outfile, func):
+                            return 1
                         err += func(infile, outfile)
+                    if err:
+                        return 1
                     infile = outfile
+
+                locargs = list(vocexcel_args)
                 if args_wrapper.forward:
-                    print(f"\nCalling VocExcel for forwarded Excel file {infile}")
-                    locargs = list(vocexcel_args)
+                    logger.debug('Calling convert for forwarded xlsx file "%s"', infile)
                     locargs.append(str(infile))
-                    err += run_vocexcel(locargs)
+                else:
+                    locargs.append("--outputfile")
+                    locargs.append(str(outfile.with_suffix(".ttl")))
+                    locargs.append(xlf)
+                err += run_vocexcel(locargs)
                 to_build_docs = True
 
-            if args_wrapper.docs and args_wrapper.forward and to_build_docs:
+            if (
+                err == 0
+                and args_wrapper.docs
+                and args_wrapper.forward
+                and to_build_docs
+            ):
                 indir = args_wrapper.file_to_preprocess if outdir is None else outdir
                 doc_path = infile.parent if outdir is None else outdir
                 err += build_docs(indir, doc_path, args_wrapper.docs)
@@ -795,30 +860,30 @@ def main_cli(args=None):
                     err += func(infile, outfile)
                 infile = outfile
             if args_wrapper.forward:
-                print(f"\nCalling VocExcel for forwarded Excel file {infile}")
+                logger.debug('Calling convert for forwarded xlsx file "%s"', infile)
                 locargs = list(vocexcel_args)
                 locargs.append(str(infile))
                 err += run_vocexcel(locargs)
-            if args_wrapper.docs:
+            if err == 0 and args_wrapper.docs:
                 infile = infile if outdir is None else outfile
                 doc_path = infile.parent if outdir is None else outdir
                 err += build_docs(
                     infile.with_suffix(".ttl"), doc_path, args_wrapper.docs
                 )
         else:
-            print(
-                "Expected xlsx-file or directory but got: {}".format(
-                    args_wrapper.file_to_preprocess
-                )
+            logger.error(
+                "Expected xlsx-file or directory but got: %s",
+                str(args_wrapper.file_to_preprocess),
             )
             return 1
     elif args_wrapper and args_wrapper.file_to_preprocess:
         if os.path.isdir(args_wrapper.file_to_preprocess):
             dir_ = args_wrapper.file_to_preprocess
             if duplicates := has_file_in_more_than_one_format(dir_):
-                print(
+                logger.error(
                     "Files may only be present in one format. Found more than one "
-                    "format for:\n  " + "\n  ".join(duplicates)
+                    'format for: "%s"',
+                    '", "'.join(duplicates),
                 )
                 return 1
 
@@ -834,20 +899,22 @@ def main_cli(args=None):
             xlsx_files = []
         else:
             if os.path.exists(args_wrapper.file_to_preprocess):
-                print(f"Cannot convert file {args_wrapper.file_to_preprocess}")
+                logger.error(
+                    'Cannot convert file "%s"', args_wrapper.file_to_preprocess
+                )
                 endings = ", ".join(
                     [f".{ext}" for ext in EXCEL_FILE_ENDINGS]
                     + list(RDF_FILE_ENDINGS.keys())
                 )
-                print(f"Files for processing must end with one of {endings}.")
+                logger.error("Files for processing must end with one of %s", endings)
             else:
-                print(f"File not found: {args_wrapper.file_to_preprocess}.")
+                logger.error("File not found: %s", args_wrapper.file_to_preprocess)
             return 1
 
         if xlsx_files:
-            print("\nCalling VocExcel for Excel files")
+            logger.info("Calling convert for xlsx files")
         for xlf in xlsx_files:
-            print(f"  {xlf}")
+            logger.debug("-> %", xlf)
             locargs = list(vocexcel_args)
             locargs.append(xlf)
             fprefix, fsuffix = str(xlf).rsplit(".", 1)
@@ -860,9 +927,9 @@ def main_cli(args=None):
             err += run_vocexcel(locargs)
 
         if turtle_files:
-            print("Calling VocExcel for turtle files")
+            logger.info("Calling convert for turtle files")
         for ttlf in turtle_files:
-            print(f"  {ttlf}")
+            logger.debug("-> %", ttlf)
             locargs = list(vocexcel_args)
             locargs.append(ttlf)
             fprefix, fsuffix = str(ttlf).rsplit(".", 1)
@@ -873,7 +940,8 @@ def main_cli(args=None):
                 outfile = Path(outdir) / Path(f"{fname}.xlsx")
                 locargs = ["--outputfile", str(outfile), *locargs]
             err += run_vocexcel(locargs)
-
+        if err:
+            return 1
         if (
             args_wrapper.docs
             and (args_wrapper.forward or turtle_files)
@@ -886,11 +954,29 @@ def main_cli(args=None):
             infile = Path(args_wrapper.file_to_preprocess).with_suffix(".ttl")
             doc_path = outdir if outdir is not None else infile.parent
             err += build_docs(infile, doc_path, args_wrapper.docs)
+
     else:
         # Unknown voc4cat option
-        print(f"Unknown voc4cat option: {unknown_option}")
+        logger.error("Unknown voc4cat option: %s", unknown_option)
         return 1
 
+    if (
+        err == 0
+        and (args_wrapper.ci_check)
+        and os.getenv("CI_RUN")
+        and outdir is not None
+    ):
+        main_branch = Path(".").resolve() / "_main_branch"
+        prev_dir = main_branch / "vocabularies"
+        logger.info(
+            "Looking for changes between %s (previous) and %s (new)",
+            prev_dir,
+            outdir.resolve(),
+        )
+        err += check_ci_postrun(prev_dir, Path(outdir))
+
+    if not err:
+        print("NOTICE  |Voc4cat successfully finished.")
     return err
 
 
@@ -898,6 +984,6 @@ if __name__ == "__main__":
     try:
         err = main_cli(sys.argv[1:])
     except Exception:
-        logger.exception()
+        logger.exception("Unhandled / unexpected error.")
         err = 2
     sys.exit(err)

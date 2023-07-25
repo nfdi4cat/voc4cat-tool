@@ -1,33 +1,36 @@
+import logging
 import shutil
 from unittest import mock
 
+import pytest
 from test_wrapper import CS_CYCLES_TURTLE
 from voc4cat.merge_vocab import main_cli
 
 
 def test_main_no_args_entrypoint(monkeypatch, capsys):
     monkeypatch.setattr("sys.argv", ["merge_vocab"])
-    exit_code = main_cli()
+    with pytest.raises(SystemExit):
+        main_cli()
     captured = capsys.readouterr()
-    assert "Usage: " in captured.out
-    assert exit_code == 1
+    assert "usage: merge_vocab" in captured.err
+    assert "the following arguments are required" in captured.err
 
 
 def test_main_no_args(capsys):
-    exit_code = main_cli([])
+    with pytest.raises(SystemExit):
+        main_cli([])
     captured = capsys.readouterr()
-    assert "Usage: " in captured.out
+    assert "usage: merge_vocab" in captured.err
+
+
+def test_main_no_files(caplog):
+    with caplog.at_level(logging.ERROR):
+        exit_code = main_cli(["aa", "bb"])
+    assert 'This script requires both folders to exist: "aa" and "bb"' in caplog.text
     assert exit_code == 1
 
 
-def test_main_no_files(capsys):
-    exit_code = main_cli(["aa", "bb"])
-    captured = capsys.readouterr()
-    assert 'This script requires both folders to exist: "aa" and "bb"' in captured.out
-    assert exit_code == 1
-
-
-def test_main_merge_dirs(datadir, tmp_path, capsys):
+def test_main_merge_dirs(datadir, tmp_path, caplog):
     """Check merge that only copies files."""
     vocab = tmp_path / "vocab"
     vocab.mkdir()
@@ -36,29 +39,33 @@ def test_main_merge_dirs(datadir, tmp_path, capsys):
     extra = ttl_inbox / "extra"
     extra.mkdir()
     shutil.copy(datadir / CS_CYCLES_TURTLE, ttl_inbox / CS_CYCLES_TURTLE)
-    exit_code = main_cli([str(ttl_inbox), str(vocab)])
-    captured = capsys.readouterr()
-    assert f'Skipping "{extra}"' in captured.out
+
+    with caplog.at_level(logging.INFO):
+        exit_code = main_cli([str(ttl_inbox), str(vocab)])
+    assert f'Skipping "{extra}"' in caplog.text
     assert (vocab / CS_CYCLES_TURTLE).exists()
     assert exit_code == 0
 
 
-def test_main_merge_files(datadir, tmp_path, capsys):
+def test_main_merge_files(datadir, tmp_path, caplog):
     """Check merge that merges the content of files."""
     vocab = tmp_path / "vocab"
     vocab.mkdir()
+    logf = vocab / "test.log"
     ttl_inbox = tmp_path / "ttl_inbox"
     ttl_inbox.mkdir()
     new = ttl_inbox / CS_CYCLES_TURTLE
     shutil.copy(datadir / CS_CYCLES_TURTLE, new)
     exists = vocab / CS_CYCLES_TURTLE
     shutil.copy(datadir / CS_CYCLES_TURTLE, exists)
-    exit_code = main_cli([str(ttl_inbox), str(vocab)])
-    captured = capsys.readouterr()
-    assert f"git merge-file --theirs {exists} {exists} {new}" in captured.out
+
+    with caplog.at_level(logging.INFO):
+        exit_code = main_cli(["--logfile", str(logf), str(ttl_inbox), str(vocab)])
+    assert f"git merge-file --theirs {exists} {exists} {new}" in caplog.text
     assert exit_code == 0
+    assert logf.exists()
 
     with mock.patch("voc4cat.merge_vocab.subprocess") as subprocess:
         subprocess.Popen.return_value.returncode = 1
-        exit_code = main_cli([str(ttl_inbox), str(vocab)])
+        exit_code = main_cli(["--logfile", str(logf), str(ttl_inbox), str(vocab)])
     assert exit_code == 1

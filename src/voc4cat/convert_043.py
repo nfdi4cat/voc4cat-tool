@@ -1,3 +1,4 @@
+import logging
 from typing import List, Tuple
 
 from curies import Converter
@@ -7,6 +8,8 @@ from pydantic import ValidationError
 
 from voc4cat import models
 from voc4cat.utils import ConversionError, split_and_tidy
+
+logger = logging.getLogger(__name__)
 
 
 def create_prefix_dict(s: Worksheet):

@@ -1,12 +1,18 @@
 # This script is mainly useful for CI.
+import argparse
+import logging
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+from voc4cat.wrapper import setup_logging
 
-def main(ttl_inbox, vocab):
+logger = logging.getLogger(__name__)
+
+
+def main(ttl_inbox: Path, vocab: Path) -> int:
     """
     Sync ttl-files from ttl_inbox into vocab folder
 
@@ -16,35 +22,58 @@ def main(ttl_inbox, vocab):
     for p in os.listdir(ttl_inbox):
         new = ttl_inbox / Path(p)
         if new.suffix != ".ttl" or new.is_dir():
-            print(f'Skipping "{new}"')
+            logger.info('Skipping "%s"', new)
             continue
         if os.path.exists(vocab / Path(new).name):
             exists = vocab / Path(new).name
             cmd = ["git", "merge-file", "--theirs", str(exists), str(exists), str(new)]
-            print("Running cmd: {}".format(" ".join(cmd)))
+            logger.info("Running cmd: %s", " ".join(cmd))
             outp = subprocess.run(cmd, capture_output=True)  # noqa: S603
-            print(outp.stdout)
+            logger.info("Cmd output: %s", outp.stdout)
             if retcode := outp.returncode != 0:
                 break
         else:
-            print(f'Copying "{new}" to "{vocab}"')
+            logger.info('Copying "%s" to "%s"', new, vocab)
             shutil.copy(new, vocab)
     return retcode
 
 
-def main_cli(args=None):
-    if args is None:  # script run via entrypoint
+def main_cli(args=None) -> int:
+    if args is None:  # run via entrypoint
         args = sys.argv[1:]
 
-    if len(args) != 2:  # noqa: PLR2004
-        print("Usage: python merge_vocab.py <outbox_dir> <vocab_dir>")
-        return 1
-    outbox, vocab = args
-    if os.path.exists(outbox) and os.path.exists(vocab):
-        return main(Path(outbox), Path(vocab))
+    parser = argparse.ArgumentParser(
+        prog="merge_vocab", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "-l",
+        "--logfile",
+        help="The file to write logging output to. It is placed in outbox_dir.",
+        type=Path,
+        required=False,
+    )
+    parser.add_argument("outbox_dir", type=Path, help="Directory with files to merge.")
 
-    print(f'This script requires both folders to exist: "{outbox}" and "{vocab}"')
-    return 1
+    parser.add_argument("vocab_dir", type=Path, help="Directory to merge to.")
+    args_merge = parser.parse_args(args)
+
+    outbox, vocab = args_merge.outbox_dir, args_merge.vocab_dir
+    logfile = args_merge.logfile
+    has_outbox = outbox.exists()
+    if logfile is None:
+        setup_logging()
+    else:
+        outbox.mkdir(exist_ok=True, parents=True)
+        logfile = Path(outbox) / logfile
+        setup_logging(logfile=logfile)
+
+    if not has_outbox or not vocab.exists():
+        logger.error(
+            'This script requires both folders to exist: "%s" and "%s"', outbox, vocab
+        )
+        return 1
+
+    return main(Path(outbox), Path(vocab))
 
 
 if __name__ == "__main__":

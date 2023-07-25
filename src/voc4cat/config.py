@@ -1,7 +1,6 @@
 """Config module to share a configuration across all modules in voc4cat."""
 
 import logging
-import os
 import re
 import sys
 from collections import defaultdict
@@ -25,7 +24,6 @@ logger = logging.getLogger(__name__)
 # === Configuration that is not imported from idranges.toml ===
 
 VOCAB_TITLE: str = ""
-CI_RUN: bool = os.getenv("GITHUB_ACTIONS")
 
 namespace_manager = NamespaceManager(Graph())
 # Initialize curies-converter with default namespace of rdflib.Graph
@@ -74,7 +72,7 @@ class IdrangeItem(BaseModel):
 
 
 class Vocab(BaseModel):
-    id_length: conint(gt=2, lt=19)
+    id_length: conint(gt=1, lt=19)
     permanent_iri_part: AnyHttpUrl
     checks: Checks
     prefix_map: dict[str, AnyHttpUrl]
@@ -106,47 +104,52 @@ class IDrangeConfig(BaseModel):
         return values
 
 
-id_patterns = {}
-id_ranges_by_actor = defaultdict(list)
+# These parameters will be update/set by load_config.
+IDRANGES = IDrangeConfig(default_config=True)
+ID_PATTERNS = {}
+ID_RANGES_BY_ACTOR = defaultdict(list)
 
 
-def load_config(config_file: Path | None = None):
-    global ID_PATTERNS, ID_RANGES_BY_ACTOR  # noqa: PLW0603
-    if (config_file is None) or not config_file.exists():
-        if config_file is not None:
-            logger.warning('Configuration file "%s" not found.', config_file)
-        ID_PATTERNS = {}  # noqa: PLW0603
-        ID_RANGES_BY_ACTOR = defaultdict(list)  # noqa: PLW0603
-        return IDrangeConfig(default_config=True)
-
-    with config_file.open(mode="rb") as fp:
-        conf = tomllib.load(fp)
-    logger.debug("Config loaded from: %s", config_file)
-
-    idranges = IDrangeConfig(**conf)
+def load_config(config_file: Path | None = None, config: IDrangeConfig | None = None):
+    new_conf = {}
+    new_conf["ID_PATTERNS"] = {}
+    new_conf["ID_RANGES_BY_ACTOR"] = defaultdict(list)
+    if config_file is not None and not config_file.exists():
+        logger.warning('Configuration file "%s" not found.', config_file)
+    if (True if config_file is None else not config_file.exists()) and config is None:
+        new_conf["IDRANGES"] = IDrangeConfig(default_config=True)
+        logger.debug("Initializing default config.")
+    elif config_file and config is None:
+        with config_file.open(mode="rb") as fp:
+            conf = tomllib.load(fp)
+        logger.debug("Config loaded from: %s", config_file)
+        new_conf["IDRANGES"] = IDrangeConfig(**conf)
+    else:
+        new_conf["IDRANGES"] = IDrangeConfig().parse_raw(config.json())
+        logger.debug("Refreshing global state of config.")
 
     # pre-compile regex patterns for ID part of IRIs for each vocabulary
     id_patterns = {}
-    for name in idranges.vocabs:
-        voc = idranges.vocabs.get(name)
+    for name in new_conf["IDRANGES"].vocabs:
+        voc = new_conf["IDRANGES"].vocabs.get(name)
         id_patterns[name] = re.compile(r"(?P<identifier>[0-9]{%i})$" % voc.id_length)
-    ID_PATTERNS = id_patterns
+    new_conf["ID_PATTERNS"] = id_patterns
 
     # create look-up map for ID ranges of all "actors"
     id_ranges_by_actor = defaultdict(list)
-    for name in idranges.vocabs:
-        voc = idranges.vocabs.get(name)
+    for name in new_conf["IDRANGES"].vocabs:
+        voc = new_conf["IDRANGES"].vocabs.get(name)
         for idr in voc.id_range:
             rng = (idr.first_id, idr.last_id)
             if idr.orcid:
                 id_ranges_by_actor[str(idr.orcid)].append(rng)
+                no_url_orcid = str(idr.orcid).split("orcid.org/")[-1]
+                id_ranges_by_actor[no_url_orcid].append(rng)
             if idr.gh_name:
                 id_ranges_by_actor[str(idr.gh_name)].append(rng)
             if idr.ror_id:
                 id_ranges_by_actor[str(idr.ror_id)].append(rng)
-    ID_RANGES_BY_ACTOR = id_ranges_by_actor
+    new_conf["ID_RANGES_BY_ACTOR"] = id_ranges_by_actor
 
-    return idranges
-
-
-IDRANGES = load_config()
+    for name, value in new_conf.items():
+        globals()[name] = value

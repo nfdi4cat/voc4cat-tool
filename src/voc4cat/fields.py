@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any, ClassVar, Generator
 
@@ -17,6 +18,7 @@ from pydantic.typing import AnyCallable
 
 __all__ = ["Orcid", "OrcidError"]
 
+logger = logging.getLogger(__name__)
 
 ORCID_PATTERN = re.compile(
     r"(?P<identifier>[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X]{1})$"
@@ -47,7 +49,8 @@ class Orcid(HttpUrl):
 
     @classmethod
     def validate(cls, value: Any, field: ModelField, config: BaseConfig) -> Orcid:
-        if value.__class__ == cls:
+        # Important if pydantic config has validate_assignment set to True
+        if value.__class__ == cls:  # pragma: no cover
             return value
 
         m = ORCID_PATTERN.search(value)
@@ -96,7 +99,7 @@ class Ror(HttpUrl):
     """
     ROR (Research Organization Registry) identifier model field for pydantic.
 
-    ROR identifyer are represented as url. Validation is implemented according
+    ROR identifier are represented as URL. Validation is implemented according
     to the documentation and includes checksum verification [1].
 
     [1] Research Organization Registry, [ROR identifier pattern](https://ror.readme.io/docs/ror-identifier-pattern), April 2023.
@@ -110,7 +113,8 @@ class Ror(HttpUrl):
 
     @classmethod
     def validate(cls, value: Any, field: ModelField, config: BaseConfig) -> Ror:
-        if value.__class__ == cls:
+        # Important if pydantic config has validate_assignment set to True
+        if value.__class__ == cls:  # pragma: no cover
             return value
 
         m = ROR_PATTERN.search(value)

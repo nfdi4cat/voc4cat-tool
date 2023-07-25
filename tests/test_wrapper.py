@@ -2,12 +2,14 @@ import logging
 import os
 import shutil
 from pathlib import Path
+from unittest import mock
 
 import pytest
 from openpyxl.reader.excel import load_workbook
 from voc4cat.wrapper import build_docs, main_cli
 
 CS_SIMPLE = "concept-scheme-simple.xlsx"
+CS_SIMPLE_TURTLE = "concept-scheme-simple.ttl"
 CS_CYCLES = "concept-scheme-with-cycles.xlsx"
 CS_CYCLES_TURTLE = "concept-scheme-with-cycles.ttl"
 CS_CYCLES_INDENT = "concept-scheme-with-cycles_indent.xlsx"
@@ -32,10 +34,10 @@ def test_main_no_args(capsys):
     assert exit_code == 0
 
 
-def test_main_unknown_arg(capsys):
-    exit_code = main_cli(["--unknown-arg"])
-    captured = capsys.readouterr()
-    assert "Unknown voc4cat option: ['--unknown-arg']" in captured.out
+def test_main_unknown_arg(caplog):
+    with caplog.at_level(logging.ERROR):
+        exit_code = main_cli(["--unknown-arg"])
+    assert "Unknown voc4cat option: ['--unknown-arg']" in caplog.text
     assert exit_code == 1
 
 
@@ -46,17 +48,17 @@ def test_main_version(capsys):
     assert exit_code == 0
 
 
-def test_make_ids_missing_file(capsys):
+def test_make_ids_missing_file(caplog):
     # Try to run a command that would overwrite the input file with the output file
-    exit_code = main_cli(["--make-ids", "ex", "1", "missing.xyz"])
-    captured = capsys.readouterr()
-    assert "Expected xlsx-file or directory but got:" in captured.out
+    with caplog.at_level(logging.ERROR):
+        exit_code = main_cli(["--make-ids", "ex", "1", "missing.xyz"])
+    assert "Expected xlsx-file or directory but got:" in caplog.text
     assert exit_code == 1
 
 
-def test_make_ids_overwrite_warning(datadir, tmp_path):
+def test_make_ids_overwrite_warning(monkeypatch, datadir, tmp_path):
     shutil.copy(datadir / CS_SIMPLE, tmp_path / CS_SIMPLE)
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     # Try to run a command that would overwrite the input file with the output file
     # a) dir as input:
     with pytest.warns(
@@ -70,9 +72,9 @@ def test_make_ids_overwrite_warning(datadir, tmp_path):
         main_cli(["--make-ids", "ex", "1", str(tmp_path / CS_SIMPLE)])
 
 
-def test_make_ids_no_voc_base_iri(datadir, tmp_path):
+def test_make_ids_no_voc_base_iri(monkeypatch, datadir, tmp_path):
     shutil.copy(datadir / CS_SIMPLE, tmp_path)
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     # change excel file: Delete vocabulary base IRI
     wb = load_workbook(filename=CS_SIMPLE)
     ws = wb["Concept Scheme"]
@@ -105,7 +107,7 @@ def test_make_ids_invalid_id(datadir):
         "in:file, out:dir",
     ],
 )
-def test_make_ids_variants(datadir, tmp_path, indir, outdir):
+def test_make_ids_variants(monkeypatch, datadir, tmp_path, indir, outdir):
     # fmt: off
     expected_concepts = [
         ("ex:test/0001001", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/0001002, ex:test/0001003",),
@@ -123,7 +125,7 @@ def test_make_ids_variants(datadir, tmp_path, indir, outdir):
     ]
     # fmt: on
     shutil.copy(datadir / CS_SIMPLE, tmp_path)
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     main_cli(
         ["--make-ids", "ex", "1001", "--no-warn"]
         + (["--output-directory", outdir] if outdir else [])
@@ -178,11 +180,13 @@ def test_make_ids_multilang(tmp_path, datadir):
         assert row == expected_row
 
 
-def test_hierarchy_from_indent_on_dir(tmp_path, capsys):
-    exit_code = main_cli(["--hierarchy-from-indent", str(tmp_path / "missing.xlsx")])
-    captured = capsys.readouterr()
+def test_hierarchy_from_indent_on_dir(tmp_path, caplog):
+    with caplog.at_level(logging.ERROR):
+        exit_code = main_cli(
+            ["--hierarchy-from-indent", str(tmp_path / "missing.xlsx")]
+        )
     assert exit_code == 1
-    assert "File not found:" in captured.out
+    assert "File not found:" in caplog.text
 
     # exit_code = main_cli(["--hierarchy-from-indent", "tmp_path"])
 
@@ -192,7 +196,7 @@ def test_hierarchy_from_indent_on_dir(tmp_path, capsys):
     [(CS_CYCLES_INDENT_IRI, None), (CS_CYCLES_INDENT_DOT, "..")],
     ids=["indent:Excel", "indent:dots"],
 )
-def test_hierarchy_from_indent(datadir, tmp_path, xlsxfile, indent):
+def test_hierarchy_from_indent(monkeypatch, datadir, tmp_path, xlsxfile, indent):
     # fmt: off
     expected = [  # data in children-IRI-representation
         ("ex:test/term1", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/term2, ex:test/term3", "Prov for term1", "ex:XYZ/term1"),
@@ -203,7 +207,7 @@ def test_hierarchy_from_indent(datadir, tmp_path, xlsxfile, indent):
     ]
     # fmt: on
     expected_len = len(expected[0])
-    os.chdir(datadir)
+    monkeypatch.chdir(datadir)
     main_cli(
         ["--hierarchy-from-indent"]
         + (
@@ -220,7 +224,7 @@ def test_hierarchy_from_indent(datadir, tmp_path, xlsxfile, indent):
             xlsxfile,
         ]
     )
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     wb = load_workbook(filename=xlsxfile, read_only=True, data_only=True)
     ws = wb["Concepts"]
     for row, _expected_row in zip(ws.iter_rows(min_row=3, values_only=True), expected):
@@ -228,7 +232,7 @@ def test_hierarchy_from_indent(datadir, tmp_path, xlsxfile, indent):
         assert row in expected  # We intentionally don't check the row position here!
 
 
-def test_hierarchy_from_indent_multilang(datadir, tmp_path):
+def test_hierarchy_from_indent_multilang(monkeypatch, datadir, tmp_path):
     # fmt: off
     expected = [  # data in children-IRI-representation
         ("ex:test/term1", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/term2, ex:test/term3", "Prov for term1", "ex:XYZ/term1"),
@@ -241,7 +245,7 @@ def test_hierarchy_from_indent_multilang(datadir, tmp_path):
     ]
     # fmt: on
     expected_len = len(expected[0])
-    os.chdir(datadir)
+    monkeypatch.chdir(datadir)
     main_cli(
         [
             "--hierarchy-from-indent",
@@ -250,7 +254,7 @@ def test_hierarchy_from_indent_multilang(datadir, tmp_path):
             CS_CYCLES_MULTI_LANG_IND,
         ]
     )
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     wb = load_workbook(
         filename=CS_CYCLES_MULTI_LANG_IND, read_only=True, data_only=True
     )
@@ -260,9 +264,9 @@ def test_hierarchy_from_indent_multilang(datadir, tmp_path):
         assert row in expected  # We intentionally don't check the row position here!
 
 
-def test_hierarchy_from_indent_merge(datadir, tmp_path):
+def test_hierarchy_from_indent_merge(monkeypatch, datadir, tmp_path):
     shutil.copy(datadir / CS_CYCLES_INDENT_IRI, tmp_path)
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     # change excel file: Delete vocabulary base IRI
     wb = load_workbook(filename=CS_CYCLES_INDENT_IRI)
     ws = wb["Concepts"]
@@ -282,7 +286,7 @@ def test_hierarchy_from_indent_merge(datadir, tmp_path):
     ["..", None],
     ids=["indent:dots", "indent:Excel"],
 )
-def test_hierarchy_to_indent(datadir, tmp_path, indent):
+def test_hierarchy_to_indent(monkeypatch, datadir, tmp_path, indent):
     # fmt: off
     expected_rows = [  # data in children-IRI-representation
         ("ex:test/term1", "term1",     "en", "def for term1", "en", "AltLbl for term1", None, "Prov for term1", "ex:XYZ/term1"),
@@ -299,7 +303,7 @@ def test_hierarchy_to_indent(datadir, tmp_path, indent):
     assert len(expected_rows) == len(expected_levels)
     expected_len = len(expected_rows[0])
 
-    os.chdir(datadir)
+    monkeypatch.chdir(datadir)
     main_cli(
         ["--hierarchy-to-indent"]
         + (
@@ -316,7 +320,7 @@ def test_hierarchy_to_indent(datadir, tmp_path, indent):
             CS_CYCLES,
         ]
     )
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     wb = load_workbook(filename=CS_CYCLES, read_only=True)
     ws = wb["Concepts"]
     for row, expected_row, expected_level in zip(
@@ -332,7 +336,7 @@ def test_hierarchy_to_indent(datadir, tmp_path, indent):
             assert row[col].value == expected_row[col]
 
 
-def test_hierarchy_to_indent_multilanguage(datadir, tmp_path):
+def test_hierarchy_to_indent_multilanguage(monkeypatch, datadir, tmp_path):
     # fmt: off
     expected_rows = [  # data in children-IRI-representation
         ("ex:test/term1", "term1",     "en", "def for term1", "en", "AltLbl for term1", None, "Prov for term1", "ex:XYZ/term1"),
@@ -349,7 +353,7 @@ def test_hierarchy_to_indent_multilanguage(datadir, tmp_path):
     # fmt: on
     expected_levels = [0, 0, 1, 2, 2, 0, 1, 0, 1, 0]
     assert len(expected_rows) == len(expected_levels)
-    os.chdir(datadir)
+    monkeypatch.chdir(datadir)
     main_cli(
         [
             "--hierarchy-to-indent",
@@ -358,7 +362,7 @@ def test_hierarchy_to_indent_multilanguage(datadir, tmp_path):
             CS_CYCLES_MULTI_LANG,
         ]
     )
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     wb = load_workbook(filename=CS_CYCLES_MULTI_LANG, read_only=True)
     ws = wb["Concepts"]
     for row, expected_row, expected_level in zip(
@@ -374,9 +378,9 @@ def test_hierarchy_to_indent_multilanguage(datadir, tmp_path):
             assert row[col].value == expected_row[col]
 
 
-def test_hierarchy_to_indent_merge(datadir, tmp_path):
+def test_hierarchy_to_indent_merge(monkeypatch, datadir, tmp_path):
     shutil.copy(datadir / CS_CYCLES_MULTI_LANG, tmp_path)
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     # change excel file: Delete vocabulary base IRI
     wb = load_workbook(filename=CS_CYCLES_MULTI_LANG)
     ws = wb["Concepts"]
@@ -394,14 +398,14 @@ def test_hierarchy_to_indent_merge(datadir, tmp_path):
     [None, "out"],
     ids=["no outdir", "with outdir"],
 )
-def test_outdir_variants(datadir, tmp_path, outdir):
+def test_outdir_variants(monkeypatch, datadir, tmp_path, outdir):
     shutil.copy(datadir / CS_CYCLES_INDENT_IRI, tmp_path)
     cmd = ["--hierarchy-from-indent"]
     if outdir:
         cmd.extend(["--output-directory", str(tmp_path / outdir)])
     cmd.append(str(tmp_path / CS_CYCLES_INDENT_IRI))
     # print(f"\n>>> cmd {cmd}")
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     main_cli(cmd)
 
     expected = [
@@ -492,44 +496,153 @@ def test_check(datadir, tmp_path, caplog, test_file, err, msg):  # noqa: PLR0913
     # TODO check that erroneous cells get colored.
 
 
-def test_unsupported_filetype(datadir, capsys):
-    os.chdir(datadir)
-    exit_code = main_cli(["README.md"])
-    captured = capsys.readouterr()
+def test_check_overwrite_warning(monkeypatch, datadir, tmp_path):
+    shutil.copy(datadir / CS_SIMPLE, tmp_path / CS_SIMPLE)
+    monkeypatch.chdir(tmp_path)
+    # Try to run a command that would overwrite the input file with the output file
+    # a) dir as input:
+    with pytest.warns(
+        UserWarning, match='Option "--check" will overwrite the existing file'
+    ):
+        main_cli(["--check", str(tmp_path)])
+    # b) file as input
+    with pytest.warns(
+        UserWarning, match='Option "--check" will overwrite the existing file'
+    ):
+        main_cli(["--check", str(tmp_path / CS_SIMPLE)])
+
+
+def test_ci_check_skipped(datadir, tmp_path, caplog):
+    # Test if skipping works if no output-directory is given.
+    dst = tmp_path
+    shutil.copy(datadir / CS_SIMPLE, dst)
+    exit_code = main_cli(["--ci-check", str(dst)])
+    assert exit_code == 0
+
+
+@mock.patch.dict(os.environ, {"CI_RUN": "", "LOGLEVEL": "DEBUG"})
+def test_ci_check_local(datadir, tmp_path, caplog):
+    dst = tmp_path
+    shutil.copy(datadir / CS_SIMPLE, dst)
+    outdir = tmp_path / "out"
+
+    exit_code = main_cli(["--ci-check", "--output-directory", str(outdir), str(dst)])
+    assert exit_code == 0
+
+
+@pytest.fixture()
+def main_branch():
+    """
+    Provides a temporary dir "_main_branch" in the repo as in CI.
+    """
+    main_branch = Path(__file__).resolve().parents[1] / "_main_branch"
+    main_branch.mkdir(exist_ok=True)
+    yield main_branch
+    # Remove the directory tree after the test
+    shutil.rmtree(main_branch, ignore_errors=True)
+
+
+@mock.patch.dict(os.environ, {"CI_RUN": "true"})
+def test_ci_check_in_ci(datadir, tmp_path, temp_config, main_branch, caplog):
+    dst = tmp_path / "inbox"
+    dst.mkdir()
+    outdir = tmp_path / "vocabularies"
+    # Could be probably solved better. We put the dir/files in real repo dir here
+    # not in tmp_dir to make it findable
+    (main_branch / "vocabularies").mkdir(parents=True, exist_ok=True)
+
+    shutil.copy(datadir / CS_SIMPLE, dst / "myvocab.xlsx")
+    shutil.copy(datadir / "valid_idranges.toml", main_branch / "idranges.toml")
+
+    # Load/prepare a valid strict config
+    config = temp_config
+    config.load_config(main_branch / "idranges.toml")
+    config.IDRANGES.vocabs["myvocab"].id_length = 2
+    config.IDRANGES.vocabs["myvocab"].permanent_iri_part = "http://example.org/test"
+    config.load_config(config=config.IDRANGES)
+
+    # Test without a previous vocabulary version in main_branch
+    with caplog.at_level(logging.DEBUG):
+        exit_code = main_cli(
+            ["-v", "--ci-check", "--output-directory", str(outdir), str(dst)]
+        )
+    assert exit_code == 0
+    assert 'previous version of vocabulary "myvocab.ttl" does not exist.' in caplog.text
+
+    # Test with a previous vocabulary version in main_branch
+    shutil.copy(
+        datadir / CS_SIMPLE_TURTLE, main_branch / "vocabularies" / "myvocab.ttl"
+    )
+    with caplog.at_level(logging.DEBUG):
+        exit_code = main_cli(
+            ["-v", "--ci-check", "--output-directory", str(outdir), str(dst)]
+        )
+    assert exit_code == 0
+    assert "-> Checking changes between" in caplog.text
+
+    # Test loading of a config (which makes the command fail)
+    exit_code = main_cli(
+        [
+            "-v",
+            "--config",
+            str(main_branch / "idranges.toml"),
+            "--ci-check",
+            "--output-directory",
+            str(outdir),
+            str(dst),
+        ]
+    )
     assert exit_code == 1
-    assert "Files for processing must end with" in captured.out
+    assert config.IDRANGES.vocabs["myvocab"].id_length == 7  # noqa: PLR2004
 
 
-def test_nonexisting_file(datadir, capsys):
-    os.chdir(datadir)
-    exit_code = main_cli(["missing.txt"])
-    captured = capsys.readouterr()
+def test_unsupported_filetype(monkeypatch, datadir, caplog):
+    monkeypatch.chdir(datadir)
+    with caplog.at_level(logging.ERROR):
+        exit_code = main_cli(["README.md"])
     assert exit_code == 1
-    assert "File not found:" in captured.out
+    assert "Cannot convert file" in caplog.text
+    assert "Files for processing must end with" in caplog.text
 
 
-def test_no_separator(datadir):
-    os.chdir(datadir)
+def test_nonexisting_file(monkeypatch, datadir, caplog):
+    monkeypatch.chdir(datadir)
+    with caplog.at_level(logging.ERROR):
+        exit_code = main_cli(["missing.txt"])
+    assert exit_code == 1
+    assert "File not found:" in caplog.text
+
+
+def test_nonexisting_config(monkeypatch, datadir, caplog):
+    monkeypatch.chdir(datadir)
+    with caplog.at_level(logging.ERROR):
+        exit_code = main_cli(["--config", "missing.toml", CS_SIMPLE])
+    assert exit_code == 1
+    assert "Config file not found at" in caplog.text
+
+
+def test_no_separator(monkeypatch, datadir):
+    monkeypatch.chdir(datadir)
     with pytest.raises(
         ValueError, match="Setting the indent separator to zero length is not allowed."
     ):
         main_cli(["--indent-separator", "", CS_CYCLES])
 
 
-def test_duplicates(datadir, tmp_path, capsys):
+def test_duplicates(datadir, tmp_path, caplog):
     """Check that files do not have the same stem."""
     shutil.copy(datadir / CS_CYCLES, tmp_path)
     shutil.copy(datadir / CS_CYCLES_TURTLE, tmp_path)
-    exit_code = main_cli([str(tmp_path)])
-    captured = capsys.readouterr()
+    with caplog.at_level(logging.ERROR):
+        exit_code = main_cli([str(tmp_path)])
     assert exit_code == 1
-    assert "Files may only be present in one format." in captured.out
+    assert "Files may only be present in one format." in caplog.text
 
 
-def test_run_vocexcel_badfile(datadir, tmp_path, caplog):
+def test_run_vocexcel_badfile(monkeypatch, datadir, tmp_path, caplog):
     """Check handling of failing run of vocexcel."""
     shutil.copy(datadir / CS_CYCLES_INDENT, tmp_path)
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     exit_code = main_cli([CS_CYCLES_INDENT])
     assert exit_code > 0
     # The next message is logged by vocexcel so it may change.
@@ -563,10 +676,10 @@ def test_run_vocexcel(datadir, tmp_path, test_file):
     ],
     ids=["out:dir & xlsx", "out:default & xlsx", "out:dir & ttl", "out:default & ttl"],
 )
-def test_run_vocexcel_outputdir(datadir, tmp_path, outputdir, testfile):
+def test_run_vocexcel_outputdir(monkeypatch, datadir, tmp_path, outputdir, testfile):
     """Check that an xlsx file is converted to ttl by vocexcel."""
     shutil.copy(datadir / testfile, tmp_path)
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     # Check if log is placed in out folder.
     log = "test-run.log"
     main_cli(
@@ -587,11 +700,11 @@ def test_run_vocexcel_outputdir(datadir, tmp_path, outputdir, testfile):
     [CS_CYCLES, ""],
     ids=["single file", "dir of files"],
 )
-def test_forwarding_3stages(datadir, tmp_path, test_file):
+def test_forwarding_3stages(monkeypatch, datadir, tmp_path, test_file):
     """Check a file by voc4cat then forward it to vocexcel then to pyLODE."""
     dst = tmp_path / test_file
     shutil.copy(datadir / CS_CYCLES, tmp_path)
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     main_cli(
         [
             "--check",
@@ -614,28 +727,29 @@ def test_forwarding_3stages(datadir, tmp_path, test_file):
     [CS_CYCLES, ""],
     ids=["single file", "dir of files"],
 )
-def test_forwarding_3stages_outdir(datadir, tmp_path, test_file):
+def test_forwarding_3stages_outdir(monkeypatch, datadir, tmp_path, test_file):
     """Check file by voc4cat, write it to output folder, forward to vocexcel & pyLODE.
 
     Related: #issue106
     """
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    shutil.copy(datadir / CS_CYCLES, tmp_path)
     main_cli(
         [
             "--check",
             "--forward",
             "--output-directory",
-            str(tmp_path),
+            str(tmp_path / "out"),
             "--logfile",
             "test.log",
             "--docs",
             "pylode",
-            str(datadir / test_file),
+            str(tmp_path / test_file),
         ]
     )
-    assert (tmp_path / CS_CYCLES).with_suffix(".ttl").exists()
-    assert (tmp_path / Path(CS_CYCLES).stem / "index.html").exists()
-    assert (tmp_path / "test.log").exists()
+    assert (tmp_path / "out" / CS_CYCLES).with_suffix(".ttl").exists()
+    assert (tmp_path / "out" / Path(CS_CYCLES).stem / "index.html").exists()
+    assert (tmp_path / "out" / "test.log").exists()
 
 
 @pytest.mark.parametrize(
@@ -643,11 +757,11 @@ def test_forwarding_3stages_outdir(datadir, tmp_path, test_file):
     [CS_CYCLES, ""],
     ids=["single file", "dir of files"],
 )
-def test_forwarding_2stages(datadir, tmp_path, test_file):
+def test_forwarding_2stages(monkeypatch, datadir, tmp_path, test_file):
     """Use voc4cat to run vocexcel then forward result to ontospy."""
     dst = tmp_path / test_file
     shutil.copy(datadir / CS_CYCLES, tmp_path)
-    os.chdir(tmp_path)
+    monkeypatch.chdir(tmp_path)
     main_cli(
         [
             "--forward",

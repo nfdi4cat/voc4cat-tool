@@ -1,4 +1,5 @@
 import datetime
+import logging
 from itertools import chain
 from typing import List, Union
 
@@ -9,6 +10,8 @@ from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import DCAT, DCTERMS, OWL, RDF, RDFS, SKOS, XSD, NamespaceManager
 
 from voc4cat import config
+
+logger = logging.getLogger(__name__)
 
 ORGANISATIONS = {
     "NFDI4Cat": URIRef("http://example.org/nfdi4cat/"),
@@ -26,8 +29,6 @@ ORGANISATIONS = {
 }
 
 ORGANISATIONS_INVERSE = {uref: name for name, uref in ORGANISATIONS.items()}
-
-# TODO log errors in addition to raising exceptions?
 
 
 def reset_curies(curies_map: dict) -> None:
@@ -94,13 +95,16 @@ def check_uri_vs_config(cls, values):
     if not iri.startswith(perm_iri_part):
         msg = "Invalid IRI %s - It must start with %s"
         raise ValueError(msg % (iri, perm_iri_part))
+    id_part_of_iri = iri.split(perm_iri_part)[-1]
+    if any(not c.isdigit() for c in id_part_of_iri):
+        msg = 'Invalid ID part "%s" in IRI %s. The ID part may only contain digits.'
+        raise ValueError(msg % (id_part_of_iri, iri))
 
-    id_pattern = config.ID_PATTERNS.get(values["vocab_name"], None)
-    if id_pattern is not None:
-        match = id_pattern.search(iri)
-        if not match:
-            msg = "ID part of %s is not matching the configured pattern of %s digits."
-            raise ValueError(msg % (str(values["uri"]), voc_conf.id_length))
+    id_pattern = config.ID_PATTERNS.get(values["vocab_name"])
+    match = id_pattern.search(iri)
+    if not match:
+        msg = "ID part of %s is not matching the configured pattern of %s digits."
+        raise ValueError(msg % (str(values["uri"]), voc_conf.id_length))
 
     return values
 
@@ -134,9 +138,9 @@ def check_used_id(cls, values):
                 # a GitHub name may be in incorrect case in the provenance field. (#122)
                 # So we look up for lower-cased actor as well:
                 actors_ids = config.ID_RANGES_BY_ACTOR[actor.lower()]
-            allowed = any(first < id_ <= last for first, last in actors_ids)
+            allowed = any(first <= id_ <= last for first, last in actors_ids)
             if not allowed:
-                msg = 'ID of %s is not in allowed ID range(s) of actor "%s".'
+                msg = 'ID of IRI %s is not in allowed ID range(s) of actor "%s" (from provenance).'
                 raise ValueError(msg % (values["uri"], actor))
     return values
 
