@@ -473,7 +473,7 @@ def test_build_docs_unknown_builder(tmp_path, caplog):
 @pytest.mark.parametrize(
     ("test_file", "err", "msg"),
     [
-        (CS_CYCLES, 0, "All checks passed successfully."),
+        (CS_CYCLES, 0, "Extended xlsx checks passed successfully."),
         (
             CS_CYCLES_INDENT_IRI,
             1,

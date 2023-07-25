@@ -470,8 +470,12 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     """
     Complex checks of the xlsx file not handled by pydantic model validation
 
-    Checks/validation implemented here need/use information from several rows and
-    can therefore not easily done in models.py with pydantic.
+    Checks/validation implemented here need/use information from several rows
+    and can therefore not be easily done in models.py with pydantic.
+    However, SHACL validation does also catch the problem, at least in pre-
+    liminary testing. So this function may get removed later. Doing the check
+    in Excel has the advantage that the cell position can be added to the
+    validation message which would not work with SHACL validation.
 
     For concepts:
     - The "Concept IRI" must be unique. However, it can be present in several
@@ -524,10 +528,10 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
 
     if failed_checks:
         wb.save(outfile)
-        logger.info("Saved file with highlighted errors as %s", outfile)
+        logger.info("-> Saved file with highlighted errors as %s", outfile)
         return 1
 
-    logger.info("All checks passed successfully.")
+    logger.info("-> Extended xlsx checks passed successfully.")
 
     if fpath != outfile:  # Save to new directory (important for --forward option)
         wb.save(outfile)
