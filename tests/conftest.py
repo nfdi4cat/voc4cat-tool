@@ -7,7 +7,7 @@ def datadir():
     """DATADIR as a LocalPath"""
     from pathlib import Path
 
-    return Path(__file__).parent / "data"
+    return Path(__file__).resolve().parent / "data"
 
 
 @pytest.fixture()
@@ -20,5 +20,6 @@ def temp_config():
     from voc4cat import config
 
     yield config
-    # Reset the globally changed config.
-    config.IDRANGES = config.load_config()
+
+    # Reset the globally changed config to default.
+    config.load_config()

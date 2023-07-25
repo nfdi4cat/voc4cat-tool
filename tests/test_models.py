@@ -26,7 +26,7 @@ def test_check_uri_vs_config(datadir, temp_config):
     """
     # load a valid config
     config = temp_config
-    config.IDRANGES = config.load_config(datadir / VALID_CONFIG)
+    config.load_config(datadir / VALID_CONFIG)
 
     # Concept IRI matching "permanent_iri_part" from config
     c = Concept(
@@ -48,6 +48,19 @@ def test_check_uri_vs_config(datadir, temp_config):
         )
     assert (
         "Invalid IRI https://example.com/0000001 - It must start with https://example.org/"
+        in str(excinfo.value)
+    )
+
+    # ID part of concept IRI not matching "permanent_iri_part" from config
+    with pytest.raises(ValidationError) as excinfo:
+        c = Concept(
+            uri="https://example.org/a000005",
+            pref_label="Thing V",
+            definition="Fake def for 000005",
+            vocab_name="myvocab",
+        )
+    assert (
+        'Invalid ID part "a000005" in IRI https://example.org/a000005. The ID part may only contain digits.'
         in str(excinfo.value)
     )
 

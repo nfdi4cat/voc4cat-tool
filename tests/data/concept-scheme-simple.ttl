@@ -1,24 +1,25 @@
 @prefix dcat: <http://www.w3.org/ns/dcat#> .
 @prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix ex: <http://example.org/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-<http://example.org/test/connected> a skos:Collection ;
-    dcterms:identifier "connected"^^xsd:token ;
+ex:test10 a skos:Collection ;
+    dcterms:identifier "test10"^^xsd:token ;
     dcterms:isPartOf <http://example.org/test/> ;
-    dcterms:provenance "Prov for connected concepts"@en ;
+    dcterms:provenance "0000-0001-2345-6789"@en ;
     skos:definition "def for con"@en ;
-    skos:member <http://example.org/test/term1>,
-        <http://example.org/test/term2>,
-        <http://example.org/test/term3>,
-        <http://example.org/test/term4> ;
+    skos:member ex:test01,
+        ex:test02,
+        ex:test03,
+        ex:test04 ;
     skos:prefLabel "con"@en .
 
-<http://example.org/test/term5> a skos:Concept ;
-    dcterms:identifier "term5"^^xsd:token ;
-    dcterms:provenance "Prov for term5"@en ;
+ex:test05 a skos:Concept ;
+    dcterms:identifier "test05"^^xsd:token ;
+    dcterms:provenance "sofia-garcia"@en ;
     rdfs:isDefinedBy <http://example.org/XYZ/term5> ;
     skos:altLabel "AltLbl for term5"@en ;
     skos:definition "def for term5"@en ;
@@ -26,9 +27,9 @@
     skos:prefLabel "term5"@en ;
     skos:topConceptOf <http://example.org/test/> .
 
-<http://example.org/test/term6> a skos:Concept ;
-    dcterms:identifier "term6"^^xsd:token ;
-    dcterms:provenance "Prov for term6"@en ;
+ex:test06 a skos:Concept ;
+    dcterms:identifier "test06"^^xsd:token ;
+    dcterms:provenance "sofia-garcia"@en ;
     rdfs:isDefinedBy <http://example.org/XYZ/term6> ;
     skos:altLabel "AltLbl for term6"@en ;
     skos:definition "def for term6"@en ;
@@ -36,66 +37,66 @@
     skos:prefLabel "term6"@en ;
     skos:topConceptOf <http://example.org/test/> .
 
-<http://example.org/test/term2> a skos:Concept ;
-    dcterms:identifier "term2"^^xsd:token ;
-    dcterms:provenance "Prov for term2"@en ;
+ex:test02 a skos:Concept ;
+    dcterms:identifier "test02"^^xsd:token ;
+    dcterms:provenance "sofia-garcia"@en ;
     rdfs:isDefinedBy <http://example.org/XYZ/term2> ;
     skos:altLabel "AltLbl for term2"@en ;
-    skos:broader <http://example.org/test/term1> ;
+    skos:broader ex:test01 ;
     skos:definition "def for term2"@en ;
     skos:inScheme <http://example.org/test/> ;
     skos:prefLabel "term2"@en .
 
-<http://example.org/test/term4> a skos:Concept ;
-    dcterms:identifier "term4"^^xsd:token ;
-    dcterms:provenance "Prov for term4"@en ;
+ex:test04 a skos:Concept ;
+    dcterms:identifier "test04"^^xsd:token ;
+    dcterms:provenance "sofia-garcia"@en ;
     rdfs:isDefinedBy <http://example.org/XYZ/term4> ;
     skos:altLabel "AltLbl for term4"@en ;
-    skos:broader <http://example.org/test/term3> ;
+    skos:broader ex:test03 ;
     skos:definition "def for term4"@en ;
     skos:inScheme <http://example.org/test/> ;
     skos:prefLabel "term4"@en .
 
-<http://example.org/test/term1> a skos:Concept ;
-    dcterms:identifier "term1"^^xsd:token ;
-    dcterms:provenance "Prov for term1"@en ;
+ex:test01 a skos:Concept ;
+    dcterms:identifier "test01"^^xsd:token ;
+    dcterms:provenance "0000-0001-2345-6789"@en ;
     rdfs:isDefinedBy <http://example.org/XYZ/term1> ;
     skos:altLabel "AltLbl for term1"@en ;
-    skos:broadMatch <http://example.org/test/term6> ;
-    skos:closeMatch <http://example.org/test/term3> ;
+    skos:broadMatch ex:test06 ;
+    skos:closeMatch ex:test03 ;
     skos:definition "def for term1"@en ;
-    skos:exactMatch <http://example.org/test/term4> ;
+    skos:exactMatch ex:test04 ;
     skos:inScheme <http://example.org/test/> ;
-    skos:narrowMatch <http://example.org/test/term5> ;
-    skos:narrower <http://example.org/test/term2>,
-        <http://example.org/test/term3> ;
+    skos:narrowMatch ex:test05 ;
+    skos:narrower ex:test02,
+        ex:test03 ;
     skos:prefLabel "term1"@en ;
-    skos:relatedMatch <http://example.org/test/term2> ;
+    skos:relatedMatch ex:test02 ;
     skos:topConceptOf <http://example.org/test/> .
 
-<http://example.org/test/term3> a skos:Concept ;
-    dcterms:identifier "term3"^^xsd:token ;
-    dcterms:provenance "Prov for term3"@en ;
+ex:test03 a skos:Concept ;
+    dcterms:identifier "test03"^^xsd:token ;
+    dcterms:provenance "sofia-garcia"@en ;
     rdfs:isDefinedBy <http://example.org/XYZ/term3> ;
     skos:altLabel "AltLbl for term3"@en ;
-    skos:broader <http://example.org/test/term1> ;
+    skos:broader ex:test01 ;
     skos:definition "def for term3"@en ;
     skos:inScheme <http://example.org/test/> ;
-    skos:narrower <http://example.org/test/term4> ;
+    skos:narrower ex:test04 ;
     skos:prefLabel "term3"@en .
 
 <http://example.org/test/> a skos:ConceptScheme ;
     dcterms:created "2022-12-01"^^xsd:date ;
     dcterms:creator <https://www.catalysis.de/> ;
-    dcterms:hasPart <http://example.org/test/connected> ;
+    dcterms:hasPart ex:test10 ;
     dcterms:identifier ""^^xsd:token ;
     dcterms:modified "2022-12-01"^^xsd:date ;
-    dcterms:provenance "Leibniz-Institut für Katalyse e.V. (LIKAT)"@en ;
+    dcterms:provenance "0000-0001-2345-6789"@en ;
     dcterms:publisher <http://example.org/nfdi4cat/> ;
     owl:versionInfo "0.1" ;
     skos:definition "A concept scheme for unit testing voc4cat."@en ;
-    skos:hasTopConcept <http://example.org/test/term1>,
-        <http://example.org/test/term5>,
-        <http://example.org/test/term6> ;
+    skos:hasTopConcept ex:test01,
+        ex:test05,
+        ex:test06 ;
     skos:prefLabel "voc4cat-test-data"@en ;
-    dcat:contactPoint "David Linke" .
+    dcat:contactPoint "Sofia Garcia" .
