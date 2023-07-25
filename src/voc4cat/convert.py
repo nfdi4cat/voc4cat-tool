@@ -32,14 +32,10 @@ from voc4cat.utils import (
     load_template,
     load_workbook,
 )
-from voc4cat.wrapper import clean_logging_shutdown
 
 TEMPLATE_VERSION = None
 
 logger = logging.getLogger(__name__)
-
-# Required to get full logs in gh-actions
-atexit.register(clean_logging_shutdown)
 
 
 def validate_with_profile(
@@ -533,15 +529,15 @@ def main(args=None):
         parser.print_help()
         parser.exit()
 
+    # We import here to avoid a cyclic import when this is used via wrapper.main
     if args.logfile:
-        # We import here to avoid a cyclic import when this is used via wrapper.main
-        from voc4cat.wrapper import setup_logging
-
+        from voc4cat.wrapper import clean_logging_shutdown, setup_logging
         setup_logging(logger=logger, logfile=args.logfile)
+        atexit.register(clean_logging_shutdown)
     elif run_via_entrypoint:
-        from voc4cat.wrapper import setup_logging
-
+        from voc4cat.wrapper import clean_logging_shutdown, setup_logging
         setup_logging(logger=logger)
+        atexit.register(clean_logging_shutdown)
 
     if args.listprofiles:
         s = "Profiles\nToken\tIRI\n-----\t-----\n"
@@ -601,8 +597,8 @@ def main(args=None):
 
 if __name__ == "__main__":
     from voc4cat.wrapper import setup_logging
-
     setup_logging(logger=logger)
+    atexit.register(clean_logging_shutdown)
     retval = main(sys.argv[1:])
     if retval is not None:
         sys.exit(retval)

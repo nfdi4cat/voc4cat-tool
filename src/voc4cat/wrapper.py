@@ -804,6 +804,7 @@ def main_cli(args=None):
 
     if args_wrapper.version:
         print(f"voc4cat {__version__}")
+        return err
 
     elif args_wrapper.hierarchy_from_indent or args_wrapper.hierarchy_to_indent:
         if is_file_available(args_wrapper.file_to_preprocess, ftype="excel"):
