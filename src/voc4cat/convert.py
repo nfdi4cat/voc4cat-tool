@@ -599,5 +599,6 @@ if __name__ == "__main__":
 
     setup_logging(logger=logger)
     retval = main(sys.argv[1:])
+    logging.shutdown()
     if retval is not None:
         sys.exit(retval)
