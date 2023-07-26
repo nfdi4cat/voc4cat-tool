@@ -1,16 +1,22 @@
-# Excel templates
+# File templates
 
-The templates here match structure-wise with the templates in [VocExcel](https://github.com/nfdi4cat/VocExcel) of the same version number.
+## Excel templates
 
-## Version 0.4.3
+The identical template `voc4cat_template_043.xlsx` is included in [voc4cat-tool/templates](https://github.com/nfdi4cat/voc4cat-template/tree/main/templates).
 
-### Revision 2023-06a
+The 0.4.3-templates here still match structure-wise with the templates in [VocExcel](https://github.com/rdflib/VocExcel) of the same version number.
 
-The following has changed compared to the last revision.
+### Version 0.4.3
+
+#### Revision 2023-07a
+
+- Fixed typos.
+
+#### Revision 2023-06a
 
 - Corrected the pre-defined prefix for voc4cat.
 
-### Revision 2023-03a
+#### Revision 2023-03a
 
 The following is different in the voc4cat-template (`voc4cat_template_043.xlsx`):
 
@@ -22,14 +28,12 @@ The following is different in the voc4cat-template (`voc4cat_template_043.xlsx`)
 - Sheet "Additional Concept Features": Removed Excel formula in Concept-IRI-column since the formula could easily lead to mixing-up previously added relations.
 - Sheet "Prefix Sheet": Added a xlsx-validation rule to check that prefixes do not end with a colon.
 
-The identical template `voc4cat_template_043.xlsx` is included in [voc4cat-tool/templates](https://github.com/nfdi4cat/voc4cat-template/tree/main/templates).
-
-## Earlier template versions
+### Earlier template versions
 
 Earlier template versions which are not listed here should not be used.
 
-# Vocabulary configuration file template "idranges.toml"
+## Vocabulary configuration file template "idranges.toml"
 
-With this cofig file ranges of integer IDs can be pre-allocated to specific contributors.
-Also ORCID and ROR ID can be specified for each contributor.
-The file moreover holds other config parameters for a vocabulary, e.g. the length of the ID.
+With this config file ranges of integer IDs can be pre-allocated to specific contributors.
+Also ORCID, GitHub username and optionally ROR ID can be specified for each contributor.
+In addition, a few other parameters can be specified for vocabularies, e.g. the length of the ID.
