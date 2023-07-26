@@ -43,6 +43,9 @@ def setup_logging(loglevel: int = logging.INFO, logfile: Path | None = None):
         fh.setFormatter(fh_formatter)
         logger.addHandler(fh)
 
+    # Silence noisy loggers from used packages
+    logging.getLogger("PIL.PngImagePlugin").propagate = False
+
 
 # At some point it seemed that we need this on gh-actions but we don't.
 # @atexit.register
