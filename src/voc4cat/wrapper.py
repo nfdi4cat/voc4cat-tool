@@ -89,12 +89,12 @@ def may_overwrite(no_warn, xlf, outfile, func):
 
 def make_ids(fpath, outfile, search_prefix, start_id):
     """
-    Replace all prefix:suffix CURIs using IDs counting up from start_id
+    Replace all prefix:suffix CURIEs using IDs counting up from start_id
 
     If new_prefix is None the new IRI is a concatenation of VOC_BASE_IRI and ID.
-    If new_prefix is given the new IRI is the CURI new_prefix:ID.
+    If new_prefix is given the new IRI is the CURIE new_prefix:ID.
     """
-    logger.info("\nReplacing {search_prefix}:... IRIs.")
+    logger.info("\nReplacing '%s' IRIs.", search_prefix)
     # Load in data_only mode to get cell values not formulas.
     wb = openpyxl.load_workbook(fpath, data_only=True)
     is_supported_template(wb)
@@ -126,7 +126,7 @@ def make_ids(fpath, outfile, search_prefix, start_id):
                     iri_new = replaced_iris[iri]
                 else:
                     iri_new = voc_base_iri + f"{next(id_gen):07d}"
-                    msg = f"[{sheet}] Replaced CURI {iri} by {iri_new}"
+                    msg = f"[{sheet}] Replaced CURIE {iri} by {iri_new}"
                     logger.debug(msg)
                     replaced_iris[iri] = iri_new
                 row[0].value = iri_new
@@ -588,7 +588,7 @@ def main_cli(args=None):
         "--make-ids",
         help=(
             "Specify prefix to search and replace by ID-based vocabulary IRIs. "
-            "The prefix and a start ID (positive integer) are required."
+            "The prefix and a start ID (positive integer) are required. "
             "The IDs have a length of 7 and are left padded with 0 if shorter."
         ),
         nargs=2,
@@ -918,7 +918,7 @@ def main_cli(args=None):
         if xlsx_files:
             logger.info("Calling convert for xlsx files")
         for xlf in xlsx_files:
-            logger.debug("-> %", xlf)
+            logger.debug("-> %s", xlf)
             locargs = list(vocexcel_args)
             locargs.append(xlf)
             fprefix, fsuffix = str(xlf).rsplit(".", 1)

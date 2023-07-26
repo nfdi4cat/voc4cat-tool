@@ -1208,4 +1208,3 @@
         <https://example.org/0000078> ;
     skos:prefLabel "An example with terms from photocatalysis (taken from voc4Cat)"@en ;
     dcat:contactPoint "David Linke (orcid:0000-0002-5898-1820)" .
-
