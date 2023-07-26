@@ -77,7 +77,7 @@ dev = [
 
 [project.scripts]
 voc4cat = "voc4cat.wrapper:main_cli"
-voc4cat-ng = "voc4cat.cli:start_cli_app"
+voc4cat-ng = "voc4cat.cli:run_cli_app"
 vocexcel = "voc4cat.convert:main"
 merge_vocab = "voc4cat.merge_vocab:main_cli"
 
