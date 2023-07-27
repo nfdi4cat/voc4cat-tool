@@ -250,7 +250,7 @@ def test_check_for_removed_iris(  # noqa: PLR0913
     # Prepare data with removed concept
     g = Graph()
     g.parse(original, format="turtle")
-    one_uri = list(g.subjects(RDF.type, skos_el))[0]
+    one_uri = next(iter(g.subjects(RDF.type, skos_el)))
     g.remove((one_uri, None, None))
     reduced = tmp_path / (str(original.stem) + "_reduced.turtle")
     g.serialize(destination=reduced, format="turtle")

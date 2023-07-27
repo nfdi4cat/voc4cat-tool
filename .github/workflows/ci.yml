@@ -75,7 +75,7 @@ jobs:
         run: |
           python -m coverage combine
           python -m coverage html --skip-empty --skip-covered
-          # By merging files from vocexcel coverage dropped from 100% to 93%.
+          # By merging files from vocexcel in #119 coverage dropped from 100% to 93%.
           python -m coverage report --fail-under=95
 
       - name: Upload HTML report
