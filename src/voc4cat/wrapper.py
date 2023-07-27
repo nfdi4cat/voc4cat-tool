@@ -284,7 +284,7 @@ def hierarchy_to_indent(fpath, outfile, sep):
             if iri in row_by_iri:  # merge needed
                 # compare fields, merge if one is empty, error if different values
                 new_data = [row[col_no] for col_no in range(6, col_last)]
-                old_data = row_by_iri[iri][list(row_by_iri[iri].keys())[0]][5:]
+                old_data = row_by_iri[iri][next(iter(row_by_iri[iri].keys()))][5:]
                 merged = []
                 for old, new in zip(old_data, new_data):
                     if (old and new) and (old != new):
