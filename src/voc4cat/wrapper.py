@@ -87,22 +87,25 @@ def may_overwrite(no_warn, xlf, outfile, func):
 #     return namespace_prefixes
 
 
-def make_ids(fpath, outfile, search_prefix, start_id):
+def make_ids(fpath, outfile, search_prefix, start_id, base_iri=None):
     """
     Replace all prefix:suffix CURIEs using IDs counting up from start_id
 
-    If new_prefix is None the new IRI is a concatenation of VOC_BASE_IRI and ID.
-    If new_prefix is given the new IRI is the CURIE new_prefix:ID.
+    If base_iri is None the new IRI is a concatenation of VOC_BASE_IRI and ID.
+    If base_iri is given the new IRI is the concatenation of base_iri and ID.
     """
     logger.info("\nReplacing '%s' IRIs.", search_prefix)
     # Load in data_only mode to get cell values not formulas.
     wb = openpyxl.load_workbook(fpath, data_only=True)
     is_supported_template(wb)
-    voc_base_iri = wb["Concept Scheme"].cell(row=2, column=2).value
-    if voc_base_iri is None:
-        voc_base_iri = "https://example.org/"
-        wb["Concept Scheme"].cell(row=2, column=2).value = voc_base_iri
+    if base_iri is None:
+        base_iri = wb["Concept Scheme"].cell(row=2, column=2).value
+        if base_iri is None:
+            base_iri = "https://example.org/"
+            wb["Concept Scheme"].cell(row=2, column=2).value = base_iri
+            logger.warning("No concept scheme IRI found, using https://example.org/")
 
+    # TODO remove check in 0.6.0 - it is in transform._check_make_ids_args
     try:
         start_id = int(start_id)
     except ValueError:
@@ -110,6 +113,10 @@ def make_ids(fpath, outfile, search_prefix, start_id):
     if start_id <= 0:
         msg = 'For option --make-ids the "start_id" must be an integer greater than 0.'
         raise ValueError(msg)
+
+    # TODO if config is set: Check that file name is in config
+    voc_config = config.IDRANGES.vocabs.get(fpath.stem, {})
+    id_length = voc_config.get("id_length", 7)
 
     id_gen = count(int(start_id))
     replaced_iris = {}
@@ -125,7 +132,7 @@ def make_ids(fpath, outfile, search_prefix, start_id):
                 if iri in replaced_iris:
                     iri_new = replaced_iris[iri]
                 else:
-                    iri_new = voc_base_iri + f"{next(id_gen):07d}"
+                    iri_new = base_iri + f"{next(id_gen):0{id_length}d}"
                     msg = f"[{sheet}] Replaced CURIE {iri} by {iri_new}"
                     logger.debug(msg)
                     replaced_iris[iri] = iri_new
@@ -250,7 +257,7 @@ def hierarchy_from_indent(fpath, outfile, sep):
         row += 1
 
     wb.save(outfile)
-    logger.info("Saved updated file as %s", outfile)
+    logger.info("Saved file with children-IRI hierarchy as %s", outfile)
     return 0
 
 
@@ -346,7 +353,7 @@ def hierarchy_to_indent(fpath, outfile, sep):
             iri_written.append((iri, lang))
 
     wb.save(outfile)
-    logger.info("Saved updated file as %s", outfile)
+    logger.info("Saved file with indentation hierarchy as %s", outfile)
     return 0
 
 
@@ -625,7 +632,7 @@ def main_cli(args=None):
     parser.add_argument(
         "--config",
         help=('Path to config file (typically "idranges.toml").'),
-        type=str,
+        type=Path,
         required=False,
     )
 
@@ -746,7 +753,7 @@ def main_cli(args=None):
             os.makedirs(logfile.parents[0], exist_ok=True)
         setup_logging(loglevel, logfile)
 
-    # load config from "idranges.toml" in cwd
+    # load config
     if args_wrapper.config is not None:
         if Path(args_wrapper.config).exists():
             config.load_config(config_file=Path(args_wrapper.config))
@@ -980,7 +987,9 @@ def main_cli(args=None):
         err += check_ci_postrun(prev_dir, Path(outdir))
 
     if not err:
-        print("NOTICE  |Voc4cat successfully finished.")
+        # log completion with higher level than warning
+        logging.addLevelName(35, "NOTICE")
+        logging.log(35, "Voc4cat successfully finished.")
     return err
 
 
