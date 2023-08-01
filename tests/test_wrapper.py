@@ -20,7 +20,7 @@ CS_CYCLES_MULTI_LANG_IND = "concept-scheme-with-cycles_multilang_indent_iri.xlsx
 
 
 def test_main_no_args_entrypoint(monkeypatch, capsys):
-    monkeypatch.setattr("sys.argv", ["voc4at"])
+    monkeypatch.setattr("sys.argv", ["voc4cat"])
     exit_code = main_cli()
     captured = capsys.readouterr()
     assert "usage: voc4cat" in captured.out
@@ -49,7 +49,6 @@ def test_main_version(capsys):
 
 
 def test_make_ids_missing_file(caplog):
-    # Try to run a command that would overwrite the input file with the output file
     with caplog.at_level(logging.ERROR):
         exit_code = main_cli(["--make-ids", "ex", "1", "missing.xyz"])
     assert "Expected xlsx-file or directory but got:" in caplog.text
@@ -404,7 +403,6 @@ def test_outdir_variants(monkeypatch, datadir, tmp_path, outdir):
     if outdir:
         cmd.extend(["--output-directory", str(tmp_path / outdir)])
     cmd.append(str(tmp_path / CS_CYCLES_INDENT_IRI))
-    # print(f"\n>>> cmd {cmd}")
     monkeypatch.chdir(tmp_path)
     main_cli(cmd)
 
@@ -627,6 +625,9 @@ def test_no_separator(monkeypatch, datadir):
         ValueError, match="Setting the indent separator to zero length is not allowed."
     ):
         main_cli(["--indent-separator", "", CS_CYCLES])
+
+
+# TODO From here on review rest of tests for new cli.
 
 
 def test_duplicates(datadir, tmp_path, caplog):

@@ -28,7 +28,11 @@ from voc4cat.util import (
     dag_to_node_levels,
     get_concept_and_level_from_indented_line,
 )
-from voc4cat.utils import EXCEL_FILE_ENDINGS, KNOWN_FILE_ENDINGS, RDF_FILE_ENDINGS
+from voc4cat.utils import (
+    EXCEL_FILE_ENDINGS,
+    RDF_FILE_ENDINGS,
+    has_file_in_multiple_formats,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,20 +47,6 @@ def is_file_available(fname, ftype):
     if "rdf" in ftype and fname.suffix.lower().endswith(tuple(RDF_FILE_ENDINGS)):
         return True
     return False
-
-
-def has_file_in_more_than_one_format(dir_):
-    files = [
-        os.path.normcase(f)
-        for f in glob.glob(os.path.join(dir_, "*.*"))
-        if f.endswith(tuple(KNOWN_FILE_ENDINGS))
-    ]
-    file_names = [os.path.splitext(f)[0] for f in files]
-    unique_file_names = set(file_names)
-    if len(file_names) == len(unique_file_names):
-        return False
-    seen = set()
-    return [x for x in file_names if x in seen or seen.add(x)]
 
 
 def is_supported_template(wb):
@@ -370,7 +360,7 @@ def run_pylode(file_path, output_path):
     for turtle_file in turtle_files:
         logger.info("Building pyLODE documentation for %s", turtle_file)
         filename = Path(turtle_file)  # .resolve())
-        outdir = output_path / filename.with_suffix("").name
+        outdir = output_path / filename.stem
         outdir.mkdir(exist_ok=True)
         outfile = outdir / "index.html"
         # breakpoint()
@@ -890,7 +880,7 @@ def main_cli(args=None):
     elif args_wrapper and args_wrapper.file_to_preprocess:
         if os.path.isdir(args_wrapper.file_to_preprocess):
             dir_ = args_wrapper.file_to_preprocess
-            if duplicates := has_file_in_more_than_one_format(dir_):
+            if duplicates := has_file_in_multiple_formats(dir_):
                 logger.error(
                     "Files may only be present in one format. Found more than one "
                     'format for: "%s"',
@@ -977,7 +967,7 @@ def main_cli(args=None):
         and os.getenv("CI_RUN")
         and outdir is not None
     ):
-        main_branch = Path(".").resolve() / "_main_branch"
+        main_branch = Path().resolve() / "_main_branch"
         prev_dir = main_branch / "vocabularies"
         logger.info(
             "Looking for changes between %s (previous) and %s (new)",

@@ -2,34 +2,61 @@
 
 import argparse
 import logging
+import os.path
 import sys
 import textwrap
 from pathlib import Path
 
-from voc4cat import setup_logging
+from voc4cat import __version__, config, setup_logging
+from voc4cat.check import check
 from voc4cat.checks import Voc4catError
+from voc4cat.convert import convert
+from voc4cat.docs import docs
+from voc4cat.transform import transform
 
 logger = logging.getLogger(__name__)
 
 
-def transform(args):
-    print("Transform subcommand executed!")
-    print(f"args: {args!r}")
+def process_common_options(args):
+    # set up output directory
+    outdir = getattr(args, "outdir", None)
+    if outdir is not None and os.path.isfile(outdir):
+        msg = "Outdir must be a directory but it is a file."
+        logger.error(msg)
+        raise Voc4catError(msg)
+    if outdir is not None and not os.path.isdir(outdir):
+        outdir.mkdir(exist_ok=True, parents=True)
 
+    # set up logging
+    loglevel = logging.INFO + (args.quieter - args.verboser) * 10
+    logfile = args.logfile
+    if logfile is None:
+        setup_logging(loglevel)
+    else:
+        if outdir is not None:
+            logfile = Path(outdir) / logfile
+        elif not logfile.parents[0].exists():
+            logfile.parents[0].mkdir(exist_ok=True, parents=True)
+        setup_logging(loglevel, logfile)
 
-def convert(args):
-    print("Convert subcommand executed!")
-    print(f"args: {args!r}")
+    logger.debug("Processing common options.")
 
+    # load config
+    if args.config is not None:
+        if args.config.exists():
+            config.load_config(config_file=Path(args.config))
+        else:
+            msg = "Config file not found at: %s"
+            logger.error(msg, args.config)
+            raise Voc4catError(msg % args.config)
 
-def check(args):
-    print("Check subcommand executed!")
-    print(f"args: {args!r}")
-
-
-def docs(args):
-    print("Docs subcommand executed!")
-    print(f"args: {args!r}")
+    # check VOCAB
+    if args.VOCAB is None:
+        return
+    if not args.VOCAB.exists():
+        msg = "File/dir not found: %s"
+        logger.error(msg, args.VOCAB)
+        raise Voc4catError(msg % args.VOCAB)
 
 
 class DecentFormatter(argparse.HelpFormatter):
@@ -61,6 +88,11 @@ class DecentFormatter(argparse.HelpFormatter):
         return lines
 
 
+def root_cmd(args):
+    if args.version:  # pragma: no cover
+        print(f"voc4cat {__version__}")
+
+
 def create_root_parser():
     parser = argparse.ArgumentParser(
         prog="voc4cat-ng",
@@ -74,6 +106,7 @@ def create_root_parser():
         help="The version of voc4cat command line interface.",
         action="store_true",
     )
+    parser.set_defaults(func=root_cmd)
     return parser
 
 
@@ -92,7 +125,7 @@ def create_common_options_parser():
         action="count",
         dest="verboser",
         default=0,
-        help="Make output more verbose. Repeat to increase verbosity (-vv or -vvv).",
+        help="More verbose output. Repeat to increase verbosity (-vv or -vvv).",
     )
     group.add_argument(
         "-q",
@@ -100,13 +133,23 @@ def create_common_options_parser():
         action="count",
         default=0,
         dest="quieter",
-        help="Make output less verbose. Repeat to decrease verbosity (-qq or -qqq).",
+        help="Less verbose output. Repeat to reduce verbosity (-qq or -qqq).",
     )
     parser.add_argument(
         "--config",
         help=('Path to config file (typically "idranges.toml").'),
         type=Path,
         required=False,
+    )
+    parser.add_argument(
+        "-O",
+        "--outdir",
+        help=(
+            "Specify directory where files should be written to. "
+            "The directory is created if required."
+        ),
+        metavar=("DIRECTORY"),
+        type=Path,
     )
     parser.add_argument(
         "-l",
@@ -117,8 +160,6 @@ def create_common_options_parser():
         ),
         type=Path,
     )
-    # We set a do-nothing func here so that we can call func for all parsers below.
-    parser.set_defaults(func=lambda _: None)
     return parser
 
 
@@ -137,23 +178,16 @@ def add_transform_subparser(subparsers, options):
         ),
         **options,
     )
-    parser.add_argument(
-        "-O",
-        "--outdir",
-        help=(
-            "Specify directory where files should be written to. "
-            "The directory is created if required."
-        ),
-        metavar=("DIRECTORY"),
-        type=Path,
-    )
-    parser.add_argument(
+    xlsxopt = parser.add_argument_group("Excel/xlsx options")
+    group = xlsxopt.add_mutually_exclusive_group()
+    group.add_argument(
         "--make-ids",
         help=(
-            "Specify prefix or mapping prefix:base-uri and first ID to use. "
-            'An example for a prefix-mapping is "ex:https://example.org/". '
-            "If only the prefix is given without a base-URI part "
-            "the concept-scheme URI is used as base-URI to append the IDs to.\n"
+            "Acts on xlsx files. Specify the prefix or mapping as prefix:base-IRI and first ID to use. "
+            "All IRIs starting with prefix are replaced by a concatenation of "
+            'base_IRI and ID. An example for a prefix-mapping is "ex:https://example.org/". '
+            "If only the prefix is given without a base-URI part the "
+            "concept-scheme IRI is used as base-IRI to append the IDs to.\n"
             "The default length of the ID is 7 digits. It can be changed "
             "via a config-file."
         ),
@@ -161,17 +195,17 @@ def add_transform_subparser(subparsers, options):
         metavar=("PREFIX-MAPPING", "START-ID"),
         type=str,
     )
-    parser.add_argument(
-        "--hierarchy-from-indent",
+    group.add_argument(
+        "--from-indent",
         help=("Convert concept sheet with indentation to children-URI hierarchy."),
         action="store_true",
     )
-    parser.add_argument(
-        "--hierarchy-to-indent",
+    group.add_argument(
+        "--to-indent",
         help=("Convert concept sheet from children-URI hierarchy to indentation."),
         action="store_true",
     )
-    parser.add_argument(
+    xlsxopt.add_argument(
         "--indent",
         help=(
             "Separator character(s) to read/write indented hierarchies "
@@ -191,7 +225,6 @@ def add_transform_subparser(subparsers, options):
     )
     parser.add_argument(
         "VOCAB",
-        nargs=1,  # allow 0 or 1 file name as argument
         type=Path,
         help="Either the file to process or a directory with files to process.",
     )
@@ -213,27 +246,16 @@ def add_convert_subparser(subparsers, options):
         ),
         **options,
     )
-    parser.add_argument(
-        "-O",
-        "--outdir",
-        help=(
-            "Specify directory where files should be written to. "
-            "The directory is created if required."
-        ),
-        metavar=("DIRECTORY"),
-        type=Path,
-    )
-    parser.add_argument(
+    skosopt = parser.add_argument_group("Creating SKOS")
+    skosopt.add_argument(
         "--outputformat",
-        help=(
-            "An optionally-provided output format for RDF files. Only relevant in "
-            "Excel-to-RDf conversions. (default: turtle)"
-        ),
+        help=("An optionally-provided output format for RDF files. (default: turtle)"),
         required=False,
         choices=["turtle", "xml", "json-ld"],
         default="turtle",
     )
-    parser.add_argument(
+    xlsxopt = parser.add_argument_group("Creating Excel/xlsx")
+    xlsxopt.add_argument(
         "-t",
         "--template",
         help=(
@@ -245,7 +267,6 @@ def add_convert_subparser(subparsers, options):
     )
     parser.add_argument(
         "VOCAB",
-        nargs=1,
         type=Path,
         help="Either the file to process or a directory with files to process.",
     )
@@ -264,14 +285,17 @@ def add_check_subparser(subparsers, options):
         help="Check vocabularies or validate vocabulary pipelines.",
         **options,
     )
-    parser.add_argument(
-        "--ci",
-        nargs=1,
-        metavar=("EXISTING",),
-        type=Path,
-        help="Perform checks on EXISTING and VOCAB directories in CI pipeline.",
+    xlsxopt = parser.add_argument_group("Excel/xlsx validation")
+    xlsxopt.add_argument(
+        "--inplace",  # was "--no-warn"
+        help=(
+            "Annotate file(s) in place. Replaces the input file(s) with the annotated output file(s)."
+        ),
+        default=False,
+        action="store_true",
     )
-    parser.add_argument(
+    shacl = parser.add_argument_group("SHACL profile validation")
+    shacl.add_argument(
         "-p",
         "--profile",
         help=(
@@ -281,8 +305,8 @@ def add_check_subparser(subparsers, options):
         ),
         default="vocpub",
     )
-    parser.add_argument(
-        "--fail_at_level",
+    shacl.add_argument(
+        "--fail-at-level",
         help=(
             "The minimum level which fails SHACL validation: 1-info, 2-warning, 3-violation "
             "(default: 1-info)"
@@ -291,7 +315,7 @@ def add_check_subparser(subparsers, options):
         type=int,
         choices=[1, 2, 3],
     )
-    parser.add_argument(
+    shacl.add_argument(
         "--listprofiles",
         help=(
             "List all vocabulary profiles that this converter supports "
@@ -299,6 +323,26 @@ def add_check_subparser(subparsers, options):
             "-p (--profile) flag."
         ),
         action="store_true",
+    )
+    workflow = parser.add_argument_group("Workflow options")
+    workflow.add_argument(
+        "--ci-pre",
+        metavar=("INBOX",),
+        type=Path,
+        help=(
+            "Perform consistency check on INBOX and VOCAB directories, e.g.\n"
+            "- are too many vacbulary file in INBOX (if restricted via config)\n"
+            "- do xlsx filenames in INBOX match SKOS file names in VOCAB"
+        ),
+    )
+    workflow.add_argument(
+        "--ci-post",
+        metavar=("EXISTING",),
+        type=Path,
+        help=(
+            "Validate if changes between EXISTING and new VOCAB directories "
+            "are allowed."
+        ),
     )
     parser.add_argument(
         "VOCAB",
@@ -318,25 +362,21 @@ def add_docs_subparser(subparsers, options):
         **options,
     )
     parser.add_argument(
-        "-O",
-        "--outdir",
-        help=(
-            "Specify directory where files should be written to. "
-            "The directory is created if required."
-        ),
-        metavar=("DIRECTORY"),
-        type=Path,
-    )
-    parser.add_argument(
         "--style",
         help="Select style of html documentation. (default: pylode)",
         choices=("pylode", "ontospy"),
+        default="pylode",
         type=str,
         required=False,
     )
     parser.add_argument(
+        "--force",
+        help=("Enforce overwriting files in output path."),
+        default=False,
+        action="store_true",
+    )
+    parser.add_argument(
         "VOCAB",
-        nargs=1,
         type=Path,
         help="Either the file to process or a directory with files to process.",
     )
@@ -371,11 +411,13 @@ def main_cli(args=None):
 
     if not args:
         parser.print_help()
+        return
 
     # Parse the command-line arguments
     #   pars_args will call sys.exit(2) if invalid commands are given.
-    #   For Py>=3.9 this can be changed https://docs.python.org/3/library/argparse.html#exit-on-error
-    args = parser.parse_args()
+    args = parser.parse_args(args)
+    if hasattr(args, "config"):
+        process_common_options(args)
     args.func(args)
 
 
@@ -383,9 +425,6 @@ def run_cli_app(args=None):
     """Entry point for running the cli app."""
     if args is None:
         args = sys.argv[1:]
-
-    setup_logging()
-
     try:
         main_cli(args)
     except Voc4catError:

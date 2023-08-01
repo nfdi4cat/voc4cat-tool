@@ -145,7 +145,6 @@ branch = true
 source = ["voc4cat"]
 omit = [
     "**/voc4cat/_version.py",
-    "**/voc4cat/cli.py"  # in early development
 ]
 
 [tool.coverage.paths]
@@ -224,8 +223,8 @@ select = [
     "Q",   # flake8-quotes
     "RET", # flake8-return
     "SIM", # flake8-simplify
-    # flake8-unused-arguments (ARG)
-    # flake8-use-pathlib (PTH)
+    # "ARG", # flake8-unused-arguments (ARG)
+    # "PTH", # flake8-use-pathlib (PTH)
     # "ERA", # eradicate (ERA) - commented out code
     # pandas-vet (PD)
     "PGH", # pygrep-hooks
