@@ -20,7 +20,7 @@ from importlib.metadata import version
 # -- Project information -----------------------------------------------------
 
 project = "voc4cat"
-copyright = "2022, David Linke"
+copyright = "2022, David Linke"  # noqa: A001
 author = "David Linke"
 
 # The full version, including alpha/beta/rc tags

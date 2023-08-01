@@ -164,14 +164,14 @@ class ConceptScheme(BaseModel):
 
     @validator("creator")
     def creator_must_be_from_list(cls, v):
-        if v not in ORGANISATIONS.keys():
+        if v not in ORGANISATIONS:
             msg = f"Organisations must be selected from the Organisations list: {', '.join(ORGANISATIONS)}"
             raise ValueError(msg)
         return v
 
     @validator("publisher")
     def publisher_must_be_from_list(cls, v):
-        if v not in ORGANISATIONS.keys():
+        if v not in ORGANISATIONS:
             msg = f"Organisations must be selected from the Organisations list: {', '.join(ORGANISATIONS)}"
             raise ValueError(msg)
         return v
@@ -195,7 +195,10 @@ class ConceptScheme(BaseModel):
                     v,
                     DCTERMS.modified,
                     Literal(
-                        datetime.datetime.now().strftime("%Y-%m-%d"), datatype=XSD.date
+                        datetime.datetime.now(datetime.timezone.utc).strftime(
+                            "%Y-%m-%d"
+                        ),
+                        datatype=XSD.date,
                     ),
                 )
             )

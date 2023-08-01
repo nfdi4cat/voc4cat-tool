@@ -29,10 +29,9 @@ def test_import(datadir, caplog, temp_config):
     assert len(config.IDRANGES.vocabs["myvocab"].id_range) == 3  # noqa: PLR2004
 
 
-def test_non_exisiting_config_file(tmp_path, caplog):
+def test_non_exisiting_config_file(tmp_path, caplog, temp_config):
     """Test for non-existing path to config which initializes defaults"""
-    from voc4cat import config
-
+    config = temp_config
     fpath = tmp_path / "does-not-exist.toml"
     with caplog.at_level(logging.WARNING):
         config.load_config(config_file=fpath)
@@ -43,9 +42,9 @@ def test_non_exisiting_config_file(tmp_path, caplog):
     assert config.IDRANGES.default_config is True
 
 
-def test_overlapping_idranges(datadir):
+def test_overlapping_idranges(datadir, temp_config):
     """Test for non-existing path to config which initializes defaults"""
-    from voc4cat import config
+    config = temp_config
 
     # load a valid config
     config.load_config(datadir / VALID_CONFIG)
@@ -59,9 +58,9 @@ def test_overlapping_idranges(datadir):
         config.load_config(config=config.IDRANGES)
 
 
-def test_single_vocab_consistency(datadir):
+def test_single_vocab_consistency(datadir, temp_config):
     """Test consistency check for single_vocab=True."""
-    from voc4cat import config
+    config = temp_config
 
     # load a valid config
     config.load_config(datadir / VALID_CONFIG)
@@ -82,9 +81,9 @@ def test_single_vocab_consistency(datadir):
         config.load_config(config=config.IDRANGES)
 
 
-def test_idrange_item_validation(datadir):
+def test_idrange_item_validation(datadir, temp_config):
     """Test for custom vlidators in config.IdrangeItem"""
-    from voc4cat import config
+    config = temp_config
 
     with pytest.raises(ValidationError) as excinfo:
         _bad_ids = config.IdrangeItem(first_id=2, last_id=2, gh_name="no-range")
