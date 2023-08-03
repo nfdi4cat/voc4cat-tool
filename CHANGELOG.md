@@ -1,5 +1,16 @@
 # Change log
 
+## Release 0.5.1 (2023-08-03)
+
+New features:
+
+- New (experimental) command line interface `voc4cat-ng` that will replace the current one in 0.6.0. #128, #135
+- When adding IDs via --make-IDs, the new CLI offers to pass a base-IRI (see help `voc4cat-ng transform --help`).
+
+Changes:
+
+- Various small changes to improve test coverage (now 96 %) and reduce the number of linter complaints (from 38 to 25).
+
 ## Release 0.5.0 (2023-07-27)
 
 New features:

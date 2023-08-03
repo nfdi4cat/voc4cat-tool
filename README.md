@@ -32,7 +32,7 @@ Starting with v0.5.0 (July 2023) voc4cat uses its internal converter and does no
 To start you need:
 
 - git
-- Python (3.8 or newer)
+- Python (3.10 or newer)
 
 voc4cat works on windows, linux and mac. However, the examples below assume that you work on windows
 and that the [launcher](https://docs.python.org/3.11/using/windows.html#python-launcher-for-windows) is installed.
@@ -72,6 +72,8 @@ To install including all development tools use `pip install .[dev]` for just the
 Show a help message for the voc4cat command line tool with all available options.
 
 `voc4cat --help` (or simply `voc4cat`)
+
+*If you feel adventurous, you may alternatively try out the new improved command line interface `voc4cat-ng` (added in Release 0.5.1).*
 
 To create a new vocabulary use the voc4Cat-adjusted template from the `templates` subfolder.
 You may first use simple temporary IRIs like (`ex:my_term`).
