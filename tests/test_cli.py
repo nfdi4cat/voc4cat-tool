@@ -59,6 +59,14 @@ def test_nonexisting_file(monkeypatch, datadir, caplog):
     assert "File/dir not found: missing.xyz" in caplog.text
 
 
+def test_exit_errorvalue(monkeypatch, datadir, caplog):
+    monkeypatch.chdir(datadir)
+    with caplog.at_level(logging.ERROR), pytest.raises(SystemExit) as exc_info:
+        run_cli_app(["transform", "missing.xyz"])
+    assert exc_info.value.code == 1
+    assert "Terminating with Voc4cat error." in caplog.text
+
+
 def test_nonexisting_config(monkeypatch, datadir, caplog):
     monkeypatch.chdir(datadir)
     with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
@@ -84,14 +92,3 @@ def test_invalid_outdir(monkeypatch, datadir, tmp_path, caplog):
     ):
         main_cli(["transform", "--outdir", str(tmp_path / "README.md"), CS_SIMPLE])
     assert "Outdir must be a directory but it is a file." in caplog.text
-
-
-# TODO test logs/loglevel
-# @mock.patch.dict(os.environ, {"LOGLEVEL": "DEBUG"})
-# def test_set_log_level_by_envvar(datadir, tmp_path):
-#     dst = tmp_path
-#     shutil.copy(datadir / CS_SIMPLE, dst)
-#     outdir = tmp_path / "out"
-
-#     main_cli(["check", "--ci-pre", "--outdir", str(outdir), str(dst)])
-#     assert ret_code is None

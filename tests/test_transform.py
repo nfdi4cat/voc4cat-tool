@@ -492,6 +492,9 @@ def test_hierarchy_to_indent_merge(monkeypatch, datadir, tmp_path):
         )
 
 
+# ===== Tests for option --outdir =====
+
+
 @pytest.mark.parametrize(
     "outdir",
     [None, "out"],
@@ -525,3 +528,57 @@ def test_outdir_variants(monkeypatch, datadir, tmp_path, outdir):
         ws.iter_rows(min_row=3, max_col=2, values_only=True), expected
     ):
         assert row == expected_row
+
+
+# ===== Tests for options --split / --join =====
+
+
+@pytest.mark.parametrize(
+    "opt",
+    [None, "--inplace"],
+    ids=["default", "inplace"],
+)
+def test_split(monkeypatch, datadir, tmp_path, opt, caplog):
+    shutil.copy(datadir / CS_SIMPLE_TURTLE, tmp_path)
+    cmd = ["transform", "-v", "--split"]
+    if opt:
+        cmd.append("--inplace")
+    cmd.append(str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+
+    with caplog.at_level(logging.DEBUG):
+        main_cli(cmd)
+    assert "-> wrote split vocabulary to" in caplog.text
+
+    vocdir = (tmp_path / CS_SIMPLE_TURTLE).with_suffix("")
+    assert vocdir.is_dir()
+    assert (vocdir / "concept_scheme.ttl").exists()
+    assert len([*vocdir.glob("*.ttl")]) == 8  # noqa: PLR2004
+    if opt:
+        assert not (tmp_path / CS_SIMPLE_TURTLE).exists()
+
+
+@pytest.mark.parametrize(
+    "opt",
+    [None, "--inplace"],
+    ids=["default", "inplace"],
+)
+def test_join(monkeypatch, datadir, tmp_path, opt, caplog):
+    monkeypatch.chdir(tmp_path)
+    shutil.copy(datadir / CS_SIMPLE_TURTLE, tmp_path)
+    # create dir with split files
+    main_cli(["transform", "-v", "--split", "--inplace", str(tmp_path)])
+    # join files again as test
+    cmd = ["transform", "-v", "--join"]
+    if opt:
+        cmd.append("--inplace")
+    cmd.append(str(tmp_path))
+
+    with caplog.at_level(logging.DEBUG):
+        main_cli(cmd)
+    assert "-> joined vocabulary into" in caplog.text
+
+    vocdir = (tmp_path / CS_SIMPLE_TURTLE).with_suffix("")
+    assert (vocdir.parent / CS_SIMPLE_TURTLE).exists()
+    if opt:
+        assert not vocdir.exists()
