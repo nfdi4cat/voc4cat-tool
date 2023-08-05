@@ -491,7 +491,6 @@ def test_check(datadir, tmp_path, caplog, test_file, err, msg):  # noqa: PLR0913
         exit_code = main_cli(["--check", "--no-warn", str(dst)])
     assert exit_code == err
     assert msg in caplog.text
-    # TODO check that erroneous cells get colored.
 
 
 def test_check_overwrite_warning(monkeypatch, datadir, tmp_path):
@@ -625,9 +624,6 @@ def test_no_separator(monkeypatch, datadir):
         ValueError, match="Setting the indent separator to zero length is not allowed."
     ):
         main_cli(["--indent-separator", "", CS_CYCLES])
-
-
-# TODO From here on review rest of tests for new cli.
 
 
 def test_duplicates(datadir, tmp_path, caplog):

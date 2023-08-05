@@ -178,9 +178,29 @@ def add_transform_subparser(subparsers, options):
         ),
         **options,
     )
+    skosopt = parser.add_argument_group("SKOS options")
+    skosopt_meg = skosopt.add_mutually_exclusive_group()
+    skosopt_meg.add_argument(
+        "--split",
+        help=(
+            "Convert a single SKOS turtle file to a set of turtle files with "
+            "one class per file. The diff-optimized long turtle format is used. "
+            "Combine with --inplace to remove the source file."
+        ),
+        action="store_true",
+    )
+    skosopt_meg.add_argument(
+        "--join",
+        help=(
+            "Join a directory of turtles files representing a split SKOS "
+            "vocabulary to a single turtle file. Combine with --inplace "
+            "to remove the source directory and files."
+        ),
+        action="store_true",
+    )
     xlsxopt = parser.add_argument_group("Excel/xlsx options")
-    group = xlsxopt.add_mutually_exclusive_group()
-    group.add_argument(
+    xlsxopt_meg = xlsxopt.add_mutually_exclusive_group()
+    xlsxopt_meg.add_argument(
         "--make-ids",
         help=(
             "Acts on xlsx files. Specify the prefix or mapping as prefix:base-IRI and first ID to use. "
@@ -195,12 +215,12 @@ def add_transform_subparser(subparsers, options):
         metavar=("PREFIX-MAPPING", "START-ID"),
         type=str,
     )
-    group.add_argument(
+    xlsxopt_meg.add_argument(
         "--from-indent",
         help=("Convert concept sheet with indentation to children-URI hierarchy."),
         action="store_true",
     )
-    group.add_argument(
+    xlsxopt_meg.add_argument(
         "--to-indent",
         help=("Convert concept sheet from children-URI hierarchy to indentation."),
         action="store_true",
