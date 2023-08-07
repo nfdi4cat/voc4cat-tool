@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from voc4cat.wrapper import setup_logging
+from voc4cat import setup_logging
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,4 @@
-import argparse
 import logging
-import sys
 from pathlib import Path
 from typing import Dict, Literal, Union
 
@@ -12,7 +10,7 @@ from pyshacl.pytypes import GraphLike
 from rdflib import Graph
 from rdflib.namespace import DCAT, DCTERMS, OWL, PROV, RDF, RDFS, SKOS
 
-from voc4cat import __version__, config, models, profiles
+from voc4cat import config, models, profiles
 from voc4cat.checks import Voc4catError, validate_config_has_idrange
 from voc4cat.convert_043 import create_prefix_dict, write_prefix_sheet
 from voc4cat.convert_043 import (
@@ -23,7 +21,6 @@ from voc4cat.convert_043 import (
 )
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
-    KNOWN_FILE_ENDINGS,
     KNOWN_TEMPLATE_VERSIONS,
     RDF_FILE_ENDINGS,
     ConversionError,
@@ -482,177 +479,3 @@ def format_log_msg(result: Dict, colored: bool = False) -> str:
             else Fore.RED + "VIOLATION: " + Style.RESET_ALL + message
         )
     return formatted_msg
-
-
-def main(args=None):
-    run_via_entrypoint = args is None  # vocexcel run via entrypoint?
-    if run_via_entrypoint:
-        args = sys.argv[1:]
-
-    has_args = bool(args)
-
-    parser = argparse.ArgumentParser(
-        prog="vocexcel", formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-
-    parser.add_argument(
-        "-v",
-        "--version",
-        help="The version of this copy of VocExcel.",
-        action="store_true",
-    )
-
-    parser.add_argument(
-        "--listprofiles",
-        help="This flag, if set, must be the only flag supplied. It will cause the program to list all the vocabulary"
-        " profiles that this converter, indicating both their URI and their short token for use with the"
-        " -p (--profile) flag when converting Excel files",
-        action="store_true",
-    )
-
-    parser.add_argument(
-        "file_to_convert",
-        nargs="?",  # allow 0 or 1 file name as argument
-        type=Path,
-        help="The Excel file to convert to a SKOS vocabulary in RDF or an RDF file to convert to an Excel file",
-    )
-
-    parser.add_argument("--validate", help="Validate output file", action="store_true")
-
-    parser.add_argument(
-        "-p",
-        "--profile",
-        help="A profile - a specified information model - for a vocabulary. This tool understands several profiles and"
-        "you can choose which one you want to convert the Excel file according to. The list of profiles - URIs "
-        "and their corresponding tokens - supported by VocExcel, can be found by running the program with the "
-        "flag -lp or --listprofiles.",
-        default="vocpub",
-    )
-
-    parser.add_argument(
-        "--outputtype",
-        help="The format of the vocabulary output.",
-        choices=["file", "string"],
-        default="file",
-    )
-
-    parser.add_argument(
-        "-o",
-        "--outputfile",
-        help="An optionally-provided output file path.",
-        required=False,
-    )
-
-    parser.add_argument(
-        "--outputformat",
-        help="An optionally-provided output format for RDF files. Only relevant in Excel-to-RDf conversions.",
-        required=False,
-        choices=["turtle", "xml", "json-ld"],
-        default="turtle",
-    )
-
-    parser.add_argument(
-        "-t",
-        "--templatefile",
-        help="An optionally-provided Excel-template file to be used in SKOS-> Excel conversion.",
-        type=Path,
-        required=False,
-    )
-
-    # validation severity level
-    parser.add_argument(
-        "-e",
-        "--errorlevel",
-        help="The minimum level which fails validation (1 - info, 2 - warning, 3 - violation)",
-        default=1,
-    )
-
-    # log to file
-    parser.add_argument(
-        "-l",
-        "--logfile",
-        help="The file to write logging output to",
-        type=Path,
-        required=False,
-    )
-
-    args = parser.parse_args(args)
-
-    if not has_args:
-        # show help if no args are given
-        parser.print_help()
-        parser.exit()
-
-    # We import here to avoid a cyclic import when this is used via wrapper.main
-    if args.logfile:
-        from voc4cat.wrapper import setup_logging
-
-        setup_logging(logfile=args.logfile)
-    elif run_via_entrypoint:
-        from voc4cat.wrapper import setup_logging
-
-        setup_logging()
-
-    if args.listprofiles:
-        s = "Profiles\nToken\tIRI\n-----\t-----\n"
-        for k, v in profiles.PROFILES.items():
-            s += f"{k}\t{v.uri}\n"
-
-        print(s.rstrip())
-    elif args.version:
-        print(__version__)
-    elif args.file_to_convert:
-        if not args.file_to_convert.name.endswith(tuple(KNOWN_FILE_ENDINGS)):
-            logger.error(
-                'Files for conversion must either end with .xlsx (Excel) or one of the known RDF file endings, "%s"',
-                '", "'.join(RDF_FILE_ENDINGS.keys()),
-            )
-            parser.exit()
-
-        logger.info('Processing file "%s"', args.file_to_convert)
-
-        if args.file_to_convert.suffix.lower().endswith(tuple(EXCEL_FILE_ENDINGS)):
-            try:
-                o = excel_to_rdf(
-                    args.file_to_convert,
-                    profile=args.profile,
-                    output_type=args.outputtype,
-                    output_file_path=args.outputfile,
-                    output_format=args.outputformat,
-                    error_level=int(args.errorlevel),
-                    validate=True,
-                )
-                if args.outputtype == "string":
-                    print(o)
-                else:
-                    logger.info("-> %s", o)
-            except ConversionError:
-                logger.exception("Error converting from Excel to RDF.")
-                return 1
-
-        else:  # RDF file ending
-            try:
-                o = rdf_to_excel(
-                    args.file_to_convert,
-                    profile=args.profile,
-                    output_file_path=args.outputfile,
-                    template_file_path=args.templatefile,
-                    error_level=int(args.errorlevel),
-                )
-                if args.outputtype == "string":
-                    print(o)
-                else:
-                    logger.info("-> %s", o)
-            except ConversionError:
-                logger.exception("Error converting from RDF to Excel.")
-                return 1
-    return None
-
-
-if __name__ == "__main__":
-    from voc4cat.wrapper import setup_logging
-
-    setup_logging()
-    retval = main(sys.argv[1:])
-    if retval is not None:
-        sys.exit(retval)
