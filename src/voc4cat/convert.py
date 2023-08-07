@@ -417,7 +417,7 @@ def format_log_msg(result: Dict, colored: bool = False) -> str:
     return formatted_msg
 
 
-# ===== convert command implementation & helpers to validate cmd options =====
+# ===== convert command & helpers to validate cmd options =====
 
 
 def _check_convert_args(args):
@@ -482,4 +482,3 @@ def convert(args):
             ret = None
         if ret:  # TODO remove in 0.6.0 after getting rid of return values
             logger.info("-> %s", ret)
-

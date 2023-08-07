@@ -93,7 +93,7 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     return 0
 
 
-# ===== check command implementation & helpers to validate cmd options =====
+# ===== check command & helpers to validate cmd options =====
 
 
 def _check_ci_args(args):

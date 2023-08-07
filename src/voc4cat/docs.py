@@ -62,7 +62,7 @@ def run_ontospy(turtle_file: Path, output_path: Path) -> None:
     viz.build(viz_path)  # => build and save docs/visualization.
 
 
-# ===== docs command implementation =====
+# ===== docs command =====
 
 
 def docs(args):

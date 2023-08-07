@@ -12,7 +12,7 @@ from rdflib.namespace import SKOS
 
 from voc4cat import config
 from voc4cat.checks import Voc4catError
-from voc4cat.util import (
+from voc4cat.dag_util import (
     dag_from_indented_text,
     dag_from_narrower,
     dag_to_narrower,
@@ -339,7 +339,7 @@ def hierarchy_to_indent(fpath, outfile, sep):
     return 0
 
 
-# ===== transform command implementation & helpers to validate cmd options =====
+# ===== transform command & helpers to validate cmd options =====
 
 
 def _check_make_ids_args(args):
