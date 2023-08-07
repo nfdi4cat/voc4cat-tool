@@ -1,6 +1,6 @@
 import pytest
 from voc4cat.checks import Voc4catError
-from voc4cat.util import (
+from voc4cat.dag_util import (
     dag_from_indented_text,
     dag_from_narrower,
     dag_to_indented_text,
