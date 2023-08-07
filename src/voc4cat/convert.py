@@ -35,70 +35,6 @@ TEMPLATE_VERSION = None
 logger = logging.getLogger(__name__)
 
 
-def _check_convert_args(args):
-    if args.template is not None:
-        msg = ""
-        if not args.template.exists():
-            msg = f"Template file not found: {args.template}"
-        elif args.template.suffix.lower() not in EXCEL_FILE_ENDINGS:
-            msg = 'Template file must be of type ".xlsx".'
-        if msg:
-            logging.error(msg)
-            raise Voc4catError(msg)
-    # Option outputformat is validated by argparse since its restricted by choices.
-
-    # Add check if files of the same name are present in different formats.
-    if args.VOCAB.is_dir():  # noqa: SIM102
-        if duplicates := has_file_in_multiple_formats(args.VOCAB):
-            msg = (
-                "Files may only be present in one format. Found more than one "
-                'format for: "%s"'
-            )
-            logger.error(msg, '", "'.join(duplicates))
-            raise Voc4catError(msg % '", "'.join(duplicates))
-
-
-def convert(args):
-    logger.info("Convert subcommand started!")
-
-    _check_convert_args(args)
-
-    files = [args.VOCAB] if args.VOCAB.is_file() else [*Path(args.VOCAB).iterdir()]
-    xlsx_files = [f for f in files if f.suffix.lower() in EXCEL_FILE_ENDINGS]
-    rdf_files = [f for f in files if f.suffix.lower() in RDF_FILE_ENDINGS]
-
-    # convert xlsx files
-    for file in files:
-        logger.debug('Processing "%s"', file)
-        outfile = file if args.outdir is None else args.outdir / file.name
-
-        # TODO revisit after separating validation from conversion
-        if file in xlsx_files:
-            suffix = "ttl" if args.outputformat == "turtle" else args.outputformat
-            ret = excel_to_rdf(
-                file,
-                profile="vocpub",  # set a fixed value until validation is separated
-                output_type="file",  # we only support file output from 0.6.0 on
-                output_file_path=outfile.with_suffix(f".{suffix}"),
-                output_format=args.outputformat,
-                error_level=1,  # set a fixed value until validation is separated
-                validate=True,  # "inherited" from vocexcel
-            )
-        elif file in rdf_files:
-            ret = rdf_to_excel(
-                file,
-                profile="vocpub",  # set a fixed value until validation is separated
-                output_file_path=outfile.with_suffix(".xlsx"),
-                template_file_path=args.template,
-                error_level=1,  # set a fixed value until validation is separated
-            )
-        else:  # other files
-            logger.debug("-> nothing to do for this file type!")
-            ret = None
-        if ret:  # TODO remove in 0.6.0 after getting rid of return values
-            logger.info("-> %s", ret)
-
-
 def validate_with_profile(
     data_graph: Union[GraphLike, str, bytes],
     profile="vocpub",
@@ -108,7 +44,7 @@ def validate_with_profile(
         msg = "The profile chosen for conversion must be one of '{}'. 'vocpub' is default".format(
             "', '".join(profiles.PROFILES.keys())
         )
-        raise ValueError(msg)
+        raise Voc4catError(msg)
     allow_warnings = error_level > 1
 
     # validate the RDF file
@@ -188,7 +124,7 @@ def excel_to_rdf(
     # Check that we have a valid template version.
     if template_version not in KNOWN_TEMPLATE_VERSIONS:
         msg = f"Unknown Template Version. Known Template Versions are {', '.join(KNOWN_TEMPLATE_VERSIONS)}, you supplied {template_version}"
-        raise ValueError(msg)
+        raise Voc4catError(msg)
 
     models.reset_curies(create_prefix_dict(wb["Prefix Sheet"]))
 
@@ -479,3 +415,71 @@ def format_log_msg(result: Dict, colored: bool = False) -> str:
             else Fore.RED + "VIOLATION: " + Style.RESET_ALL + message
         )
     return formatted_msg
+
+
+# ===== convert command implementation & helpers to validate cmd options =====
+
+
+def _check_convert_args(args):
+    if args.template is not None:
+        msg = ""
+        if not args.template.exists():
+            msg = f"Template file not found: {args.template}"
+        elif args.template.suffix.lower() not in EXCEL_FILE_ENDINGS:
+            msg = 'Template file must be of type ".xlsx".'
+        if msg:
+            logging.error(msg)
+            raise Voc4catError(msg)
+    # Option outputformat is validated by argparse since its restricted by choices.
+
+    # Add check if files of the same name are present in different formats.
+    if args.VOCAB.is_dir():  # noqa: SIM102
+        if duplicates := has_file_in_multiple_formats(args.VOCAB):
+            msg = (
+                "Files may only be present in one format. Found more than one "
+                'format for: "%s"'
+            )
+            logger.error(msg, '", "'.join(duplicates))
+            raise Voc4catError(msg % '", "'.join(duplicates))
+
+
+def convert(args):
+    logger.info("Convert subcommand started!")
+
+    _check_convert_args(args)
+
+    files = [args.VOCAB] if args.VOCAB.is_file() else [*Path(args.VOCAB).iterdir()]
+    xlsx_files = [f for f in files if f.suffix.lower() in EXCEL_FILE_ENDINGS]
+    rdf_files = [f for f in files if f.suffix.lower() in RDF_FILE_ENDINGS]
+
+    # convert xlsx files
+    for file in files:
+        logger.debug('Processing "%s"', file)
+        outfile = file if args.outdir is None else args.outdir / file.name
+
+        # TODO revisit after separating validation from conversion
+        if file in xlsx_files:
+            suffix = "ttl" if args.outputformat == "turtle" else args.outputformat
+            ret = excel_to_rdf(
+                file,
+                profile="vocpub",  # set a fixed value until validation is separated
+                output_type="file",  # we only support file output from 0.6.0 on
+                output_file_path=outfile.with_suffix(f".{suffix}"),
+                output_format=args.outputformat,
+                error_level=1,  # set a fixed value until validation is separated
+                validate=True,  # "inherited" from vocexcel
+            )
+        elif file in rdf_files:
+            ret = rdf_to_excel(
+                file,
+                profile="vocpub",  # set a fixed value until validation is separated
+                output_file_path=outfile.with_suffix(".xlsx"),
+                template_file_path=args.template,
+                error_level=1,  # set a fixed value until validation is separated
+            )
+        else:  # other files
+            logger.debug("-> nothing to do for this file type!")
+            ret = None
+        if ret:  # TODO remove in 0.6.0 after getting rid of return values
+            logger.info("-> %s", ret)
+

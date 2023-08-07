@@ -2,6 +2,9 @@ import glob
 import logging
 from pathlib import Path
 
+import openpyxl
+from openpyxl.styles import PatternFill
+
 from voc4cat import profiles
 from voc4cat.checks import (
     Voc4catError,
@@ -10,10 +13,87 @@ from voc4cat.checks import (
     validate_vocabulary_files_for_ci_workflow,
 )
 from voc4cat.convert import validate_with_profile
-from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS
-from voc4cat.wrapper import check as check_xlsx
+from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS, is_supported_template
 
 logger = logging.getLogger(__name__)
+
+
+def check_xlsx(fpath: Path, outfile: Path) -> int:
+    """
+    Complex checks of the xlsx file not handled by pydantic model validation
+
+    Checks/validation implemented here need/use information from several rows
+    and can therefore not be easily done in models.py with pydantic.
+    However, SHACL validation does also catch the problem, at least in pre-
+    liminary testing. So this function may get removed later. Doing the check
+    in Excel has the advantage that the cell position can be added to the
+    validation message which would not work with SHACL validation.
+
+    For concepts:
+    - The "Concept IRI" must be unique. However, it can be present in several
+      rows as long as the languages in the rows with the same IRI are
+      different. This condition is fulfilled when no language is used more
+      than once per concept.
+    """
+    logger.info("Running check of Concepts sheet for file %s", fpath)
+    wb = openpyxl.load_workbook(fpath)
+    is_supported_template(wb)
+    ws = wb["Concepts"]
+    color = PatternFill("solid", start_color="00FFCC00")  # orange
+
+    subsequent_empty_rows = 0
+    seen_concept_iris = []
+    failed_checks = 0
+    for row in ws.iter_rows(min_row=3, max_col=3):  # pragma: no branch
+        if row[0].value and row[1].value:
+            concept_iri, _, lang = (
+                c.value.strip() if c.value is not None else "" for c in row
+            )
+            # Check that IRI is valid.
+            #            config.IDRANGES
+            # Check that IRI is used for exactly one concept.
+            new_concept_iri = f'"{concept_iri}"@{lang.lower()}'
+            if new_concept_iri in seen_concept_iris:
+                failed_checks += 1
+                msg = (
+                    f'Same Concept IRI "{concept_iri}" used more than once for '
+                    f'language "{lang}"'
+                )
+                logger.error(msg)
+                # colorize problematic cells
+                row[0].fill = color
+                row[2].fill = color
+                previously_seen_in_row = 3 + seen_concept_iris.index(new_concept_iri)
+                ws[f"A{previously_seen_in_row}"].fill = color
+                ws[f"C{previously_seen_in_row}"].fill = color
+            else:
+                seen_concept_iris.append(new_concept_iri)
+
+            subsequent_empty_rows = 0
+
+        # stop processing a sheet after 3 empty rows
+        elif subsequent_empty_rows < 2:  # noqa: PLR2004
+            subsequent_empty_rows += 1
+        else:
+            subsequent_empty_rows = 0
+            break
+
+    if failed_checks:
+        wb.save(outfile)
+        logger.info("-> Saved file with highlighted errors as %s", outfile)
+        return 1
+
+    logger.info("-> Extended xlsx checks passed successfully.")
+
+    if fpath != outfile:  # Save to new directory (important for --forward option)
+        wb.save(outfile)
+        msg = f"Saved checked file as {outfile}"
+        logger.info(msg)
+
+    return 0
+
+
+# ===== check command implementation & helpers to validate cmd options =====
 
 
 def _check_ci_args(args):

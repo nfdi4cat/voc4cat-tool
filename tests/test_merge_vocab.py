@@ -3,7 +3,7 @@ import shutil
 from unittest import mock
 
 import pytest
-from test_wrapper import CS_CYCLES_TURTLE
+from test_cli import CS_CYCLES_TURTLE
 from voc4cat.merge_vocab import main_cli
 
 

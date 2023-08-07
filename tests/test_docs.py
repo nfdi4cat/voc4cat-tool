@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-from test_wrapper import (
+from test_cli import (
     CS_CYCLES_TURTLE,
 )
 from voc4cat.checks import Voc4catError
@@ -67,3 +67,21 @@ def test_build_docs_no_input(tmp_path, caplog):
     with caplog.at_level(logging.INFO):
         main_cli(["docs", "--outdir", str(tmp_path), str(tmp_path)])
     assert "Nothing to do. No turtle file" in caplog.text
+
+
+def test_build_docs_unknown_builder(tmp_path, caplog, capsys):
+    """Check handling of unknown documentation builder."""
+    unknown_doc_builder = "123doc"
+    with pytest.raises(SystemExit) as exc_info:
+        main_cli(
+            [
+                "docs",
+                "--style",
+                unknown_doc_builder,
+                str(tmp_path),
+                str(tmp_path / CS_CYCLES_TURTLE),
+            ]
+        )
+    assert exc_info.value.code == 2  # noqa: PLR2004
+    captured = capsys.readouterr()
+    assert f"invalid choice: '{unknown_doc_builder}'" in captured.err

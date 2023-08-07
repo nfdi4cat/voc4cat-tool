@@ -30,19 +30,19 @@ class ConversionError(Exception):
 
 
 def load_workbook(file_path: Path) -> Workbook:
-    if not file_path.name.lower().endswith(tuple(EXCEL_FILE_ENDINGS)):
-        msg = "Files for conversion to RDF must be Excel files ending .xlsx"
-        raise ValueError(msg)
+    if file_path.suffix.lower() not in EXCEL_FILE_ENDINGS:
+        msg = "Files for conversion to RDF must be xlsx files."
+        raise Voc4catError(msg)
     return _load_workbook(filename=str(file_path), data_only=True)
 
 
 def load_template(file_path: Path) -> Workbook:
-    if not file_path.name.lower().endswith(tuple(EXCEL_FILE_ENDINGS)):
-        msg = "Template files for RDF-to-Excel conversion must be Excel files ending .xlsx"
-        raise ValueError(msg)
+    if file_path.suffix.lower() not in EXCEL_FILE_ENDINGS:
+        msg = "Template files for RDF-to-xlsx conversion must be xlsx files."
+        raise Voc4catError(msg)
     if get_template_version(load_workbook(file_path)) != LATEST_TEMPLATE:
-        msg = f"Template files for RDF-to-Excel conversion must be of latest version ({LATEST_TEMPLATE})"
-        raise ValueError(msg)
+        msg = f"Template files for RDF-to-xlsx conversion must be of latest version ({LATEST_TEMPLATE})"
+        raise Voc4catError(msg)
     return _load_workbook(filename=str(file_path), data_only=True)
 
 
@@ -50,13 +50,20 @@ def get_template_version(wb: Workbook) -> str:
     # try 0.4.3 location
     try:
         intro_sheet = wb["Introduction"]
-        if intro_sheet["J11"].value in KNOWN_TEMPLATE_VERSIONS:
-            return intro_sheet["J11"].value
-    except Exception as exc:
-        # if we get here, the template version is either unknown or can't be located
+    except KeyError as exc:  # non-existing worksheet
         msg = "The version of the Excel template cannot be determined."
         logger.exception(msg)
         raise Voc4catError(msg) from exc
+    return intro_sheet["J11"].value
+
+
+def is_supported_template(wb):
+    """Check if the template version is supported."""
+    template_version = get_template_version(wb)
+    if template_version not in KNOWN_TEMPLATE_VERSIONS:
+        msg = f"Unsupported template version. Supported are {', '.join(KNOWN_TEMPLATE_VERSIONS)}, you supplied {template_version}."
+        raise Voc4catError(msg)
+    return True
 
 
 def split_and_tidy(cell_value: str):

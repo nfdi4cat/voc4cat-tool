@@ -13,6 +13,7 @@ from voc4cat.checks import Voc4catError
 from voc4cat.convert import convert
 from voc4cat.docs import docs
 from voc4cat.transform import transform
+from voc4cat.utils import ConversionError
 
 logger = logging.getLogger(__name__)
 
@@ -447,7 +448,7 @@ def run_cli_app(args=None):
         args = sys.argv[1:]
     try:
         main_cli(args)
-    except Voc4catError:
+    except (Voc4catError, ConversionError):
         logger.exception("Terminating with Voc4cat error.")
         sys.exit(1)
     except Exception:
