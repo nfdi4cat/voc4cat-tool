@@ -1,9 +1,68 @@
 import logging
+import os
 from pathlib import Path
 
-from voc4cat.wrapper import run_ontospy, run_pylode
+from voc4cat import config
 
 logger = logging.getLogger(__name__)
+
+
+def run_pylode(turtle_file: Path, output_path: Path) -> None:
+    """
+    Generate pyLODE documentation.
+    """
+    import pylode
+
+    logger.info("Building pyLODE documentation for %s", turtle_file)
+    filename = Path(turtle_file)  # .resolve())
+    outdir = output_path / filename.stem
+    outdir.mkdir(exist_ok=True)
+    outfile = outdir / "index.html"
+    # breakpoint()
+    html = pylode.MakeDocco(
+        # we use str(abs path) because pyLODE 2.x does not find the file otherwise
+        input_data_file=str(filename.resolve()),
+        outputformat="html",
+        profile="vocpub",
+    )
+    html.document(destination=outfile)
+    # Fix html-doc: Do not show overview section with black div for image.
+    with open(outfile) as html_file:
+        content = html_file.read()
+    content = content.replace(
+        '<section id="overview">',
+        '<section id="overview" style="display: none;">',
+    )
+    with open(outfile, "w") as html_file:
+        html_file.write(content)
+    logger.info("-> %s", outfile.resolve().as_uri())
+
+
+def run_ontospy(turtle_file: Path, output_path: Path) -> None:
+    """
+    Generate ontospy documentation (single-page html & dendrogram).
+    """
+    import ontospy
+    from ontospy.gendocs.viz.viz_d3dendogram import Dataviz
+    from ontospy.gendocs.viz.viz_html_single import HTMLVisualizer
+
+    title = config.VOCAB_TITLE
+
+    logger.info("Building ontospy documentation for %s", turtle_file)
+    specific_output_path = (Path(output_path) / Path(turtle_file).stem).resolve()
+
+    g = ontospy.Ontospy(Path(turtle_file).resolve().as_uri())
+
+    docs = HTMLVisualizer(g, title=title)
+    docs_path = os.path.join(specific_output_path, "docs")
+    docs.build(docs_path)  # => build and save docs/visualization.
+
+    viz = Dataviz(g, title=title)
+    viz_path = os.path.join(specific_output_path, "dendro")
+    viz.build(viz_path)  # => build and save docs/visualization.
+
+
+# ===== docs command implementation =====
 
 
 def docs(args):

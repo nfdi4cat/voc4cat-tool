@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 import voc4cat
-from test_wrapper import (
+from test_cli import (
     CS_CYCLES,
     CS_CYCLES_INDENT,
     CS_CYCLES_TURTLE,

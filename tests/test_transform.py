@@ -3,7 +3,7 @@ import shutil
 
 import pytest
 from openpyxl import load_workbook
-from test_wrapper import (
+from test_cli import (
     CS_CYCLES,
     CS_CYCLES_INDENT_DOT,
     CS_CYCLES_INDENT_IRI,
@@ -101,6 +101,23 @@ def test_make_ids_invalid_id(datadir):
                 "--make-ids",
                 "ex",
                 "###",
+                "--inplace",
+                str(datadir / CS_SIMPLE),
+            ]
+        )
+
+
+def test_make_ids_invalid_negative_id(datadir):
+    with pytest.raises(
+        Voc4catError,
+        match="Start ID must be greater than zero.",
+    ):
+        main_cli(
+            [
+                "transform",
+                "--make-ids",
+                "ex",
+                "-1",
                 "--inplace",
                 str(datadir / CS_SIMPLE),
             ]
@@ -367,7 +384,8 @@ def test_hierarchy_from_indent_merge(monkeypatch, datadir, tmp_path):
     wb.save(new_filename)
     wb.close()
     with pytest.raises(
-        ValueError, match=f"Cannot merge rows for {iri}. Resolve differences manually."
+        Voc4catError,
+        match=f"Cannot merge rows for {iri}. Resolve differences manually.",
     ):
         main_cli(
             ["transform", "--from-indent", "--inplace", str(tmp_path / new_filename)]
@@ -486,7 +504,7 @@ def test_hierarchy_to_indent_merge(monkeypatch, datadir, tmp_path):
     new_filename = "indent_merge_problem.xlsx"
     wb.save(new_filename)
     wb.close()
-    with pytest.raises(ValueError, match=f"Merge conflict for concept {iri}"):
+    with pytest.raises(Voc4catError, match=f"Merge conflict for concept {iri}"):
         main_cli(
             ["transform", "--to-indent", "--inplace", str(tmp_path / new_filename)]
         )

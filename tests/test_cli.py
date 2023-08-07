@@ -1,10 +1,21 @@
 import logging
+import os
 import shutil
+from unittest import mock
 
 import pytest
-from test_wrapper import CS_SIMPLE
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli, run_cli_app
+
+CS_SIMPLE = "concept-scheme-simple.xlsx"
+CS_SIMPLE_TURTLE = "concept-scheme-simple.ttl"
+CS_CYCLES = "concept-scheme-with-cycles.xlsx"
+CS_CYCLES_TURTLE = "concept-scheme-with-cycles.ttl"
+CS_CYCLES_INDENT = "concept-scheme-with-cycles_indent.xlsx"
+CS_CYCLES_INDENT_IRI = "concept-scheme-with-cycles_indent_iri.xlsx"
+CS_CYCLES_INDENT_DOT = "concept-scheme-with-cycles_indent-by-dot.xlsx"
+CS_CYCLES_MULTI_LANG = "concept-scheme-with-cycles_multilang.xlsx"
+CS_CYCLES_MULTI_LANG_IND = "concept-scheme-with-cycles_multilang_indent_iri.xlsx"
 
 
 def test_run_cli_app_no_args_entrypoint(monkeypatch, capsys):
@@ -74,6 +85,7 @@ def test_nonexisting_config(monkeypatch, datadir, caplog):
     assert "Config file not found at" in caplog.text
 
 
+@mock.patch.dict(os.environ, {"LOGLEVEL": "DEBUG"})
 def test_valid_config(monkeypatch, datadir, caplog, temp_config):
     # Don't remove "temp_config". The fixture avoid global config change.
     monkeypatch.chdir(datadir)

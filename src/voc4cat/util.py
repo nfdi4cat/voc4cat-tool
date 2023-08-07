@@ -4,6 +4,8 @@ from warnings import warn
 
 import networkx as nx
 
+from voc4cat.checks import Voc4catError
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,7 +52,7 @@ def dag_from_indented_text(text, sep=" "):
             nodes.append(concept)
         if text_with_level and (level - 1) > text_with_level[-1][1]:
             msg = f'Indentation increases by more than one level for "{concept}".'
-            raise ValueError(msg)
+            raise Voc4catError(msg)
         text_with_level.append((concept, level))
 
     if text_with_level:
@@ -59,7 +61,7 @@ def dag_from_indented_text(text, sep=" "):
         concept, level = text_with_level[0]
         if base_level != level:
             msg = f'First line "{concept}" must be at lowest indentation level.'
-            raise ValueError(msg)
+            raise Voc4catError(msg)
     else:
         base_level = 0
 
@@ -161,7 +163,7 @@ def dag_from_narrower(narrower):
             # check for undefined children
             if child not in nodes:
                 msg = f'Concept "{child}" needs to defined if used as narrower concept.'
-                raise ValueError(msg)
+                raise Voc4catError(msg)
             edges.append((concept, child))
 
     dag = nx.DiGraph()

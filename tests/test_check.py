@@ -2,7 +2,7 @@ import logging
 import shutil
 
 import pytest
-from test_wrapper import (
+from test_cli import (
     CS_CYCLES,
     CS_CYCLES_INDENT_IRI,
     CS_SIMPLE,
