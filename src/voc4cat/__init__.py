@@ -45,15 +45,3 @@ def setup_logging(loglevel: int = logging.INFO, logfile: Path | None = None):
 
     # Silence noisy loggers from used packages
     logging.getLogger("PIL.PngImagePlugin").propagate = False
-
-
-# At some point it seemed that we need this on gh-actions but we don't.
-# @atexit.register
-# def clean_logging_shutdown():
-#     """Close logging handlers after final flush of stdout/stderr."""
-#     logger.debug("Closing logging handlers before exiting...")
-#     sys.stdout.flush()
-#     sys.stderr.flush()
-#     for handler in logger.handlers:
-#         logger.removeHandler(handler)
-#         handler.close()
