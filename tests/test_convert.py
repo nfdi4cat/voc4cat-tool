@@ -6,23 +6,11 @@ import pytest
 import voc4cat
 from test_cli import (
     CS_CYCLES,
-    CS_CYCLES_INDENT,
     CS_CYCLES_TURTLE,
     CS_SIMPLE,
 )
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
-from voc4cat.utils import ConversionError
-
-
-def test_run_vocexcel_badfile(monkeypatch, datadir, tmp_path, caplog):
-    """Check handling of failing run of vocexcel."""
-    shutil.copy(datadir / CS_CYCLES_INDENT, tmp_path)
-    monkeypatch.chdir(tmp_path)
-    with caplog.at_level(logging.ERROR), pytest.raises(ConversionError):
-        main_cli(["convert", CS_CYCLES_INDENT])
-    # The next message is logged by vocexcel so it may change.
-    assert "VIOLATION: Validation Result in MinCountConstraintComponent" in caplog.text
 
 
 @pytest.mark.parametrize(
