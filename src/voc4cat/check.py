@@ -81,16 +81,9 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     if failed_checks:
         wb.save(outfile)
         logger.info("-> Saved file with highlighted errors as %s", outfile)
-        return 1
+        return
 
     logger.info("-> Extended xlsx checks passed successfully.")
-
-    if fpath != outfile:  # Save to new directory (important for --forward option)
-        wb.save(outfile)
-        msg = f"Saved checked file as {outfile}"
-        logger.info(msg)
-
-    return 0
 
 
 # ===== check command & helpers to validate cmd options =====

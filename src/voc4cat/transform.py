@@ -149,7 +149,6 @@ def make_ids(
 
     wb.save(outfile)
     logger.info("Saved updated file as %s", outfile)
-    return 0
 
 
 def hierarchy_from_indent(fpath, outfile, sep):
@@ -240,7 +239,6 @@ def hierarchy_from_indent(fpath, outfile, sep):
 
     wb.save(outfile)
     logger.info("Saved file with children-IRI hierarchy as %s", outfile)
-    return 0
 
 
 def hierarchy_to_indent(fpath, outfile, sep):
@@ -336,7 +334,6 @@ def hierarchy_to_indent(fpath, outfile, sep):
 
     wb.save(outfile)
     logger.info("Saved file with indentation hierarchy as %s", outfile)
-    return 0
 
 
 # ===== transform command & helpers to validate cmd options =====

@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 
-from openpyxl import load_workbook as _load_workbook
+from openpyxl import load_workbook  # as _load_workbook
 from openpyxl.workbook.workbook import Workbook
 
 from voc4cat.checks import Voc4catError
@@ -29,21 +29,14 @@ class ConversionError(Exception):
     pass
 
 
-def load_workbook(file_path: Path) -> Workbook:
-    if file_path.suffix.lower() not in EXCEL_FILE_ENDINGS:
-        msg = "Files for conversion to RDF must be xlsx files."
-        raise Voc4catError(msg)
-    return _load_workbook(filename=str(file_path), data_only=True)
-
-
 def load_template(file_path: Path) -> Workbook:
     if file_path.suffix.lower() not in EXCEL_FILE_ENDINGS:
         msg = "Template files for RDF-to-xlsx conversion must be xlsx files."
         raise Voc4catError(msg)
-    if get_template_version(load_workbook(file_path)) != LATEST_TEMPLATE:
+    if get_template_version(load_workbook(str(file_path))) != LATEST_TEMPLATE:
         msg = f"Template files for RDF-to-xlsx conversion must be of latest version ({LATEST_TEMPLATE})"
         raise Voc4catError(msg)
-    return _load_workbook(filename=str(file_path), data_only=True)
+    return load_workbook(filename=str(file_path), data_only=True)
 
 
 def get_template_version(wb: Workbook) -> str:

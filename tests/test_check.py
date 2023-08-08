@@ -1,5 +1,6 @@
 import logging
 import shutil
+from pathlib import Path
 
 import pytest
 from test_cli import (
@@ -10,6 +11,9 @@ from test_cli import (
 )
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
+from voc4cat.utils import ConversionError
+
+from tests.test_cli import CS_CYCLES_INDENT
 
 
 @pytest.mark.parametrize(
@@ -37,6 +41,16 @@ def test_check_skos_rdf(datadir, tmp_path, caplog):
     with caplog.at_level(logging.INFO):
         main_cli(["check", str(tmp_path / CS_SIMPLE_TURTLE)])
     assert "The file is valid according to the vocpub profile." in caplog.text
+
+
+def test_check_skos_badfile(monkeypatch, datadir, tmp_path, caplog):
+    """Check failing profile validation."""
+    shutil.copy(datadir / CS_CYCLES_INDENT, tmp_path)
+    monkeypatch.chdir(tmp_path)
+    main_cli(["convert", CS_CYCLES_INDENT])
+    with caplog.at_level(logging.ERROR), pytest.raises(ConversionError):
+        main_cli(["check", str(Path(CS_CYCLES_INDENT).with_suffix(".ttl"))])
+    assert "VIOLATION: Validation Result in MinCountConstraintComponent" in caplog.text
 
 
 def test_check_list_profiles(capsys):

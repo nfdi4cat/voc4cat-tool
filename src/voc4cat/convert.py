@@ -21,11 +21,10 @@ from voc4cat.convert_043 import (
 )
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
-    KNOWN_TEMPLATE_VERSIONS,
     RDF_FILE_ENDINGS,
     ConversionError,
-    get_template_version,
     has_file_in_multiple_formats,
+    is_supported_template,
     load_template,
     load_workbook,
 )
@@ -106,25 +105,17 @@ def validate_with_profile(
 
 def excel_to_rdf(
     file_to_convert_path: Path,
-    profile="vocpub",
-    output_type: Literal["file", "string", "graph"] = "file",
-    output_file_path=None,
+    output_file_path: Path | None = None,
     output_format: Literal["turtle", "xml", "json-ld"] = "turtle",
-    error_level=1,
-    validate=False,
-):
+    output_type: Literal["file", "graph"] = "file",
+) -> None:
     """Converts an Excel workbook to a SKOS vocabulary file"""
     wb = load_workbook(file_to_convert_path)
-    template_version = get_template_version(wb)
+    is_supported_template(wb)
     vocab_name = file_to_convert_path.stem.lower()
     # If non-default config is present, verify that at least one id_range defined.
     if not config.IDRANGES.default_config:
         validate_config_has_idrange(vocab_name)
-
-    # Check that we have a valid template version.
-    if template_version not in KNOWN_TEMPLATE_VERSIONS:
-        msg = f"Unknown Template Version. Known Template Versions are {', '.join(KNOWN_TEMPLATE_VERSIONS)}, you supplied {template_version}"
-        raise Voc4catError(msg)
 
     models.reset_curies(create_prefix_dict(wb["Prefix Sheet"]))
 
@@ -160,21 +151,12 @@ def excel_to_rdf(
     )
     vocab_graph = vocab.to_graph()
 
-    if validate:
-        validate_with_profile(
-            vocab_graph,
-            profile=profile,
-            error_level=error_level,
-        )
-
     # Store title in config (re-used in ontospy docs generation)
     config.VOCAB_TITLE = cs.title
 
-    # Write out the file
-    if output_type == "graph":
+    if output_type == "graph":  # only used in tests
         return vocab_graph
-    if output_type == "string":
-        return vocab_graph.serialize(format=output_format)
+
     # output_format == "file":
     if output_file_path is not None:
         dest = output_file_path
@@ -187,29 +169,20 @@ def excel_to_rdf(
             suffix = ".ttl"
         dest = file_to_convert_path.with_suffix(suffix)
     vocab_graph.serialize(destination=str(dest), format=output_format)
-    return dest
+    return None
 
 
 def rdf_to_excel(
     file_to_convert_path: Path,
-    profile="vocpub",
-    output_file_path=None,
-    template_file_path=None,
-    error_level=1,
-):
-    if type(file_to_convert_path) is str:
-        file_to_convert_path = Path(file_to_convert_path)
+    output_file_path: Path | None = None,
+    template_file_path: Path | None = None,
+) -> None:
     if not file_to_convert_path.name.endswith(tuple(RDF_FILE_ENDINGS.keys())):
         msg = "Files for conversion to Excel must end with one of the RDF file formats: '{}'".format(
             "', '".join(RDF_FILE_ENDINGS.keys())
         )
         raise ValueError(msg)
 
-    validate_with_profile(
-        str(file_to_convert_path),
-        profile=profile,
-        error_level=error_level,
-    )
     # the RDF is valid so extract data and create Excel
     g = Graph().parse(
         str(file_to_convert_path), format=RDF_FILE_ENDINGS[file_to_convert_path.suffix]
@@ -454,31 +427,18 @@ def convert(args):
 
     # convert xlsx files
     for file in files:
-        logger.debug('Processing "%s"', file)
+        logger.info('Processing "%s"', file)
         outfile = file if args.outdir is None else args.outdir / file.name
 
         # TODO revisit after separating validation from conversion
         if file in xlsx_files:
             suffix = "ttl" if args.outputformat == "turtle" else args.outputformat
-            ret = excel_to_rdf(
-                file,
-                profile="vocpub",  # set a fixed value until validation is separated
-                output_type="file",  # we only support file output from 0.6.0 on
-                output_file_path=outfile.with_suffix(f".{suffix}"),
-                output_format=args.outputformat,
-                error_level=1,  # set a fixed value until validation is separated
-                validate=True,  # "inherited" from vocexcel
-            )
+            output_file_path = outfile.with_suffix(f".{suffix}")
+            excel_to_rdf(file, output_file_path, output_format=args.outputformat)
+            logging.info("-> successfully converted to %s", output_file_path)
         elif file in rdf_files:
-            ret = rdf_to_excel(
-                file,
-                profile="vocpub",  # set a fixed value until validation is separated
-                output_file_path=outfile.with_suffix(".xlsx"),
-                template_file_path=args.template,
-                error_level=1,  # set a fixed value until validation is separated
-            )
+            output_file_path = outfile.with_suffix(".xlsx")
+            rdf_to_excel(file, output_file_path, template_file_path=args.template)
+            logging.info("-> successfully converted to %s", output_file_path)
         else:  # other files
             logger.debug("-> nothing to do for this file type!")
-            ret = None
-        if ret:  # TODO remove in 0.6.0 after getting rid of return values
-            logger.info("-> %s", ret)
