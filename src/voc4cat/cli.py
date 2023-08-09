@@ -34,9 +34,7 @@ def process_common_options(args):
     if logfile is None:
         setup_logging(loglevel)
     else:
-        if outdir is not None:
-            logfile = Path(outdir) / logfile
-        elif not logfile.parents[0].exists():
+        if not logfile.parents[0].exists():
             logfile.parents[0].mkdir(exist_ok=True, parents=True)
         setup_logging(loglevel, logfile)
 

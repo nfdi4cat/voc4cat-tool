@@ -45,7 +45,7 @@ def test_run_vocexcel_outputdir(monkeypatch, datadir, tmp_path, outputdir, testf
     shutil.copy(datadir / testfile, tmp_path)
     monkeypatch.chdir(tmp_path)
     # Check if log is placed in out folder.
-    log = "test-run.log"
+    log = Path(outputdir) / "test-run.log"
     main_cli(
         ["convert", "--logfile", str(log)]
         + (["--outdir", str(outputdir)] if outputdir else [])
@@ -56,7 +56,7 @@ def test_run_vocexcel_outputdir(monkeypatch, datadir, tmp_path, outputdir, testf
         assert (outdir / testfile).with_suffix(".ttl").exists()
     else:
         assert (outdir / testfile).with_suffix(".xlsx").exists()
-    assert (outdir / log).exists()
+    assert (outdir / log.name).exists()
 
 
 def test_duplicates(datadir, tmp_path, caplog):

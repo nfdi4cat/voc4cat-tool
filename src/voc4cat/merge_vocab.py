@@ -1,7 +1,6 @@
 # This script is mainly useful for CI.
 import argparse
 import logging
-import os
 import shutil
 import subprocess
 import sys
@@ -19,12 +18,18 @@ def main(ttl_inbox: Path, vocab: Path) -> int:
     New files are copied, existing files are synced by git merge-file.
     """
     retcode = 0
-    for p in os.listdir(ttl_inbox):
-        new = ttl_inbox / Path(p)
-        if new.suffix != ".ttl" or new.is_dir():
-            logger.info('Skipping "%s"', new)
+    for new in ttl_inbox.iterdir():
+        if new.is_dir():
+            logger.debug('Entering directory "%s"', new)
+            (vocab / new.name).mkdir(exist_ok=True)
+            retcode = main(new, vocab / new.name)
+            if retcode != 0:
+                break
             continue
-        if os.path.exists(vocab / Path(new).name):
+        if new.suffix != ".ttl":
+            logger.debug('Skipping "%s"', new)
+            continue
+        if (vocab / Path(new).name).exists():
             exists = vocab / Path(new).name
             cmd = ["git", "merge-file", "--theirs", str(exists), str(exists), str(new)]
             logger.info("Running cmd: %s", " ".join(cmd))
@@ -64,7 +69,6 @@ def main_cli(args=None) -> int:
         setup_logging()
     else:
         outbox.mkdir(exist_ok=True, parents=True)
-        logfile = Path(outbox) / logfile
         setup_logging(logfile=logfile)
 
     if not has_outbox or not vocab.exists():
