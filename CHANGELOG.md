@@ -1,5 +1,19 @@
 # Change log
 
+## Release 0.6.0 (2023-08-09)
+
+New features:
+
+- New command line interface `voc4cat` that uses subcommands `transform`, `convert`, `check` and `docs`.
+  This was added as preview in Release 0.5.1 and is now the default.
+  With the new CLI conversion and validation are no longer coupled but can be run separately. #140, #141
+- New options for subcommand `transform`: `--split` to split a large SKOS/rdf file to a directory of files with one file per concept/collection. `--join` for the reverse operation of  transforming the directory of files back to a single turtle vocabulary. #139
+
+Changes:
+
+- As part of the CLI work, the vocexcel CLI was removed. #141
+- Consistent use and handling of exceptions. #136
+
 ## Release 0.5.1 (2023-08-03)
 
 New features:
@@ -15,9 +29,11 @@ Changes:
 
 New features:
 
-- Support for a vocabulary configuration file `idranges.toml`. Via this configuration file ranges of IDs can be assigned/reserved for individual contributors. #131, #134
-- Extended validation/checks especially useful for the CI-vocabulary pipeline of [voc4cat-template](https://github.com/nfdi4cat/voc4cat-template). The new config provides the basis for more thorough validation. #126 #134
-- Support for pylode as new documentation generator which is also the new default. #115
+- Support for a vocabulary configuration file `idranges.toml`.
+  Via this configuration file ranges of IDs can be assigned/reserved for individual contributors. #131, #134
+- Extended validation/checks especially useful for the CI-vocabulary pipeline of [voc4cat-template](https://github.com/nfdi4cat/voc4cat-template).
+  The new config provides the basis for more thorough validation. #126 #134
+- Support for pylode2 as new documentation generator which is also the new default. #115
 - Added a central logging config. Updated code to use logging instead of print() almost everywhere.
 
 Changes:

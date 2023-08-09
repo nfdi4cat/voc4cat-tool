@@ -4,10 +4,10 @@
 
 **[voc4cat](https://github.com/nfdi4cat/voc4cat)** is the vocabulary for catalysis developed in NFDI4Cat.
 
-For voc4cat we developed a **toolbox for collaboratively maintaining SKOS vocabularies on github using Excel** (xlsx-files) as user-friendly interface. It consists of several parts:
+For voc4cat we developed a **toolbox for collaboratively maintaining SKOS vocabularies on GitHub using Excel** (xlsx-files) as user-friendly interface. It consists of several parts:
 
 - **voc4cat-tool** (this repository)
-  - A command-line tool to convert vocabularies from Excel to SKOS (turtle/rdf) and validate the vocabulary. Validation includes formal validation with SHACL-profiles but also additional checks. The `voc4cat` tool can be run locally but is also well suited for integration in CI-pipelines. It was inspired by [RDFlib/VocExcel](https://github.com/nfdi4cat/VocExcel). Parts of the vocexccel code base were merged into this repository (see git history).
+  - A command-line tool to convert vocabularies from Excel to SKOS (turtle/rdf) and validate the vocabulary. Validation includes formal validation with SHACL-profiles but also additional checks. The `voc4cat` tool can be run locally but is also well suited for integration in CI-pipelines. It was inspired by [RDFlib/VocExcel](https://github.com/nfdi4cat/VocExcel). Parts of the vocexcel code base were merged into this repository (see git history).
 - **[voc4cat-template](https://github.com/nfdi4cat/voc4cat-template)**
   - A github project template for managing SKOS-vocabularies using a GitHub-based workflows including automation by gh-actions.
 - **[voc4cat-playground](https://github.com/nfdi4cat/voc4cat-playground)**
@@ -17,17 +17,19 @@ For voc4cat we developed a **toolbox for collaboratively maintaining SKOS vocabu
 
 ## Command-line tool voc4cat
 
-To support what is not provided by the original VocExcel project we have developed this wrapper "voc4cat" that augments VocExcel with additional options like
+voc4cat was mainly developed to be used in gh-actions but it is also useful as a locally installed command line tool. It has the following features.
 
-- Checking our NFDI4Cat-Excel template
-- Enriching our NFDI4Cat-Excel template (e.g. add IRIs)
-- Processing all files in a folder at once
-- Generating documentation (with [pyLODE](https://github.com/RDFLib/pyLODE) or [ontospy](http://lambdamusic.github.io/Ontospy/))
-- Support for expressing concept-hierarchies by indentation.
+- Convert between SKOS-vocabularies in Excel/xlsx format and rdf-format (turtle) in both directions.
+- Check/validate SKOS-vocabularies in rdf/turtle format with the [vocpub](https://w3id.org/profile/vocpub) SHACL-profile.
+- Use a vocabulary-configuration file to specify for example ID ranges for each contributor.
+- Check xlsx vocabulary files for errors or incorrect use of IDs (voc4cat uses pydantic for this validation)
+- Generate documentation from SKOS/turtle vocabulary file using [pyLODE](https://github.com/RDFLib/pyLODE) (or [ontospy](http://lambdamusic.github.io/Ontospy/))
+- Express concept-hierarchies in xlsx by indentation.
+- Consistently update all IRIs in the xlsx vocabulary (e.g. with new namespace or IDs)
 
-Starting with v0.5.0 (July 2023) voc4cat uses its internal converter and does no longer depend on vocexcel ([PR #119](https://github.com/nfdi4cat/voc4cat-tool/pull/119)).
+voc4cat works on files or folders. If a folder is given all matching files are processed at once.
 
-## Installation
+### Installation requirements
 
 To start you need:
 
@@ -39,7 +41,7 @@ and that the [launcher](https://docs.python.org/3.11/using/windows.html#python-l
 The launcher is included by default in Windows installers from [python.org](https://www.python.org/downloads/).
 If you don't have the launcher replace `py` by `python` (or `python3`, depending on your OS) in the commands below.
 
-## Installation steps
+### Installation steps
 
 Checkout this repository
 
@@ -67,61 +69,57 @@ Install voc4cat into the virtual environment.
 
 To install including all development tools use `pip install .[dev]` for just the test tools us `pip install .[tests]`. For tests we use [pytest](https://docs.pytest.org).
 
-## Typical use
+### Typical use
 
-Show a help message for the voc4cat command line tool with all available options.
+The available commands and options can be explored via the help system:
 
 `voc4cat --help` (or simply `voc4cat`)
 
-*If you feel adventurous, you may alternatively try out the new improved command line interface `voc4cat-ng` (added in Release 0.5.1).*
+which lists all available sub commands. These have their own help, for example:
 
-To create a new vocabulary use the voc4Cat-adjusted template from the `templates` subfolder.
-You may first use simple temporary IRIs like (`ex:my_term`).
+`voc4cat transform --help`
 
-With voc4cat you can later replace all IDs belonging to a given prefix (here `ex`) by numeric IDs e.g. starting from 1001:
+To create a new vocabulary use the voc4cat-adjusted template from the `templates` subfolder.
+For starting you can use simple temporary IRIs like (`ex:my_term`) for your concepts.
+With voc4cat you can later replace these later by different namespaces and/or different numeric IDs.
 
-`voc4cat --make-ids temp 1001 --output-directory output example/photocatalysis_example_prelim-IDs.xlsx`
+For expressing hierarchies in SKOS ("broader"/"narrower") voc4cat offers two options. One way is to enter a list of children IRIs  (in sheet "Concepts"). However, filling the Children URI columns with lists of IRIs can be tedious. Therefore, voc4cat offers a second easier way to express hierarchies between concepts and that is by indentation. voc4Cat understands Excel-indentation (the default) but can also work with other indentation formats (e.g. 3 spaces per level). To switch between the two representations, use the `transform` sub-command. For example, use
 
-This will update all IRIs matching the `temp:`-prefix in the sheets "Concepts", "Additional Concept Features" and "Collections".
+`voc4cat transform --from-indent --outdir outbox example/photocatalysis_example_indented_prelim-IDs.xlsx`
 
-Manually filling the Children URI (in sheet "Concepts") and Members URI (in sheet "Collections") with lists of IRIs can be tedious.
-An easier way to express hierarchies between concepts is to use indentation.
-voc4Cat understands Excel-indentation (the default) for this purpose but can also work with other indentation formats (e.g. by 3 spaces per level).
-voc4cat supports converting between indentation-based hierarchy and Children-URI hierarchy (both directions). For example, use
+or if you were using 3 spaces per level (This file does not yet exist.)
 
-`voc4cat --hierarchy-from-indent --output-directory output example/photocatalysis_example_indented_prelim-IDs.xlsx`
+`voc4cat transform --from-indent --indent "   " --inplace outbox outbox\photocatalysis_example_prelim-IDs.xlsx`
 
-or if you were using 3 spaces per level (this file does not exist)
+to convert to ChildrenURI-hierarchy. To create such a file convert for example from ChildrenURI-hierarchy to indentation by
 
-`voc4cat --hierarchy-from-indent --indent-separator "   " --output-directory output example/photocatalysis_example_prelim-IDs_3spaces_indent.xlsx`
+`voc4cat transform --to-indent --indent "   " --outdir outbox example/photocatalysis_example_prelim-IDs.xlsx`
 
-to convert to ChildrenURI-hierarchy. To create such a file you can convert from ChildrenURI-hierarchy to indentation by
+As mentioned above, you can replace all IDs belonging to a given prefix (here `temp`) by numeric IDs e.g. starting from 1001:
 
-`voc4cat --hierarchy-to-indent  --indent-separator "   " --output-directory output example/photocatalysis_example_prelim-IDs.xlsx`
+`voc4cat transform --make-ids temp 1001 --outdir outbox example/photocatalysis_example_prelim-IDs.xlsx`
 
-Finally, the vocabulary file can be converted to turtle format. In this case the wrapper script forwards the job to VocExcel:
+This will consistently update all IRIs matching the `temp:`-prefix in the sheets "Concepts", "Additional Concept Features" and "Collections".
 
-`voc4cat example/photocatalysis_example.xlsx`
+Finally, the vocabulary file can be converted from xlsx to SKOS/turtle format.
+
+`voc4cat convert example/photocatalysis_example.xlsx`
 
 A turtle file `photocatalysis_example.ttl` is created in the same directory where the xlsx-file is located.
 
-The reverse is also possible. You can create an xlsx file from a turtle vocabulary file. Optionally a custom XLSX-template-file can be specified for this conversion:
+The reverse is also possible. You can create an xlsx file from a turtle vocabulary file.
+Optionally a custom XLSX-template-file can be specified for this conversion:
 
-`voc4cat --template template/VocExcel-template_043_4Cat.xlsx vocabulary.ttl`
+`voc4cat convert -O outbox --template templates/voc4cat_template_043.xlsx example/photocatalysis_example.ttl`
 
-Options that are specific for VocExcel can be put at the end of a `voc4cat` command.
-Here is an example that forwards the `-e 3` and `-m 3` options to VocExcel and moreover demonstrates a complex combination of options:
-
-`voc4cat --check --forward --docs pylode --output-directory outbox inbox-excel-vocabs/ -e 3 -m 3`
-
-Besides `voc4cat` this project also installs its own version of the `vocexcel` command line tool (for historic reasons). Its use is deprecated in version 0.5.0 and it will be removed in version 0.6.0.
-
+In addition to `transform` and `convert` voc4cat offers checking and validation under the sub-command `check` and documentation generation under `docs`.
+See the command line help for details.
 
 ## Feedback and code contributions
 
-Just create an issue here. We appreciate any kind of feedback and reasoned criticism.
+Please create an issue here. We highly appreciate your feedback.
 
-If you want to contribute code, we suggest to create an issue first to get early feedback on your plans before you spent too much time.
+If you plan to contribute code, we suggest to create an issue first to get early feedback on your ideas before you spend too much time.
 
 By contributing you agree that your contributions fall under the project´s BSD-3-Clause [license](LICENSE).
 
