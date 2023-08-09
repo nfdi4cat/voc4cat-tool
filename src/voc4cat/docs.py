@@ -77,7 +77,7 @@ def docs(args):
 
     for file in turtle_files:
         logger.debug('Processing "%s"', file)
-        outdir = args.outdir
+        outdir = file.parent if args.outdir is None else args.outdir
         if any(outdir.iterdir()) and not args.force:
             logger.warning(
                 'The folder "%s" is not empty. Use "--force" to write to the folder anyway.',
