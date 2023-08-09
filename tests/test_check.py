@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from test_cli import (
     CS_CYCLES,
+    CS_CYCLES_INDENT,
     CS_CYCLES_INDENT_IRI,
     CS_SIMPLE,
     CS_SIMPLE_TURTLE,
@@ -12,8 +13,6 @@ from test_cli import (
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
 from voc4cat.utils import ConversionError
-
-from tests.test_cli import CS_CYCLES_INDENT
 
 
 @pytest.mark.parametrize(

@@ -85,7 +85,7 @@ def make_ids(
     If base_iri is None the new IRI is a concatenation of VOC_BASE_IRI and ID.
     If base_iri is given the new IRI is the concatenation of base_iri and ID.
     """
-    logger.info("\nReplacing '%s' IRIs.", search_prefix)
+    logger.info("Replacing '%s' IRIs.", search_prefix)
     # Load in data_only mode to get cell values not formulas.
     wb = openpyxl.load_workbook(fpath, data_only=True)
     is_supported_template(wb)

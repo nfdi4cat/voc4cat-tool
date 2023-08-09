@@ -430,7 +430,6 @@ def convert(args):
         logger.info('Processing "%s"', file)
         outfile = file if args.outdir is None else args.outdir / file.name
 
-        # TODO revisit after separating validation from conversion
         if file in xlsx_files:
             suffix = "ttl" if args.outputformat == "turtle" else args.outputformat
             output_file_path = outfile.with_suffix(f".{suffix}")
