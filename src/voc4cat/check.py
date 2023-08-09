@@ -120,6 +120,7 @@ def check(args):
         inbox_dir, vocab_dir = args.ci_pre, args.VOCAB
         check_number_of_files_in_inbox(inbox_dir)
         validate_vocabulary_files_for_ci_workflow(vocab_dir, inbox_dir)
+        logger.info("-> Check ci-pre passed.")
         return
 
     if args.ci_post:
@@ -135,6 +136,7 @@ def check(args):
                 )
                 continue
             check_for_removed_iris(prev, new)
+            logger.info("-> Check ci-post passed.")
         return
 
     files = [args.VOCAB] if args.VOCAB.is_file() else [*Path(args.VOCAB).iterdir()]
