@@ -19,16 +19,16 @@ CS_CYCLES_MULTI_LANG_IND = "concept-scheme-with-cycles_multilang_indent_iri.xlsx
 
 
 def test_run_cli_app_no_args_entrypoint(monkeypatch, capsys):
-    monkeypatch.setattr("sys.argv", ["voc4cat-ng"])
+    monkeypatch.setattr("sys.argv", ["voc4cat"])
     run_cli_app()
     captured = capsys.readouterr()
-    assert "usage: voc4cat-ng" in captured.out
+    assert "usage: voc4cat" in captured.out
 
 
 def test_run_cli_app_no_args(capsys):
     run_cli_app([])
     captured = capsys.readouterr()
-    assert "usage: voc4cat-ng" in captured.out
+    assert "usage: voc4cat" in captured.out
 
 
 def test_main_unknown_arg(capsys):
@@ -36,7 +36,7 @@ def test_main_unknown_arg(capsys):
         main_cli(["--unknown-arg"])
     assert exc_info.value.code == 2  # noqa: PLR2004
     captured = capsys.readouterr()
-    assert "voc4cat-ng: error: unrecognized arguments: --unknown-arg" in captured.err
+    assert "voc4cat: error: unrecognized arguments: --unknown-arg" in captured.err
 
 
 def test_main_version(capsys):
@@ -50,7 +50,7 @@ def test_main_subcmd_help(capsys):
         run_cli_app(["transform", "--help"])
     assert exc_info.value.code == 0
     captured = capsys.readouterr()
-    assert "usage: voc4cat-ng transform" in captured.out
+    assert "usage: voc4cat transform" in captured.out
 
 
 # ===== Tests for common options of all subcommands =====

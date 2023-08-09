@@ -1,4 +1,4 @@
-### Example files showing typical conversions with voc4cat
+### Example files that demonstrate typical conversions with voc4cat
 
 For a new vocabulary one would probably start with an xlsx file that does not yet have IRIs.
 In this case hierarchies can be expressed best by indentation:

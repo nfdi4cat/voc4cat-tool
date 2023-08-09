@@ -96,8 +96,11 @@ def root_cmd(args):
 
 def create_root_parser():
     parser = argparse.ArgumentParser(
-        prog="voc4cat-ng",
-        description="Next generation of command line interface for voc4cat-tool.",
+        prog="voc4cat",
+        description=(
+            "A command-line tool to support using Excel (xlsx) to edit and "
+            "maintain SKOS (turtle/rdf) vocabularies."
+        ),
         allow_abbrev=False,
         formatter_class=DecentFormatter,
     )
@@ -113,8 +116,7 @@ def create_root_parser():
 
 def create_common_options_parser():
     parser = argparse.ArgumentParser(
-        prog="voc4cat-ng",
-        description="Next generation of command line interface for voc4cat-tool.",
+        prog="voc4cat",
         allow_abbrev=False,
         add_help=False,
         formatter_class=DecentFormatter,

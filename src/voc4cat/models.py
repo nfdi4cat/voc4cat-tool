@@ -215,12 +215,6 @@ class ConceptScheme(BaseModel):
             else:
                 g.add((v, RDFS.seeAlso, Literal(self.pid)))
 
-        # TODO Unclear why this bind was made here. All tests pass without it. Plan: Remove if no issues occur.
-        # config.namespace_manager.bind(
-        #     "",
-        #     str(v).split("#")[0] if "#" in str(v) else "/".join(str(v).split("/")[:-1]),
-        # )
-
         g.namespace_manager = config.namespace_manager
         return g
 
