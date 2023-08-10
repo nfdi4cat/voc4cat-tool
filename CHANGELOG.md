@@ -1,5 +1,11 @@
 # Change log
 
+## Release 0.6.2 (2023-08-10)
+
+New features:
+
+- Option `--ci-post` of sub-command `voc4cat check` was improved to detect and work with split vocabularies. #146
+
 ## Release 0.6.1 (2023-08-10)
 
 New features:
