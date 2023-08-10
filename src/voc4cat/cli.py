@@ -38,7 +38,7 @@ def process_common_options(args, raw_args):
             logfile.parents[0].mkdir(exist_ok=True, parents=True)
         setup_logging(loglevel, logfile)
 
-    logger.debug("Executing cmd: voc4cat %s", " ".join(raw_args))
+    logger.info("Executing cmd: voc4cat %s", " ".join(raw_args))
     logger.debug("Processing common options.")
 
     # load config

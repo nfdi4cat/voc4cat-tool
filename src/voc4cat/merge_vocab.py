@@ -71,6 +71,7 @@ def main_cli(args=None) -> int:
         outbox.mkdir(exist_ok=True, parents=True)
         setup_logging(logfile=logfile)
 
+    logger.info("Executing cmd: merge_vocab %s", " ".join(args))
     if not has_outbox or not vocab.exists():
         logger.error(
             'This script requires both folders to exist: "%s" and "%s"', outbox, vocab

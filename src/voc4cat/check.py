@@ -35,7 +35,7 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
       different. This condition is fulfilled when no language is used more
       than once per concept.
     """
-    logger.info("Running check of Concepts sheet for file %s", fpath)
+    logger.debug("Running check of Concepts sheet for file %s", fpath)
     wb = openpyxl.load_workbook(fpath)
     is_supported_template(wb)
     ws = wb["Concepts"]
@@ -83,7 +83,7 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
         logger.info("-> Saved file with highlighted errors as %s", outfile)
         return
 
-    logger.info("-> Extended xlsx checks passed successfully.")
+    logger.info("-> xlsx check passed for file: %s", fpath)
 
 
 def ci_post(args):
@@ -99,7 +99,7 @@ def ci_post(args):
             )
             continue
         check_for_removed_iris(prev, new)
-        logger.info("-> Check ci-post passed.")
+    logger.info("-> Check ci-post passed.")
 
 
 # ===== check command & helpers to validate cmd options =====
@@ -121,7 +121,7 @@ def _check_ci_args(args):
 
 
 def check(args):
-    logger.info("Check subcommand started!")
+    logger.debug("Check subcommand started!")
 
     _check_ci_args(args)
 
@@ -170,7 +170,7 @@ def check(args):
 
     # validate rdf files with profile/pyshacl
     for file in rdf_files:
-        logger.info("Running SHACL validation for file %s", file)
+        logger.debug("Running SHACL validation for file %s", file)
         validate_with_profile(
             str(file), profile=args.profile, error_level=args.fail_at_level
         )

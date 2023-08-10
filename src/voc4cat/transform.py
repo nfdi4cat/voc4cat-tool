@@ -414,7 +414,7 @@ def _transform_rdf(file, args):
         )
         vocab_dir.mkdir(exist_ok=True)
         write_split_turtle(vocab_graph, vocab_dir)
-        logger.debug("-> wrote split vocabulary to: %s", vocab_dir)
+        logger.info("-> wrote split vocabulary to: %s", vocab_dir)
         if args.inplace:
             logger.debug("-> going to remove %s", file)
             file.unlink()
@@ -423,7 +423,7 @@ def _transform_rdf(file, args):
 
 
 def transform(args):
-    logger.info("Transform subcommand started!")
+    logger.debug("Transform subcommand started!")
 
     files = [args.VOCAB] if args.VOCAB.is_file() else [*Path(args.VOCAB).iterdir()]
     xlsx_files = [f for f in files if f.suffix.lower() in EXCEL_FILE_ENDINGS]
@@ -457,7 +457,7 @@ def transform(args):
                 else rdf_dir.with_suffix(".ttl")
             )
             vocab_graph.serialize(destination=str(dest), format="turtle")
-            logger.debug("-> joined vocabulary into: %s", dest)
+            logger.info("-> joined vocabulary into: %s", dest)
             if args.inplace:
                 logger.debug("-> going to remove %s", rdf_dir)
                 shutil.rmtree(rdf_dir, ignore_errors=True)
