@@ -128,6 +128,14 @@ def test_check_ci_post(datadir, tmp_path, temp_config, caplog):
         main_cli(["check", "-v", "--ci-post", str(previous), str(vocabdir)])
     assert "No removals detected." in caplog.text
 
+    caplog.clear()
+    (previous / "myvocab").mkdir()
+    shutil.copy(vocabdir / "myvocab.ttl", previous / "myvocab")
+    # Test with a split vocabulary in previous-dir
+    with caplog.at_level(logging.DEBUG):
+        main_cli(["check", "-v", "--ci-post", str(previous), str(vocabdir)])
+    assert "-> previous version is a split vocabulary" in caplog.text
+
 
 def test_check_ci_pre_one_folder(tmp_path, caplog):
     with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):

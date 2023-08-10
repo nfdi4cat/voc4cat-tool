@@ -63,7 +63,7 @@ def write_split_turtle(vocab_graph: Graph, outdir: Path) -> None:
         logger.debug("-> wrote %i %ss-file(s).", len(qresults), skos_class)
 
 
-def read_split_turtle(vocab_dir: Path) -> Graph:
+def join_split_turtle(vocab_dir: Path) -> Graph:
     # Search recursively all turtle files belonging to the concept scheme
     turtle_files = vocab_dir.rglob("*.ttl")
     # Create an empty RDF graph to hold the concept scheme
@@ -450,7 +450,7 @@ def transform(args):
         logger.debug('Processing rdf files in "%s"', rdf_dir)
         # The if..else is not required now. It is a frame for future additions.
         if args.join:
-            vocab_graph = read_split_turtle(rdf_dir)
+            vocab_graph = join_split_turtle(rdf_dir)
             dest = (
                 (args.outdir / rdf_dir).with_suffix(".ttl").name
                 if args.outdir

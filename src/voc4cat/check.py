@@ -13,6 +13,7 @@ from voc4cat.checks import (
     validate_vocabulary_files_for_ci_workflow,
 )
 from voc4cat.convert import validate_with_profile
+from voc4cat.transform import join_split_turtle
 from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS, is_supported_template
 
 logger = logging.getLogger(__name__)
@@ -90,16 +91,26 @@ def ci_post(args):
     prev_vocab_dir, vocab_new = args.ci_post, args.VOCAB
     for vocfile in glob.glob(str(vocab_new.resolve() / "*.ttl")):
         new = Path(vocfile)
-        vocfile_name = Path(vocfile).name
-        prev = prev_vocab_dir / vocfile_name
+        prev_split_voc = prev_vocab_dir / new.stem
+        # The prev version could be in split form in a vocabulary directory
+        if (
+            prev_split_voc.exists()
+            and prev_split_voc.is_dir()
+            and any(prev_split_voc.glob("*.ttl"))
+        ):
+            # Create a single vocab out of the directory
+            logger.debug("-> previous version is a split vocabulary, joining...")
+            join_split_turtle(prev_split_voc)
+
+        prev = prev_vocab_dir / new.name
         if not prev.exists():
             logger.debug(
                 '-> previous version of vocabulary "%s" does not exist.',
-                vocfile_name,
+                new.name,
             )
             continue
         check_for_removed_iris(prev, new)
-    logger.info("-> Check ci-post passed.")
+        logger.info("-> Check ci-post passed.")
 
 
 # ===== check command & helpers to validate cmd options =====
