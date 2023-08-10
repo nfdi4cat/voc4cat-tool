@@ -1,18 +1,19 @@
 # Change log
 
-## Release 0.6.x (2023-08-dd)
+## Release 0.6.1 (2023-08-10)
 
 New features:
 
-- The `merge_vocab` script gained support for directories containing vocabularies created with `voc4cat transform --split`. This feature is used in gh-actions of [voc4cat-template](https://github.com/nfdi4cat/voc4cat-template)-based vocabularies.
+- The `merge_vocab` script gained support for directories containing vocabularies created with `voc4cat transform --split`. This feature is used in gh-actions of [voc4cat-template](https://github.com/nfdi4cat/voc4cat-template)-based vocabularies. #144
 
 Changes:
 
-- The log file will now always be written to the given directory. Previously the log file directory depended on the presence of the `--outdir` option.
+- The use of logging levels was made more consistent: Success of an operation is now logged for all operation on INFO level. #145
+- The log file will now always be written to the given directory. Previously the log file directory depended on the presence of the `--outdir` option. #144
 
 Bug fixes:
 
-- Sub-command `voc4cat docs` failed if `--outdir` was not given.
+- Sub-command `voc4cat docs` failed if `--outdir` was not given. #143 #144
 
 ## Release 0.6.0 (2023-08-09)
 
