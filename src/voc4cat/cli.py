@@ -18,7 +18,7 @@ from voc4cat.utils import ConversionError
 logger = logging.getLogger(__name__)
 
 
-def process_common_options(args):
+def process_common_options(args, raw_args):
     # set up output directory
     outdir = getattr(args, "outdir", None)
     if outdir is not None and os.path.isfile(outdir):
@@ -38,6 +38,7 @@ def process_common_options(args):
             logfile.parents[0].mkdir(exist_ok=True, parents=True)
         setup_logging(loglevel, logfile)
 
+    logger.debug("Executing cmd: voc4cat %s", " ".join(raw_args))
     logger.debug("Processing common options.")
 
     # load config
@@ -352,7 +353,7 @@ def add_check_subparser(subparsers, options):
         type=Path,
         help=(
             "Perform consistency check on INBOX and VOCAB directories, e.g.\n"
-            "- are too many vacbulary file in INBOX (if restricted via config)\n"
+            "- are too many vocabulary file in INBOX (if restricted via config)\n"
             "- do xlsx filenames in INBOX match SKOS file names in VOCAB"
         ),
     )
@@ -404,9 +405,8 @@ def add_docs_subparser(subparsers, options):
     parser.set_defaults(func=docs)
 
 
-def main_cli(args=None):
+def main_cli(raw_args=None):
     """Setup CLI app and run commands based on args."""
-
     # Create root parser for cli app
     parser = create_root_parser()
 
@@ -430,24 +430,24 @@ def main_cli(args=None):
     add_check_subparser(subparsers, common_options)
     add_docs_subparser(subparsers, common_options)
 
-    if not args:
+    if not raw_args:
         parser.print_help()
         return
 
     # Parse the command-line arguments
     #   pars_args will call sys.exit(2) if invalid commands are given.
-    args = parser.parse_args(args)
+    args = parser.parse_args(raw_args)
     if hasattr(args, "config"):
-        process_common_options(args)
+        process_common_options(args, raw_args)
     args.func(args)
 
 
-def run_cli_app(args=None):
+def run_cli_app(raw_args=None):
     """Entry point for running the cli app."""
-    if args is None:
-        args = sys.argv[1:]
+    if raw_args is None:
+        raw_args = sys.argv[1:]
     try:
-        main_cli(args)
+        main_cli(raw_args)
     except (Voc4catError, ConversionError):
         logger.exception("Terminating with Voc4cat error.")
         sys.exit(1)

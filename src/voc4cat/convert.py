@@ -434,10 +434,10 @@ def convert(args):
             suffix = "ttl" if args.outputformat == "turtle" else args.outputformat
             output_file_path = outfile.with_suffix(f".{suffix}")
             excel_to_rdf(file, output_file_path, output_format=args.outputformat)
-            logging.info("-> successfully converted to %s", output_file_path)
+            logger.info("-> successfully converted to %s", output_file_path)
         elif file in rdf_files:
             output_file_path = outfile.with_suffix(".xlsx")
             rdf_to_excel(file, output_file_path, template_file_path=args.template)
-            logging.info("-> successfully converted to %s", output_file_path)
+            logger.info("-> successfully converted to %s", output_file_path)
         else:  # other files
             logger.debug("-> nothing to do for this file type!")
