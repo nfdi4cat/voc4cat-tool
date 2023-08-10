@@ -1,4 +1,5 @@
 import logging
+from itertools import chain
 from pathlib import Path
 from typing import Dict, Literal, Union
 
@@ -417,7 +418,7 @@ def _check_convert_args(args):
 
 
 def convert(args):
-    logger.info("Convert subcommand started!")
+    logger.debug("Convert subcommand started!")
 
     _check_convert_args(args)
 
@@ -425,9 +426,9 @@ def convert(args):
     xlsx_files = [f for f in files if f.suffix.lower() in EXCEL_FILE_ENDINGS]
     rdf_files = [f for f in files if f.suffix.lower() in RDF_FILE_ENDINGS]
 
-    # convert xlsx files
-    for file in files:
-        logger.info('Processing "%s"', file)
+    # convert xlsx and rdf files
+    for file in chain(xlsx_files, rdf_files):
+        logger.debug('Processing "%s"', file)
         outfile = file if args.outdir is None else args.outdir / file.name
 
         if file in xlsx_files:
@@ -439,5 +440,3 @@ def convert(args):
             output_file_path = outfile.with_suffix(".xlsx")
             rdf_to_excel(file, output_file_path, template_file_path=args.template)
             logger.info("-> successfully converted to %s", output_file_path)
-        else:  # other files
-            logger.debug("-> nothing to do for this file type!")

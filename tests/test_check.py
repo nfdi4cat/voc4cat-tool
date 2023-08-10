@@ -18,7 +18,7 @@ from voc4cat.utils import ConversionError
 @pytest.mark.parametrize(
     ("test_file", "msg"),
     [
-        (CS_CYCLES, "Extended xlsx checks passed successfully."),
+        (CS_CYCLES, "xlsx check passed"),
         (
             CS_CYCLES_INDENT_IRI,
             'Same Concept IRI "ex:test/term1" used more than once for language "en"',

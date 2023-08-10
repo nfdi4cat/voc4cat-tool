@@ -87,8 +87,3 @@ def test_template(monkeypatch, datadir, tmp_path, caplog):
     with caplog.at_level(logging.INFO):
         main_cli(["convert", "-v", "--template", std_template, str(tmp_path)])
     assert "->" in caplog.text
-
-    caplog.clear()
-    with caplog.at_level(logging.DEBUG):
-        main_cli(["convert", "-v", str(tmp_path / "template.txt")])
-    assert "-> nothing to do for this file type!" in caplog.text

@@ -13,7 +13,6 @@ def run_pylode(turtle_file: Path, output_path: Path) -> None:
     """
     import pylode
 
-    logger.info("Building pyLODE documentation for %s", turtle_file)
     filename = Path(turtle_file)  # .resolve())
     outdir = output_path / filename.stem
     outdir.mkdir(exist_ok=True)
@@ -35,7 +34,8 @@ def run_pylode(turtle_file: Path, output_path: Path) -> None:
     )
     with open(outfile, "w") as html_file:
         html_file.write(content)
-    logger.info("-> %s", outfile.resolve().as_uri())
+
+    logger.info("-> built pyLODE documentation for %s", turtle_file)
 
 
 def run_ontospy(turtle_file: Path, output_path: Path) -> None:
@@ -48,7 +48,6 @@ def run_ontospy(turtle_file: Path, output_path: Path) -> None:
 
     title = config.VOCAB_TITLE
 
-    logger.info("Building ontospy documentation for %s", turtle_file)
     specific_output_path = (Path(output_path) / Path(turtle_file).stem).resolve()
 
     g = ontospy.Ontospy(Path(turtle_file).resolve().as_uri())
@@ -60,13 +59,14 @@ def run_ontospy(turtle_file: Path, output_path: Path) -> None:
     viz = Dataviz(g, title=title)
     viz_path = os.path.join(specific_output_path, "dendro")
     viz.build(viz_path)  # => build and save docs/visualization.
+    logger.info("-> built ontospy documentation for %s", turtle_file)
 
 
 # ===== docs command =====
 
 
 def docs(args):
-    logger.info("Docs subcommand started!")
+    logger.debug("Docs subcommand started!")
 
     files = [args.VOCAB] if args.VOCAB.is_file() else [*Path(args.VOCAB).iterdir()]
     turtle_files = [f for f in files if f.suffix.lower() in (".turtle", ".ttl")]
