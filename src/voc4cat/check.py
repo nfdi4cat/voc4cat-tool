@@ -86,6 +86,22 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     logger.info("-> Extended xlsx checks passed successfully.")
 
 
+def ci_post(args):
+    prev_vocab_dir, vocab_new = args.ci_post, args.VOCAB
+    for vocfile in glob.glob(str(vocab_new.resolve() / "*.ttl")):
+        new = Path(vocfile)
+        vocfile_name = Path(vocfile).name
+        prev = prev_vocab_dir / vocfile_name
+        if not prev.exists():
+            logger.debug(
+                '-> previous version of vocabulary "%s" does not exist.',
+                vocfile_name,
+            )
+            continue
+        check_for_removed_iris(prev, new)
+        logger.info("-> Check ci-post passed.")
+
+
 # ===== check command & helpers to validate cmd options =====
 
 
@@ -109,6 +125,14 @@ def check(args):
 
     _check_ci_args(args)
 
+    if not args.VOCAB and not args.listprofiles:
+        msg = (
+            "Argument VOCAB is required for this sub-command (except for "
+            "option --listprofiles)."
+        )
+        logger.error(msg)
+        return
+
     if args.listprofiles:
         s = "\nProfiles\nToken\tIRI\n-----\t-----\n"
         for k, v in profiles.PROFILES.items():
@@ -124,19 +148,7 @@ def check(args):
         return
 
     if args.ci_post:
-        prev_vocab_dir, vocab_new = args.ci_post, args.VOCAB
-        for vocfile in glob.glob(str(vocab_new.resolve() / "*.ttl")):
-            new = Path(vocfile)
-            vocfile_name = Path(vocfile).name
-            prev = prev_vocab_dir / vocfile_name
-            if not prev.exists():
-                logger.debug(
-                    '-> previous version of vocabulary "%s" does not exist.',
-                    vocfile_name,
-                )
-                continue
-            check_for_removed_iris(prev, new)
-            logger.info("-> Check ci-post passed.")
+        ci_post(args)
         return
 
     files = [args.VOCAB] if args.VOCAB.is_file() else [*Path(args.VOCAB).iterdir()]

@@ -110,6 +110,24 @@ ID_PATTERNS = {}
 ID_RANGES_BY_ACTOR = defaultdict(list)
 
 
+def _id_ranges_by_actor(new_conf):
+    # create look-up map for ID ranges of all "actors"
+    id_ranges_by_actor = defaultdict(list)
+    for name in new_conf["IDRANGES"].vocabs:
+        voc = new_conf["IDRANGES"].vocabs.get(name)
+        for idr in voc.id_range:
+            rng = (idr.first_id, idr.last_id)
+            if idr.orcid:
+                id_ranges_by_actor[str(idr.orcid)].append(rng)
+                no_url_orcid = str(idr.orcid).split("orcid.org/")[-1]
+                id_ranges_by_actor[no_url_orcid].append(rng)
+            if idr.gh_name:
+                id_ranges_by_actor[str(idr.gh_name)].append(rng)
+            if idr.ror_id:
+                id_ranges_by_actor[str(idr.ror_id)].append(rng)
+    return id_ranges_by_actor
+
+
 def load_config(config_file: Path | None = None, config: IDrangeConfig | None = None):
     new_conf = {}
     new_conf["ID_PATTERNS"] = {}
@@ -135,21 +153,7 @@ def load_config(config_file: Path | None = None, config: IDrangeConfig | None = 
         id_patterns[name] = re.compile(r"(?P<identifier>[0-9]{%i})$" % voc.id_length)
     new_conf["ID_PATTERNS"] = id_patterns
 
-    # create look-up map for ID ranges of all "actors"
-    id_ranges_by_actor = defaultdict(list)
-    for name in new_conf["IDRANGES"].vocabs:
-        voc = new_conf["IDRANGES"].vocabs.get(name)
-        for idr in voc.id_range:
-            rng = (idr.first_id, idr.last_id)
-            if idr.orcid:
-                id_ranges_by_actor[str(idr.orcid)].append(rng)
-                no_url_orcid = str(idr.orcid).split("orcid.org/")[-1]
-                id_ranges_by_actor[no_url_orcid].append(rng)
-            if idr.gh_name:
-                id_ranges_by_actor[str(idr.gh_name)].append(rng)
-            if idr.ror_id:
-                id_ranges_by_actor[str(idr.ror_id)].append(rng)
-    new_conf["ID_RANGES_BY_ACTOR"] = id_ranges_by_actor
+    new_conf["ID_RANGES_BY_ACTOR"] = _id_ranges_by_actor(new_conf)
 
     for name, value in new_conf.items():
         globals()[name] = value

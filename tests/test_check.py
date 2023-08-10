@@ -58,6 +58,12 @@ def test_check_list_profiles(capsys):
     assert "Profiles" in captured.out
 
 
+def test_check_missing_vocab(caplog):
+    with caplog.at_level(logging.ERROR):
+        main_cli(["check"])
+    assert "Argument VOCAB is required for this sub-command" in caplog.text
+
+
 def test_check_overwrite_warning(monkeypatch, datadir, tmp_path, caplog):
     shutil.copy(datadir / CS_SIMPLE, tmp_path / CS_SIMPLE)
     monkeypatch.chdir(tmp_path)
