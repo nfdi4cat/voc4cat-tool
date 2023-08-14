@@ -1,8 +1,12 @@
 import logging
+import os
 import shutil
+from unittest import mock
 
 import pytest
 from openpyxl import load_workbook
+from rdflib import Graph, Literal
+from rdflib.namespace import DCTERMS, OWL, SKOS, XSD
 from test_cli import (
     CS_CYCLES,
     CS_CYCLES_INDENT_DOT,
@@ -600,3 +604,69 @@ def test_join(monkeypatch, datadir, tmp_path, opt, caplog):
     assert (vocdir.parent / CS_SIMPLE_TURTLE).exists()
     if opt:
         assert not vocdir.exists()
+
+
+@mock.patch.dict(
+    os.environ, {"CI": "", "VOC4CAT_VERSION": "v2.0", "VOC4CAT_MODIFIED": "2023-08-15"}
+)
+def test_join_with_envvars(monkeypatch, datadir, tmp_path, caplog):
+    monkeypatch.chdir(tmp_path)
+    shutil.copy(datadir / CS_SIMPLE_TURTLE, tmp_path)
+    # create dir with split files
+    main_cli(["transform", "-v", "--split", "--inplace", str(tmp_path)])
+    # join files again as test
+    cmd = ["transform", "-v", "--join"]
+    cmd.append(str(tmp_path))
+    with caplog.at_level(logging.DEBUG):
+        main_cli(cmd)
+    assert "-> joined vocabulary into" in caplog.text
+    # Were version and modified date correctly set?
+    graph = Graph().parse(CS_SIMPLE_TURTLE, format="turtle")
+    cs_query = "SELECT ?iri WHERE {?iri a skos:ConceptScheme.}"
+    qresults = [*graph.query(cs_query, initNs={"skos": SKOS})]
+    assert len(qresults) == 1
+
+    cs_iri = qresults[0][0]
+    assert (
+        len(
+            [
+                *graph.triples(
+                    (cs_iri, OWL.versionInfo, Literal("v2.0")),
+                )
+            ]
+        )
+        == 1
+    )
+
+    assert (
+        len(
+            [
+                *graph.triples(
+                    (
+                        cs_iri,
+                        DCTERMS.modified,
+                        Literal("2023-08-15", datatype=XSD.date),
+                    ),
+                )
+            ]
+        )
+        == 1
+    )
+
+
+@mock.patch.dict(
+    os.environ, {"CI": "", "VOC4CAT_VERSION": "2.0", "VOC4CAT_MODIFIED": "2023-08-15"}
+)
+def test_join_with_invalid_envvar(monkeypatch, datadir, tmp_path, caplog):
+    monkeypatch.chdir(tmp_path)
+    shutil.copy(datadir / CS_SIMPLE_TURTLE, tmp_path)
+    # create dir with split files
+    main_cli(["transform", "-v", "--split", "--inplace", str(tmp_path)])
+    # join files again as test
+    cmd = ["transform", "-v", "--join"]
+    cmd.append(str(tmp_path))
+    with caplog.at_level(logging.ERROR), pytest.raises(
+        Voc4catError, match="Invalid environment variable VOC4CAT_VERSION"
+    ):
+        main_cli(cmd)
+    assert 'Invalid environment variable VOC4CAT_VERSION "2.0"' in caplog.text
