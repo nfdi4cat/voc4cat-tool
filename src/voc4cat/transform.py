@@ -1,4 +1,6 @@
+import datetime
 import logging
+import os
 import shutil
 from collections import defaultdict
 from itertools import count, zip_longest
@@ -7,8 +9,8 @@ from urllib.parse import urlsplit
 
 import openpyxl
 from openpyxl.styles import Alignment
-from rdflib import Graph
-from rdflib.namespace import SKOS
+from rdflib import Graph, Literal
+from rdflib.namespace import DCTERMS, OWL, RDF, SKOS, XSD
 
 from voc4cat import config
 from voc4cat.checks import Voc4catError
@@ -27,7 +29,7 @@ logger = logging.getLogger(__name__)
 def extract_numeric_id_from_iri(iri):
     iri_path = urlsplit(iri).path
     reverse_id = []
-    for char in reversed(iri_path):  # pragma: no cover
+    for char in reversed(iri_path):
         if char.isdigit():
             reverse_id.append(char)
         elif char == "/":
@@ -63,6 +65,27 @@ def write_split_turtle(vocab_graph: Graph, outdir: Path) -> None:
         logger.debug("-> wrote %i %ss-file(s).", len(qresults), skos_class)
 
 
+def autoversion_cs(graph: Graph) -> Graph:
+    """Set modified date and version if "requested" via environment variables."""
+    if any(graph.triples((None, RDF.type, SKOS.ConceptScheme))):
+        cs, _, _ = next(graph.triples((None, RDF.type, SKOS.ConceptScheme)))
+    if os.getenv("VOC4CAT_MODIFIED") is not None:
+        graph.remove((None, DCTERMS.modified, None))
+        date_modified = os.getenv("VOC4CAT_MODIFIED")
+        graph.add((cs, DCTERMS.modified, Literal(date_modified, datatype=XSD.date)))
+    if os.getenv("VOC4CAT_VERSION") is not None:
+        graph.remove((None, OWL.versionInfo, None))
+        version = os.getenv("VOC4CAT_VERSION")
+        if version is not None and not version.startswith("v"):
+            msg = 'Invalid environment variable VOC4CAT_VERSION "%s". Version must start with letter "v".'
+            logger.error(msg, version)
+            raise Voc4catError(msg % version)
+        graph.add(
+            (cs, OWL.versionInfo, Literal(version)),
+        )
+    return graph
+
+
 def join_split_turtle(vocab_dir: Path) -> Graph:
     # Search recursively all turtle files belonging to the concept scheme
     turtle_files = vocab_dir.rglob("*.ttl")
@@ -71,6 +94,11 @@ def join_split_turtle(vocab_dir: Path) -> Graph:
     # Load each turtle file into a separate graph and merge it into the concept scheme graph
     for file in turtle_files:
         graph = Graph().parse(file, format="turtle")
+        # Set modified date if "requested" via environment variable.
+        if file.name == "concept_scheme.ttl" or any(
+            graph.triples((None, RDF.type, SKOS.ConceptScheme))
+        ):
+            graph = autoversion_cs(graph)
         cs_graph += graph
     cs_graph.serialize(destination=vocab_dir.with_suffix(".ttl"), format="turtle")
     return cs_graph

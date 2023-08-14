@@ -1,5 +1,17 @@
 # Change log
 
+## Release 0.6.x (2023-08-dd)
+
+New features:
+
+- Support for two environment variables was added. Both changes enable achieving consistent version/tag info in the gh-based vocabulary management (related [voc4cat-template #11](https://github.com/nfdi4cat/voc4cat-template/issues/11)). #148
+  - `VOC4CAT_MODIFIED` - If set to a truthy value, the current date is used as modified date; the date in the source is ignored.
+  - `VOC4CAT_VERSION` - version string; if present this version info has highest precedence. A leading "v" will be removed.
+
+Bug fixes:
+
+- Modified date of concept scheme was not transferred from xlsx to rdf. #147, #148
+
 ## Release 0.6.2 (2023-08-10)
 
 New features:

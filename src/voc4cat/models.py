@@ -1,5 +1,6 @@
 import datetime
 import logging
+import os
 from itertools import chain
 from typing import List, Union
 
@@ -169,11 +170,29 @@ class ConceptScheme(BaseModel):
             raise ValueError(msg)
         return v
 
+    @validator("modified")
+    def set_modified_date_if_missing(cls, v):
+        if os.getenv("CI") is not None:  # Don't track modified date in GitHub.
+            v = None
+        return v
+
     @validator("publisher")
     def publisher_must_be_from_list(cls, v):
         if v not in ORGANISATIONS:
             msg = f"Organisations must be selected from the Organisations list: {', '.join(ORGANISATIONS)}"
             raise ValueError(msg)
+        return v
+
+    @validator("version")
+    def version_from_env(cls, v):
+        if os.getenv("CI") is not None:  # Don't track version in GitHub.
+            v = None
+        version_from_env = os.getenv("VOC4CAT_VERSION")
+        if version_from_env is not None:
+            if not version_from_env.startswith("v"):
+                msg = f'Invalid environment variable VOC4CAT_VERSION "{version_from_env}". Version must start with letter "v".'
+                raise ValueError(msg)
+            v = version_from_env
         return v
 
     def to_graph(self):
@@ -187,25 +206,10 @@ class ConceptScheme(BaseModel):
         g.add((v, SKOS.prefLabel, Literal(self.title, lang="en")))
         g.add((v, SKOS.definition, Literal(self.description, lang="en")))
         g.add((v, DCTERMS.created, Literal(self.created, datatype=XSD.date)))
-        if self.modified is not None:
-            g.add((v, DCTERMS.modified, Literal(self.created, datatype=XSD.date)))
-        else:
-            g.add(
-                (
-                    v,
-                    DCTERMS.modified,
-                    Literal(
-                        datetime.datetime.now(datetime.timezone.utc).strftime(
-                            "%Y-%m-%d"
-                        ),
-                        datatype=XSD.date,
-                    ),
-                )
-            )
+        g.add((v, DCTERMS.modified, Literal(self.modified, datatype=XSD.date))),
         g.add((v, DCTERMS.creator, ORGANISATIONS[self.creator]))
         g.add((v, DCTERMS.publisher, ORGANISATIONS[self.publisher]))
-        if self.version is not None:
-            g.add((v, OWL.versionInfo, Literal(self.version)))
+        g.add((v, OWL.versionInfo, Literal(self.version)))
         g.add((v, DCTERMS.provenance, Literal(self.provenance, lang="en")))
         if self.custodian is not None:
             g.add((v, DCAT.contactPoint, Literal(self.custodian)))
@@ -224,7 +228,7 @@ class ConceptScheme(BaseModel):
         ws["B3"] = self.title
         ws["B4"] = self.description
         ws["B5"] = self.created.isoformat()
-        ws["B6"] = self.modified.isoformat()
+        ws["B6"] = None if self.modified is None else self.modified.isoformat()
         ws["B7"] = self.creator
         ws["B8"] = self.publisher
         ws["B9"] = self.version

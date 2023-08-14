@@ -1,4 +1,6 @@
+import os
 from pathlib import Path
+from unittest import mock
 
 import pytest
 import voc4cat
@@ -39,6 +41,7 @@ def test_simple():
     ) in g, "Provenance for vocab is not correct"
 
 
+@mock.patch.dict(os.environ, clear=True)  # required to hide gh-action environment vars
 def test_exhaustive_template_is_isomorphic():
     g1 = Graph().parse(
         Path(__file__).parent
@@ -52,6 +55,7 @@ def test_exhaustive_template_is_isomorphic():
     assert compare.isomorphic(g1, g2), "Graphs are not Isomorphic"
 
 
+@mock.patch.dict(os.environ, clear=True)  # required to hide gh-action environment vars
 def test_rdf_to_excel():
     g1 = Graph().parse(
         Path(__file__).parent

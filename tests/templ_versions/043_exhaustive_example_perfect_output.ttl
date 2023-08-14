@@ -27,7 +27,7 @@ cs: a skos:ConceptScheme ;
     dcterms:created "2022-03-07"^^xsd:date ;
     dcterms:creator <https://linked.data.gov.au/org/cgi> ;
     dcterms:hasPart <http://example.org/example_collection_uri> ;
-    dcterms:modified "2022-03-07"^^xsd:date ;
+    dcterms:modified "2022-03-10"^^xsd:date ;
     dcterms:provenance "Example Provenance"@en ;
     dcterms:publisher <https://linked.data.gov.au/org/cgi> ;
     rdfs:seeAlso "1.2.3.4" ;

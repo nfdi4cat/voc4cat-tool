@@ -1,3 +1,7 @@
+import datetime
+import os
+from unittest import mock
+
 import pytest
 from pydantic.error_wrappers import ValidationError
 from rdflib import Graph
@@ -81,20 +85,81 @@ def test_check_uri_vs_config(datadir, temp_config):
 # === From here on: "old" tests from rdflib.vocexcel ===
 
 
+@mock.patch.dict(os.environ, clear=True)  # required to hide gh-action environment vars
 def test_vocabulary_valid():
-    ConceptScheme(
+    cs = ConceptScheme(
         uri="https://linked.data.gov.au/def/borehole-start-point",
         title="Borehole Start Point",
         description="Indicates the nature of the borehole start point location",
         created="2020-04-02",
-        modified="2020-04-02",
+        modified="2020-04-04",
         creator="GSQ",
         publisher="GSQ",
-        version="",
+        version="1.0",
         provenance="Derived from the 2011-09 version of CGI Borehole start point list",
         custodian="Vance Kelly",
         pid="http://pid.geoscience.gov.au/dataset/ga/114541",
     )
+    assert cs.modified == datetime.date(2020, 4, 4)
+    assert cs.version == "1.0"
+
+
+@mock.patch.dict(os.environ, {"CI": ""})
+def test_vocabulary_valid_in_ci():
+    cs = ConceptScheme(
+        uri="https://linked.data.gov.au/def/borehole-start-point",
+        title="Borehole Start Point",
+        description="Indicates the nature of the borehole start point location",
+        created="2020-04-02",
+        modified="2020-04-04",
+        creator="GSQ",
+        publisher="GSQ",
+        version="1.0",
+        provenance="Derived from the 2011-09 version of CGI Borehole start point list",
+        custodian="Vance Kelly",
+        pid="http://pid.geoscience.gov.au/dataset/ga/114541",
+    )
+    assert cs.modified is None
+    assert cs.version is None
+
+
+@mock.patch.dict(os.environ, {"CI": "", "VOC4CAT_VERSION": "v2023-08-15"})
+def test_vocabulary_valid_version_via_envvar():
+    cs = ConceptScheme(
+        uri="https://linked.data.gov.au/def/borehole-start-point",
+        title="Borehole Start Point",
+        description="Indicates the nature of the borehole start point location",
+        created="2020-04-02",
+        modified="2020-04-04",
+        creator="GSQ",
+        publisher="GSQ",
+        version="1.0",
+        provenance="Derived from the 2011-09 version of CGI Borehole start point list",
+        custodian="Vance Kelly",
+        pid="http://pid.geoscience.gov.au/dataset/ga/114541",
+    )
+    assert cs.modified is None
+    assert cs.version == "v2023-08-15"
+
+
+@mock.patch.dict(os.environ, {"CI": "", "VOC4CAT_VERSION": "2023-08-15"})
+def test_vocabulary_invalid_version_via_envvar():
+    with pytest.raises(
+        ValidationError, match="Invalid environment variable VOC4CAT_VERSION"
+    ):
+        ConceptScheme(
+            uri="https://linked.data.gov.au/def/borehole-start-point",
+            title="Borehole Start Point",
+            description="Indicates the nature of the borehole start point location",
+            created="2020-04-02",
+            modified="2020-04-04",
+            creator="GSQ",
+            publisher="GSQ",
+            version="1.0",
+            provenance="Derived from the 2011-09 version of CGI Borehole start point list",
+            custodian="Vance Kelly",
+            pid="http://pid.geoscience.gov.au/dataset/ga/114541",
+        )
 
 
 def test_vocabulary_invalid_uri():
@@ -104,7 +169,7 @@ def test_vocabulary_invalid_uri():
             title="Borehole Start Point",
             description="Indicates the nature of the borehole start point location",
             created="2020-04-02",
-            modified="02/042020",
+            modified=None,
             creator="GSQ",
             publisher="GSQ",
             version="",
@@ -121,7 +186,7 @@ def test_vocabulary_invalid_created_date():
             title="Borehole Start Point",
             description="Indicates the nature of the borehole start point location",
             created="2020-04",
-            modified="2020-04-02",
+            modified="2020-04-04",
             creator="GSQ",
             publisher="GSQ",
             version="",
@@ -138,7 +203,7 @@ def test_vocabulary_invalid_publisher():
             title="Borehole Start Point",
             description="Indicates the nature of the borehole start point location",
             created="2020-04-02",
-            modified="2020-04-02",
+            modified="2020-04-04",
             creator="GSQ",
             publisher="WHO",
             version="",
