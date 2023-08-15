@@ -32,6 +32,14 @@ def run_pylode(turtle_file: Path, output_path: Path) -> None:
         '<section id="overview">',
         '<section id="overview" style="display: none;">',
     )
+    content = content.replace(
+        "<dt>Ontology RDF</dt>",
+        "<dt>Vocabulary RDF</dt>",
+    )
+    content = content.replace(
+        f'<dd><a href="{filename.stem}.ttl">RDF (turtle)</a></dd>',
+        f'<dd><a href="../{filename.stem}.ttl">RDF (turtle)</a></dd>',
+    )
     with open(outfile, "w") as html_file:
         html_file.write(content)
 
