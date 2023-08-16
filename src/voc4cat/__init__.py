@@ -1,4 +1,5 @@
 import logging
+import logging.handlers
 import os
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -34,7 +35,9 @@ def setup_logging(loglevel: int = logging.INFO, logfile: Path | None = None):
 
     if logfile is not None:
         # Setup handler for logging to file
-        fh = logging.FileHandler(logfile)
+        fh = logging.handlers.RotatingFileHandler(
+            logfile, maxBytes=100000, backupCount=5
+        )
         fh.setLevel(loglevel)
         fh_formatter = logging.Formatter(
             fmt="%(asctime)s|%(name)-20s|%(levelname)-8s|%(message)s",
