@@ -11,22 +11,17 @@ from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import DCAT, DCTERMS, OWL, RDF, RDFS, SKOS, XSD, NamespaceManager
 
 from voc4cat import config
+from voc4cat.fields import Orcid, Ror
 
 logger = logging.getLogger(__name__)
 
+# It defined here the key string can be used in xlsx instead of an URI.
 ORGANISATIONS = {
     "NFDI4Cat": URIRef("http://example.org/nfdi4cat/"),
-    "LIKAT": URIRef("https://www.catalysis.de/"),
-    # from rdflib.vocexcel
-    "CGI": URIRef("https://linked.data.gov.au/org/cgi"),
-    "GA": URIRef("https://linked.data.gov.au/org/ga"),
-    "GGIC": URIRef("https://linked.data.gov.au/org/ggic"),
+    "LIKAT": URIRef("https://ror.org/029hg0311"),
+    # from rdflib.vocexcel (used in old tests)
+    "CGI": URIRef("https://linked.data.gov.au/org/cgi-gtwg"),
     "GSQ": URIRef("https://linked.data.gov.au/org/gsq"),
-    "ICSM": URIRef("https://linked.data.gov.au/org/icsm"),
-    "DES": URIRef("https://linked.data.gov.au/org/des"),
-    "BITRE": URIRef("https://linked.data.gov.au/org/bitre"),
-    "CASA": URIRef("https://linked.data.gov.au/org/casa"),
-    "ATSB": URIRef("https://linked.data.gov.au/org/atsb"),
 }
 
 ORGANISATIONS_INVERSE = {uref: name for name, uref in ORGANISATIONS.items()}
@@ -155,8 +150,8 @@ class ConceptScheme(BaseModel):
     description: str
     created: datetime.date
     modified: datetime.date = None
-    creator: str
-    publisher: str
+    creator: Ror | Orcid | str
+    publisher: Ror | str
     provenance: str
     version: str = None
     custodian: str = None
@@ -165,9 +160,12 @@ class ConceptScheme(BaseModel):
 
     @validator("creator")
     def creator_must_be_from_list(cls, v):
-        if v not in ORGANISATIONS:
-            msg = f"Organisations must be selected from the Organisations list: {', '.join(ORGANISATIONS)}"
-            raise ValueError(msg)
+        if isinstance(v, str):
+            if v.startswith("http"):
+                return v
+            if v not in ORGANISATIONS:
+                msg = f"Creator must be an ORCID or ROR ID or a string from the organisations list: {', '.join(ORGANISATIONS)}"
+                raise ValueError(msg)
         return v
 
     @validator("modified")
@@ -178,9 +176,12 @@ class ConceptScheme(BaseModel):
 
     @validator("publisher")
     def publisher_must_be_from_list(cls, v):
-        if v not in ORGANISATIONS:
-            msg = f"Organisations must be selected from the Organisations list: {', '.join(ORGANISATIONS)}"
-            raise ValueError(msg)
+        if isinstance(v, str):
+            if v.startswith("http"):
+                return v
+            if v not in ORGANISATIONS:
+                msg = f"Publisher must be an ROR ID or a string from the organisations list: {', '.join(ORGANISATIONS)}"
+                raise ValueError(msg)
         return v
 
     @validator("version")
@@ -206,9 +207,17 @@ class ConceptScheme(BaseModel):
         g.add((v, SKOS.prefLabel, Literal(self.title, lang="en")))
         g.add((v, SKOS.definition, Literal(self.description, lang="en")))
         g.add((v, DCTERMS.created, Literal(self.created, datatype=XSD.date)))
-        g.add((v, DCTERMS.modified, Literal(self.modified, datatype=XSD.date))),
-        g.add((v, DCTERMS.creator, ORGANISATIONS[self.creator]))
-        g.add((v, DCTERMS.publisher, ORGANISATIONS[self.publisher]))
+        g.add((v, DCTERMS.modified, Literal(self.modified, datatype=XSD.date)))
+        g.add(
+            (v, DCTERMS.creator, ORGANISATIONS.get(self.creator, URIRef(self.creator)))
+        )
+        g.add(
+            (
+                v,
+                DCTERMS.publisher,
+                ORGANISATIONS.get(self.publisher, URIRef(self.publisher)),
+            )
+        )
         g.add((v, OWL.versionInfo, Literal(self.version)))
         g.add((v, DCTERMS.provenance, Literal(self.provenance, lang="en")))
         if self.custodian is not None:
