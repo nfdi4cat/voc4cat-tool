@@ -1,12 +1,20 @@
 # Change log
 
-## Release 0.6.x (2023-08-dd)
+## Release 0.7.0 (2023-08-16)
 
 New features:
 
-- Support for two environment variables was added. Both changes enable achieving consistent version/tag info in the gh-based vocabulary management (related [voc4cat-template #11](https://github.com/nfdi4cat/voc4cat-template/issues/11)). #148
-  - `VOC4CAT_MODIFIED` - If set to a truthy value, the current date is used as modified date; the date in the source is ignored.
-  - `VOC4CAT_VERSION` - version string; if present this version info has highest precedence. A leading "v" will be removed.
+- In concept scheme sheet creator can now be ORCID, ROR ID or a predefined string; publisher can be ROR ID or a predefined string (for example `NFDI4Cat`) #120, #151
+- Support for two environment variables was added. If present they will be used with highest preference. #148
+  - `VOC4CAT_MODIFIED` - Can be used to supply a modified date.
+  - `VOC4CAT_VERSION` - version string; it must start with "v".
+- voc4cat detects if it runs in gh-actions. In gh-actions it clears the modified date to avoid tracking its changes with git. #148
+
+Changes:
+
+- In concept scheme sheet, modified date and version are now optional. #148
+- Update notes xlsx-template and example files. #152
+- Use rotating logfiles instead of single file by default. #149, #150
 
 Bug fixes:
 
