@@ -142,6 +142,45 @@ def test_vocabulary_valid_version_via_envvar():
     assert cs.version == "v2023-08-15"
 
 
+@mock.patch.dict(os.environ, {"CI": "", "VOC4CAT_VERSION": "v2023-08-15"})
+def test_vocabulary_creator_orcid():
+    cs = ConceptScheme(
+        uri="https://linked.data.gov.au/def/borehole-start-point",
+        title="Borehole Start Point",
+        description="Indicates the nature of the borehole start point location",
+        created="2020-04-02",
+        modified="2020-04-04",
+        creator="0000-0001-2345-6789",
+        publisher="GSQ",
+        version="1.0",
+        provenance="Derived from the 2011-09 version of CGI Borehole start point list",
+        custodian="Vance Kelly",
+        pid="http://pid.geoscience.gov.au/dataset/ga/114541",
+    )
+    assert cs.creator == "https://orcid.org/0000-0001-2345-6789"
+
+
+@mock.patch.dict(os.environ, {"CI": "", "VOC4CAT_VERSION": "v2023-08-15"})
+def test_vocabulary_creator_invalid():
+    with pytest.raises(
+        ValidationError,
+        match="Creator must be an ORCID or ROR ID or a string from the organisations list",
+    ):
+        ConceptScheme(
+            uri="https://linked.data.gov.au/def/borehole-start-point",
+            title="Borehole Start Point",
+            description="Indicates the nature of the borehole start point location",
+            created="2020-04-02",
+            modified="2020-04-04",
+            creator="abc",
+            publisher="https://ror.org/04fa4r544",
+            version="1.0",
+            provenance="Derived from the 2011-09 version of CGI Borehole start point list",
+            custodian="Vance Kelly",
+            pid="http://pid.geoscience.gov.au/dataset/ga/114541",
+        )
+
+
 @mock.patch.dict(os.environ, {"CI": "", "VOC4CAT_VERSION": "2023-08-15"})
 def test_vocabulary_invalid_version_via_envvar():
     with pytest.raises(

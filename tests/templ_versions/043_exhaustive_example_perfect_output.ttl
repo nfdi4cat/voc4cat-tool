@@ -25,11 +25,11 @@
 cs: a skos:ConceptScheme ;
     dcterms:identifier "exhaustive_concept_scheme_vocabulary_iri"^^xsd:token ;
     dcterms:created "2022-03-07"^^xsd:date ;
-    dcterms:creator <https://linked.data.gov.au/org/cgi> ;
+    dcterms:creator <https://linked.data.gov.au/org/gsq> ;
     dcterms:hasPart <http://example.org/example_collection_uri> ;
     dcterms:modified "2022-03-10"^^xsd:date ;
     dcterms:provenance "Example Provenance"@en ;
-    dcterms:publisher <https://linked.data.gov.au/org/cgi> ;
+    dcterms:publisher <https://linked.data.gov.au/org/cgi-gtwg> ;
     rdfs:seeAlso "1.2.3.4" ;
     owl:versionInfo "0.1" ;
     skos:definition "Exhaustive Vocabulary Description"@en ;
