@@ -1,5 +1,11 @@
 # Change log
 
+## Release 0.7.1 (2023-08-22)
+
+First release to upload to PyPI.
+
+There were no functional changes since 0.7.0.
+
 ## Release 0.7.0 (2023-08-16)
 
 New features:

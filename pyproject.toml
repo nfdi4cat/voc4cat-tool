@@ -1,6 +1,4 @@
 [build-system]
-#requires = ["setuptools", "setuptools_scm[toml]>=6.2"]
-#build-backend = "setuptools.build_meta"
 requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
@@ -22,7 +20,7 @@ license = {file = "LICENSE"}
 readme = "README.md"
 requires-python = ">=3.8"
 
-keywords = ["packaging", "dependency", "infer", "pyproject.toml"]
+keywords = ["SKOS", "vocabulary", "spreadsheet", "xlsx", "linked data", "rdf"]
 
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -79,17 +77,6 @@ dev = [
 voc4cat = "voc4cat.cli:run_cli_app"
 merge_vocab = "voc4cat.merge_vocab:main_cli"
 
-#[tool.setuptools.packages.find]
-#where = ["src"]
-#
-#[tool.setuptools_scm]
-## presence of section activates version-number generation
-#write_to = "src/voc4cat/_version.py"
-
-#[tool.setuptools.dynamic]
-#version = {attr = "voc4cat._version.version"}
-#readme = {file = ["README.md"]}
-
 [tool.hatch.metadata]
 # Hatch disallows direct references for dependencies by default.
 # We need to enable them to allow installing NFDI4Cat's vocexcel from github.
@@ -97,14 +84,14 @@ allow-direct-references = true
 
 # Build targets for hatch are defined as sections within tool.hatch.build.targets:
 [tool.hatch.build.targets.sdist]
-exclude = [
-  "/docs",
+include = [
+  "/src",
+  "/templates",
 ]
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/voc4cat"]
 
-# integrates setuptools_scm into hatch, https://github.com/ofek/hatch-vcs
+# integrates git-tag-based versions into hatch, https://github.com/ofek/hatch-vcs
 [tool.hatch.version]
 source = "vcs"
 
