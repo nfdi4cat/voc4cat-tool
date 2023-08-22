@@ -50,6 +50,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: distribution-files
+          path: dist
 
       # pinned version 1.8.10 [2]
       - name: Publish distribution 📦 to Test PyPI
