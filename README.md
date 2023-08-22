@@ -2,11 +2,9 @@
 
 ## Overview
 
-**[voc4cat](https://github.com/nfdi4cat/voc4cat)** is the vocabulary for catalysis developed in NFDI4Cat.
+For **[voc4cat](https://github.com/nfdi4cat/voc4cat)**, a term collection for catalysis created in [NFDI4Cat](https://www.nfdi4cat.org), we developed a **toolbox for collaboratively maintaining SKOS vocabularies on GitHub using Excel** (xlsx-files) as user-friendly interface. It consists of several parts:
 
-For voc4cat we developed a **toolbox for collaboratively maintaining SKOS vocabularies on GitHub using Excel** (xlsx-files) as user-friendly interface. It consists of several parts:
-
-- **voc4cat-tool** (this repository)
+- **voc4cat-tool** (this package)
   - A command-line tool to convert vocabularies from Excel to SKOS (turtle/rdf) and validate the vocabulary. Validation includes formal validation with SHACL-profiles but also additional checks. The `voc4cat` tool can be run locally but is also well suited for integration in CI-pipelines. It was inspired by [RDFlib/VocExcel](https://github.com/nfdi4cat/VocExcel). Parts of the vocexcel code base were merged into this repository (see git history).
 - **[voc4cat-template](https://github.com/nfdi4cat/voc4cat-template)**
   - A github project template for managing SKOS-vocabularies using a GitHub-based workflows including automation by gh-actions.
@@ -33,40 +31,17 @@ voc4cat works on files or folders. If a folder is given all matching files are p
 
 To start you need:
 
-- git
-- Python (3.10 or newer)
+- Python (3.8 or newer)
 
-voc4cat works on windows, linux and mac. However, the examples below assume that you work on windows
-and that the [launcher](https://docs.python.org/3.11/using/windows.html#python-launcher-for-windows) is installed.
-The launcher is included by default in Windows installers from [python.org](https://www.python.org/downloads/).
-If you don't have the launcher replace `py` by `python` (or `python3`, depending on your OS) in the commands below.
+voc4cat is platform independent and should work at least on windows, linux and mac.
 
 ### Installation steps
 
-Checkout this repository
+If you just want to use the commandline interface it is strongly suggested to use [pipx](https://pypa.github.io/pipx/) for the installation. `pipx` makes installing and managing python command line application very easy.
 
-`git clone https://github.com/nfdi4cat/voc4cat-tool.git`
+`pipx install voc4cat`
 
-Enter the directory to which you cloned.
-
-`cd voc4cat-tool`
-
-Create a virtual environment in a local subfolder ".venv" (This command is for windows. Replace "py" with "python3" on other platforms.):
-
-`py -m venv .venv`
-
-Activate the virtual environment (This is again for windows).
-
-`.venv\scripts\activate.bat` (cmd) or `.venv\scripts\Activate.ps1` (powershell)
-
-Update pip in the virtual environment.
-
-`py -m pip install -U pip`
-
-Install voc4cat into the virtual environment.
-
-`pip install .`
-
+Alternatively you can `pip`-install voc4cat like any other Python package.
 To install including all development tools use `pip install .[dev]` for just the test tools us `pip install .[tests]`. For tests we use [pytest](https://docs.pytest.org).
 
 ### Typical use
@@ -82,6 +57,8 @@ which lists all available sub commands. These have their own help, for example:
 To create a new vocabulary use the voc4cat-adjusted template from the `templates` subfolder.
 For starting you can use simple temporary IRIs like (`ex:my_term`) for your concepts.
 With voc4cat you can later replace these later by different namespaces and/or different numeric IDs.
+
+The files used below to demonstrate some commands can be found in the example folder of the [repository](https://github.com/nfdi4cat/voc4cat-tool/).
 
 For expressing hierarchies in SKOS ("broader"/"narrower") voc4cat offers two options. One way is to enter a list of children IRIs  (in sheet "Concepts"). However, filling the Children URI columns with lists of IRIs can be tedious. Therefore, voc4cat offers a second easier way to express hierarchies between concepts and that is by indentation. voc4Cat understands Excel-indentation (the default) but can also work with other indentation formats (e.g. 3 spaces per level). To switch between the two representations, use the `transform` sub-command. For example, use
 
@@ -117,9 +94,9 @@ See the command line help for details.
 
 ## Feedback and code contributions
 
-Please create an issue here. We highly appreciate your feedback.
+We highly appreciate your feedback. Please create an [issue on GitHub](https://github.com/nfdi4cat/voc4cat-tool/issues).
 
-If you plan to contribute code, we suggest to create an issue first to get early feedback on your ideas before you spend too much time.
+If you plan to contribute code, we suggest to also create an issue first to get early feedback on your ideas before you spend too much time.
 
 By contributing you agree that your contributions fall under the project´s BSD-3-Clause [license](LICENSE).
 

@@ -8,15 +8,15 @@ name = "voc4cat"
 description = "SKOS vocabulary management tool of NFDI4Cat."
 authors = [
   # Authors sorted by number of commits as of 2023-07-04
-  {author = "David Linke", email = "david.linke@catalysis.de"},
-  {author = "Peter Philips", email = "peter.philips@surroundaustralia.com"},
-  {author = "Nicholas Car", email = "nicholas.car@surroundaustralia.com"},
-  {author = "Jamie Feiss", email = "jamie.feiss@surroundaustralia.com"},
+  {name = "David Linke", email = "david.linke@catalysis.de"},
+  {name = "Peter Philips", email = "peter.philips@surroundaustralia.com"},
+  {name = "Nicholas Car", email = "nicholas.car@surroundaustralia.com"},
+  {name = "Jamie Feiss", email = "jamie.feiss@surroundaustralia.com"},
 ]
 maintainers = [
-  {author = "David Linke", email = "david.linke@catalysis.de"},
+  {name = "David Linke", email = "david.linke@catalysis.de"},
 ]
-license = {file = "LICENSE"}
+license = {text = "BSD-3-Clause"}
 readme = "README.md"
 requires-python = ">=3.8"
 
@@ -28,8 +28,7 @@ classifiers = [
   "Environment :: Console",
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: BSD License",
-  "Operating System :: POSIX :: Linux",
-  "Operating System :: Microsoft :: Windows",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
@@ -54,10 +53,9 @@ dependencies = [
 dynamic = ["version"]
 
 [project.urls]
-homepage = "https://github.com/nfdi4cat/voc4cat-tool/"
-repository = "https://github.com/nfdi4cat/voc4cat-tool/"
-documentation = "https://github.com/nfdi4cat/voc4cat-tool/"
-changelog = "https://github.com/nfdi4cat/voc4cat-tool/CHANGELOG.md"
+Homepage = "https://github.com/nfdi4cat/voc4cat-tool/"
+Documentation = "https://github.com/nfdi4cat/voc4cat-tool/"
+Changelog = "https://github.com/nfdi4cat/voc4cat-tool/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
 tests = [
