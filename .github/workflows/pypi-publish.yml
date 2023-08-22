@@ -54,7 +54,7 @@ jobs:
 
       # pinned version 1.8.10 [2]
       - name: Publish distribution 📦 to Test PyPI
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: github.event_name == 'push'
         uses: pypa/gh-action-pypi-publish@b7f401de30cb6434a1e19f805ff006643653240e
         with:
           repository-url: https://test.pypi.org/legacy/
