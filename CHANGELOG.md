@@ -1,8 +1,8 @@
 # Change log
 
-## Release 0.7.2 (2023-08-23)
+## Release 0.7.2 / 0.7.3 (2023-08-23)
 
-First release after setting up Zenodo integration.
+First release after setting up Zenodo integration (0.7.2) and fix of Zenodo community (0.7.3).
 
 There were no functional changes since 0.7.1.
 
