@@ -1,5 +1,11 @@
 # Change log
 
+## Release 0.7.2 (2023-08-23)
+
+First release after setting up Zenodo integration.
+
+There were no functional changes since 0.7.1.
+
 ## Release 0.7.1 (2023-08-22)
 
 First release to upload to PyPI.
