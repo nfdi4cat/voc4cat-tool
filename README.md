@@ -1,3 +1,7 @@
+[![DOI](https://zenodo.org/badge/598213054.svg)](https://zenodo.org/badge/latestdoi/598213054)
+[![](https://github.com/nfdi4cat/voc4cat-tool/workflows/CI/badge.svg)](https://github.com/nfdi4cat/voc4cat-tool/actions)
+[![PyPI - Version](https://img.shields.io/pypi/v/voc4cat)](https://pypi.org/project/voc4cat)
+
 # SKOS vocabulary management with GitHub & Excel
 
 ## Overview
