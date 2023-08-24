@@ -1,10 +1,13 @@
 import glob
 import logging
 import os
+from copy import copy
 from pathlib import Path
 
-from openpyxl import load_workbook  # as _load_workbook
+from openpyxl import load_workbook
+from openpyxl.utils.cell import coordinate_from_string
 from openpyxl.workbook.workbook import Workbook
+from openpyxl.worksheet.table import Table
 
 from voc4cat.checks import Voc4catError
 
@@ -80,3 +83,39 @@ def has_file_in_multiple_formats(dir_):
         return False
     seen = set()
     return [x for x in file_names if x in seen or seen.add(x)]
+
+
+def adjust_length_of_tables(wb_path):
+    """Expand length of all tables in workbook to include all filled rows
+
+    For all tables in the workbook the table is expanded to include the last
+    row with content. Note that tables are not shrunk by this method if they
+    contain empty rows at the end.
+    """
+    wb = load_workbook(wb_path)
+
+    for ws in wb.sheetnames:
+        for t_name in list(wb[ws].tables):
+            old_range = wb[ws].tables[t_name].ref  # "A2:I20"
+            start, end = old_range.split(":")
+            end_col, _end_row = coordinate_from_string(end)
+            adjusted = f"{start}:{end_col}{wb[ws].max_row}"
+            if adjusted == old_range:
+                continue
+            # Expanding the table is not possible with openpyxl. Instead a too
+            # short table is removed, and a new adjusted table is created.
+            style = copy(wb[ws].tables[t_name].tableStyleInfo)
+            del wb[ws].tables[t_name]
+            newtab = Table(displayName=t_name, ref=adjusted)
+            newtab.tableStyleInfo = style
+            wb[ws].add_table(newtab)
+            logger.debug(
+                'Adjusted table "%s" in sheet "%s" from {%s} to {%s}.',
+                t_name,
+                wb[ws].title,
+                old_range,
+                adjusted,
+            )
+
+    wb.save(wb_path)
+    wb.close()
