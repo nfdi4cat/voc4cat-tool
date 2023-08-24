@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:  # sorted by commits in decreasing order
+  - family-names: Linke
+    given-names: David
+    orcid: https://orcid.org/0000-0002-5898-1820
+  - family-names: Phillips
+    given-names: Peter
+  - family-names: Car
+    given-names: Nicholas J.
+    orcid: https://orcid.org/0000-0002-8742-7730
+  - family-names: Feiss
+    given-names: Jamie
+title: "nfdi4cat/voc4cat-tool - A tool for creating and maintaining SKOS-vocabularies with Excel and GitHub."
+identifiers:
+  - description: "This DOI represents all versions, and will always resolve to the latest one."
+    type: doi
+    value: 10.5281/zenodo.8277925
+url: "https://github.com/nfdi4cat/voc4cat-tool"
