@@ -20,7 +20,12 @@ from voc4cat.dag_util import (
     dag_to_node_levels,
     get_concept_and_level_from_indented_line,
 )
-from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS, is_supported_template
+from voc4cat.utils import (
+    EXCEL_FILE_ENDINGS,
+    RDF_FILE_ENDINGS,
+    adjust_length_of_tables,
+    is_supported_template,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -429,6 +434,9 @@ def _transform_xlsx(file, args):
         make_ids(file, outfile, prefix, start_id, base_iri)
     else:
         logger.debug("-> nothing to do for xlsx files!")
+
+    # Extend size (length) of tables in all sheets
+    adjust_length_of_tables(outfile)
 
 
 def _transform_rdf(file, args):

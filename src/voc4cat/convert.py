@@ -24,6 +24,7 @@ from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
     RDF_FILE_ENDINGS,
     ConversionError,
+    adjust_length_of_tables,
     has_file_in_multiple_formats,
     is_supported_template,
     load_template,
@@ -440,3 +441,5 @@ def convert(args):
             output_file_path = outfile.with_suffix(".xlsx")
             rdf_to_excel(file, output_file_path, template_file_path=args.template)
             logger.info("-> successfully converted to %s", output_file_path)
+            # Extend size (length) of tables in all sheets
+            adjust_length_of_tables(output_file_path)

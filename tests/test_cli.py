@@ -86,12 +86,18 @@ def test_nonexisting_config(monkeypatch, datadir, caplog):
 
 
 @mock.patch.dict(os.environ, {"LOGLEVEL": "DEBUG"})
-def test_valid_config(monkeypatch, datadir, caplog, temp_config):
+def test_valid_config(monkeypatch, datadir, caplog, tmp_path, temp_config):
     # Don't remove "temp_config". The fixture avoid global config change.
+    shutil.copy(datadir / CS_SIMPLE, tmp_path / CS_SIMPLE)
     monkeypatch.chdir(datadir)
     with caplog.at_level(logging.DEBUG):
         main_cli(
-            ["transform", "--config", str(datadir / "valid_idranges.toml"), CS_SIMPLE]
+            [
+                "transform",
+                "--config",
+                str(datadir / "valid_idranges.toml"),
+                str(tmp_path / CS_SIMPLE),
+            ]
         )
     assert "Config loaded from" in caplog.text
 

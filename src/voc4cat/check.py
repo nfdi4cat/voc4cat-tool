@@ -14,7 +14,12 @@ from voc4cat.checks import (
 )
 from voc4cat.convert import validate_with_profile
 from voc4cat.transform import join_split_turtle
-from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS, is_supported_template
+from voc4cat.utils import (
+    EXCEL_FILE_ENDINGS,
+    RDF_FILE_ENDINGS,
+    adjust_length_of_tables,
+    is_supported_template,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +87,8 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     if failed_checks:
         wb.save(outfile)
         logger.info("-> Saved file with highlighted errors as %s", outfile)
+        # Extend size (length) of tables in all sheets
+        adjust_length_of_tables(outfile)
         return
 
     logger.info("-> xlsx check passed for file: %s", fpath)
