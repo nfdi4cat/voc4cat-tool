@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 from voc4cat import config
+from voc4cat.gh_index import build_multirelease_index
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,11 @@ def docs(args):
 
         if args.style == "pylode":
             run_pylode(file, outdir)
+            # generate index.html linking all tagged version in CI
+            if os.getenv("CI") is not None:
+                voc_path = Path(".")
+                build_multirelease_index(voc_path, outdir)
+
         elif args.style == "ontospy":
             run_ontospy(file, outdir)
         else:  # pragma: no cover
