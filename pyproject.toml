@@ -10,7 +10,7 @@ authors = [
   # Authors sorted by number of commits as of 2023-07-04
   {name = "David Linke", email = "david.linke@catalysis.de"},
   {name = "Peter Philips", email = "peter.philips@surroundaustralia.com"},
-  {name = "Nicholas Car", email = "nicholas.car@surroundaustralia.com"},
+  {name = "Nicholas Car", email = "nick@kurrawong.net"},
   {name = "Jamie Feiss", email = "jamie.feiss@surroundaustralia.com"},
 ]
 maintainers = [
@@ -60,6 +60,7 @@ Changelog = "https://github.com/nfdi4cat/voc4cat-tool/blob/master/CHANGELOG.md"
 [project.optional-dependencies]
 tests = [
   "pytest",
+  "pytest-subprocess",
   "coverage",
 ]
 lint = [

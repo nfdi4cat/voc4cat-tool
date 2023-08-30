@@ -1,6 +1,8 @@
 import logging
+import os
 import shutil
 from pathlib import Path
+from unittest import mock
 
 import pytest
 from test_cli import (
@@ -26,6 +28,7 @@ def test_build_docs_ontospy(datadir, tmp_path, test_file):
     assert (outdir / Path(CS_CYCLES_TURTLE).stem / "docs" / "index.html").exists()
 
 
+@mock.patch.dict(os.environ, clear=True)  # required to hide gh-action environment vars
 def test_build_docs_pylode(datadir, tmp_path):
     """Check that pylode generates the expected output."""
     dst = tmp_path
@@ -36,6 +39,72 @@ def test_build_docs_pylode(datadir, tmp_path):
     assert (outdir / Path(CS_CYCLES_TURTLE).stem / "index.html").exists()
 
 
+@mock.patch.dict(os.environ, {"CI": "TRUE"})
+def test_build_docs_pylode_ci_no_git(monkeypatch, datadir, tmp_path, caplog):
+    """Check that pylode generates additional index.html in CI, git error."""
+    dst = tmp_path
+    monkeypatch.chdir(dst)
+    shutil.copy(datadir / CS_CYCLES_TURTLE, dst)
+    shutil.copy(datadir / "valid_idranges.toml", dst / "idranges.toml")
+    outdir = dst / "pylode"
+
+    with caplog.at_level(logging.ERROR), mock.patch(
+        "voc4cat.gh_index.subprocess"
+    ) as subprocess:
+        subprocess.Popen.return_value.returncode = 1
+        main_cli(
+            ["docs", "--force", "--style", "pylode", "--outdir", str(outdir), str(dst)]
+        )
+
+    assert "git command returned with error" in caplog.text
+
+
+@mock.patch.dict(os.environ, {"CI": "TRUE"})
+def test_build_docs_pylode_ci_no_config(monkeypatch, datadir, tmp_path, caplog):
+    """Check that pylode generates additional index.html in CI, git error."""
+    dst = tmp_path
+    monkeypatch.chdir(dst)
+    shutil.copy(datadir / CS_CYCLES_TURTLE, dst)
+    outdir = dst / "pylode"
+
+    with caplog.at_level(logging.ERROR), pytest.raises(
+        Voc4catError, match="Config file not found"
+    ):
+        main_cli(
+            ["docs", "--force", "--style", "pylode", "--outdir", str(outdir), str(dst)]
+        )
+
+    assert "Config file not found" in caplog.text
+
+
+@pytest.mark.parametrize("git_output", [b"v2022.12.22\n", b""])
+@mock.patch.dict(os.environ, {"CI": "TRUE"})
+def test_build_docs_pylode_in_ci(  # noqa: PLR0913
+    fake_process, monkeypatch, datadir, tmp_path, caplog, git_output
+):
+    """Check that pylode generates additional index.html in CI."""
+    dst = tmp_path
+    monkeypatch.chdir(dst)
+    shutil.copy(datadir / CS_CYCLES_TURTLE, dst)
+    shutil.copy(datadir / "valid_idranges.toml", dst / "idranges.toml")
+    outdir = dst / "pylode"
+    # fake_process is a fixture from pytest-subprocess
+    fake_process.register(
+        ["git", "-C", ".", "tag", "--list", "v[0-9]*-[0-9]*-[0-9]*"],
+        stdout=git_output,
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        main_cli(
+            ["docs", "--force", "--style", "pylode", "--outdir", str(outdir), str(dst)]
+        )
+    assert (outdir / Path(CS_CYCLES_TURTLE).stem / "index.html").exists()
+    assert (outdir / "index.html").exists()
+    if git_output:
+        assert "v2022.12.22" in caplog.text
+
+
+@mock.patch.dict(os.environ, clear=True)  # required to hide gh-action environment vars
 def test_build_docs(datadir, tmp_path, caplog):
     """Check overwrite warning and output folder creation."""
     dst = tmp_path
