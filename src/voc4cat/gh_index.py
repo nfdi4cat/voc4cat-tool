@@ -18,7 +18,6 @@ STYLE_DIR = TEMPLATES_DIR
 
 class IndexPage:
     def __init__(self, vocpath=None):
-        self.include_css = True
         self.METADATA = {}
         self.METADATA["title"] = "Index of vocabulary versions"
         self.vocpath = Path(".") if vocpath is None else Path(vocpath)
@@ -27,14 +26,14 @@ class IndexPage:
         self.tags = []
 
     def _load_template(self, template_file):
-        return Environment(loader=FileSystemLoader(TEMPLATES_DIR)).get_template(
-            template_file
-        )
+        return Environment(
+            loader=FileSystemLoader(TEMPLATES_DIR), autoescape=True
+        ).get_template(template_file)
 
     def get_version_data(self):
         cmd = ["git", "-C", str(self.vocpath), "tag", "--list", "v[0-9]*-[0-9]*-[0-9]*"]
         logger.debug("Running cmd: %s", " ".join(cmd))
-        outp = subprocess.run(cmd, capture_output=True)  # noqa: S603
+        outp = subprocess.run(cmd, capture_output=True, check=False)  # noqa: S603
         if outp.returncode != 0:
             logger.error("git command returned with error")
             return
@@ -61,10 +60,8 @@ class IndexPage:
         )
 
     def _make_document(self):
-        css = None
-        if self.include_css:
-            with open(STYLE_DIR / "pylode.css") as f:
-                css = f.read()
+        with open(STYLE_DIR / "pylode.css") as f:
+            css = f.read()
 
         return self._load_template("index.html").render(
             schemaorg=None,
