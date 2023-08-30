@@ -1,0 +1,45 @@
+  <section id="vocabularies">
+    <!-- <h2>Vocabularies <span style="float:right; font-size:smaller;"></span></h2> -->
+    {%- for iname, idata in vocabularies.items() %}
+    <h3>
+      {{ iname }}<sup title="skos:ConceptScheme" class="sup-c">cs</sup>
+    </h3>
+    <table class="entity">
+      <tr>
+        <th>Latest release</th>
+        <td>
+          <a href="{{ idata.url_latest }}">Documentation (HTML)</a>
+        </td>
+        <td>
+          <code> {{ idata.url_latest }} </code>
+        </td>
+      </tr>
+      <tr>
+        <th>In development</th>
+        <td  style=" padding-right: 20px;">
+          <a href="{{ idata.url_dev }}">Documentation (HTML)</a>
+        </td>
+        <td style=" padding-right: 20px;">
+          <code> {{ idata.url_dev }} </code>
+        </td>
+        <td>
+          <a href="{{ idata.url_xlsx }}">Spreadsheet file (xlsx)</a>
+        </td>
+      </tr>
+    </table>
+    <h4>List of all releases</h4>
+    <table class="entity">
+      {% for tag in tags %}
+      <tr>
+        <th>{{ tag }}</th>
+        <td style=" padding-right: 20px;">
+            <a href="{{ idata[tag] }}">Documentation (HTML)</a>
+        </td>
+        <td>
+          <code> {{ idata[tag] }} </code>
+        </td>
+      </tr>
+      {%- endfor %}
+    </table>
+    {%- endfor %}
+  </section>
