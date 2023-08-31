@@ -1,5 +1,20 @@
 # Change log
 
+## Release 0.7.4 (2023-08-31)
+
+New features:
+
+- Expand tables to include full content. This happens every time when an xlsx-file is written. #155, #159
+
+Changes:
+
+- Change HTML documentation to use IRI as id (anchor) in html. #156
+- List members in collections in alphabetical order (in HTML documentation). #162
+
+Bug fixes:
+
+- Creator and publisher missing in generated HTML documentation. #154
+
 ## Release 0.7.2 / 0.7.3 (2023-08-23)
 
 First release after setting up Zenodo integration (0.7.2) and fix of Zenodo community (0.7.3).
