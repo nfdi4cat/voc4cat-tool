@@ -1,4 +1,5 @@
 import logging
+import os
 import subprocess
 import sys
 from collections import defaultdict
@@ -40,12 +41,17 @@ class IndexPage:
         logger.debug("Cmd output: %s", outp.stdout)
         self.tags = outp.stdout.decode(sys.getdefaultencoding()).splitlines()
 
+        gh_repo = os.getenv("GITHUB_REPOSITORY", "").split("/")[-1]  # owner/repo
+        logger.debug('Repository name (from env.var): "%s"', gh_repo)
+
         for voc, vocdata in config.IDRANGES.vocabs.items():
             base_url = vocdata.permanent_iri_part.rstrip("_").rstrip("/")
             self.vocab_data[voc]["url_latest"] = base_url
             self.vocab_data[voc]["url_dev"] = base_url + "/dev"
+            # links dev-docs on gh-pages (accessible even with non-resolving base_url)
+            self.vocab_data[voc]["url_dev_gh"] = f"/{gh_repo}/dev"
             # xlsx has no permanent uri; we link to its relative location in gh-pages
-            self.vocab_data[voc]["url_xlsx"] = f"/{voc}/dev/{voc}.xlsx"
+            self.vocab_data[voc]["url_xlsx"] = f"/{gh_repo}/dev/{voc}.xlsx"
             if not self.tags:
                 logger.debug('No tags found in "%s"', str(self.vocpath))
                 continue
@@ -57,6 +63,7 @@ class IndexPage:
         return self._load_template("vocabularies.html").render(
             tags=sorted(self.tags, reverse=True),
             vocabularies=self.vocab_data,
+            has_releases=bool(self.tags),
         )
 
     def _make_document(self):
