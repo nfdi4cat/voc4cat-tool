@@ -1,5 +1,38 @@
 {
+  "access_right": "open",
   "communities": [
     {"identifier": "nfdi4cat"}
-  ]
+  ],
+  "creators": [
+    {
+      "name": "Linke, David",
+      "orcid": "0000-0002-5898-1820",
+      "affiliation": "Leibniz Institute for Catalysis, Albert-Einstein-Str. 29 A, 18059 Rostock, Germany"
+    },
+    {
+      "name": "Phillips, Peter"
+    },
+    {
+      "name": "Car, Nicholas J.",
+      "orcid": "0000-0002-8742-7730"
+    },
+    {
+      "name": "Feiss, Jamie"
+    }
+  ],
+  "description": "<p>A command-line tool written in Python for creating and maintaining SKOS-vocabularies with Excel and GitHub. The voc4cat tool can be run locally but is also well suited for integration in CI-pipelines. It is for example used to maintain the SKOS vocabulary for catalysis <a href=\"https://github.com/nfdi4cat/voc4cat/\"><b>voc4cat</b></a> on GitHub.</p><p>Several features are included.</p><ul><li>Conversion between SKOS/turtle representation and Excel/xlsx. The conversion is supported in both directions.</li><li>Checking of vocabularies. This includes formal validation with SHACL-profiles but also additional checks useful for vocabulary maintenance.</li><li>Transforming of vocabularies, which includes switching between different Excel representations or between different RDF representations.</li><li>Documentation generation for publishing the vocabulary for example on GitHub pages.</li></ul>",
+  "keywords": [
+    "SKOS", "vocabulary", "spreadsheet", "xlsx", "linked data", "rdf"
+  ],
+  "language": "python",
+  "license": "BSD-3-clause",
+  "related_identifiers": [
+    {
+        "identifier": "doi:10.5281/zenodo.8306845",
+        "relation": "isRequiredBy",
+        "resource_type": "software",
+        "scheme": "doi"
+    }
+  ],
+  "upload_type": "software"
 }
