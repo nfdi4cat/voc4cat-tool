@@ -19,14 +19,21 @@
         <td  style=" padding-right: 20px;">
           <a href="{{ idata.url_dev }}">Documentation (HTML)</a>
         </td>
-        <td style=" padding-right: 20px;">
+        <td>
           <code> {{ idata.url_dev }} </code>
         </td>
-        <td>
+      </tr>
+      <tr>
+        <th></th>
+        <td style=" padding-right: 20px;">
           <a href="{{ idata.url_xlsx }}">Spreadsheet file (xlsx)</a>
+        </td>
+        <td>
+          <a href="{{ idata.url_dev_gh }}">Documentation on GitHub (HTML)</a>
         </td>
       </tr>
     </table>
+    {%- if has_releases %}
     <h4>List of all releases</h4>
     <table class="entity">
       {% for tag in tags %}
@@ -41,5 +48,6 @@
       </tr>
       {%- endfor %}
     </table>
+    {%- endif %}
     {%- endfor %}
   </section>
