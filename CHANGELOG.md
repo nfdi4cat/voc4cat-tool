@@ -4,7 +4,7 @@
 
 New features:
 
-- Add creation of an index-page for the root of gh-pages. #160, #165
+- Add creation of an index-page for the root of gh-pages. #160, #165, #169
 
 Changes:
 
