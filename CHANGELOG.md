@@ -8,8 +8,8 @@ New features:
 
 Changes:
 
-- Replaced CITATION.cff by CITATION.bib to avoid side effects on data in Zenodo. #166, #167
-- Provide metadata for Zenodo completely via `.zenodo.json`. The metadata have also been enriched significantly. #167
+- Replaced CITATION.cff by CITATION.bib to avoid side effects on data in Zenodo. #166, #167, #168
+- Provide metadata for Zenodo completely via `.zenodo.json`. The metadata have also been enriched significantly. #167, #168
 
 ## Release 0.7.4 (2023-08-31)
 
