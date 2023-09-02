@@ -1,5 +1,16 @@
 # Change log
 
+## Release 0.7.5 (2023-09-02)
+
+New features:
+
+- Add creation of an index-page for the root of gh-pages. #160, #165
+
+Changes:
+
+- Replaced CITATION.cff by CITATION.bib to avoid side effects on data in Zenodo. #166, #167
+- Provide metadata for Zenodo completely via `.zenodo.json`. The metadata have also been enriched significantly. #167
+
 ## Release 0.7.4 (2023-08-31)
 
 New features:
