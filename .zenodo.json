@@ -24,13 +24,12 @@
   "keywords": [
     "SKOS", "vocabulary", "spreadsheet", "xlsx", "linked data", "rdf"
   ],
-  "language": "python",
   "license": "BSD-3-clause",
   "related_identifiers": [
     {
         "identifier": "doi:10.5281/zenodo.8306845",
         "relation": "isRequiredBy",
-        "resource_type": "software",
+        "resource_type": "workflow",
         "scheme": "doi"
     }
   ],
