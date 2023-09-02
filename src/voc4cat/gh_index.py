@@ -63,7 +63,7 @@ class IndexPage:
         return self._load_template("vocabularies.html").render(
             tags=sorted(self.tags, reverse=True),
             vocabularies=self.vocab_data,
-            has_releases=bool(self.vocab_data),
+            has_releases=bool(self.tags),
         )
 
     def _make_document(self):
