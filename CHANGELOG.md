@@ -1,6 +1,8 @@
 # Change log
 
-## Release 0.7.5 (2023-09-02)
+## Release 0.7.5 / 0.7.6 (2023-09-03)
+
+In 0.7.6 we fixed the license specifier for Zenodo and the link to the changelog for PyPI.
 
 New features:
 

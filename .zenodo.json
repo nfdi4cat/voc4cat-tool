@@ -24,7 +24,7 @@
   "keywords": [
     "SKOS", "vocabulary", "spreadsheet", "xlsx", "linked data", "rdf"
   ],
-  "license": "BSD-3-clause",
+  "license": "BSD-3-Clause",
   "related_identifiers": [
     {
         "identifier": "doi:10.5281/zenodo.8306845",
