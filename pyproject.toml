@@ -55,7 +55,7 @@ dynamic = ["version"]
 [project.urls]
 Homepage = "https://github.com/nfdi4cat/voc4cat-tool/"
 Documentation = "https://github.com/nfdi4cat/voc4cat-tool/"
-Changelog = "https://github.com/nfdi4cat/voc4cat-tool/blob/master/CHANGELOG.md"
+Changelog = "https://github.com/nfdi4cat/voc4cat-tool/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 tests = [
