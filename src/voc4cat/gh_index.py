@@ -49,7 +49,7 @@ class IndexPage:
             self.vocab_data[voc]["url_latest"] = base_url
             self.vocab_data[voc]["url_dev"] = base_url + "/dev"
             # links dev-docs on gh-pages (accessible even with non-resolving base_url)
-            self.vocab_data[voc]["url_dev_gh"] = f"/{gh_repo}/dev"
+            self.vocab_data[voc]["url_dev_gh"] = f"/{gh_repo}/dev/{voc}"
             # xlsx has no permanent uri; we link to its relative location in gh-pages
             self.vocab_data[voc]["url_xlsx"] = f"/{gh_repo}/dev/{voc}.xlsx"
             if not self.tags:
