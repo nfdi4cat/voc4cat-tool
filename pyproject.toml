@@ -37,7 +37,7 @@ classifiers = [
 
 dependencies = [
   "base32-crockford >= 0.3.0",
-  "curies >= 0.5.6",
+  "curies >= 0.6.6",
   "networkx >= 2.8",
   "openpyxl >= 3.0.9",
   "ontospy >= 2.1.0",
