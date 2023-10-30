@@ -233,7 +233,7 @@ class ConceptScheme(BaseModel):
 
     def to_excel(self, wb: Workbook):
         ws = wb["Concept Scheme"]
-        ws["B2"] = config.curies_converter.compress(self.uri) or self.uri
+        ws["B2"] = config.curies_converter.compress(self.uri, passthrough=True)
         ws["B3"] = self.title
         ws["B4"] = self.description
         ws["B5"] = self.created.isoformat()
@@ -365,8 +365,8 @@ class Concept(BaseModel):
 
         first_row_exported = False
         for lang in chain(fully_translated, partially_translated):
-            ws[f"A{row_no_concepts}"] = (
-                config.curies_converter.compress(self.uri) or self.uri
+            ws[f"A{row_no_concepts}"] = config.curies_converter.compress(
+                self.uri, passthrough=True
             )
             ws[f"B{row_no_concepts}"] = pref_labels.get(lang, "")
             ws[f"C{row_no_concepts}"] = lang
@@ -382,15 +382,12 @@ class Concept(BaseModel):
             ws[f"F{row_no_concepts}"] = ",\n".join(self.alt_labels)
             ws[f"G{row_no_concepts}"] = ",\n".join(
                 [
-                    (config.curies_converter.compress(uri) or uri)
+                    config.curies_converter.compress(uri, passthrough=True)
                     for uri in self.children
                 ]
             )
             ws[f"I{row_no_concepts}"] = (
-                (
-                    config.curies_converter.compress(self.source_vocab)
-                    or self.source_vocab
-                )
+                config.curies_converter.compress(self.source_vocab, passthrough=True)
                 if self.source_vocab
                 else None
             )
@@ -398,29 +395,38 @@ class Concept(BaseModel):
 
         ws = wb["Additional Concept Features"]
 
-        ws[f"A{row_no_features}"] = (
-            config.curies_converter.compress(self.uri) or self.uri
+        ws[f"A{row_no_features}"] = config.curies_converter.compress(
+            self.uri, passthrough=True
         )
         ws[f"B{row_no_features}"] = ",\n".join(
             [
-                (config.curies_converter.compress(uri) or uri)
+                config.curies_converter.compress(uri, passthrough=True)
                 for uri in self.related_match
             ]
         )
         ws[f"C{row_no_features}"] = ",\n".join(
-            [(config.curies_converter.compress(uri) or uri) for uri in self.close_match]
+            [
+                config.curies_converter.compress(uri, passthrough=True)
+                for uri in self.close_match
+            ]
         )
         ws[f"D{row_no_features}"] = ",\n".join(
-            [(config.curies_converter.compress(uri) or uri) for uri in self.exact_match]
+            [
+                config.curies_converter.compress(uri, passthrough=True)
+                for uri in self.exact_match
+            ]
         )
         ws[f"E{row_no_features}"] = ",\n".join(
             [
-                (config.curies_converter.compress(uri) or uri)
+                config.curies_converter.compress(uri, passthrough=True)
                 for uri in self.narrow_match
             ]
         )
         ws[f"F{row_no_features}"] = ",\n".join(
-            [(config.curies_converter.compress(uri) or uri) for uri in self.broad_match]
+            [
+                config.curies_converter.compress(uri, passthrough=True)
+                for uri in self.broad_match
+            ]
         )
 
         return row_no_concepts
@@ -461,11 +467,14 @@ class Collection(BaseModel):
 
     def to_excel(self, wb: Workbook, row_no: int):
         ws = wb["Collections"]
-        ws[f"A{row_no}"] = config.curies_converter.compress(self.uri) or self.uri
+        ws[f"A{row_no}"] = config.curies_converter.compress(self.uri, passthrough=True)
         ws[f"B{row_no}"] = self.pref_label
         ws[f"C{row_no}"] = self.definition
         ws[f"D{row_no}"] = ",\n".join(
-            [(config.curies_converter.compress(uri) or uri) for uri in self.members]
+            [
+                config.curies_converter.compress(uri, passthrough=True)
+                for uri in self.members
+            ]
         )
         ws[f"E{row_no}"] = self.provenance
 
