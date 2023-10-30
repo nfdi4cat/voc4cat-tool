@@ -169,9 +169,9 @@ class ConceptScheme(BaseModel):
         return v
 
     @validator("modified")
-    def set_modified_date_if_missing(cls, v):
-        if os.getenv("VOC4CAT_VERSION") is not None:
-            v = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    def set_modified_date_from_env(cls, v):
+        if os.getenv("VOC4CAT_MODIFIED") is not None:
+            v = datetime.date.fromisoformat(os.getenv("VOC4CAT_MODIFIED"))
         return v
 
     @validator("publisher")
