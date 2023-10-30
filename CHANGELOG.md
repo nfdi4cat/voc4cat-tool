@@ -1,5 +1,15 @@
 # Change log
 
+## Release 0.7.7 (2023-10-30)
+
+Changes:
+
+- Upgrade curies package (to >= 0.6.6) and use new passthrough option. #173, #176
+
+Bug fixes:
+
+- Consistent validation with pydantic and SHACL/vocpub (disallow None). #174, #175
+
 ## Release 0.7.5 / 0.7.6 (2023-09-03)
 
 In 0.7.6 we fixed the license specifier for Zenodo and the link to the changelog for PyPI.
