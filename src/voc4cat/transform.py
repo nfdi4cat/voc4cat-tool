@@ -78,12 +78,12 @@ def autoversion_cs(graph: Graph) -> Graph:
         date_modified = os.getenv("VOC4CAT_MODIFIED")
         graph.add((cs, DCTERMS.modified, Literal(date_modified, datatype=XSD.date)))
     if os.getenv("VOC4CAT_VERSION") is not None:
-        graph.remove((None, OWL.versionInfo, None))
         version = os.getenv("VOC4CAT_VERSION")
         if version is not None and not version.startswith("v"):
             msg = 'Invalid environment variable VOC4CAT_VERSION "%s". Version must start with letter "v".'
             logger.error(msg, version)
             raise Voc4catError(msg % version)
+        graph.remove((None, OWL.versionInfo, None))
         graph.add(
             (cs, OWL.versionInfo, Literal(version)),
         )
