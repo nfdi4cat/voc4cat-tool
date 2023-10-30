@@ -56,7 +56,7 @@ def reset_curies(curies_map: dict) -> None:
 def split_curie_list(cls, v):
     if v is None:
         return []
-    if type(v) is list:
+    if isinstance(v, list):
         return v
     return (p.strip() for p in v.split(","))
 
@@ -149,11 +149,11 @@ class ConceptScheme(BaseModel):
     title: str
     description: str
     created: datetime.date
-    modified: datetime.date = None
+    modified: datetime.date
     creator: Ror | Orcid | str
     publisher: Ror | str
     provenance: str
-    version: str = None
+    version: str = "automatic"
     custodian: str = None
     pid: str = None
     vocab_name: str = Field("", exclude=True)
@@ -170,8 +170,8 @@ class ConceptScheme(BaseModel):
 
     @validator("modified")
     def set_modified_date_if_missing(cls, v):
-        if os.getenv("CI") is not None:  # Don't track modified date in GitHub.
-            v = None
+        if os.getenv("VOC4CAT_VERSION") is not None:
+            v = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
         return v
 
     @validator("publisher")
@@ -187,7 +187,7 @@ class ConceptScheme(BaseModel):
     @validator("version")
     def version_from_env(cls, v):
         if os.getenv("CI") is not None:  # Don't track version in GitHub.
-            v = None
+            v = "automatic"
         version_from_env = os.getenv("VOC4CAT_VERSION")
         if version_from_env is not None:
             if not version_from_env.startswith("v"):

@@ -119,8 +119,8 @@ def test_vocabulary_valid_in_ci():
         custodian="Vance Kelly",
         pid="http://pid.geoscience.gov.au/dataset/ga/114541",
     )
-    assert cs.modified is None
-    assert cs.version is None
+    assert cs.modified == datetime.date(2020, 4, 4)
+    assert cs.version == "automatic"
 
 
 @mock.patch.dict(os.environ, {"CI": "", "VOC4CAT_VERSION": "v2023-08-15"})
@@ -138,7 +138,9 @@ def test_vocabulary_valid_version_via_envvar():
         custodian="Vance Kelly",
         pid="http://pid.geoscience.gov.au/dataset/ga/114541",
     )
-    assert cs.modified is None
+    assert cs.modified == datetime.datetime.now(datetime.timezone.utc).strftime(
+        "%Y-%m-%d"
+    )
     assert cs.version == "v2023-08-15"
 
 
