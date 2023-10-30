@@ -119,8 +119,29 @@ def test_vocabulary_valid_in_ci():
         custodian="Vance Kelly",
         pid="http://pid.geoscience.gov.au/dataset/ga/114541",
     )
-    assert cs.modified == datetime.date(2020, 4, 4)
     assert cs.version == "automatic"
+
+
+@mock.patch.dict(
+    os.environ,
+    {"CI": "", "VOC4CAT_VERSION": "v2023-08-15", "VOC4CAT_MODIFIED": "2023-08-15"},
+)
+def test_vocabulary_valid_modified_via_envvar():
+    cs = ConceptScheme(
+        uri="https://linked.data.gov.au/def/borehole-start-point",
+        title="Borehole Start Point",
+        description="Indicates the nature of the borehole start point location",
+        created="2020-04-02",
+        modified="2020-04-04",
+        creator="GSQ",
+        publisher="GSQ",
+        version="1.0",
+        provenance="Derived from the 2011-09 version of CGI Borehole start point list",
+        custodian="Vance Kelly",
+        pid="http://pid.geoscience.gov.au/dataset/ga/114541",
+    )
+    assert cs.modified == datetime.date(2023, 8, 15)
+    assert cs.version == "v2023-08-15"
 
 
 @mock.patch.dict(os.environ, {"CI": "", "VOC4CAT_VERSION": "v2023-08-15"})
@@ -137,9 +158,6 @@ def test_vocabulary_valid_version_via_envvar():
         provenance="Derived from the 2011-09 version of CGI Borehole start point list",
         custodian="Vance Kelly",
         pid="http://pid.geoscience.gov.au/dataset/ga/114541",
-    )
-    assert cs.modified == datetime.datetime.now(datetime.timezone.utc).strftime(
-        "%Y-%m-%d"
     )
     assert cs.version == "v2023-08-15"
 
