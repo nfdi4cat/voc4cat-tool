@@ -1,5 +1,11 @@
 # Change log
 
+## Release 0.7.8 (2023-10-30)
+
+Bug fixes:
+
+- In CI, read modified date of concept scheme CS from env.var (& fix its type). #177, #178
+
 ## Release 0.7.7 (2023-10-30)
 
 Changes:
