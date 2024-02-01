@@ -33,7 +33,7 @@ def main(ttl_inbox: Path, vocab: Path) -> int:
             exists = vocab / Path(new).name
             cmd = ["git", "merge-file", "--theirs", str(exists), str(exists), str(new)]
             logger.info("Running cmd: %s", " ".join(cmd))
-            outp = subprocess.run(cmd, capture_output=True)  # noqa: S603
+            outp = subprocess.run(cmd, capture_output=True, check=False)  # noqa: S603
             logger.info("Cmd output: %s", outp.stdout)
             if retcode := outp.returncode != 0:
                 break

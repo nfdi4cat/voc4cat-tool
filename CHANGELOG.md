@@ -1,5 +1,11 @@
 # Change log
 
+## Release 0.7.9 (2024-02-01)
+
+Bug fixes:
+
+- Adjust validation of GitHub user names to allow uppercase. #193, #194
+
 ## Release 0.7.8 (2023-10-30)
 
 Bug fixes:

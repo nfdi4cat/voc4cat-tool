@@ -339,9 +339,9 @@ def rdf_to_excel(
             pref_label=holder["pref_label"],
             definition=holder["definition"],
             members=holder["members"],
-            provenance=holder["provenance"]
-            if holder.get("provenance") is not None
-            else None,
+            provenance=(
+                holder["provenance"] if holder.get("provenance") is not None else None
+            ),
             vocab_name=vocab_name,
         ).to_excel(wb, row_no)
         row_no += 1
