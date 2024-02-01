@@ -96,3 +96,19 @@ def test_idrange_item_validation(datadir, temp_config):
     assert "ID range requires a GitHub name or an ORCID (range: 1-2)." in str(
         excinfo.value
     )
+
+
+@pytest.mark.parametrize("gh_name", ["nobody", "NoBody", "no-body", "nobody-02"])
+def test_gh_name_valid(temp_config, gh_name):
+    """Test valid github names (issue193)"""
+    config = temp_config
+    ri = config.IdrangeItem(first_id=1, last_id=2, gh_name=gh_name)
+    assert ri.gh_name == gh_name
+
+
+@pytest.mark.parametrize("gh_name", ["", "-02"])
+def test_gh_name_invalid(temp_config, gh_name):
+    """Test invalid github names (issue193)"""
+    config = temp_config
+    with pytest.raises(ValidationError):
+        config.IdrangeItem(first_id=1, last_id=2, gh_name=gh_name)
