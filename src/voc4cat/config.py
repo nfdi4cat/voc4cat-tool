@@ -42,7 +42,7 @@ class Checks(BaseModel):
 class IdrangeItem(BaseModel):
     first_id: conint(ge=1)
     last_id: int
-    gh_name: constr(regex=r"(^(^$)|([a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$))") = ""
+    gh_name: constr(regex=r"(^(^$)|[a-zA-Z0-9](?:-?[a-zA-Z0-9]){0,38})$") = ""
     orcid: Orcid | None = None
     ror_id: Ror | None = None
 
