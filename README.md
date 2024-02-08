@@ -107,3 +107,8 @@ By contributing you agree that your contributions fall under the project´s BSD-
 ## Acknowledgement
 
 This work was funded by the German Research Foundation (DFG) through the project "[NFDI4Cat](https://www.nfdi4cat.org) - NFDI for Catalysis-Related Sciences" (DFG project no. [441926934](https://gepris.dfg.de/gepris/projekt/441926934)), within the National Research Data Infrastructure ([NFDI](https://www.nfdi.de)) programme of the Joint Science Conference (GWK).
+
+This project uses the [vocpub](https://w3id.org/profile/vocpub) SHACL profile, which is licensed under the Creative Commons Attribution 4.0 International License (CC-BY 4.0).
+The original work was created by [Nicholas J. Car](https://github.com/nicholascar).
+A copy of the license can be found at: https://creativecommons.org/licenses/by/4.0/.
+Changes were made to the original work for this project.
