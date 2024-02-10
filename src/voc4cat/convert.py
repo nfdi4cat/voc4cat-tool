@@ -51,7 +51,7 @@ def validate_with_profile(
     # validate the RDF file
     conforms, results_graph, results_text = pyshacl.validate(
         data_graph,
-        shacl_graph=str(Path(__file__).parent / "profile" / "vocpub-pre3.0.ttl"),
+        shacl_graph=str(Path(__file__).parent / "profile" / "vocpub-4.7.ttl"),
         allow_warnings=allow_warnings,
     )
 
