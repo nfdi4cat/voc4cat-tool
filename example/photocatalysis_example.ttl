@@ -4,6 +4,7 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sdo: <https://schema.org/> .
 
 <https://example.org/0000004> a skos:Concept ;
     dcterms:identifier "0000004"^^xsd:token ;
@@ -567,6 +568,8 @@
     skos:prefLabel "ultraviolet"@en .
 
 <https://example.org/0000108> a skos:Collection ;
+    rdfs:isDefinedBy <https://example.org> ;
+    skos:inScheme <https://example.org> ;
     dcterms:identifier "0000108"^^xsd:token ;
     dcterms:isPartOf <https://example.org> ;
     dcterms:provenance "0000-0002-6242-2167 Nikolaos G. Moustakas created the resource"@en ;
@@ -1191,13 +1194,17 @@
         <https://example.org/0000061> ;
     skos:prefLabel "characterization"@en .
 
+<http://example.org/nfdi4cat/> a sdo:Organization ;
+    sdo:name "NFDI4Cat" ;
+    sdo:url "https://nfdi4cat.org"^^xsd:anyURI .
+
 <https://example.org> a skos:ConceptScheme ;
     dcterms:created "2023-06-29"^^xsd:date ;
     dcterms:creator <http://example.org/nfdi4cat/> ;
     dcterms:hasPart <https://example.org/0000108> ;
     dcterms:identifier "example.org"^^xsd:token ;
     dcterms:modified "2023-06-29"^^xsd:date ;
-    dcterms:provenance """https://orcid.org/0000-0002-6242-2167 Nikolaos G. Moustakas,
+    skos:historyNote """https://orcid.org/0000-0002-6242-2167 Nikolaos G. Moustakas,
 0000-0002-5898-1820 David Linke"""@en ;
     dcterms:publisher <http://example.org/nfdi4cat/> ;
     owl:versionInfo "v2023-06-29" ;
