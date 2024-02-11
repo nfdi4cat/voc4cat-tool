@@ -1,5 +1,15 @@
 # Change log
 
+## Release 0.7.10 (2024-02-11)
+
+Features:
+
+- Add coverage summary as job output. #197
+
+Changes:
+
+- Document which vocpub profile is used in 0.7.x series and move profiles to separate directory. #195, #196
+
 ## Release 0.7.9 (2024-02-01)
 
 Bug fixes:
