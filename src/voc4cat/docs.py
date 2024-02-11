@@ -2,7 +2,6 @@ import logging
 import os
 from pathlib import Path
 
-from voc4cat import config
 from voc4cat.gh_index import build_multirelease_index
 
 logger = logging.getLogger(__name__)
@@ -47,30 +46,6 @@ def run_pylode(turtle_file: Path, output_path: Path) -> None:
     logger.info("-> built pyLODE documentation for %s", turtle_file)
 
 
-def run_ontospy(turtle_file: Path, output_path: Path) -> None:
-    """
-    Generate ontospy documentation (single-page html & dendrogram).
-    """
-    import ontospy
-    from ontospy.gendocs.viz.viz_d3dendogram import Dataviz
-    from ontospy.gendocs.viz.viz_html_single import HTMLVisualizer
-
-    title = config.VOCAB_TITLE
-
-    specific_output_path = (Path(output_path) / Path(turtle_file).stem).resolve()
-
-    g = ontospy.Ontospy(Path(turtle_file).resolve().as_uri())
-
-    docs = HTMLVisualizer(g, title=title)
-    docs_path = os.path.join(specific_output_path, "docs")
-    docs.build(docs_path)  # => build and save docs/visualization.
-
-    viz = Dataviz(g, title=title)
-    viz_path = os.path.join(specific_output_path, "dendro")
-    viz.build(viz_path)  # => build and save docs/visualization.
-    logger.info("-> built ontospy documentation for %s", turtle_file)
-
-
 # ===== docs command =====
 
 
@@ -101,8 +76,6 @@ def docs(args):
                 voc_path = Path(".")
                 build_multirelease_index(voc_path, outdir)
 
-        elif args.style == "ontospy":
-            run_ontospy(file, outdir)
         else:  # pragma: no cover
             # This should not be reached since argparse checks --style choices.
             msg = f"Unsupported style: {args.style}"

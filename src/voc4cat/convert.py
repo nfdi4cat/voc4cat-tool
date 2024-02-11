@@ -153,9 +153,6 @@ def excel_to_rdf(
     )
     vocab_graph = vocab.to_graph()
 
-    # Store title in config (re-used in ontospy docs generation)
-    config.VOCAB_TITLE = cs.title
-
     if output_type == "graph":  # only used in tests
         return vocab_graph
 
@@ -348,9 +345,6 @@ def rdf_to_excel(
 
     # Write the prefix_map used in the conversion to the prefix sheet.
     write_prefix_sheet(wb, config.curies_converter.prefix_map)
-
-    # Store title in config (re-used in ontospy docs generation)
-    config.VOCAB_TITLE = cs.title
 
     if output_file_path is not None:
         dest = output_file_path

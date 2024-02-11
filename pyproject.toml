@@ -23,7 +23,7 @@ requires-python = ">=3.8"
 keywords = ["SKOS", "vocabulary", "spreadsheet", "xlsx", "linked data", "rdf"]
 
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Programming Language :: Python",
   "Environment :: Console",
   "Intended Audience :: Science/Research",
@@ -33,6 +33,7 @@ classifiers = [
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 
 dependencies = [
@@ -40,7 +41,6 @@ dependencies = [
   "curies >= 0.6.6",
   "networkx >= 2.8",
   "openpyxl >= 3.0.9",
-  "ontospy >= 2.1.0",
   "pillow >= 9.1.0",
   "pydantic < 2.0.0",
   "pyLODE < 3.0.0",

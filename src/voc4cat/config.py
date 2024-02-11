@@ -23,8 +23,6 @@ logger = logging.getLogger(__name__)
 
 # === Configuration that is not imported from idranges.toml ===
 
-VOCAB_TITLE: str = ""
-
 namespace_manager = NamespaceManager(Graph())
 # Initialize curies-converter with default namespace of rdflib.Graph
 curies_converter = Converter.from_prefix_map(
