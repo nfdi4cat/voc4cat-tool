@@ -62,6 +62,8 @@ tests = [
   "pytest",
   "pytest-subprocess",
   "coverage",
+  # pytest has a windows-only dependency on colorama, but it's needed in CI for color output.
+  "colorama",
 ]
 lint = [
   "black",
