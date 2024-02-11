@@ -386,7 +386,7 @@ def add_docs_subparser(subparsers, options):
     parser.add_argument(
         "--style",
         help="Select style of html documentation. (default: pylode)",
-        choices=("pylode", "ontospy"),
+        choices=("pylode"),
         default="pylode",
         type=str,
         required=False,

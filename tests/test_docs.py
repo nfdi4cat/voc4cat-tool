@@ -12,22 +12,6 @@ from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
 
 
-@pytest.mark.parametrize(
-    "test_file",
-    [CS_CYCLES_TURTLE, ""],
-    ids=["single file", "dir of files"],
-)
-def test_build_docs_ontospy(datadir, tmp_path, test_file):
-    """Check that ontospy generates the expected output."""
-    dst = tmp_path / test_file
-    shutil.copy(datadir / CS_CYCLES_TURTLE, tmp_path)
-    outdir = tmp_path / "ontospy"
-    # To test the code-path, outdir is created automatically here.
-    main_cli(["docs", "--style", "ontospy", "--outdir", str(outdir), str(dst)])
-    assert (outdir / Path(CS_CYCLES_TURTLE).stem / "dendro" / "index.html").exists()
-    assert (outdir / Path(CS_CYCLES_TURTLE).stem / "docs" / "index.html").exists()
-
-
 @mock.patch.dict(os.environ, clear=True)  # required to hide gh-action environment vars
 def test_build_docs_pylode(datadir, tmp_path):
     """Check that pylode generates the expected output."""

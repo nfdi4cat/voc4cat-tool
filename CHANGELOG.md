@@ -1,5 +1,19 @@
 # Change log
 
+## Release 0.8.0 (2024-mm-dd)
+
+Features:
+
+- Support for Python 3.12.
+
+Changes:
+
+- ...
+
+Breaking changes:
+
+- Remove alternative documentation generation with ontospy.
+
 ## Release 0.7.10 (2024-02-11)
 
 Features:

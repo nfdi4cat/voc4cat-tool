@@ -41,12 +41,12 @@ voc4cat is platform independent and should work at least on windows, linux and m
 
 ### Installation steps
 
-If you just want to use the commandline interface it is strongly suggested to use [pipx](https://pypa.github.io/pipx/) for the installation. `pipx` makes installing and managing python command line application very easy.
+If you just want to use the command line interface it is strongly suggested to use [pipx](https://pypa.github.io/pipx/) for the installation. `pipx` makes installing and managing python command line application very easy.
 
 `pipx install voc4cat`
 
 Alternatively you can `pip`-install voc4cat like any other Python package.
-To install including all development tools use `pip install .[dev]` for just the test tools us `pip install .[tests]`. For tests we use [pytest](https://docs.pytest.org).
+To install including all development tools use `pip install .[dev]` for just the test tools `pip install .[tests]`. For tests we use [pytest](https://docs.pytest.org).
 
 ### Typical use
 
