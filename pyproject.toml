@@ -239,6 +239,11 @@ classmethod-decorators = [
   "pydantic.validator", "pydantic.class_validators.root_validator"
 ]
 
+[tool.mypy]
+# https://mypy.readthedocs.io/en/latest/config_file.html#using-a-pyproject-toml-file
+# Suppress all missing import errors for all untyped libraries
+ignore_missing_imports = true
+
 [tool.codespell]
 skip = "*.xlsx,pyproject.toml,./vocabularies,./example,./tests/data,./tmp"
 # Note: words have to be lowercased for the ignore-words-list

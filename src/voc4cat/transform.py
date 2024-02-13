@@ -8,8 +8,7 @@ from urllib.parse import urlsplit
 
 import openpyxl
 from openpyxl.styles import Alignment
-from rdflib import Graph, Literal
-from rdflib.namespace import DCTERMS, OWL, RDF, SKOS, XSD
+from rdflib import DCTERMS, OWL, RDF, SKOS, XSD, Graph, Literal
 
 from voc4cat import config
 from voc4cat.checks import Voc4catError

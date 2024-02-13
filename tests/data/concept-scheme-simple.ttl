@@ -5,10 +5,13 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sdo: <https://schema.org/> .
 
 ex:test10 a skos:Collection ;
     dcterms:identifier "test10"^^xsd:token ;
     dcterms:isPartOf <http://example.org/test/> ;
+    rdfs:isDefinedBy <https://example.org/test> ;
+    skos:inScheme <https://example.org> ;
     dcterms:provenance "0000-0001-2345-6789"@en ;
     skos:definition "def for con"@en ;
     skos:member ex:test01,
@@ -85,14 +88,18 @@ ex:test03 a skos:Concept ;
     skos:narrower ex:test04 ;
     skos:prefLabel "term3"@en .
 
+<http://example.org/nfdi4cat/> a sdo:Organization ;
+    sdo:name "NFDI4Cat" ;
+    sdo:url "http://example.org/nfdi4cat/"^^xsd:anyURI .
+
 <http://example.org/test/> a skos:ConceptScheme ;
     dcterms:created "2022-12-01"^^xsd:date ;
-    dcterms:creator <https://www.catalysis.de/> ;
+    dcterms:creator <http://example.org/nfdi4cat/> ;
     dcterms:hasPart ex:test10 ;
     dcterms:identifier ""^^xsd:token ;
     dcterms:modified "2022-12-01"^^xsd:date ;
     dcterms:provenance "0000-0001-2345-6789"@en ;
-    dcterms:publisher <http://example.org/nfdi4cat/> ;
+    dcterms:publisher <http://example.org/nfdi4cat/>;
     owl:versionInfo "0.1" ;
     skos:definition "A concept scheme for unit testing voc4cat."@en ;
     skos:hasTopConcept ex:test01,

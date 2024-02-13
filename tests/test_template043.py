@@ -4,8 +4,7 @@ from unittest import mock
 
 import pytest
 import voc4cat
-from rdflib import Graph, Literal, URIRef, compare
-from rdflib.namespace import DCTERMS, SKOS
+from rdflib import SKOS, Graph, Literal, URIRef, compare
 from voc4cat import convert
 from voc4cat.utils import ConversionError
 
@@ -26,7 +25,7 @@ def test_simple():
         Path(__file__).parent / "templ_versions" / "043_simple_valid.xlsx",
         output_type="graph",
     )
-    assert len(g) == 142  # noqa: PLR2004
+    assert len(g) == 147  # noqa: PLR2004
     assert (
         URIRef(
             "http://resource.geosciml.org/classifierscheme/cgi/2016.01/particletype"
@@ -36,7 +35,7 @@ def test_simple():
     ) in g, "PrefLabel for vocab is not correct"
     assert (
         URIRef("http://resource.geosciml.org/classifier/cgi/particletype/bioclast"),
-        DCTERMS.provenance,
+        SKOS.historyNote,
         Literal("NADM SLTTs 2004", lang="en"),
     ) in g, "Provenance for vocab is not correct"
 
