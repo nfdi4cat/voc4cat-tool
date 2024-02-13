@@ -130,10 +130,12 @@ def extract_concept_scheme(
         title=sheet["B3"].value,
         description=sheet["B4"].value,
         created=sheet["B5"].value,
-        modified=sheet["B6"].value,
+        modified=(
+            sheet["B6"].value if sheet["B6"].value is not None else sheet["B5"].value
+        ),
         creator=sheet["B7"].value,
         publisher=sheet["B8"].value,
-        version=sheet["B9"].value,
+        version=sheet["B9"].value if sheet["B9"].value is not None else "",
         provenance=sheet["B10"].value,
         custodian=sheet["B11"].value,
         pid=sheet["B12"].value,

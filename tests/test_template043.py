@@ -17,7 +17,7 @@ def test_empty_template():
             test_file,
             output_type="file",
         )
-    assert "9 validation errors for ConceptScheme" in str(e)
+    assert "8 validation errors for ConceptScheme" in str(e)
 
 
 def test_simple():
