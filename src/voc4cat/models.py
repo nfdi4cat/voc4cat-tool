@@ -7,15 +7,27 @@ from typing import List, Union
 from curies import Converter
 from openpyxl import Workbook
 from pydantic import AnyHttpUrl, BaseModel, Field, root_validator, validator
-from rdflib import Graph, Literal, URIRef
-from rdflib.namespace import DCAT, DCTERMS, OWL, RDF, RDFS, SKOS, XSD, NamespaceManager
+from rdflib import (
+    DCAT,
+    DCTERMS,
+    OWL,
+    RDF,
+    RDFS,
+    SDO,
+    SKOS,
+    XSD,
+    Graph,
+    Literal,
+    URIRef,
+)
+from rdflib.namespace import NamespaceManager
 
 from voc4cat import config
 from voc4cat.fields import Orcid, Ror
 
 logger = logging.getLogger(__name__)
 
-# It defined here the key string can be used in xlsx instead of an URI.
+# If defined here the key can be used in xlsx instead of an URI.
 ORGANISATIONS = {
     "NFDI4Cat": URIRef("http://example.org/nfdi4cat/"),
     "LIKAT": URIRef("https://ror.org/029hg0311"),
@@ -154,8 +166,8 @@ class ConceptScheme(BaseModel):
     publisher: Ror | str
     provenance: str
     version: str = "automatic"
-    custodian: str = None
-    pid: str = None
+    custodian: str | None = None
+    pid: str | None = None
     vocab_name: str = Field("", exclude=True)
 
     @validator("creator")
@@ -171,7 +183,7 @@ class ConceptScheme(BaseModel):
     @validator("modified")
     def set_modified_date_from_env(cls, v):
         if os.getenv("VOC4CAT_MODIFIED") is not None:
-            v = datetime.date.fromisoformat(os.getenv("VOC4CAT_MODIFIED"))
+            v = datetime.date.fromisoformat(os.getenv("VOC4CAT_MODIFIED", ""))
         return v
 
     @validator("publisher")
@@ -198,6 +210,36 @@ class ConceptScheme(BaseModel):
 
     def to_graph(self):
         g = Graph()
+
+        # <http://example.org/nfdi4cat/> a sdo:Organization ;
+        # sdo:name "NFDI4Cat" ;
+        # sdo:url "https://nfdi4cat.org"^^xsd:anyURI .
+        tg = Graph()
+        org = ORGANISATIONS.get(self.publisher, URIRef(self.publisher))
+        tg.add((org, RDF.type, SDO.Organization))
+        tg.add(
+            (
+                org,
+                SDO.name,
+                # should be name but there is no field in the template 0.43
+                Literal(
+                    ORGANISATIONS.get(self.publisher, self.publisher),
+                    lang="en",
+                ),
+            )
+        )
+        tg.add(
+            (
+                org,
+                SDO.url,
+                Literal(
+                    ORGANISATIONS.get(self.publisher, self.publisher),
+                    datatype=URIRef(XSD.anyURI),
+                ),
+            )
+        )
+        g += tg
+
         v = URIRef(self.uri)
         # For dcterms:identifier
         identifier = v.split("#")[-1] if "#" in v else v.split("/")[-1]
@@ -219,7 +261,7 @@ class ConceptScheme(BaseModel):
             )
         )
         g.add((v, OWL.versionInfo, Literal(self.version)))
-        g.add((v, DCTERMS.provenance, Literal(self.provenance, lang="en")))
+        g.add((v, SKOS.historyNote, Literal(self.provenance, lang="en")))
         if self.custodian is not None:
             g.add((v, DCAT.contactPoint, Literal(self.custodian)))
         if self.pid is not None:
@@ -255,7 +297,7 @@ class Concept(BaseModel):
     def_language_code: List[str] = []
     children: List[AnyHttpUrl] = []
     source_vocab: AnyHttpUrl | None = None
-    provenance: str = None
+    provenance: str | None = None
     related_match: List[AnyHttpUrl] = []
     close_match: List[AnyHttpUrl] = []
     exact_match: List[AnyHttpUrl] = []
@@ -316,7 +358,7 @@ class Concept(BaseModel):
         if self.source_vocab is not None:
             g.add((c, RDFS.isDefinedBy, URIRef(self.source_vocab)))
         if self.provenance is not None:
-            g.add((c, DCTERMS.provenance, Literal(self.provenance, lang="en")))
+            g.add((c, SKOS.historyNote, Literal(self.provenance, lang="en")))
         if self.related_match is not None:
             for related_match in self.related_match:
                 g.add((c, SKOS.relatedMatch, URIRef(related_match)))
@@ -437,7 +479,7 @@ class Collection(BaseModel):
     pref_label: str
     definition: str
     members: List[AnyHttpUrl]
-    provenance: str = None
+    provenance: str | None = None
     vocab_name: str = Field("", exclude=True)
 
     _split_uri_list = validator("members", pre=True, allow_reuse=True)(split_curie_list)
@@ -448,10 +490,16 @@ class Collection(BaseModel):
     _check_uri_vs_config = root_validator(allow_reuse=True)(check_uri_vs_config)
     _check_used_id = root_validator(allow_reuse=True)(check_used_id)
 
-    def to_graph(self):
+    def to_graph(self, cs):
         g = Graph()
         c = URIRef(self.uri)
         g.add((c, RDF.type, SKOS.Collection))
+
+        # rdfs:isDefinedBy <https://example.org> ;
+        g.add((c, RDFS.isDefinedBy, cs))
+        # skos:inScheme <https://example.org> ;
+        g.add((c, SKOS.inScheme, cs))
+
         # for dcterms:identifier
         identifier = c.split("#")[-1] if "#" in c else c.split("/")[-1]
         g.add((c, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
@@ -461,7 +509,7 @@ class Collection(BaseModel):
         for member in self.members:
             g.add((c, SKOS.member, URIRef(member)))
         if self.provenance is not None:
-            g.add((c, DCTERMS.provenance, Literal(self.provenance, lang="en")))
+            g.add((c, SKOS.historyNote, Literal(self.provenance, lang="en")))
 
         return g
 
@@ -486,14 +534,11 @@ class Vocabulary(BaseModel):
 
     def to_graph(self):
         g = self.concept_scheme.to_graph()
+
         cs = URIRef(self.concept_scheme.uri)
         for concept in self.concepts:
             g += concept.to_graph()
             g.add((URIRef(concept.uri), SKOS.inScheme, cs))
-        for collection in self.collections:
-            g += collection.to_graph()
-            g.add((URIRef(collection.uri), DCTERMS.isPartOf, cs))
-            g.add((cs, DCTERMS.hasPart, URIRef(collection.uri)))
 
         # create as Top Concepts those Concepts that have no skos:narrower properties with them as objects
         for s in g.subjects(SKOS.inScheme, cs):
@@ -503,5 +548,10 @@ class Vocabulary(BaseModel):
             if is_tc:
                 g.add((cs, SKOS.hasTopConcept, s))
                 g.add((s, SKOS.topConceptOf, cs))
+
+        for collection in self.collections:
+            g += collection.to_graph(cs)
+            g.add((URIRef(collection.uri), DCTERMS.isPartOf, cs))
+            g.add((cs, DCTERMS.hasPart, URIRef(collection.uri)))
 
         return g

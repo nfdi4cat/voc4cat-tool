@@ -5,11 +5,14 @@
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sdo: <https://schema.org/> .
 
 <http://example.org/example_collection_uri> a skos:Collection ;
+    rdfs:isDefinedBy cs: ;
+    skos:inScheme cs: ;
     dcterms:identifier "example_collection_uri"^^xsd:token ;
     dcterms:isPartOf cs: ;
-    dcterms:provenance "Example Collection Provenance"@en ;
+    skos:historyNote "Example Collection Provenance"@en ;
     skos:definition "Example Collection Definition"@en ;
     skos:member <http://example.org/example_collection_member_1>,
         <http://example.org/example_collection_member_2>,
@@ -22,13 +25,17 @@
 
 <http://example.org/exhaustive_children_example_3> skos:broader <http://example.org/exhaustive_concept_iri> .
 
+<https://linked.data.gov.au/org/cgi-gtwg> a sdo:Organization ;
+    sdo:name "https://linked.data.gov.au/org/cgi-gtwg"@en ;
+    sdo:url "https://linked.data.gov.au/org/cgi-gtwg"^^xsd:anyURI .
+
 cs: a skos:ConceptScheme ;
     dcterms:identifier "exhaustive_concept_scheme_vocabulary_iri"^^xsd:token ;
     dcterms:created "2022-03-07"^^xsd:date ;
     dcterms:creator <https://linked.data.gov.au/org/gsq> ;
     dcterms:hasPart <http://example.org/example_collection_uri> ;
     dcterms:modified "2022-03-10"^^xsd:date ;
-    dcterms:provenance "Example Provenance"@en ;
+    skos:historyNote "Example Provenance"@en ;
     dcterms:publisher <https://linked.data.gov.au/org/cgi-gtwg> ;
     rdfs:seeAlso "1.2.3.4" ;
     owl:versionInfo "0.1" ;
@@ -39,7 +46,7 @@ cs: a skos:ConceptScheme ;
 
 <http://example.org/exhaustive_concept_iri> a skos:Concept ;
     dcterms:identifier "exhaustive_concept_iri"^^xsd:token ;
-    dcterms:provenance "Example Exhaustive Provenance"@en ;
+    skos:historyNote "Example Exhaustive Provenance"@en ;
     rdfs:isDefinedBy <http://example.org/exhaustive_concept_source_vocabulary_iri> ;
     skos:altLabel "example exhaustive concept alternate label"@en ;
     skos:broadMatch <http://example.org/example_broad_match> ;

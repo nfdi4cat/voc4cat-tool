@@ -8,8 +8,7 @@ from colorama import Fore, Style
 from curies import Converter
 from pydantic.error_wrappers import ValidationError
 from pyshacl.pytypes import GraphLike
-from rdflib import Graph
-from rdflib.namespace import DCAT, DCTERMS, OWL, PROV, RDF, RDFS, SKOS
+from rdflib import DCAT, DCTERMS, OWL, PROV, RDF, RDFS, SH, SKOS, Graph
 
 from voc4cat import config, models, profiles
 from voc4cat.checks import Voc4catError, validate_config_has_idrange
@@ -58,8 +57,6 @@ def validate_with_profile(
     info_list = []
     warning_list = []
     violation_list = []
-
-    from rdflib.namespace import RDF, SH
 
     for report in results_graph.subjects(RDF.type, SH.ValidationReport):
         for result in results_graph.objects(report, SH.result):
@@ -223,7 +220,12 @@ def rdf_to_excel(
                 )
             elif p == OWL.versionInfo:
                 holder["versionInfo"] = str(o)
-            elif p in [DCTERMS.source, DCTERMS.provenance, PROV.wasDerivedFrom]:
+            elif p in [
+                DCTERMS.source,
+                DCTERMS.provenance,
+                PROV.wasDerivedFrom,
+                SKOS.historyNote,
+            ]:
                 holder["provenance"] = str(o)
             elif p == SKOS.hasTopConcept:
                 holder["hasTopConcept"].append(str(o))
@@ -282,7 +284,12 @@ def rdf_to_excel(
                 holder["alt_labels"].append(str(o))
             elif p == RDFS.isDefinedBy:
                 holder["source_vocab"] = str(o)
-            elif p in [DCTERMS.source, DCTERMS.provenance, PROV.wasDerivedFrom]:
+            elif p in [
+                DCTERMS.source,
+                DCTERMS.provenance,
+                PROV.wasDerivedFrom,
+                SKOS.historyNote,
+            ]:
                 holder["provenance"] = str(o)
             elif p == SKOS.relatedMatch:
                 holder["related_match"].append(str(o))
@@ -328,7 +335,12 @@ def rdf_to_excel(
                 holder["definition"] = str(o)
             elif p == SKOS.member:
                 holder["members"].append(str(o))
-            elif p in [DCTERMS.source, DCTERMS.provenance, PROV.wasDerivedFrom]:
+            elif p in [
+                DCTERMS.source,
+                DCTERMS.provenance,
+                PROV.wasDerivedFrom,
+                SKOS.historyNote,
+            ]:
                 holder["provenance"] = str(o)
 
         models.Collection(
