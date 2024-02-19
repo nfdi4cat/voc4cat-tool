@@ -1,18 +1,18 @@
 # Change log
 
-## Release 0.8.0 (2024-mm-dd)
+## Release 0.8.0 (2024-02-19)
 
 Features:
 
-- Support for Python 3.12.
+- Support for Python 3.12. #202
 
 Changes:
 
-- ...
+- Support current vocpub profile 4.7. #198, #199
 
 Breaking changes:
 
-- Remove alternative documentation generation with ontospy.
+- Remove alternative documentation generation with ontospy. #200, #202
 
 ## Release 0.7.10 (2024-02-11)
 
