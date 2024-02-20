@@ -38,6 +38,7 @@ classifiers = [
 
 dependencies = [
   "base32-crockford >= 0.3.0",
+  "colorama",
   "curies >= 0.6.6",
   "networkx >= 2.8",
   "openpyxl >= 3.0.9",
@@ -62,8 +63,6 @@ tests = [
   "pytest",
   "pytest-subprocess",
   "coverage",
-  # pytest has a windows-only dependency on colorama, but it's needed in CI for color output.
-  "colorama",
 ]
 lint = [
   "black",
