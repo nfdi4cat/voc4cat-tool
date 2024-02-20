@@ -1,5 +1,11 @@
 # Change log
 
+## Release 0.8.1 (2024-02-20)
+
+Bug fixes:
+
+- Add colorama as main dependency. #204
+
 ## Release 0.8.0 (2024-02-19)
 
 Features:
