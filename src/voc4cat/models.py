@@ -99,7 +99,7 @@ def check_uri_vs_config(cls, values):
         return values
 
     perm_iri_part = getattr(voc_conf, "permanent_iri_part", "")
-    iri, *_fragment = values["uri"].split("#", 1)
+    iri, *_fragment = values.get("uri", "").split("#", 1)
     if not iri.startswith(perm_iri_part):
         msg = "Invalid IRI %s - It must start with %s"
         raise ValueError(msg % (iri, perm_iri_part))
@@ -133,7 +133,7 @@ def check_used_id(cls, values):
         actor = values["provenance"].split(",", 1)[0].split(" ", 1)[0].strip()
     else:
         actor = ""
-    iri, *_fragment = str(values["uri"]).split("#", 1)
+    iri, *_fragment = str(values.get("uri", "")).split("#", 1)
     id_pattern = config.ID_PATTERNS.get(values["vocab_name"], None)
     if id_pattern is not None:
         match = id_pattern.search(iri)
@@ -224,7 +224,6 @@ class ConceptScheme(BaseModel):
                 # should be name but there is no field in the template 0.43
                 Literal(
                     ORGANISATIONS.get(self.publisher, self.publisher),
-                    lang="en",
                 ),
             )
         )
