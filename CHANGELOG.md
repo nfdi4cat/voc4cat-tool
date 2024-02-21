@@ -1,10 +1,16 @@
 # Change log
 
+## Release 0.8.2 (2024-02-21)
+
+Bug fixes:
+
+- Fix agent name type in turtle as required by vocpub profile 4.7. #206, #207
+
 ## Release 0.8.1 (2024-02-20)
 
 Bug fixes:
 
-- Add colorama as main dependency. #204
+- Add colorama as a main dependency. #204
 
 ## Release 0.8.0 (2024-02-19)
 
