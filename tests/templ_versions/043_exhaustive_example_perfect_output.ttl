@@ -26,7 +26,7 @@
 <http://example.org/exhaustive_children_example_3> skos:broader <http://example.org/exhaustive_concept_iri> .
 
 <https://linked.data.gov.au/org/cgi-gtwg> a sdo:Organization ;
-    sdo:name "https://linked.data.gov.au/org/cgi-gtwg"@en ;
+    sdo:name "https://linked.data.gov.au/org/cgi-gtwg" ;
     sdo:url "https://linked.data.gov.au/org/cgi-gtwg"^^xsd:anyURI .
 
 cs: a skos:ConceptScheme ;
