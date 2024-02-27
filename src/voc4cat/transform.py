@@ -358,8 +358,11 @@ def hierarchy_to_indent(fpath, outfile, sep):
                 range(4, col_last + 1), row_by_iri[iri][lang][2:]
             ):
                 ws.cell(row, column=col).value = stored_value
-            # clear children IRI column G
+
+            # clear children IRI column G (value & hyperlink have to cleared separately)
             ws.cell(row, column=7).value = None
+            ws.cell(row, column=7).hyperlink = None
+
             row += 1
             iri_written.append((iri, lang))
 
