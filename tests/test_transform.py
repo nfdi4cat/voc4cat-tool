@@ -582,8 +582,7 @@ def test_split(monkeypatch, datadir, tmp_path, opt, caplog):
 
 @pytest.mark.parametrize(
     "opt",
-    [None, "--inplace"],
-    ids=["default", "inplace"],
+    [None, "inplace", "outdir"],
 )
 def test_join(monkeypatch, datadir, tmp_path, opt, caplog):
     monkeypatch.chdir(tmp_path)
@@ -592,18 +591,25 @@ def test_join(monkeypatch, datadir, tmp_path, opt, caplog):
     main_cli(["transform", "-v", "--split", "--inplace", str(tmp_path)])
     # join files again as test
     cmd = ["transform", "-v", "--join"]
-    if opt:
+    if opt == "inplace":
         cmd.append("--inplace")
+    elif opt == "outdir":
+        cmd.append("--outdir")
+        cmd.append(str(tmp_path / "outdir"))
     cmd.append(str(tmp_path))
 
     with caplog.at_level(logging.DEBUG):
+        print("cmd:", cmd)
         main_cli(cmd)
     assert "-> joined vocabulary into" in caplog.text
 
     vocdir = (tmp_path / CS_SIMPLE_TURTLE).with_suffix("")
     assert (vocdir.parent / CS_SIMPLE_TURTLE).exists()
-    if opt:
+    if opt == "inplace":
         assert not vocdir.exists()
+    elif opt == "outdir":
+        print("\nout (?):", (tmp_path / "outdir" / CS_SIMPLE_TURTLE))
+        assert (tmp_path / "outdir" / CS_SIMPLE_TURTLE).exists()
 
 
 @mock.patch.dict(
