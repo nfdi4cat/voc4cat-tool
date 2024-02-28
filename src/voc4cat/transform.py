@@ -489,7 +489,7 @@ def transform(args):
         if args.join:
             vocab_graph = join_split_turtle(rdf_dir)
             dest = (
-                (args.outdir / rdf_dir).with_suffix(".ttl").name
+                (args.outdir / rdf_dir.name).with_suffix(".ttl")
                 if args.outdir
                 else rdf_dir.with_suffix(".ttl")
             )
