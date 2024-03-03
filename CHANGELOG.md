@@ -1,10 +1,16 @@
 # Change log
 
+## Release 0.8.4 (2024-03-04)
+
+Bug fixes:
+
+- Fix transform join subcommand to produce vocpub-4.7-conform turtle file. #213
+
 ## Release 0.8.3 (2024-02-28)
 
 Bug fixes:
 
-- Fix writing to wrong file location for sub-command "join" with "--outbox" option. #211, #212 
+- Fix writing to wrong file location for sub-command "join" with "--outbox" option. #211, #212
 - Fix clearing of cells with hyperlinks in xlsx by openpyxl. #209, #210
 
 ## Release 0.8.2 (2024-02-21)

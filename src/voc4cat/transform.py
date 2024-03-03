@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 
 import openpyxl
 from openpyxl.styles import Alignment
-from rdflib import DCTERMS, OWL, RDF, SKOS, XSD, Graph, Literal
+from rdflib import DCTERMS, OWL, RDF, SDO, SKOS, XSD, Graph, Literal, URIRef
 
 from voc4cat import config
 from voc4cat.checks import Voc4catError
@@ -19,6 +19,7 @@ from voc4cat.dag_util import (
     dag_to_node_levels,
     get_concept_and_level_from_indented_line,
 )
+from voc4cat.models import ORGANISATIONS
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
     RDF_FILE_ENDINGS,
@@ -103,6 +104,42 @@ def join_split_turtle(vocab_dir: Path) -> Graph:
         ):
             graph = autoversion_cs(graph)
         cs_graph += graph
+
+    # TODO The metadata should also be present in a separate ttl-file and
+    #    joined just like the other.
+    # Newer for vocpub profile require creator_/publisher for vocabulary:
+    # Requirement 2.1.6 Each vocabulary MUST have at least one creator,
+    #   indicated using sdo:creator or dcterms:creator predicate and exactly
+    #   one publisher, indicated using sdo:publisher or dcterms:publisher,
+    #   all of which MUST be IRIs indicating instances of sdo:Person,
+    #   or sdo:Organization.
+    # Get the publisher from the first concept scheme
+    publisher = next(cs_graph.triples((None, DCTERMS.publisher, None)))[2]
+    tg = Graph()
+    org = ORGANISATIONS.get(publisher, URIRef(publisher))
+    tg.add((org, RDF.type, SDO.Organization))
+    tg.add(
+        (
+            org,
+            SDO.name,
+            # should be name but there is no field in the template 0.43
+            Literal(
+                ORGANISATIONS.get(publisher, publisher),
+            ),
+        )
+    )
+    tg.add(
+        (
+            org,
+            SDO.url,
+            Literal(
+                ORGANISATIONS.get(publisher, publisher),
+                datatype=URIRef(XSD.anyURI),
+            ),
+        )
+    )
+    cs_graph += tg
+
     cs_graph.serialize(destination=vocab_dir.with_suffix(".ttl"), format="turtle")
     return cs_graph
 
