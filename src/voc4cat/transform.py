@@ -140,7 +140,6 @@ def join_split_turtle(vocab_dir: Path) -> Graph:
     )
     cs_graph += tg
 
-    cs_graph.serialize(destination=vocab_dir.with_suffix(".ttl"), format="turtle")
     return cs_graph
 
 

@@ -5,8 +5,7 @@ from unittest import mock
 
 import pytest
 from openpyxl import load_workbook
-from rdflib import Graph, Literal
-from rdflib.namespace import DCTERMS, OWL, SKOS, XSD
+from rdflib import DCTERMS, OWL, SKOS, XSD, Graph, Literal
 from test_cli import (
     CS_CYCLES,
     CS_CYCLES_INDENT_DOT,
@@ -599,17 +598,18 @@ def test_join(monkeypatch, datadir, tmp_path, opt, caplog):
     cmd.append(str(tmp_path))
 
     with caplog.at_level(logging.DEBUG):
-        print("cmd:", cmd)
         main_cli(cmd)
     assert "-> joined vocabulary into" in caplog.text
 
     vocdir = (tmp_path / CS_SIMPLE_TURTLE).with_suffix("")
-    assert (vocdir.parent / CS_SIMPLE_TURTLE).exists()
     if opt == "inplace":
         assert not vocdir.exists()
+        assert (vocdir.parent / CS_SIMPLE_TURTLE).exists()
     elif opt == "outdir":
-        print("\nout (?):", (tmp_path / "outdir" / CS_SIMPLE_TURTLE))
         assert (tmp_path / "outdir" / CS_SIMPLE_TURTLE).exists()
+        assert not (vocdir.parent / CS_SIMPLE_TURTLE).exists()
+    else:
+        assert (vocdir.parent / CS_SIMPLE_TURTLE).exists()
 
 
 @mock.patch.dict(
