@@ -1,5 +1,11 @@
 # Change log
 
+## Release 0.8.4 (2024-03-09)
+
+Bug fixes:
+
+- Fix creation of two ttl-files for sub-command "join" with "--outbox" option. (#215 fixed in #216)
+
 ## Release 0.8.4 (2024-03-04)
 
 Bug fixes:
