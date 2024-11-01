@@ -1,5 +1,6 @@
 from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.table import Table
+
 from voc4cat.utils import adjust_length_of_tables, split_and_tidy
 
 

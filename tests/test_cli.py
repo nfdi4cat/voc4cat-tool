@@ -4,6 +4,7 @@ import shutil
 from unittest import mock
 
 import pytest
+
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli, run_cli_app
 
@@ -105,8 +106,11 @@ def test_valid_config(monkeypatch, datadir, caplog, tmp_path, temp_config):
 def test_invalid_outdir(monkeypatch, datadir, tmp_path, caplog):
     monkeypatch.chdir(datadir)
     shutil.copy(datadir / "README.md", tmp_path)
-    with caplog.at_level(logging.ERROR), pytest.raises(
-        Voc4catError, match="Outdir must be a directory but it is a file."
+    with (
+        caplog.at_level(logging.ERROR),
+        pytest.raises(
+            Voc4catError, match="Outdir must be a directory but it is a file."
+        ),
     ):
         main_cli(["transform", "--outdir", str(tmp_path / "README.md"), CS_SIMPLE])
     assert "Outdir must be a directory but it is a file." in caplog.text

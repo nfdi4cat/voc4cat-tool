@@ -5,6 +5,7 @@ from unittest import mock
 import pytest
 from pydantic.error_wrappers import ValidationError
 from rdflib import Graph
+
 from voc4cat import config
 from voc4cat.models import Concept, ConceptScheme, reset_curies
 

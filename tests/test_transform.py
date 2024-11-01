@@ -15,6 +15,7 @@ from test_cli import (
     CS_SIMPLE,
     CS_SIMPLE_TURTLE,
 )
+
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
 
@@ -671,8 +672,11 @@ def test_join_with_invalid_envvar(monkeypatch, datadir, tmp_path, caplog):
     # join files again as test
     cmd = ["transform", "-v", "--join"]
     cmd.append(str(tmp_path))
-    with caplog.at_level(logging.ERROR), pytest.raises(
-        Voc4catError, match="Invalid environment variable VOC4CAT_VERSION"
+    with (
+        caplog.at_level(logging.ERROR),
+        pytest.raises(
+            Voc4catError, match="Invalid environment variable VOC4CAT_VERSION"
+        ),
     ):
         main_cli(cmd)
     assert 'Invalid environment variable VOC4CAT_VERSION "2.0"' in caplog.text

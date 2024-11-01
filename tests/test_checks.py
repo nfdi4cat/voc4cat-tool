@@ -8,6 +8,7 @@ from unittest import mock
 
 import pytest
 from rdflib import RDF, SKOS, Graph
+
 from voc4cat.checks import (
     Voc4catError,
     check_for_removed_iris,
@@ -263,9 +264,12 @@ def test_check_for_removed_iris(  # noqa: PLR0913
     )
     config.load_config(config=config.IDRANGES)
 
-    with caplog.at_level(logging.ERROR), pytest.raises(
-        Voc4catError,
-        match=r"Forbidden removal of 1 concepts\/collections detected. See log for IRIs.",
+    with (
+        caplog.at_level(logging.ERROR),
+        pytest.raises(
+            Voc4catError,
+            match=r"Forbidden removal of 1 concepts\/collections detected. See log for IRIs.",
+        ),
     ):
         check_for_removed_iris(original, reduced)
     assert log_text in caplog.text

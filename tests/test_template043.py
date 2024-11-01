@@ -3,8 +3,9 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-import voc4cat
 from rdflib import SKOS, Graph, Literal, URIRef, compare
+
+import voc4cat
 from voc4cat import convert
 from voc4cat.utils import ConversionError
 

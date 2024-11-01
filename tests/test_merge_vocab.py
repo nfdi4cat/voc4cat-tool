@@ -4,6 +4,7 @@ from unittest import mock
 
 import pytest
 from test_cli import CS_CYCLES_TURTLE, CS_SIMPLE_TURTLE
+
 from voc4cat.merge_vocab import main_cli
 
 
@@ -61,9 +62,10 @@ def test_main_merge_split_vocab_dir(datadir, tmp_path, caplog):
     shutil.copy(datadir / CS_SIMPLE_TURTLE, ttl_inbox / "splitvoc")
     shutil.copy(datadir / CS_SIMPLE_TURTLE, vocab / "splitvoc")
 
-    with caplog.at_level(logging.DEBUG), mock.patch(
-        "voc4cat.merge_vocab.subprocess"
-    ) as subprocess:
+    with (
+        caplog.at_level(logging.DEBUG),
+        mock.patch("voc4cat.merge_vocab.subprocess") as subprocess,
+    ):
         subprocess.Popen.return_value.returncode = 1
         exit_code = main_cli([str(ttl_inbox), str(vocab)])
     assert "Entering directory" in caplog.text

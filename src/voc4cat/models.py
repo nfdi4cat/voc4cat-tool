@@ -2,7 +2,6 @@ import datetime
 import logging
 import os
 from itertools import chain
-from typing import List, Union
 
 from curies import Converter
 from openpyxl import Workbook
@@ -289,19 +288,19 @@ class ConceptScheme(BaseModel):
 
 class Concept(BaseModel):
     uri: AnyHttpUrl
-    pref_label: Union[str, List[str]]
-    alt_labels: List[str] = []
-    pl_language_code: List[str] = []
-    definition: Union[str, List[str]]
-    def_language_code: List[str] = []
-    children: List[AnyHttpUrl] = []
+    pref_label: str | list[str]
+    alt_labels: list[str] = []
+    pl_language_code: list[str] = []
+    definition: str | list[str]
+    def_language_code: list[str] = []
+    children: list[AnyHttpUrl] = []
     source_vocab: AnyHttpUrl | None = None
     provenance: str | None = None
-    related_match: List[AnyHttpUrl] = []
-    close_match: List[AnyHttpUrl] = []
-    exact_match: List[AnyHttpUrl] = []
-    narrow_match: List[AnyHttpUrl] = []
-    broad_match: List[AnyHttpUrl] = []
+    related_match: list[AnyHttpUrl] = []
+    close_match: list[AnyHttpUrl] = []
+    exact_match: list[AnyHttpUrl] = []
+    narrow_match: list[AnyHttpUrl] = []
+    broad_match: list[AnyHttpUrl] = []
     vocab_name: str = Field("", exclude=True)
 
     # We validate with a reusable (external) validators. With a pre-validator,
@@ -477,7 +476,7 @@ class Collection(BaseModel):
     uri: AnyHttpUrl
     pref_label: str
     definition: str
-    members: List[AnyHttpUrl]
+    members: list[AnyHttpUrl]
     provenance: str | None = None
     vocab_name: str = Field("", exclude=True)
 
@@ -528,8 +527,8 @@ class Collection(BaseModel):
 
 class Vocabulary(BaseModel):
     concept_scheme: ConceptScheme
-    concepts: List[Concept]
-    collections: List[Collection]
+    concepts: list[Concept]
+    collections: list[Collection]
 
     def to_graph(self):
         g = self.concept_scheme.to_graph()
