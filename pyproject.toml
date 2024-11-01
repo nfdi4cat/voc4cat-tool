@@ -41,7 +41,7 @@ dependencies = [
   "colorama",
   "curies >= 0.6.6",
   "networkx >= 2.8",
-  "openpyxl >= 3.0.9",
+  "openpyxl >= 3.1.5",
   "pillow >= 9.1.0",
   "pydantic < 2.0.0",
   "pyLODE < 3.0.0",
