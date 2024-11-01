@@ -10,7 +10,7 @@ def datadir():
     return Path(__file__).resolve().parent / "data"
 
 
-@pytest.fixture()
+@pytest.fixture
 def temp_config():
     """
     Provides a temporary config that can be safely changed in test functions.

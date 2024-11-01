@@ -1,7 +1,7 @@
 import logging
 from itertools import chain
 from pathlib import Path
-from typing import Dict, Literal, Union
+from typing import Literal
 
 import pyshacl
 from colorama import Fore, Style
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 def validate_with_profile(
-    data_graph: Union[GraphLike, str, bytes],
+    data_graph: GraphLike | str | bytes,
     profile="vocpub",
     error_level=1,
 ):
@@ -242,10 +242,10 @@ def rdf_to_excel(
         modified=holder["modified"],
         creator=holder["creator"],
         publisher=holder["publisher"],
-        version=holder.get("versionInfo", None),
-        provenance=holder.get("provenance", None),
-        custodian=holder.get("custodian", None),
-        pid=holder.get("pid", None),
+        version=holder.get("versionInfo"),
+        provenance=holder.get("provenance"),
+        custodian=holder.get("custodian"),
+        pid=holder.get("pid"),
     )
     cs.to_excel(wb)
 
@@ -366,7 +366,7 @@ def rdf_to_excel(
     return dest
 
 
-def format_log_msg(result: Dict, colored: bool = False) -> str:
+def format_log_msg(result: dict, colored: bool = False) -> str:
     from rdflib.namespace import SH
 
     formatted_msg = ""

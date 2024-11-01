@@ -35,7 +35,7 @@ voc4cat works on files or folders. If a folder is given all matching files are p
 
 To start you need:
 
-- Python (3.9 or newer)
+- Python (3.10 or newer)
 
 voc4cat is platform independent and should work at least on windows, linux and mac.
 

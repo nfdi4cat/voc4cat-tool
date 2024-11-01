@@ -1,5 +1,4 @@
 import logging
-from typing import List, Tuple
 
 from curies import Converter
 from openpyxl import Workbook
@@ -51,7 +50,7 @@ def extract_concepts_and_collections(
     s: Worksheet,
     prefix_converter: Converter,
     vocab_name: str = "",
-) -> Tuple[List[models.Concept], List[models.Collection]]:
+) -> tuple[list[models.Concept], list[models.Collection]]:
     concepts = []
     collections = []
     # Iterating over the concept page and the additional concept page

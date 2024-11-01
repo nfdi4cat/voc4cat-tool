@@ -10,6 +10,7 @@ from test_cli import (
     CS_SIMPLE,
     CS_SIMPLE_TURTLE,
 )
+
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
 from voc4cat.utils import ConversionError

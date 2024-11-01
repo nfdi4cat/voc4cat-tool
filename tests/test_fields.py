@@ -2,6 +2,7 @@
 
 import pytest
 from pydantic import BaseModel, ValidationError
+
 from voc4cat.fields import Orcid, Ror
 
 

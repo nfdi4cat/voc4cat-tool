@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, ClassVar, Generator
+from collections.abc import Generator
+from typing import Any, ClassVar
 
 import base32_crockford
 from pydantic import BaseConfig, HttpUrl

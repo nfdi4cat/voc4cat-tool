@@ -8,6 +8,7 @@ import pytest
 from test_cli import (
     CS_CYCLES_TURTLE,
 )
+
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
 
@@ -32,9 +33,10 @@ def test_build_docs_pylode_ci_no_git(monkeypatch, datadir, tmp_path, caplog):
     shutil.copy(datadir / "valid_idranges.toml", dst / "idranges.toml")
     outdir = dst / "pylode"
 
-    with caplog.at_level(logging.ERROR), mock.patch(
-        "voc4cat.gh_index.subprocess"
-    ) as subprocess:
+    with (
+        caplog.at_level(logging.ERROR),
+        mock.patch("voc4cat.gh_index.subprocess") as subprocess,
+    ):
         subprocess.Popen.return_value.returncode = 1
         main_cli(
             ["docs", "--force", "--style", "pylode", "--outdir", str(outdir), str(dst)]
@@ -51,8 +53,9 @@ def test_build_docs_pylode_ci_no_config(monkeypatch, datadir, tmp_path, caplog):
     shutil.copy(datadir / CS_CYCLES_TURTLE, dst)
     outdir = dst / "pylode"
 
-    with caplog.at_level(logging.ERROR), pytest.raises(
-        Voc4catError, match="Config file not found"
+    with (
+        caplog.at_level(logging.ERROR),
+        pytest.raises(Voc4catError, match="Config file not found"),
     ):
         main_cli(
             ["docs", "--force", "--style", "pylode", "--outdir", str(outdir), str(dst)]
