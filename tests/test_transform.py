@@ -6,7 +6,8 @@ from unittest import mock
 import pytest
 from openpyxl import load_workbook
 from rdflib import DCTERMS, OWL, SKOS, XSD, Graph, Literal
-from test_cli import (
+
+from tests.test_cli import (
     CS_CYCLES,
     CS_CYCLES_INDENT_DOT,
     CS_CYCLES_INDENT_IRI,
@@ -15,7 +16,6 @@ from test_cli import (
     CS_SIMPLE,
     CS_SIMPLE_TURTLE,
 )
-
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
 
@@ -168,10 +168,16 @@ def test_make_ids_variants(monkeypatch, datadir, tmp_path, indir, outdir):
     expected_collections = [
         ("ex:test/0001007", "con", "def for con", "ex:test/0001001, ex:test/0001002, ex:test/0001003, ex:test/0001004",),
     ]
-    expected_additional = [
-        ("ex:test/0001001", "ex:test/0001002", "ex:test/0001003", "ex:test/0001004", "ex:test/0001005", "ex:test/0001006", ),
-    ]
     # fmt: on
+    expected_additional = (
+        "ex:test/0001001",
+        "ex:test/0001002",
+        "ex:test/0001003",
+        "ex:test/0001004",
+        "ex:test/0001005",
+        "ex:test/0001006",
+    )
+
     shutil.copy(datadir / CS_SIMPLE, tmp_path)
     monkeypatch.chdir(tmp_path)
     main_cli(
@@ -191,11 +197,16 @@ def test_make_ids_variants(monkeypatch, datadir, tmp_path, indir, outdir):
         ws.iter_rows(min_row=3, max_col=4, values_only=True), expected_collections
     ):
         assert row == expected_row
+
     ws = wb["Additional Concept Features"]
-    for row, expected_row in zip(
-        ws.iter_rows(min_row=3, max_col=6, values_only=True), expected_additional
-    ):
-        assert row == expected_row
+    count_present = 0
+    for row in ws.iter_rows(min_row=3, max_col=6, values_only=True):
+        if row[0] == expected_additional[0]:  # same concept IRI
+            assert row == expected_additional
+        elif row[0]:
+            count_present += 1
+    # Only 4 of 6 concepts are in the Additional Concept Features
+    assert count_present == 3  # noqa: PLR2004
 
 
 def test_make_ids_base_iri(monkeypatch, datadir, tmp_path):
@@ -211,10 +222,16 @@ def test_make_ids_base_iri(monkeypatch, datadir, tmp_path):
     expected_collections = [
         ("https://example.com/new_0001007", "con", "def for con", "https://example.com/new_0001001, https://example.com/new_0001002, https://example.com/new_0001003, https://example.com/new_0001004",),
     ]
-    expected_additional = [
-        ("https://example.com/new_0001001", "https://example.com/new_0001002", "https://example.com/new_0001003", "https://example.com/new_0001004", "https://example.com/new_0001005", "https://example.com/new_0001006", ),
-    ]
     # fmt: on
+    expected_additional = (
+        "https://example.com/new_0001001",
+        "https://example.com/new_0001002",
+        "https://example.com/new_0001003",
+        "https://example.com/new_0001004",
+        "https://example.com/new_0001005",
+        "https://example.com/new_0001006",
+    )
+
     shutil.copy(datadir / CS_SIMPLE, tmp_path)
     monkeypatch.chdir(tmp_path)
     main_cli(
@@ -240,10 +257,12 @@ def test_make_ids_base_iri(monkeypatch, datadir, tmp_path):
     ):
         assert row == expected_row
     ws = wb["Additional Concept Features"]
-    for row, expected_row in zip(
-        ws.iter_rows(min_row=3, max_col=6, values_only=True), expected_additional
-    ):
-        assert row == expected_row
+    match = False
+    for row in ws.iter_rows(min_row=3, max_col=6, values_only=True):
+        if row[0] == expected_additional[0]:
+            match = True
+            assert row == expected_additional
+    assert match
 
 
 def test_make_ids_multilang(tmp_path, datadir):

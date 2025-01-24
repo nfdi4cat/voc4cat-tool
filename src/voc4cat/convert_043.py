@@ -11,6 +11,16 @@ from voc4cat.utils import ConversionError, split_and_tidy
 logger = logging.getLogger(__name__)
 
 
+header_names_to_skip = [
+    "Concepts",
+    "Concepts*",
+    "Concept IRI",
+    "Concept IRI*",
+    "Concept Relations",
+    "Concept Extras",
+]
+
+
 def create_prefix_dict(s: Worksheet):
     # create an empty dict
     prefix_dict = {}
@@ -53,19 +63,17 @@ def extract_concepts_and_collections(
 ) -> tuple[list[models.Concept], list[models.Collection]]:
     concepts = []
     collections = []
-    # Iterating over the concept page and the additional concept page
+    concept_data = {}
+    # Iterating over the concept page
     for col in q.iter_cols(max_col=1):
         for cell in col:
             row = cell.row
-            if cell.value is None or cell.value in [
-                "Concepts",
-                "Concepts*",
-                "Concept IRI*",
-            ]:
+            if cell.value is None or cell.value in header_names_to_skip:
                 continue
-
-            concept_data = {
-                "uri": q[f"A{row}"].value,
+            uri = q[f"A{row}"].value.strip()
+            uri = prefix_converter.expand(uri) or uri
+            concept_data[uri] = {
+                "uri": uri,
                 "pref_label": q[f"B{row}"].value,
                 "pl_language_code": split_and_tidy(q[f"C{row}"].value),
                 "definition": q[f"D{row}"].value,
@@ -75,6 +83,24 @@ def extract_concepts_and_collections(
                 "provenance": q[f"H{row}"].value,
                 # Note in the new template, source_vocab is synonymous with source vocab uri
                 "source_vocab": q[f"I{row}"].value,
+            }
+
+    # Iterating over the additional concept page
+    additional_concept_iris = []
+    for col in r.iter_cols(max_col=1):
+        for cell in col:
+            row = cell.row
+            if cell.value is None or cell.value in header_names_to_skip:
+                continue
+            uri = r[f"A{row}"].value.strip()
+            uri = prefix_converter.expand(uri) or uri
+            if uri in additional_concept_iris:
+                msg = f"Concept IRI {uri} used a second time in sheet {r} at row {row} but must be unique."
+                raise ConversionError(msg)
+            if uri not in concept_data:
+                msg = f'Concept "{uri}" from sheet {r} at row {row} not present in {q} sheet.'
+                raise ConversionError(msg)
+            data = {
                 # additional concept features sheets
                 "related_match": r[f"B{row}"].value,
                 "close_match": r[f"C{row}"].value,
@@ -83,12 +109,17 @@ def extract_concepts_and_collections(
                 "broad_match": r[f"F{row}"].value,
                 "vocab_name": vocab_name,
             }
-            try:
-                c = models.Concept(**concept_data)
-            except ValidationError as exc:
-                msg = f"Concept processing error likely at sheet {q}, row {row}, and has error: {exc}"
-                raise ConversionError(msg) from exc
-            concepts.append(c)
+            concept_data[uri].update(**data)
+            additional_concept_iris.append(uri)
+
+    # validate all concept data (unfortunately, we can't point to sheet and row of error)
+    for uri, concept_data_item in concept_data.items():
+        try:
+            c = models.Concept(**concept_data_item)
+        except ValidationError as exc:
+            msg = f"Concept processing error for Concept IRI* = {uri}: {exc}"
+            raise ConversionError(msg) from exc
+        concepts.append(c)
 
     # iterating over the collections page
     for col in s.iter_cols(max_col=1):

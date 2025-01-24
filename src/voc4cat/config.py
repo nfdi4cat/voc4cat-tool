@@ -74,7 +74,7 @@ class Vocab(BaseModel):
     permanent_iri_part: AnyHttpUrl
     checks: Checks
     prefix_map: dict[str, AnyHttpUrl]
-    id_range: list[IdrangeItem]
+    id_range: list[IdrangeItem] = []
 
     @validator("id_range")
     def check_names_not_empty(cls, value):

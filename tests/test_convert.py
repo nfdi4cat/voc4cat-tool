@@ -3,13 +3,13 @@ import shutil
 from pathlib import Path
 
 import pytest
-from test_cli import (
+
+import voc4cat
+from tests.test_cli import (
     CS_CYCLES,
     CS_CYCLES_TURTLE,
     CS_SIMPLE,
 )
-
-import voc4cat
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
 

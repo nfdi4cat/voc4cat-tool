@@ -1,11 +1,14 @@
 import os
+import shutil
 from pathlib import Path
 from unittest import mock
 
 import pytest
+from openpyxl import load_workbook
 from rdflib import SKOS, Graph, Literal, URIRef, compare
 
 import voc4cat
+from tests.test_cli import CS_SIMPLE
 from voc4cat import convert
 from voc4cat.utils import ConversionError
 
@@ -39,6 +42,25 @@ def test_simple():
         SKOS.historyNote,
         Literal("NADM SLTTs 2004", lang="en"),
     ) in g, "Provenance for vocab is not correct"
+
+
+def test_missing_iri_concept(monkeypatch, datadir, tmp_path):
+    shutil.copy(datadir / CS_SIMPLE, tmp_path)
+    monkeypatch.chdir(tmp_path)
+    # change excel file: Delete vocabulary base IRI
+    wb = load_workbook(filename=CS_SIMPLE)
+    ws = wb["Additional Concept Features"]
+    ws.cell(row=7, column=1).value = "ex:test07"
+    new_filename = "bad_iri_in_AdditionalConceptFeatures.xlsx"
+    wb.save(new_filename)
+    wb.close()
+
+    wb = load_workbook(filename=new_filename, read_only=True, data_only=True)
+    with pytest.raises(ConversionError):
+        convert.excel_to_rdf(
+            Path(new_filename),
+            output_type="graph",
+        )
 
 
 @mock.patch.dict(os.environ, clear=True)  # required to hide gh-action environment vars

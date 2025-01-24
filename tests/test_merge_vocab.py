@@ -3,8 +3,8 @@ import shutil
 from unittest import mock
 
 import pytest
-from test_cli import CS_CYCLES_TURTLE, CS_SIMPLE_TURTLE
 
+from tests.test_cli import CS_CYCLES_TURTLE, CS_SIMPLE_TURTLE
 from voc4cat.merge_vocab import main_cli
 
 
