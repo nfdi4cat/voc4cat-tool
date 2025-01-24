@@ -5,10 +5,10 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-from test_cli import (
+
+from tests.test_cli import (
     CS_CYCLES_TURTLE,
 )
-
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
 

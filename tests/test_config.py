@@ -29,7 +29,7 @@ def test_import(datadir, caplog, temp_config):
     assert len(config.IDRANGES.vocabs["myvocab"].id_range) == 3  # noqa: PLR2004
 
 
-def test_non_exisiting_config_file(tmp_path, caplog, temp_config):
+def test_non_existing_config_file(tmp_path, caplog, temp_config):
     """Test for non-existing path to config which initializes defaults"""
     config = temp_config
     fpath = tmp_path / "does-not-exist.toml"

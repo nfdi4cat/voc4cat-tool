@@ -140,6 +140,7 @@ def excel_to_rdf(
             sheet,
             prefix_converter_xlsx,
         )
+        wb.close()
     except ValidationError as exc:
         msg = f"ConceptScheme processing error: {exc}"
         raise ConversionError(msg) from exc
@@ -363,6 +364,7 @@ def rdf_to_excel(
     else:
         dest = file_to_convert_path.with_suffix(".xlsx")
     wb.save(filename=dest)
+    wb.close()
     return dest
 
 
