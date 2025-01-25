@@ -178,7 +178,7 @@ def check(args):
         outfile = file if args.outdir is None else args.outdir / file.name
         if outfile == file and not args.inplace:
             logger.warning(
-                'This command will overwrite the existing file "%s".'
+                'This command will overwrite the existing file "%s". '
                 'Use the flag "--inplace" to enforce replacement or '
                 'supply an output directory with flag "--outdir".',
                 file,
