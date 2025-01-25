@@ -330,7 +330,7 @@ def rdf_to_excel(
                 holder["narrow_match"],
                 holder["broad_match"],
             ]
-            ):
+        ):
             row_no_features += 1
 
     row_no = 3

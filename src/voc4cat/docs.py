@@ -6,13 +6,18 @@ from voc4cat.gh_index import build_multirelease_index
 
 logger = logging.getLogger(__name__)
 
+try:
+    import pylode
+
+    HAS_PYLODE = True
+except ImportError:  # pragma: no cover
+    HAS_PYLODE = False
+
 
 def run_pylode(turtle_file: Path, output_path: Path) -> None:
     """
     Generate pyLODE documentation.
     """
-    import pylode
-
     filename = Path(turtle_file)  # .resolve())
     outdir = output_path / filename.stem
     outdir.mkdir(exist_ok=True)
@@ -70,6 +75,12 @@ def docs(args):
             return
 
         if args.style == "pylode":
+            if not HAS_PYLODE:  # pragma: no cover
+                logger.error(
+                    "Cannot build docs without pyLODE. Install our pylode-2.x fork with: "
+                    '"pip install git+https://github.com/dalito/pyLODE.git@nfdi4cat-2.x"'
+                )
+                return
             run_pylode(file, outdir)
             # generate index.html linking all tagged version in CI
             if os.getenv("CI") is not None:

@@ -12,7 +12,15 @@ from tests.test_cli import (
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
 
+try:
+    import pylode
 
+    HAS_PYLODE = True
+except ImportError:
+    HAS_PYLODE = False
+
+
+@pytest.mark.skipif(not HAS_PYLODE, reason="pyLODE not installed")
 @mock.patch.dict(os.environ, clear=True)  # required to hide gh-action environment vars
 def test_build_docs_pylode(datadir, tmp_path):
     """Check that pylode generates the expected output."""
@@ -24,6 +32,7 @@ def test_build_docs_pylode(datadir, tmp_path):
     assert (outdir / Path(CS_CYCLES_TURTLE).stem / "index.html").exists()
 
 
+@pytest.mark.skipif(not HAS_PYLODE, reason="pyLODE not installed")
 @mock.patch.dict(os.environ, {"CI": "TRUE"})
 def test_build_docs_pylode_ci_no_git(monkeypatch, datadir, tmp_path, caplog):
     """Check that pylode generates additional index.html in CI, git error."""
@@ -45,6 +54,7 @@ def test_build_docs_pylode_ci_no_git(monkeypatch, datadir, tmp_path, caplog):
     assert "git command returned with error" in caplog.text
 
 
+@pytest.mark.skipif(not HAS_PYLODE, reason="pyLODE not installed")
 @mock.patch.dict(os.environ, {"CI": "TRUE"})
 def test_build_docs_pylode_ci_no_config(monkeypatch, datadir, tmp_path, caplog):
     """Check that pylode generates additional index.html in CI, git error."""
@@ -64,6 +74,7 @@ def test_build_docs_pylode_ci_no_config(monkeypatch, datadir, tmp_path, caplog):
     assert "Config file not found" in caplog.text
 
 
+@pytest.mark.skipif(not HAS_PYLODE, reason="pyLODE not installed")
 @pytest.mark.parametrize("git_output", [b"v2022.12.22\n", b""])
 @mock.patch.dict(os.environ, {"CI": "TRUE"})
 def test_build_docs_pylode_in_ci(  # noqa: PLR0913
@@ -91,6 +102,7 @@ def test_build_docs_pylode_in_ci(  # noqa: PLR0913
         assert "v2022.12.22" in caplog.text
 
 
+@pytest.mark.skipif(not HAS_PYLODE, reason="pyLODE not installed")
 @mock.patch.dict(os.environ, clear=True)  # required to hide gh-action environment vars
 def test_build_docs(datadir, tmp_path, caplog):
     """Check overwrite warning and output folder creation."""
