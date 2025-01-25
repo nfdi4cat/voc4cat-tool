@@ -375,7 +375,7 @@ class Concept(BaseModel):
 
         return g
 
-    def to_excel(self, wb: Workbook, row_no_features: int, row_no_concepts: int):
+    def to_excel(self, wb: Workbook, row_no_concepts: int, row_no_features: int) -> int:
         """ "
         Export Concept to Excel using one row per language
 
@@ -433,41 +433,42 @@ class Concept(BaseModel):
             )
             row_no_concepts += 1
 
-        ws = wb["Additional Concept Features"]
-
-        ws[f"A{row_no_features}"] = config.curies_converter.compress(
-            self.uri, passthrough=True
-        )
-        ws[f"B{row_no_features}"] = ",\n".join(
-            [
-                config.curies_converter.compress(uri, passthrough=True)
-                for uri in self.related_match
-            ]
-        )
-        ws[f"C{row_no_features}"] = ",\n".join(
-            [
-                config.curies_converter.compress(uri, passthrough=True)
-                for uri in self.close_match
-            ]
-        )
-        ws[f"D{row_no_features}"] = ",\n".join(
-            [
-                config.curies_converter.compress(uri, passthrough=True)
-                for uri in self.exact_match
-            ]
-        )
-        ws[f"E{row_no_features}"] = ",\n".join(
-            [
-                config.curies_converter.compress(uri, passthrough=True)
-                for uri in self.narrow_match
-            ]
-        )
-        ws[f"F{row_no_features}"] = ",\n".join(
-            [
-                config.curies_converter.compress(uri, passthrough=True)
-                for uri in self.broad_match
-            ]
-        )
+        # Fill Additional Concept Features sheet
+        if any([self.related_match, self.close_match, self.exact_match, self.narrow_match, self.broad_match]):
+            ws = wb["Additional Concept Features"]
+            ws[f"A{row_no_features}"] = config.curies_converter.compress(
+                self.uri, passthrough=True
+            )
+            ws[f"B{row_no_features}"] = ",\n".join(
+                [
+                    config.curies_converter.compress(uri, passthrough=True)
+                    for uri in self.related_match
+                ]
+            )
+            ws[f"C{row_no_features}"] = ",\n".join(
+                [
+                    config.curies_converter.compress(uri, passthrough=True)
+                    for uri in self.close_match
+                ]
+            )
+            ws[f"D{row_no_features}"] = ",\n".join(
+                [
+                    config.curies_converter.compress(uri, passthrough=True)
+                    for uri in self.exact_match
+                ]
+            )
+            ws[f"E{row_no_features}"] = ",\n".join(
+                [
+                    config.curies_converter.compress(uri, passthrough=True)
+                    for uri in self.narrow_match
+                ]
+            )
+            ws[f"F{row_no_features}"] = ",\n".join(
+                [
+                    config.curies_converter.compress(uri, passthrough=True)
+                    for uri in self.broad_match
+                ]
+            )
 
         return row_no_concepts
 

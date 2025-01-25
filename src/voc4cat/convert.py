@@ -173,7 +173,7 @@ def rdf_to_excel(
     file_to_convert_path: Path,
     output_file_path: Path | None = None,
     template_file_path: Path | None = None,
-) -> None:
+) -> Path:
     if not file_to_convert_path.name.endswith(tuple(RDF_FILE_ENDINGS.keys())):
         msg = "Files for conversion to Excel must end with one of the RDF file formats: '{}'".format(
             "', '".join(RDF_FILE_ENDINGS.keys())
@@ -254,7 +254,7 @@ def rdf_to_excel(
     for s, o in g.subject_objects(SKOS.broader):
         g.add((o, SKOS.narrower, s))
 
-    row_no_features, row_no_concepts = 3, 3
+    row_no_concepts, row_no_features = 3, 3
     for s in g.subjects(RDF.type, SKOS.Concept):
         holder = {
             "uri": str(s),
@@ -319,8 +319,19 @@ def rdf_to_excel(
             narrow_match=holder["narrow_match"],
             broad_match=holder["broad_match"],
             vocab_name=vocab_name,
-        ).to_excel(wb, row_no_features, row_no_concepts)
-        row_no_features += 1
+        ).to_excel(wb, row_no_concepts, row_no_features)
+        row_no_concepts += 1
+        # only go to next row in "Additional Concepts Features" if there are any mappings
+        if any(
+            [
+                holder["related_match"],
+                holder["close_match"],
+                holder["exact_match"],
+                holder["narrow_match"],
+                holder["broad_match"],
+            ]
+            ):
+            row_no_features += 1
 
     row_no = 3
 
