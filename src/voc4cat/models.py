@@ -434,7 +434,15 @@ class Concept(BaseModel):
             row_no_concepts += 1
 
         # Fill Additional Concept Features sheet
-        if any([self.related_match, self.close_match, self.exact_match, self.narrow_match, self.broad_match]):
+        if any(
+            [
+                self.related_match,
+                self.close_match,
+                self.exact_match,
+                self.narrow_match,
+                self.broad_match,
+            ]
+        ):
             ws = wb["Additional Concept Features"]
             ws[f"A{row_no_features}"] = config.curies_converter.compress(
                 self.uri, passthrough=True

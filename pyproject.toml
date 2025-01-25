@@ -43,8 +43,6 @@ dependencies = [
   "openpyxl >= 3.1.5",
   "pillow",
   "pydantic < 2.0.0",
-  # official pyLODE 2.x dev has stopped, use dalito´s fork
-  "pyLODE @ git+https://github.com/dalito/pyLODE.git@nfdi4cat-2.x",
   "pyshacl",
   "rdflib",
   "tomli>=1.1.0; python_version < '3.11'",
