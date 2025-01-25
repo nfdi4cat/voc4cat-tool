@@ -16,7 +16,7 @@ jobs:
   build:
     name: Build Python 🐍 distributions 📦 for publishing
     # Don't try to publish from forks
-    if: github.repository == 'nfid4cat/voc4cat-tool'
+    if: github.repository == 'nfdi4cat/voc4cat-tool'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
