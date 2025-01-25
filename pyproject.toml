@@ -36,16 +36,17 @@ classifiers = [
 ]
 
 dependencies = [
-  "base32-crockford >= 0.3.0",
+  "base32-crockford",
   "colorama",
-  "curies >= 0.6.6",
-  "networkx >= 2.8",
+  "curies < 0.7.10",  # due to pydantic 1.x use in voc4cat-tool
+  "networkx",
   "openpyxl >= 3.1.5",
-  "pillow >= 9.1.0",
+  "pillow",
   "pydantic < 2.0.0",
-  "pyLODE < 3.0.0",
-  "pyshacl >= 0.18.1",
-  "rdflib >= 6.1.1",
+  # official pyLODE 2.x dev has stopped, use dalito´s fork
+  "pyLODE @ git+https://github.com/dalito/pyLODE.git@nfdi4cat-2.x",
+  "pyshacl",
+  "rdflib",
   "tomli>=1.1.0; python_version < '3.11'",
 ]
 
