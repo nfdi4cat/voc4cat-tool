@@ -34,7 +34,8 @@ def main(ttl_inbox: Path, vocab: Path) -> int:
             cmd = ["git", "merge-file", "--theirs", str(exists), str(exists), str(new)]
             logger.info("Running cmd: %s", " ".join(cmd))
             outp = subprocess.run(cmd, capture_output=True, check=False)  # noqa: S603
-            logger.info("Cmd output: %s", outp.stdout)
+            if outp.stdout:
+                logger.info("Cmd output: %s", outp.stdout)
             if retcode := outp.returncode != 0:
                 break
         else:
