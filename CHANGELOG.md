@@ -1,6 +1,8 @@
 # Change log
 
-## Release 0.8.6 (2025-01-26)
+## Release 0.8.6 / 0.8.7 (2025-01-26)
+
+0.8.7 only adds a missed commit with the CHANGENOTES and README updates.
 
 Bug fixes:
 
