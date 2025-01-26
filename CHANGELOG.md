@@ -1,6 +1,22 @@
 # Change log
 
-## Release 0.8.4 (2024-03-09)
+## Release 0.8.6 (2025-01-26)
+
+Bug fixes:
+
+- Fix handling of mappings to external vocabularies/ontologies (#242)
+
+Features:
+
+- Support Python 3.13 (#234)
+
+Changes:
+
+- Write only concepts with mapping to "Additional Concept Features" sheet (#246)
+- Add alternate name `voc4cat-merge` for executable script `merge_vocab` by (#243)
+- Make pyLODE optional (remove from dependencies) (#250)
+
+## Release 0.8.5 (2024-03-09)
 
 Bug fixes:
 

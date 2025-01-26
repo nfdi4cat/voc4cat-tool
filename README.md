@@ -12,8 +12,6 @@ For **[voc4cat](https://github.com/nfdi4cat/voc4cat)**, a term collection for ca
   - A command-line tool to convert vocabularies from Excel to SKOS (turtle/rdf) and validate the vocabulary. Validation includes formal validation with SHACL-profiles but also additional checks. The `voc4cat` tool can be run locally but is also well suited for integration in CI-pipelines. It was inspired by [RDFlib/VocExcel](https://github.com/nfdi4cat/VocExcel). Parts of the vocexcel code base were merged into this repository (see git history).
 - **[voc4cat-template](https://github.com/nfdi4cat/voc4cat-template)**
   - A github project template for managing SKOS-vocabularies using a GitHub-based workflows including automation by gh-actions.
-- **[voc4cat-playground](https://github.com/nfdi4cat/voc4cat-playground)**
-  - A testbed for playing with the voc4cat workflow. The playground is a test-deployment of the voc4cat-template.
 - **[voc4cat](https://github.com/nfdi4cat/voc4cat)**
   - A SKOS vocabulary for the catalysis disciplines that uses the voc4cat workflow for real work.
 
