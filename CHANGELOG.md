@@ -1,5 +1,13 @@
 # Change log
 
+## Release 0.8.8 (2025-01-27)
+
+0.8.8 only contains a fix for a bug introduced in 0.8.6.
+
+Bug fixes:
+
+- Fix jumping over every second row when writing concepts to xlsx (#254 fixed in #255)
+
 ## Release 0.8.6 / 0.8.7 (2025-01-26)
 
 0.8.7 only adds a missed commit with the CHANGENOTES and README updates.
