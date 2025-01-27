@@ -5,7 +5,7 @@ from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import ValidationError
 
-from voc4cat import models
+from voc4cat import config, models
 from voc4cat.utils import ConversionError, split_and_tidy
 
 logger = logging.getLogger(__name__)
@@ -70,10 +70,11 @@ def extract_concepts_and_collections(
             row = cell.row
             if cell.value is None or cell.value in header_names_to_skip:
                 continue
-            uri = q[f"A{row}"].value.strip()
+            uri = q[f"A{row}"].value.split()[0].strip()
             uri = prefix_converter.expand(uri) or uri
             concept_data[uri] = {
                 "uri": uri,
+                "curie": config.curies_converter.compress(uri),
                 "pref_label": q[f"B{row}"].value,
                 "pl_language_code": split_and_tidy(q[f"C{row}"].value),
                 "definition": q[f"D{row}"].value,
@@ -92,7 +93,7 @@ def extract_concepts_and_collections(
             row = cell.row
             if cell.value is None or cell.value in header_names_to_skip:
                 continue
-            uri = r[f"A{row}"].value.strip()
+            uri = r[f"A{row}"].value.split()[0].strip()
             uri = prefix_converter.expand(uri) or uri
             if uri in additional_concept_iris:
                 msg = f"Concept IRI {uri} used a second time in sheet {r} at row {row} but must be unique."
@@ -133,7 +134,7 @@ def extract_concepts_and_collections(
                 continue
 
             data_collection = {
-                "uri": s[f"A{row}"].value,
+                "uri": s[f"A{row}"].value.split()[0].strip(),
                 "pref_label": s[f"B{row}"].value,
                 "definition": s[f"C{row}"].value,
                 "members": s[f"D{row}"].value,

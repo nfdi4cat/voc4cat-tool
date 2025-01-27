@@ -406,10 +406,14 @@ class Concept(BaseModel):
             fully_translated.insert(0, "en")
 
         first_row_exported = False
+        if "ex" not in config.curies_converter.prefix_map:
+            config.curies_converter.add_prefix("ex", "https://example.org/")
         for lang in chain(fully_translated, partially_translated):
-            ws[f"A{row_no_concepts}"] = config.curies_converter.compress(
+            ws[f"A{row_no_concepts}"].value = config.curies_converter.compress(
                 self.uri, passthrough=True
-            )
+            ) # + f" ({pref_labels.get(lang, '')})" #
+            ws[f"A{row_no_concepts}"].hyperlink = self.uri
+            ws[f"A{row_no_concepts}"].style = "Hyperlink"
             ws[f"B{row_no_concepts}"] = pref_labels.get(lang, "")
             ws[f"C{row_no_concepts}"] = lang
             ws[f"D{row_no_concepts}"] = definitions.get(lang, "")
@@ -426,6 +430,7 @@ class Concept(BaseModel):
                 [
                     config.curies_converter.compress(uri, passthrough=True)
                     for uri in self.children
+                    # TODO add pref_label of children but where to look up? Here we know just the current concept.
                 ]
             )
             ws[f"I{row_no_concepts}"] = (
@@ -446,9 +451,11 @@ class Concept(BaseModel):
             ]
         ):
             ws = wb["Additional Concept Features"]
-            ws[f"A{row_no_features}"] = config.curies_converter.compress(
+            ws[f"A{row_no_features}"].value = config.curies_converter.compress(
                 self.uri, passthrough=True
-            )
+            ) + f" ({pref_labels.get('en', '')})"
+            ws[f"A{row_no_features}"].hyperlink = self.uri
+            ws[f"A{row_no_features}"].style = "Hyperlink"
             ws[f"B{row_no_features}"] = ",\n".join(
                 [
                     config.curies_converter.compress(uri, passthrough=True)
@@ -524,7 +531,11 @@ class Collection(BaseModel):
 
     def to_excel(self, wb: Workbook, row_no: int):
         ws = wb["Collections"]
-        ws[f"A{row_no}"] = config.curies_converter.compress(self.uri, passthrough=True)
+        ws[f"A{row_no}"].value = config.curies_converter.compress(
+                self.uri, passthrough=True
+        ) # + f" ({self.pref_label})"
+        ws[f"A{row_no}"].hyperlink = self.uri
+        ws[f"A{row_no}"].style = "Hyperlink"
         ws[f"B{row_no}"] = self.pref_label
         ws[f"C{row_no}"] = self.definition
         ws[f"D{row_no}"] = ",\n".join(
