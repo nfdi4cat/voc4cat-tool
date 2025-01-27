@@ -320,7 +320,7 @@ def rdf_to_excel(
             broad_match=holder["broad_match"],
             vocab_name=vocab_name,
         ).to_excel(wb, row_no_concepts, row_no_features)
-        row_no_concepts += 1
+
         # only go to next row in "Additional Concepts Features" if there are any mappings
         if any(
             [

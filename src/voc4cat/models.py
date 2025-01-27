@@ -381,6 +381,8 @@ class Concept(BaseModel):
 
         Non-labels like Children, Provenance are reported only for the first
         language. If "en" is among the used languages, it is reported first.
+
+        Return the row number of next row after the ones filled.
         """
         ws = wb["Concepts"]
 
