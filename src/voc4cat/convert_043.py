@@ -54,6 +54,19 @@ def write_prefix_sheet(wb: Workbook, prefix_map):
         ws.append([prefix, iri])
 
 
+def split_multi_iri(cell_value: str|None, prefix_converter: Converter) -> list[str]:
+    """
+    Split a string of IRIs separated by a comma into a list of IRIs
+    """
+    if cell_value is None:
+        return []
+    iris_nomalised = []
+    for line in cell_value.split(","):
+        iri = line.split()[0].strip()
+        iris_nomalised.append(prefix_converter.expand(iri) or iri)
+    return iris_nomalised
+
+
 def extract_concepts_and_collections(
     q: Worksheet,
     r: Worksheet,
@@ -80,7 +93,7 @@ def extract_concepts_and_collections(
                 "definition": q[f"D{row}"].value,
                 "def_language_code": split_and_tidy(q[f"E{row}"].value),
                 "alt_labels": split_and_tidy(q[f"F{row}"].value),
-                "children": q[f"G{row}"].value,
+                "children": split_multi_iri(q[f"G{row}"].value, prefix_converter),
                 "provenance": q[f"H{row}"].value,
                 # Note in the new template, source_vocab is synonymous with source vocab uri
                 "source_vocab": q[f"I{row}"].value,
@@ -103,11 +116,11 @@ def extract_concepts_and_collections(
                 raise ConversionError(msg)
             data = {
                 # additional concept features sheets
-                "related_match": r[f"B{row}"].value,
-                "close_match": r[f"C{row}"].value,
-                "exact_match": r[f"D{row}"].value,
-                "narrow_match": r[f"E{row}"].value,
-                "broad_match": r[f"F{row}"].value,
+                "related_match": split_multi_iri(r[f"B{row}"].value, prefix_converter),
+                "close_match": split_multi_iri(r[f"C{row}"].value, prefix_converter),
+                "exact_match": split_multi_iri(r[f"D{row}"].value, prefix_converter),
+                "narrow_match": split_multi_iri(r[f"E{row}"].value, prefix_converter),
+                "broad_match": split_multi_iri(r[f"F{row}"].value, prefix_converter),
                 "vocab_name": vocab_name,
             }
             concept_data[uri].update(**data)
@@ -137,7 +150,7 @@ def extract_concepts_and_collections(
                 "uri": s[f"A{row}"].value.split()[0].strip(),
                 "pref_label": s[f"B{row}"].value,
                 "definition": s[f"C{row}"].value,
-                "members": s[f"D{row}"].value,
+                "members": split_multi_iri(s[f"D{row}"].value, prefix_converter),
                 "provenance": s[f"E{row}"].value,
                 "vocab_name": vocab_name,
             }
