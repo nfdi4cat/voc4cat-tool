@@ -73,7 +73,6 @@ dev = [
 
 [project.scripts]
 voc4cat = "voc4cat.cli:run_cli_app"
-merge_vocab = "voc4cat.merge_vocab:main_cli"
 voc4cat-merge = "voc4cat.merge_vocab:main_cli"
 
 [tool.hatch.metadata]
