@@ -49,15 +49,20 @@ cs: a skos:ConceptScheme ;
     skos:historyNote "Example Exhaustive Provenance"@en ;
     rdfs:isDefinedBy <http://example.org/exhaustive_concept_source_vocabulary_iri> ;
     skos:altLabel "example exhaustive concept alternate label"@en ;
-    skos:broadMatch <http://example.org/example_broad_match> ;
-    skos:closeMatch <http://example.org/example_close_match> ;
+    skos:broadMatch <http://example.org/example_broad_match>,
+        <http://example.org/example_broad_match2> ;
+    skos:closeMatch <http://example.org/example_close_match>,
+        <http://example.org/example_close_match2> ;
     skos:definition "example exhaustive concept definition"@en ;
-    skos:exactMatch <http://example.org/example_exact_match> ;
+    skos:exactMatch <http://example.org/example_exact_match> ,
+        <http://example.org/example_exact_match2> ;
     skos:inScheme cs: ;
-    skos:narrowMatch <http://example.org/example_narrow_match> ;
+    skos:narrowMatch <http://example.org/example_narrow_match>,
+        <http://example.org/example_narrow_match2> ;
     skos:narrower <http://example.org/exhaustive_children_example_1>,
         <http://example.org/exhaustive_children_example_2>,
         <http://example.org/exhaustive_children_example_3> ;
     skos:prefLabel "example exhaustive preferred label"@en ;
-    skos:relatedMatch <http://example.org/example_related_match> ;
+    skos:relatedMatch <http://example.org/example_related_match> ,
+        <http://example.org/example_related_match2>;
     skos:topConceptOf cs: .
