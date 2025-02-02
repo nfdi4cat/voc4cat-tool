@@ -5,20 +5,19 @@ from typing import Literal
 
 import pyshacl
 from colorama import Fore, Style
-from curies import Converter
 from pydantic.error_wrappers import ValidationError
 from pyshacl.pytypes import GraphLike
 from rdflib import DCAT, DCTERMS, OWL, PROV, RDF, RDFS, SH, SKOS, Graph
 
 from voc4cat import config, models, profiles
 from voc4cat.checks import Voc4catError, validate_config_has_idrange
-from voc4cat.convert_043 import create_prefix_dict, write_prefix_sheet
 from voc4cat.convert_043 import (
     extract_concept_scheme as extract_concept_scheme_043,
 )
 from voc4cat.convert_043 import (
     extract_concepts_and_collections as extract_concepts_and_collections_043,
 )
+from voc4cat.convert_043 import write_prefix_sheet
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
     RDF_FILE_ENDINGS,
@@ -112,11 +111,17 @@ def excel_to_rdf(
     wb = load_workbook(file_to_convert_path)
     is_supported_template(wb)
     vocab_name = file_to_convert_path.stem.lower()
+
     # If non-default config is present, verify that at least one id_range defined.
     if not config.IDRANGES.default_config:
         validate_config_has_idrange(vocab_name)
+        # models.reset_curies(config.IDRANGES.vocabs[vocab_name].prefix_map)
+    # else:
+    #     models.reset_curies({})
 
-    models.reset_curies(create_prefix_dict(wb["Prefix Sheet"]))
+    config.curies_converter = config.CURIES_CONVERTER_MAP.get(
+        vocab_name, config.curies_converter
+    )
 
     # template_version == "0.4.3":
     try:
@@ -124,21 +129,15 @@ def excel_to_rdf(
         concept_sheet = wb["Concepts"]
         additional_concept_sheet = wb["Additional Concept Features"]
         collection_sheet = wb["Collections"]
-        prefix_sheet = wb["Prefix Sheet"]
-        prefix_converter_xlsx = Converter.from_prefix_map(
-            create_prefix_dict(prefix_sheet)
-        )
-
         concepts, collections = extract_concepts_and_collections_043(
             concept_sheet,
             additional_concept_sheet,
             collection_sheet,
-            prefix_converter_xlsx,
             vocab_name,
         )
         cs = extract_concept_scheme_043(
             sheet,
-            prefix_converter_xlsx,
+            vocab_name,
         )
         wb.close()
     except ValidationError as exc:
@@ -166,6 +165,7 @@ def excel_to_rdf(
             suffix = ".ttl"
         dest = file_to_convert_path.with_suffix(suffix)
     vocab_graph.serialize(destination=str(dest), format=output_format)
+
     return None
 
 
@@ -180,15 +180,19 @@ def rdf_to_excel(
         )
         raise ValueError(msg)
 
-    # the RDF is valid so extract data and create Excel
-    g = Graph().parse(
-        str(file_to_convert_path), format=RDF_FILE_ENDINGS[file_to_convert_path.suffix]
-    )
-    # Update graph with prefix-mappings of the vocabulary
     vocab_name = file_to_convert_path.stem.lower()
     # If non-default config is present, verify that at least one id_range defined.
     if not config.IDRANGES.default_config:
         validate_config_has_idrange(vocab_name)
+
+    config.curies_converter = config.CURIES_CONVERTER_MAP.get(
+        vocab_name, config.curies_converter
+    )
+
+    # the RDF is valid so extract data and create Excel
+    g = Graph().parse(
+        str(file_to_convert_path), format=RDF_FILE_ENDINGS[file_to_convert_path.suffix]
+    )
 
     if template_file_path is None:
         wb = load_template(file_path=(Path(__file__).parent / "blank_043.xlsx"))
@@ -247,6 +251,7 @@ def rdf_to_excel(
         provenance=holder.get("provenance"),
         custodian=holder.get("custodian"),
         pid=holder.get("pid"),
+        vocab_name=vocab_name,
     )
     cs.to_excel(wb)
 

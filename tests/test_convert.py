@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+from curies import Converter
 
 import voc4cat
 from tests.test_cli import (
@@ -19,10 +20,16 @@ from voc4cat.cli import main_cli
     [CS_SIMPLE, ""],
     ids=["single file", "dir of files"],
 )
-def test_run_vocexcel(datadir, tmp_path, test_file):
-    """Check that an xlsx file is converted to ttl by vocexcel."""
+def test_run_voc4cat(datadir, tmp_path, test_file, temp_config):
+    """Check that an xlsx file is converted to ttl by voc4cat."""
     dst = tmp_path / test_file
     shutil.copy(datadir / CS_SIMPLE, dst)
+
+    # Load/prepare an a config with required prefix definition
+    config = temp_config
+    vocab_name = CS_SIMPLE.split(".")[0]
+    config.CURIES_CONVERTER_MAP[vocab_name] = config.curies_converter
+
     # We also test if the logging option works.
     log = tmp_path / "logs" / "test-run.log"
     main_cli(["convert", "-v", "--logfile", str(log), str(dst)])
@@ -41,10 +48,18 @@ def test_run_vocexcel(datadir, tmp_path, test_file):
     ],
     ids=["out:dir & xlsx", "out:default & xlsx", "out:dir & ttl", "out:default & ttl"],
 )
-def test_run_vocexcel_outputdir(monkeypatch, datadir, tmp_path, outputdir, testfile):
-    """Check that an xlsx file is converted to ttl by vocexcel."""
+def test_run_voc4cat_outputdir(
+    monkeypatch, datadir, tmp_path, outputdir, testfile, temp_config
+):
+    """Check that an xlsx file is converted to ttl by voc4cat."""
     shutil.copy(datadir / testfile, tmp_path)
     monkeypatch.chdir(tmp_path)
+
+    # Load/prepare an a config with required prefix definition
+    config = temp_config
+    vocab_name = testfile.split(".")[0]
+    config.CURIES_CONVERTER_MAP[vocab_name] = config.curies_converter
+
     # Check if log is placed in out folder.
     log = Path(outputdir) / "test-run.log"
     main_cli(

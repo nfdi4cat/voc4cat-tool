@@ -43,8 +43,13 @@ def test_check_skos_rdf(datadir, tmp_path, caplog):
     assert "The file is valid according to the vocpub profile." in caplog.text
 
 
-def test_check_skos_badfile(monkeypatch, datadir, tmp_path, caplog):
+def test_check_skos_badfile(monkeypatch, datadir, tmp_path, temp_config, caplog):
     """Check failing profile validation."""
+    # Load/prepare an a config with required prefix definition
+    config = temp_config
+    vocab_name = CS_CYCLES_INDENT.split(".")[0]
+    config.CURIES_CONVERTER_MAP[vocab_name] = config.curies_converter
+
     shutil.copy(datadir / CS_CYCLES_INDENT, tmp_path)
     monkeypatch.chdir(tmp_path)
     main_cli(["convert", CS_CYCLES_INDENT])
@@ -91,6 +96,7 @@ def test_check_ci_pre(datadir, tmp_path, temp_config, caplog):
     config.load_config(tmp_path / "idranges.toml")
     config.IDRANGES.vocabs["myvocab"].id_length = 2
     config.IDRANGES.vocabs["myvocab"].permanent_iri_part = "http://example.org/test"
+    config.IDRANGES.vocabs["myvocab"].prefix_map = {"ex": "http://example.org/"}
     config.load_config(config=config.IDRANGES)
     # Convert vocabulary to ttl and store in vocabdir
     main_cli(["convert", "-v", "--outdir", str(vocabdir), str(inbox)])
@@ -114,6 +120,7 @@ def test_check_ci_post(datadir, tmp_path, temp_config, caplog):
     config.load_config(tmp_path / "idranges.toml")
     config.IDRANGES.vocabs["myvocab"].id_length = 2
     config.IDRANGES.vocabs["myvocab"].permanent_iri_part = "http://example.org/test"
+    config.IDRANGES.vocabs["myvocab"].prefix_map = {"ex": "http://example.org/"}
     config.load_config(config=config.IDRANGES)
     # Convert vocabulary to ttl and store in vocabdir
     main_cli(["convert", "-v", "--outdir", str(vocabdir), str(previous)])

@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+from curies import Converter
 from openpyxl import load_workbook
 from rdflib import SKOS, Graph, Literal, URIRef, compare
 
@@ -15,6 +16,7 @@ from voc4cat.utils import ConversionError
 
 def test_empty_template():
     test_file = Path(voc4cat.__file__).parent / "blank_043.xlsx"
+
     assert test_file.is_file()
     with pytest.raises(ConversionError) as e:
         convert.excel_to_rdf(
@@ -36,12 +38,12 @@ def test_simple():
         ),
         SKOS.prefLabel,
         Literal("Particle Type", lang="en"),
-    ) in g, "PrefLabel for vocab is not correct"
+    ) in (g or []), "PrefLabel for vocab is not correct"
     assert (
         URIRef("http://resource.geosciml.org/classifier/cgi/particletype/bioclast"),
         SKOS.historyNote,
         Literal("NADM SLTTs 2004", lang="en"),
-    ) in g, "Provenance for vocab is not correct"
+    ) in (g or []), "Provenance for vocab is not correct"
 
 
 def test_missing_iri_concept(monkeypatch, datadir, tmp_path):
@@ -64,7 +66,15 @@ def test_missing_iri_concept(monkeypatch, datadir, tmp_path):
 
 
 @mock.patch.dict(os.environ, clear=True)  # required to hide gh-action environment vars
-def test_exhaustive_template_is_isomorphic():
+def test_exhaustive_template_is_isomorphic(temp_config):
+    # Load/prepare an a config with required prefix definition
+    config = temp_config
+    config.curies_converter = Converter.from_prefix_map({"ex": "http://example.org/"})
+    config.CURIES_CONVERTER_MAP["043_exhaustive_example_perfect_output"] = (
+        config.curies_converter
+    )
+    config.CURIES_CONVERTER_MAP["043_exhaustive_example"] = config.curies_converter
+
     g1 = Graph().parse(
         Path(__file__).parent
         / "templ_versions"
@@ -74,6 +84,12 @@ def test_exhaustive_template_is_isomorphic():
         Path(__file__).parent / "templ_versions" / "043_exhaustive_example.xlsx",
         output_type="graph",
     )
+
+    # to debug differences
+    in_both, in_first, in_second = compare.graph_diff(g1, g2)
+    print("\nOnly in 1st ==>\n", in_first.serialize(format="turtle"))
+    print("Only in 2nd ==>\n", in_second.serialize(format="turtle"))
+
     assert compare.isomorphic(g1, g2), "Graphs are not Isomorphic"
 
 
@@ -102,8 +118,8 @@ def test_rdf_to_excel():
         / "043_exhaustive_example_perfect_output.xlsx"
     ).unlink(missing_ok=True)
     # to debug differences
-    # in_both, in_first, in_second = compare.graph_diff(g1, g2)
-    # print("\nOnly in 1st ==>\n", in_first.serialize(format="turtle"))
-    # print("Only in 2nd ==>\n", in_second.serialize(format="turtle"))
+    in_both, in_first, in_second = compare.graph_diff(g1, g2)
+    print("\nOnly in 1st ==>\n", in_first.serialize(format="turtle"))
+    print("Only in 2nd ==>\n", in_second.serialize(format="turtle"))
 
     assert compare.isomorphic(g1, g2), "Graphs are not Isomorphic"

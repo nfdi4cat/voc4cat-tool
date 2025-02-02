@@ -3,7 +3,6 @@ import logging
 import os
 from itertools import chain
 
-from curies import Converter
 from openpyxl import Workbook
 from pydantic import AnyHttpUrl, BaseModel, Field, root_validator, validator
 from rdflib import (
@@ -17,6 +16,7 @@ from rdflib import (
     XSD,
     Graph,
     Literal,
+    Namespace,
     URIRef,
 )
 from rdflib.namespace import NamespaceManager
@@ -36,29 +36,6 @@ ORGANISATIONS = {
 }
 
 ORGANISATIONS_INVERSE = {uref: name for name, uref in ORGANISATIONS.items()}
-
-
-def reset_curies(curies_map: dict) -> None:
-    """
-    Reset prefix-map to rdflib's default plus the ones given in curies_map.
-
-    Lit: https://rdflib.readthedocs.io/en/stable/apidocs/rdflib.namespace.html#rdflib.namespace.NamespaceManager
-    """
-    namespace_manager = NamespaceManager(Graph())
-    curies_converter = Converter.from_prefix_map(
-        {prefix: str(url) for prefix, url in namespace_manager.namespaces()}
-    )
-    for prefix, url in curies_map.items():
-        if prefix in curies_converter.prefix_map:
-            if curies_converter.prefix_map[prefix] != url:
-                msg = f'Prefix "{prefix}" is already used for "{curies_converter.prefix_map[prefix]}".'
-                raise ValueError(msg)
-            continue
-        curies_converter.add_prefix(prefix, url)
-        namespace_manager.bind(prefix, url)
-    # Update voc4at.config
-    config.curies_converter = curies_converter
-    config.namespace_manager = namespace_manager
 
 
 # === Pydantic validators used by more than one model ===
@@ -268,7 +245,12 @@ class ConceptScheme(BaseModel):
             else:
                 g.add((v, RDFS.seeAlso, Literal(self.pid)))
 
-        g.namespace_manager = config.namespace_manager
+        g.namespace_manager = NamespaceManager(g)
+        converter = config.CURIES_CONVERTER_MAP.get(
+            self.vocab_name, config.curies_converter
+        )
+        for prefix, uri_prefix in converter.bimap.items():
+            g.namespace_manager.bind(prefix, Namespace(uri_prefix))
         return g
 
     def to_excel(self, wb: Workbook):
