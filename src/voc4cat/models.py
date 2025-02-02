@@ -255,7 +255,7 @@ class ConceptScheme(BaseModel):
 
     def to_excel(self, wb: Workbook):
         ws = wb["Concept Scheme"]
-        ws["B2"] = config.curies_converter.compress(self.uri, passthrough=True)
+        ws["B2"] = config.curies_converter.expand(self.uri, passthrough=True)
         ws["B3"] = self.title
         ws["B4"] = self.description
         ws["B5"] = self.created.isoformat()

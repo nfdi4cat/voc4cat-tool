@@ -23,11 +23,13 @@ logger = logging.getLogger(__name__)
 
 # === Configuration that is not imported from idranges.toml ===
 
-# Converter for vocabulary being processed
-curies_converter: Converter = Converter({})
+# Initialize curies-converter with default namespace of rdflib.Graph.
+# It is globally changed depending on which vocabulary is processed.
+curies_converter: Converter = Converter.from_prefix_map(
+    {prefix: str(url) for prefix, url in NamespaceManager(Graph()).namespaces()}
+)
 
 # === Configuration imported from idranges.toml stored as pydantic model ===
-
 
 class Checks(BaseModel):
     allow_delete: bool = False
