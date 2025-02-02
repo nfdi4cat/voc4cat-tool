@@ -38,6 +38,20 @@ ORGANISATIONS = {
 ORGANISATIONS_INVERSE = {uref: name for name, uref in ORGANISATIONS.items()}
 
 
+def make_iri_qualifier_listing(item, concepts_by_iri):
+    """Return listing of item with one "uri (pref.label)" per row."""
+    child_lines = []
+    for uri in item:
+        uri_str = config.curies_converter.compress(uri, passthrough=True)
+        if "en" not in concepts_by_iri[uri]:
+            child_lines.append(f"{uri_str}")
+            continue
+        # we must be careful: not all concepts have all languages
+        pref_label_in_lang = concepts_by_iri[uri]["en"].pref_label[0]
+        child_lines.append(f"{uri_str} ({pref_label_in_lang})")
+    return ",\n".join(child_lines)
+
+
 # === Pydantic validators used by more than one model ===
 
 
@@ -357,7 +371,7 @@ class Concept(BaseModel):
 
         return g
 
-    def to_excel(self, wb: Workbook, row_no_concepts: int, row_no_features: int) -> int:
+    def to_excel(self, wb: Workbook, row_no_concepts: int, row_no_features: int, concepts_by_iri:dict) -> int:
         """ "
         Export Concept to Excel using one row per language
 
@@ -389,9 +403,11 @@ class Concept(BaseModel):
 
         first_row_exported = False
         for lang in chain(fully_translated, partially_translated):
-            ws[f"A{row_no_concepts}"] = config.curies_converter.compress(
+            ws[f"A{row_no_concepts}"].value = config.curies_converter.compress(
                 self.uri, passthrough=True
             )
+            ws[f"A{row_no_concepts}"].hyperlink = self.uri
+            ws[f"A{row_no_concepts}"].style = "Hyperlink"
             ws[f"B{row_no_concepts}"] = pref_labels.get(lang, "")
             ws[f"C{row_no_concepts}"] = lang
             ws[f"D{row_no_concepts}"] = definitions.get(lang, "")
@@ -404,12 +420,7 @@ class Concept(BaseModel):
 
             first_row_exported = True
             ws[f"F{row_no_concepts}"] = ",\n".join(self.alt_labels)
-            ws[f"G{row_no_concepts}"] = ",\n".join(
-                [
-                    config.curies_converter.compress(uri, passthrough=True)
-                    for uri in self.children
-                ]
-            )
+            ws[f"G{row_no_concepts}"] = make_iri_qualifier_listing(self.children, concepts_by_iri)
             ws[f"I{row_no_concepts}"] = (
                 config.curies_converter.compress(self.source_vocab, passthrough=True)
                 if self.source_vocab
@@ -428,39 +439,16 @@ class Concept(BaseModel):
             ]
         ):
             ws = wb["Additional Concept Features"]
-            ws[f"A{row_no_features}"] = config.curies_converter.compress(
+            ws[f"A{row_no_features}"].value = config.curies_converter.compress(
                 self.uri, passthrough=True
-            )
-            ws[f"B{row_no_features}"] = ",\n".join(
-                [
-                    config.curies_converter.compress(uri, passthrough=True)
-                    for uri in self.related_match
-                ]
-            )
-            ws[f"C{row_no_features}"] = ",\n".join(
-                [
-                    config.curies_converter.compress(uri, passthrough=True)
-                    for uri in self.close_match
-                ]
-            )
-            ws[f"D{row_no_features}"] = ",\n".join(
-                [
-                    config.curies_converter.compress(uri, passthrough=True)
-                    for uri in self.exact_match
-                ]
-            )
-            ws[f"E{row_no_features}"] = ",\n".join(
-                [
-                    config.curies_converter.compress(uri, passthrough=True)
-                    for uri in self.narrow_match
-                ]
-            )
-            ws[f"F{row_no_features}"] = ",\n".join(
-                [
-                    config.curies_converter.compress(uri, passthrough=True)
-                    for uri in self.broad_match
-                ]
-            )
+            ) + f" ({pref_labels.get('en', '')})"
+            ws[f"A{row_no_features}"].hyperlink = self.uri
+            ws[f"A{row_no_features}"].style = "Hyperlink"
+            ws[f"B{row_no_features}"] = make_iri_qualifier_listing(self.related_match, concepts_by_iri)
+            ws[f"C{row_no_features}"] = make_iri_qualifier_listing(self.close_match, concepts_by_iri)
+            ws[f"D{row_no_features}"] = make_iri_qualifier_listing(self.exact_match, concepts_by_iri)
+            ws[f"E{row_no_features}"] = make_iri_qualifier_listing(self.narrow_match, concepts_by_iri)
+            ws[f"F{row_no_features}"] = make_iri_qualifier_listing(self.broad_match, concepts_by_iri)
 
         return row_no_concepts
 
@@ -504,17 +492,16 @@ class Collection(BaseModel):
 
         return g
 
-    def to_excel(self, wb: Workbook, row_no: int):
+    def to_excel(self, wb: Workbook, row_no: int, concepts_by_iri:dict) -> None:
         ws = wb["Collections"]
-        ws[f"A{row_no}"] = config.curies_converter.compress(self.uri, passthrough=True)
+        ws[f"A{row_no}"].value = config.curies_converter.compress(
+                self.uri, passthrough=True
+        ) # + f" ({self.pref_label})"
+        ws[f"A{row_no}"].hyperlink = self.uri
+        ws[f"A{row_no}"].style = "Hyperlink"
         ws[f"B{row_no}"] = self.pref_label
         ws[f"C{row_no}"] = self.definition
-        ws[f"D{row_no}"] = ",\n".join(
-            [
-                config.curies_converter.compress(uri, passthrough=True)
-                for uri in self.members
-            ]
-        )
+        ws[f"D{row_no}"] = make_iri_qualifier_listing(self.members, concepts_by_iri)
         ws[f"E{row_no}"] = self.provenance
 
 

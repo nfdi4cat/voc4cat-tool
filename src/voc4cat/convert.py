@@ -1,3 +1,4 @@
+from collections import defaultdict
 import logging
 from itertools import chain
 from pathlib import Path
@@ -259,7 +260,7 @@ def rdf_to_excel(
     for s, o in g.subject_objects(SKOS.broader):
         g.add((o, SKOS.narrower, s))
 
-    row_no_concepts, row_no_features = 3, 3
+    concepts_by_iri = defaultdict(dict)
     for s in g.subjects(RDF.type, SKOS.Concept):
         holder = {
             "uri": str(s),
@@ -308,10 +309,11 @@ def rdf_to_excel(
             elif p == SKOS.broadMatch:
                 holder["broad_match"].append(str(o))
 
-        row_no_concepts = models.Concept(
+        lang_code = holder["pl_language_code"]
+        concepts_by_iri[holder["uri"]][lang_code[0]] = models.Concept(
             uri=holder["uri"],
             pref_label=holder["pref_label"],
-            pl_language_code=holder["pl_language_code"],
+            pl_language_code=lang_code,
             definition=holder["definition"],
             def_language_code=holder["def_language_code"],
             children=holder["children"],
@@ -324,19 +326,23 @@ def rdf_to_excel(
             narrow_match=holder["narrow_match"],
             broad_match=holder["broad_match"],
             vocab_name=vocab_name,
-        ).to_excel(wb, row_no_concepts, row_no_features)
+        )
 
-        # only go to next row in "Additional Concepts Features" if there are any mappings
-        if any(
-            [
-                holder["related_match"],
-                holder["close_match"],
-                holder["exact_match"],
-                holder["narrow_match"],
-                holder["broad_match"],
-            ]
-        ):
-            row_no_features += 1
+    row_no_concepts, row_no_features = 3, 3
+    for con in list(concepts_by_iri.values()):
+        for lang in con.keys():
+            row_no_concepts = con[lang].to_excel(wb, row_no_concepts, row_no_features, concepts_by_iri)
+            # only go to next row in "Additional Concepts Features" if there are any mappings
+            if any(
+                [
+                    holder["related_match"],
+                    holder["close_match"],
+                    holder["exact_match"],
+                    holder["narrow_match"],
+                    holder["broad_match"],
+                ]
+            ):
+                row_no_features += 1
 
     row_no = 3
 
@@ -369,7 +375,7 @@ def rdf_to_excel(
                 holder["provenance"] if holder.get("provenance") is not None else None
             ),
             vocab_name=vocab_name,
-        ).to_excel(wb, row_no)
+        ).to_excel(wb, row_no, concepts_by_iri)
         row_no += 1
 
     # Write the prefix_map used in the conversion to the prefix sheet.
