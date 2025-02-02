@@ -23,15 +23,13 @@ logger = logging.getLogger(__name__)
 
 # === Configuration that is not imported from idranges.toml ===
 
-namespace_manager = NamespaceManager(Graph())
-# Initialize curies-converter with default namespace of rdflib.Graph
-curies_converter = Converter.from_prefix_map(
-    {prefix: str(url) for prefix, url in namespace_manager.namespaces()}
+# Initialize curies-converter with default namespace of rdflib.Graph.
+# It is globally changed depending on which vocabulary is processed.
+curies_converter: Converter = Converter.from_prefix_map(
+    {prefix: str(url) for prefix, url in NamespaceManager(Graph()).namespaces()}
 )
 
-
 # === Configuration imported from idranges.toml stored as pydantic model ===
-
 
 class Checks(BaseModel):
     allow_delete: bool = False
@@ -102,10 +100,11 @@ class IDrangeConfig(BaseModel):
         return values
 
 
-# These parameters will be update/set by load_config.
+# These parameters will be updated/set by load_config.
 IDRANGES = IDrangeConfig(default_config=True)
 ID_PATTERNS = {}
 ID_RANGES_BY_ACTOR = defaultdict(list)
+CURIES_CONVERTER_MAP = {}
 
 
 def _id_ranges_by_actor(new_conf):
@@ -152,6 +151,17 @@ def load_config(config_file: Path | None = None, config: IDrangeConfig | None = 
     new_conf["ID_PATTERNS"] = id_patterns
 
     new_conf["ID_RANGES_BY_ACTOR"] = _id_ranges_by_actor(new_conf)
+
+    # Initialize curies-converter for all vocabs with default namespace of rdflib.Graph
+    namespace_manager = NamespaceManager(Graph())
+    for name in new_conf["IDRANGES"].vocabs:
+        curies_converter = Converter.from_prefix_map(
+            {prefix: str(url) for prefix, url in namespace_manager.namespaces()}
+        )
+        prefix_map = new_conf["IDRANGES"].vocabs[name].prefix_map
+        for prefix, uri_prefix in prefix_map.items():
+            curies_converter.add_prefix(prefix, uri_prefix, merge=True)
+        CURIES_CONVERTER_MAP[name] = curies_converter
 
     for name, value in new_conf.items():
         globals()[name] = value

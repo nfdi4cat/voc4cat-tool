@@ -3,7 +3,6 @@ import logging
 import os
 from itertools import chain
 
-from curies import Converter
 from openpyxl import Workbook
 from pydantic import AnyHttpUrl, BaseModel, Field, root_validator, validator
 from rdflib import (
@@ -17,6 +16,7 @@ from rdflib import (
     XSD,
     Graph,
     Literal,
+    Namespace,
     URIRef,
 )
 from rdflib.namespace import NamespaceManager
@@ -36,29 +36,6 @@ ORGANISATIONS = {
 }
 
 ORGANISATIONS_INVERSE = {uref: name for name, uref in ORGANISATIONS.items()}
-
-
-def reset_curies(curies_map: dict) -> None:
-    """
-    Reset prefix-map to rdflib's default plus the ones given in curies_map.
-
-    Lit: https://rdflib.readthedocs.io/en/stable/apidocs/rdflib.namespace.html#rdflib.namespace.NamespaceManager
-    """
-    namespace_manager = NamespaceManager(Graph())
-    curies_converter = Converter.from_prefix_map(
-        {prefix: str(url) for prefix, url in namespace_manager.namespaces()}
-    )
-    for prefix, url in curies_map.items():
-        if prefix in curies_converter.prefix_map:
-            if curies_converter.prefix_map[prefix] != url:
-                msg = f'Prefix "{prefix}" is already used for "{curies_converter.prefix_map[prefix]}".'
-                raise ValueError(msg)
-            continue
-        curies_converter.add_prefix(prefix, url)
-        namespace_manager.bind(prefix, url)
-    # Update voc4at.config
-    config.curies_converter = curies_converter
-    config.namespace_manager = namespace_manager
 
 
 def make_iri_qualifier_listing(item, concepts_by_iri):
@@ -282,12 +259,17 @@ class ConceptScheme(BaseModel):
             else:
                 g.add((v, RDFS.seeAlso, Literal(self.pid)))
 
-        g.namespace_manager = config.namespace_manager
+        g.namespace_manager = NamespaceManager(g)
+        converter = config.CURIES_CONVERTER_MAP.get(
+            self.vocab_name, config.curies_converter
+        )
+        for prefix, uri_prefix in converter.bimap.items():
+            g.namespace_manager.bind(prefix, Namespace(uri_prefix))
         return g
 
     def to_excel(self, wb: Workbook):
         ws = wb["Concept Scheme"]
-        ws["B2"] = config.curies_converter.compress(self.uri, passthrough=True)
+        ws["B2"] = config.curies_converter.expand(self.uri, passthrough=True)
         ws["B3"] = self.title
         ws["B4"] = self.description
         ws["B5"] = self.created.isoformat()
@@ -420,12 +402,10 @@ class Concept(BaseModel):
             fully_translated.insert(0, "en")
 
         first_row_exported = False
-        if "ex" not in config.curies_converter.prefix_map:
-            config.curies_converter.add_prefix("ex", "https://example.org/")
         for lang in chain(fully_translated, partially_translated):
             ws[f"A{row_no_concepts}"].value = config.curies_converter.compress(
                 self.uri, passthrough=True
-            ) # + f" ({pref_labels.get(lang, '')})" #
+            )
             ws[f"A{row_no_concepts}"].hyperlink = self.uri
             ws[f"A{row_no_concepts}"].style = "Hyperlink"
             ws[f"B{row_no_concepts}"] = pref_labels.get(lang, "")

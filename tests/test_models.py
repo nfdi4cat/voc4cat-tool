@@ -6,23 +6,9 @@ import pytest
 from pydantic.error_wrappers import ValidationError
 from rdflib import Graph
 
-from voc4cat import config
-from voc4cat.models import Concept, ConceptScheme, reset_curies
+from voc4cat.models import Concept, ConceptScheme
 
 VALID_CONFIG = "valid_idranges.toml"
-
-
-def test_reset_curies():
-    """Test for voc4cat.models.reset_curies"""
-    reset_curies({"ex": "https://example.org/"})
-    assert "ex" in config.curies_converter.prefix_map
-    assert "ex" in [prefix for prefix, _url in config.namespace_manager.namespaces()]
-
-    # Test disallowed overwriting of CURIE
-    config.load_config()
-    new = {"skos": "https://example.org/SKOS/"}
-    with pytest.raises(ValueError, match='Prefix "skos" is already used for'):
-        reset_curies(new)
 
 
 def test_check_uri_vs_config(datadir, temp_config):
@@ -32,6 +18,7 @@ def test_check_uri_vs_config(datadir, temp_config):
     # load a valid config
     config = temp_config
     config.load_config(datadir / VALID_CONFIG)
+    config.curies_converter = config.CURIES_CONVERTER_MAP["myvocab"]
 
     # Concept IRI matching "permanent_iri_part" from config
     c = Concept(

@@ -21,26 +21,6 @@ header_names_to_skip = [
 ]
 
 
-def create_prefix_dict(s: Worksheet):
-    # create an empty dict
-    prefix_dict = {}
-
-    # add prefix values according to the prefix sheet
-    for col in s.iter_cols(max_col=1):
-        for cell in col:
-            row = cell.row
-            if cell.value is None or cell.value in ["Prefix", "Prefix Sheet"]:
-                continue
-
-            # dynamically allocate the prefix sheet
-            try:
-                prefix_dict[s[f"A{row}"].value] = s[f"B{row}"].value
-            except Exception as exc:
-                msg = f"Prefix processing error, sheet {s}, row {row}, error: {exc}"
-                raise ConversionError(msg) from exc
-    return prefix_dict
-
-
 def write_prefix_sheet(wb: Workbook, prefix_map):
     """
     Write prefix_dict to prefix sheet
@@ -71,12 +51,15 @@ def extract_concepts_and_collections(
     q: Worksheet,
     r: Worksheet,
     s: Worksheet,
-    prefix_converter: Converter,
     vocab_name: str = "",
 ) -> tuple[list[models.Concept], list[models.Collection]]:
+
     concepts = []
     collections = []
     concept_data = {}
+
+    prefix_converter = config.CURIES_CONVERTER_MAP.get(vocab_name, Converter({}))
+
     # Iterating over the concept page
     for col in q.iter_cols(max_col=1):
         for cell in col:
@@ -165,9 +148,8 @@ def extract_concepts_and_collections(
     return concepts, collections
 
 
-def extract_concept_scheme(
-    sheet: Worksheet, prefix_converter: Converter, vocab_name: str = ""
-):
+def extract_concept_scheme(sheet: Worksheet,vocab_name: str=""):
+    prefix_converter = config.CURIES_CONVERTER_MAP.get(vocab_name, Converter({}))
     uri = sheet["B2"].value
     cs = models.ConceptScheme(
         uri=(prefix_converter.expand(uri) or uri) if uri else None,

@@ -19,6 +19,7 @@ def temp_config():
     """
     from voc4cat import config
 
+    config.curies_converter.add_prefix("ex", "http://example.org/", merge=True)
     yield config
 
     # Reset the globally changed config to default.
