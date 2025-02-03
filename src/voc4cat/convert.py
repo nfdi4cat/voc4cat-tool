@@ -472,4 +472,7 @@ def convert(args):
             rdf_to_excel(file, output_file_path, template_file_path=args.template)
             logger.info("-> successfully converted to %s", output_file_path)
             # Extend size (length) of tables in all sheets
-            adjust_length_of_tables(output_file_path)
+            adjust_length_of_tables(
+                output_file_path,
+                rows_pre_allocated=config.xlsx_rows_pre_allocated
+            )

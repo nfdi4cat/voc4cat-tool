@@ -5,7 +5,7 @@ from pathlib import Path
 import openpyxl
 from openpyxl.styles import PatternFill
 
-from voc4cat import profiles
+from voc4cat import config, profiles
 from voc4cat.checks import (
     Voc4catError,
     check_for_removed_iris,
@@ -88,7 +88,10 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
         wb.save(outfile)
         logger.info("-> Saved file with highlighted errors as %s", outfile)
         # Extend size (length) of tables in all sheets
-        adjust_length_of_tables(outfile)
+        adjust_length_of_tables(
+            outfile,
+            rows_pre_allocated=config.xlsx_rows_pre_allocated
+        )
         return
 
     logger.info("-> xlsx check passed for file: %s", fpath)
