@@ -270,6 +270,7 @@ class ConceptScheme(BaseModel):
     def to_excel(self, wb: Workbook):
         ws = wb["Concept Scheme"]
         ws["B2"] = config.curies_converter.expand(self.uri, passthrough=True)
+        ws["B2"].hyperlink = self.uri
         ws["B3"] = self.title
         ws["B4"] = self.description
         ws["B5"] = self.created.isoformat()
@@ -280,6 +281,11 @@ class ConceptScheme(BaseModel):
         ws["B10"] = self.provenance
         ws["B11"] = self.custodian
         ws["B12"] = self.pid
+
+        # reset row height for all table rows including header to default
+        start_row, last_row = 2, 12
+        for row in range(start_row, last_row + 1):
+            ws.row_dimensions[row].height = None
 
 
 class Concept(BaseModel):
@@ -407,7 +413,6 @@ class Concept(BaseModel):
                 self.uri, passthrough=True
             )
             ws[f"A{row_no_concepts}"].hyperlink = self.uri
-            ws[f"A{row_no_concepts}"].style = "Hyperlink"
             ws[f"B{row_no_concepts}"] = pref_labels.get(lang, "")
             ws[f"C{row_no_concepts}"] = lang
             ws[f"D{row_no_concepts}"] = definitions.get(lang, "")
@@ -426,6 +431,7 @@ class Concept(BaseModel):
                 if self.source_vocab
                 else None
             )
+            ws[f"I{row_no_concepts}"].hyperlink = self.uri
             row_no_concepts += 1
 
         # Fill Additional Concept Features sheet
@@ -443,7 +449,6 @@ class Concept(BaseModel):
                 self.uri, passthrough=True
             ) + f" ({pref_labels.get('en', '')})"
             ws[f"A{row_no_features}"].hyperlink = self.uri
-            ws[f"A{row_no_features}"].style = "Hyperlink"
             ws[f"B{row_no_features}"] = make_iri_qualifier_listing(self.related_match, concepts_by_iri)
             ws[f"C{row_no_features}"] = make_iri_qualifier_listing(self.close_match, concepts_by_iri)
             ws[f"D{row_no_features}"] = make_iri_qualifier_listing(self.exact_match, concepts_by_iri)
@@ -498,7 +503,6 @@ class Collection(BaseModel):
                 self.uri, passthrough=True
         ) # + f" ({self.pref_label})"
         ws[f"A{row_no}"].hyperlink = self.uri
-        ws[f"A{row_no}"].style = "Hyperlink"
         ws[f"B{row_no}"] = self.pref_label
         ws[f"C{row_no}"] = self.definition
         ws[f"D{row_no}"] = make_iri_qualifier_listing(self.members, concepts_by_iri)
