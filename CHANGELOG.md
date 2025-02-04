@@ -1,5 +1,26 @@
 # Change log
 
+## Release 0.9.0 (2025-02-04)
+
+Features:
+
+- In xlsx-files IRIs will now be shown as `https://example.org/001 (example 001)` or (if a matching prefix exists) as `ex:001 (example 001)`. The preferred label is used as qualifier of the IRI (in round brackets). #253, #258
+- Improve styling of generated xlsx. The style is now copied from the first data row to all following rows. The row height is auto-adjusted. #260, #264, #265
+
+Breaking changes:
+
+- The sheet "Prefixes" is now read-only. Prefixes can now only be defined in `idranges.config`. #257, #263
+- Removed executable script `merge_vocab` #244, #259
+
+Changes:
+
+- New, better styled default template `src/voc4cat/blank_043.xlsx` #265
+
+Bug fixes:
+
+- Handling of prefixes for multiple vocabularies. #257, #263
+- Prefixes given in `idranges.toml` were ignored. #205 #257, #263
+
 ## Release 0.8.8 (2025-01-27)
 
 0.8.8 only contains a fix for a bug introduced in 0.8.6.
@@ -14,23 +35,23 @@ Bug fixes:
 
 Bug fixes:
 
-- Fix handling of mappings to external vocabularies/ontologies (#242)
+- Fix handling of mappings to external vocabularies/ontologies #242
 
-Features:
+New features:
 
-- Support Python 3.13 (#234)
+- Support Python 3.13 #234
 
 Changes:
 
-- Write only concepts with mapping to "Additional Concept Features" sheet (#246)
-- Add alternate name `voc4cat-merge` for executable script `merge_vocab` by (#243)
-- Make pyLODE optional (remove from dependencies) (#250)
+- Write only concepts with mapping to "Additional Concept Features" sheet #246
+- Add alternate name `voc4cat-merge` for executable script `merge_vocab` by #243
+- Make pyLODE optional (remove from dependencies) #250
 
 ## Release 0.8.5 (2024-03-09)
 
 Bug fixes:
 
-- Fix creation of two ttl-files for sub-command "join" with "--outbox" option. (#215 fixed in #216)
+- Fix creation of two ttl-files for sub-command "join" with "--outbox" option. #215, #216
 
 ## Release 0.8.4 (2024-03-04)
 
@@ -59,7 +80,7 @@ Bug fixes:
 
 ## Release 0.8.0 (2024-02-19)
 
-Features:
+New features:
 
 - Support for Python 3.12. #202
 
@@ -73,7 +94,7 @@ Breaking changes:
 
 ## Release 0.7.10 (2024-02-11)
 
-Features:
+New features:
 
 - Add coverage summary as job output. #197
 
