@@ -33,7 +33,6 @@ ex:test05 a skos:Concept ;
 ex:test06 a skos:Concept ;
     dcterms:identifier "test06"^^xsd:token ;
     dcterms:provenance "sofia-garcia"@en ;
-    rdfs:isDefinedBy <http://example.org/XYZ/term6> ;
     skos:altLabel "AltLbl for term6"@en ;
     skos:definition "def for term6"@en ;
     skos:inScheme <http://example.org/test/> ;
