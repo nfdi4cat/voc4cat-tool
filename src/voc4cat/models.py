@@ -377,7 +377,13 @@ class Concept(BaseModel):
 
         return g
 
-    def to_excel(self, wb: Workbook, row_no_concepts: int, row_no_features: int, concepts_by_iri:dict) -> int:
+    def to_excel(
+        self,
+        wb: Workbook,
+        row_no_concepts: int,
+        row_no_features: int,
+        concepts_by_iri: dict,
+    ) -> int:
         """ "
         Export Concept to Excel using one row per language
 
@@ -425,13 +431,17 @@ class Concept(BaseModel):
 
             first_row_exported = True
             ws[f"F{row_no_concepts}"] = ",\n".join(self.alt_labels)
-            ws[f"G{row_no_concepts}"] = make_iri_qualifier_listing(self.children, concepts_by_iri)
-            ws[f"I{row_no_concepts}"] = (
-                config.curies_converter.compress(self.source_vocab, passthrough=True)
-                if self.source_vocab
-                else None
+            ws[f"G{row_no_concepts}"] = make_iri_qualifier_listing(
+                self.children, concepts_by_iri
             )
-            ws[f"I{row_no_concepts}"].hyperlink = self.uri
+            if self.source_vocab:
+                ws[f"I{row_no_concepts}"] = config.curies_converter.compress(
+                    self.source_vocab, passthrough=True
+                )
+                ws[f"I{row_no_concepts}"].hyperlink = self.source_vocab
+            else:
+                ws[f"I{row_no_concepts}"] = None
+                ws[f"I{row_no_concepts}"].hyperlink = None
             row_no_concepts += 1
 
         # Fill Additional Concept Features sheet
@@ -445,15 +455,26 @@ class Concept(BaseModel):
             ]
         ):
             ws = wb["Additional Concept Features"]
-            ws[f"A{row_no_features}"].value = config.curies_converter.compress(
-                self.uri, passthrough=True
-            ) + f" ({pref_labels.get('en', '')})"
+            ws[f"A{row_no_features}"].value = (
+                config.curies_converter.compress(self.uri, passthrough=True)
+                + f" ({pref_labels.get('en', '')})"
+            )
             ws[f"A{row_no_features}"].hyperlink = self.uri
-            ws[f"B{row_no_features}"] = make_iri_qualifier_listing(self.related_match, concepts_by_iri)
-            ws[f"C{row_no_features}"] = make_iri_qualifier_listing(self.close_match, concepts_by_iri)
-            ws[f"D{row_no_features}"] = make_iri_qualifier_listing(self.exact_match, concepts_by_iri)
-            ws[f"E{row_no_features}"] = make_iri_qualifier_listing(self.narrow_match, concepts_by_iri)
-            ws[f"F{row_no_features}"] = make_iri_qualifier_listing(self.broad_match, concepts_by_iri)
+            ws[f"B{row_no_features}"] = make_iri_qualifier_listing(
+                self.related_match, concepts_by_iri
+            )
+            ws[f"C{row_no_features}"] = make_iri_qualifier_listing(
+                self.close_match, concepts_by_iri
+            )
+            ws[f"D{row_no_features}"] = make_iri_qualifier_listing(
+                self.exact_match, concepts_by_iri
+            )
+            ws[f"E{row_no_features}"] = make_iri_qualifier_listing(
+                self.narrow_match, concepts_by_iri
+            )
+            ws[f"F{row_no_features}"] = make_iri_qualifier_listing(
+                self.broad_match, concepts_by_iri
+            )
 
         return row_no_concepts
 
@@ -497,11 +518,11 @@ class Collection(BaseModel):
 
         return g
 
-    def to_excel(self, wb: Workbook, row_no: int, concepts_by_iri:dict) -> None:
+    def to_excel(self, wb: Workbook, row_no: int, concepts_by_iri: dict) -> None:
         ws = wb["Collections"]
         ws[f"A{row_no}"].value = config.curies_converter.compress(
-                self.uri, passthrough=True
-        ) # + f" ({self.pref_label})"
+            self.uri, passthrough=True
+        )  # + f" ({self.pref_label})"
         ws[f"A{row_no}"].hyperlink = self.uri
         ws[f"B{row_no}"] = self.pref_label
         ws[f"C{row_no}"] = self.definition
