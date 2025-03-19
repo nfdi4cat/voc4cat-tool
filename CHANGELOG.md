@@ -1,5 +1,12 @@
 # Change log
 
+## Release 0.9.1 (2025-03-19)
+
+Bug fixes:
+
+- Fix writing to sheet "Additional Concept Features" (mappings could be lost) #270, #272
+- Stop filling source vocab URI column with concept URI hyperlink (bug introduced in Release 0.9.0) #269, #271
+
 ## Release 0.9.0 (2025-02-04)
 
 Features:
