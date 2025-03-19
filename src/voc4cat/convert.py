@@ -1,5 +1,5 @@
-from collections import defaultdict
 import logging
+from collections import defaultdict
 from itertools import chain
 from pathlib import Path
 from typing import Literal
@@ -331,15 +331,17 @@ def rdf_to_excel(
     row_no_concepts, row_no_features = 3, 3
     for con in list(concepts_by_iri.values()):
         for lang in con.keys():
-            row_no_concepts = con[lang].to_excel(wb, row_no_concepts, row_no_features, concepts_by_iri)
+            row_no_concepts = con[lang].to_excel(
+                wb, row_no_concepts, row_no_features, concepts_by_iri
+            )
             # only go to next row in "Additional Concepts Features" if there are any mappings
             if any(
                 [
-                    holder["related_match"],
-                    holder["close_match"],
-                    holder["exact_match"],
-                    holder["narrow_match"],
-                    holder["broad_match"],
+                    con[lang].related_match,
+                    con[lang].close_match,
+                    con[lang].exact_match,
+                    con[lang].narrow_match,
+                    con[lang].broad_match,
                 ]
             ):
                 row_no_features += 1
@@ -473,6 +475,5 @@ def convert(args):
             logger.info("-> successfully converted to %s", output_file_path)
             # Extend size (length) of tables in all sheets
             adjust_length_of_tables(
-                output_file_path,
-                rows_pre_allocated=config.xlsx_rows_pre_allocated
+                output_file_path, rows_pre_allocated=config.xlsx_rows_pre_allocated
             )
