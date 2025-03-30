@@ -30,9 +30,14 @@ curies_converter: Converter = Converter.from_prefix_map(
 )
 
 # Empty rows added to the tables. The keys in the dict must match the table names exactly.
-xlsx_rows_pre_allocated={"Concepts": 25, "Additional Concept Features": 25, "Collections": 25}
+xlsx_rows_pre_allocated = {
+    "Concepts": 25,
+    "Additional Concept Features": 25,
+    "Collections": 25,
+}
 
 # === Configuration imported from idranges.toml stored as pydantic model ===
+
 
 class Checks(BaseModel):
     allow_delete: bool = False

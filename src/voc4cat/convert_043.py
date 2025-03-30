@@ -34,7 +34,7 @@ def write_prefix_sheet(wb: Workbook, prefix_map):
         ws.append([prefix, iri])
 
 
-def split_multi_iri(cell_value: str|None, prefix_converter: Converter) -> list[str]:
+def split_multi_iri(cell_value: str | None, prefix_converter: Converter) -> list[str]:
     """
     Split a string of IRIs separated by a comma into a list of IRIs
     """
@@ -53,7 +53,6 @@ def extract_concepts_and_collections(
     s: Worksheet,
     vocab_name: str = "",
 ) -> tuple[list[models.Concept], list[models.Collection]]:
-
     concepts = []
     collections = []
     concept_data = {}
@@ -148,7 +147,7 @@ def extract_concepts_and_collections(
     return concepts, collections
 
 
-def extract_concept_scheme(sheet: Worksheet,vocab_name: str=""):
+def extract_concept_scheme(sheet: Worksheet, vocab_name: str = ""):
     prefix_converter = config.CURIES_CONVERTER_MAP.get(vocab_name, Converter({}))
     uri = sheet["B2"].value
     cs = models.ConceptScheme(

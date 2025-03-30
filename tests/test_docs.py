@@ -130,7 +130,7 @@ def test_build_docs_no_input(tmp_path, caplog):
     """Check handling of of missing file or empty dir in documentation build."""
     with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
         main_cli(["docs", "--outdir", str(tmp_path), str(tmp_path / CS_CYCLES_TURTLE)])
-    assert f"File/dir not found: {tmp_path/CS_CYCLES_TURTLE}" in caplog.text
+    assert f"File/dir not found: {tmp_path / CS_CYCLES_TURTLE}" in caplog.text
 
     with caplog.at_level(logging.INFO):
         main_cli(["docs", "--outdir", str(tmp_path), str(tmp_path)])

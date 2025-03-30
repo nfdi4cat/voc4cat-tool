@@ -396,12 +396,12 @@ def format_log_msg(result: dict, colored: bool = False) -> str:
     from rdflib.namespace import SH
 
     formatted_msg = ""
-    message = f"""Validation Result in {result['sourceConstraintComponent'].split(str(SH))[1]} ({result['sourceConstraintComponent']}):
-\tSeverity: sh:{result['resultSeverity'].split(str(SH))[1]}
-\tSource Shape: <{result['sourceShape']}>
-\tFocus Node: <{result['focusNode']}>
-\tValue Node: <{result.get('value', '')}>
-\tMessage: {result['resultMessage']}
+    message = f"""Validation Result in {result["sourceConstraintComponent"].split(str(SH))[1]} ({result["sourceConstraintComponent"]}):
+\tSeverity: sh:{result["resultSeverity"].split(str(SH))[1]}
+\tSource Shape: <{result["sourceShape"]}>
+\tFocus Node: <{result["focusNode"]}>
+\tValue Node: <{result.get("value", "")}>
+\tMessage: {result["resultMessage"]}
 """
     if result["resultSeverity"] == str(SH.Info):
         formatted_msg = (
