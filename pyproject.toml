@@ -63,12 +63,11 @@ tests = [
   "coverage",
 ]
 lint = [
-  "black",
+  "ruff",
 ]
 dev = [
     # Recursively including the project's own optional dependencies requires pip>=21.2
     "voc4cat[tests,lint]",
-    "ruff",
 ]
 
 [project.scripts]
