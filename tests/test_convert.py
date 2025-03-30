@@ -3,7 +3,6 @@ import shutil
 from pathlib import Path
 
 import pytest
-from curies import Converter
 
 import voc4cat
 from tests.test_cli import (

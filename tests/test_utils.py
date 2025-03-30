@@ -51,10 +51,11 @@ def test_expand_tables(tmp_path, caplog):
     assert "from {A1:B3} to {A1:B5}" in caplog.text
     assert not ws["A3"].font.bold
 
-
     caplog.clear()
     # Test with expansion of table given rows beyond last data block row.
-    adjust_length_of_tables(test_wb, rows_pre_allocated=5) # adds 5 rows (default of rows_pre_allocated)
+    adjust_length_of_tables(
+        test_wb, rows_pre_allocated=5
+    )  # adds 5 rows (default of rows_pre_allocated)
     wb = load_workbook(test_wb)
     name, table_range = wb.active.tables.items()[0]
     assert name == "Table1"

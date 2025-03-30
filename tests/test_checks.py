@@ -166,7 +166,7 @@ def test_validate_vocabulary_files_for_ci_workflow_single_vocab(
     with pytest.raises(Voc4catError) as excinfo:
         validate_vocabulary_files_for_ci_workflow(pr_vocab, pr_inbox)
     assert (
-        f'The file in inbox "{pr_inbox/inbox_file}" must match the vocabulary name "{Path(vocab_file).stem}".'
+        f'The file in inbox "{pr_inbox / inbox_file}" must match the vocabulary name "{Path(vocab_file).stem}".'
         in str(excinfo.value)
     )
 

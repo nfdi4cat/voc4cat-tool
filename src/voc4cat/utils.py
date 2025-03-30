@@ -85,7 +85,9 @@ def has_file_in_multiple_formats(dir_):
     return [x for x in file_names if x in seen or seen.add(x)]
 
 
-def adjust_length_of_tables(wb_path:Path, rows_pre_allocated:dict[str,int]|int=0, copy_style:bool=True) -> None:
+def adjust_length_of_tables(
+    wb_path: Path, rows_pre_allocated: dict[str, int] | int = 0, copy_style: bool = True
+) -> None:
     """Expand length of all tables in workbook to include all filled rows
 
     For all tables in the workbook the table is expanded to include the last
@@ -101,16 +103,19 @@ def adjust_length_of_tables(wb_path:Path, rows_pre_allocated:dict[str,int]|int=0
     to all following rows.
     """
     if isinstance(rows_pre_allocated, int):
-        rows_pre_allocated = {sheet: rows_pre_allocated for sheet in load_workbook(wb_path).sheetnames}
+        rows_pre_allocated = dict.fromkeys(
+            load_workbook(wb_path).sheetnames, rows_pre_allocated
+        )
     elif isinstance(rows_pre_allocated, dict):
         for sheet_name in load_workbook(wb_path).sheetnames:
             if sheet_name not in rows_pre_allocated:
-                rows_pre_allocated[sheet_name] = 0  # set default value for missing sheets
+                rows_pre_allocated[sheet_name] = (
+                    0  # set default value for missing sheets
+                )
     else:
         raise ValueError("rows_pre_allocated must be an int or a dict")
 
     wb = load_workbook(wb_path)
-
 
     for ws in wb.sheetnames:
         for t_name in list(wb[ws].tables):
@@ -124,7 +129,8 @@ def adjust_length_of_tables(wb_path:Path, rows_pre_allocated:dict[str,int]|int=0
             # find last row with content in table
             for row in range(1, end_row + 1):
                 row_has_content = any(
-                    wb[ws].cell(row=row, column=col).value for col in range(start_col, end_col + 1)
+                    wb[ws].cell(row=row, column=col).value
+                    for col in range(start_col, end_col + 1)
                 )
                 if not row_has_content:
                     break
@@ -151,7 +157,7 @@ def adjust_length_of_tables(wb_path:Path, rows_pre_allocated:dict[str,int]|int=0
                 # Read styles from first row
                 styles_in_row = []
                 for col in range(start_col, end_col + 1):
-                    cell = wb[ws].cell(row = start_row + 1, column = col)
+                    cell = wb[ws].cell(row=start_row + 1, column=col)
                     cell_styles = {}
                     for attr in ["alignment", "border", "font", "fill"]:
                         cell_styles[attr] = copy(getattr(cell, attr))
@@ -160,10 +166,12 @@ def adjust_length_of_tables(wb_path:Path, rows_pre_allocated:dict[str,int]|int=0
                 # Apply styles to all following rows
                 for row in range(start_row + 2, new_last_row + 1):
                     for col, cell_styles in enumerate(styles_in_row):
-                        cell = wb[ws].cell(row = row, column = start_col + col)
+                        cell = wb[ws].cell(row=row, column=start_col + col)
                         for style, styles_obj in cell_styles.items():
                             # Store indentation for sheet "Concepts", pref.label column
-                            keep_indent = (col == 1 and ws == "Concepts" and style == "alignment")
+                            keep_indent = (
+                                col == 1 and ws == "Concepts" and style == "alignment"
+                            )
                             if keep_indent and cell.alignment.indent:
                                 indent = cell.alignment.indent
                                 cell_alignment = copy(styles_obj)

@@ -89,8 +89,7 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
         logger.info("-> Saved file with highlighted errors as %s", outfile)
         # Extend size (length) of tables in all sheets
         adjust_length_of_tables(
-            outfile,
-            rows_pre_allocated=config.xlsx_rows_pre_allocated
+            outfile, rows_pre_allocated=config.xlsx_rows_pre_allocated
         )
         return
 

@@ -474,11 +474,7 @@ def _transform_xlsx(file, args):
         logger.debug("-> nothing to do for xlsx files!")
 
     # Extend size (length) of tables in all sheets
-    adjust_length_of_tables(
-        outfile,
-        rows_pre_allocated=config.xlsx_rows_pre_allocated
-    )
-
+    adjust_length_of_tables(outfile, rows_pre_allocated=config.xlsx_rows_pre_allocated)
 
 
 def _transform_rdf(file, args):
