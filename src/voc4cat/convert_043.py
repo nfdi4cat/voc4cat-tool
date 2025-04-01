@@ -42,6 +42,8 @@ def split_multi_iri(cell_value: str | None, prefix_converter: Converter) -> list
         return []
     iris_nomalised = []
     for line in cell_value.split(","):
+        if not line.strip():
+            continue
         iri = line.split()[0].strip()
         iris_nomalised.append(prefix_converter.expand(iri) or iri)
     return iris_nomalised
