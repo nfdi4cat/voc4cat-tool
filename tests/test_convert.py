@@ -12,6 +12,7 @@ from tests.test_cli import (
 )
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
+from voc4cat.convert_043 import split_multi_iri
 
 
 @pytest.mark.parametrize(
@@ -102,3 +103,28 @@ def test_template(monkeypatch, datadir, tmp_path, caplog):
     with caplog.at_level(logging.INFO):
         main_cli(["convert", "-v", "--template", std_template, str(tmp_path)])
     assert "->" in caplog.text
+
+
+def test_split_multi_iri():
+    """Check the split_multi_iri function for various inputs."""
+
+    from curies import Converter
+
+    converter = Converter.from_prefix_map({"ex": "http://example.com/"})
+
+    assert split_multi_iri(
+        "http://example.com/iri1, http://example.com/iri2", prefix_converter=converter
+    ) == [
+        "http://example.com/iri1",
+        "http://example.com/iri2",
+    ]
+    assert split_multi_iri("http://example.com/iri1", prefix_converter=converter) == [
+        "http://example.com/iri1"
+    ]
+    assert split_multi_iri("ex:iri1", prefix_converter=converter) == [
+        "http://example.com/iri1"
+    ]
+    assert split_multi_iri("", prefix_converter=converter) == []
+    assert split_multi_iri("http://example.com/iri1,", prefix_converter=converter) == [
+        "http://example.com/iri1",
+    ]
