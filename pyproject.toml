@@ -69,10 +69,17 @@ dev = [
     # Recursively including the project's own optional dependencies requires pip>=21.2
     "voc4cat[tests,lint]",
 ]
+assistant = [
+  "click",
+  "sentence-transformers",
+  "torch",
+  "levenshtein",
+]
 
 [project.scripts]
 voc4cat = "voc4cat.cli:run_cli_app"
 voc4cat-merge = "voc4cat.merge_vocab:main_cli"
+voc-assistant = "voc4cat.assistant:cli"
 
 [tool.hatch.metadata]
 # Hatch disallows direct references for dependencies by default.
@@ -127,6 +134,7 @@ branch = true
 source = ["voc4cat"]
 omit = [
     "**/voc4cat/_version.py",
+    "**/voc4cat/assistant.py",  # no tests yet
 ]
 
 [tool.coverage.paths]
