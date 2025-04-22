@@ -1,4 +1,6 @@
 import logging
+from datetime import datetime
+from typing import Any
 
 from curies import Converter
 from openpyxl import Workbook
@@ -49,6 +51,15 @@ def split_multi_iri(cell_value: str | None, prefix_converter: Converter) -> list
     return iris_nomalised
 
 
+def clean(cell_value: str | datetime | None) -> Any:
+    """
+    Clean a string cell by removing leading and trailing whitespace
+    """
+    if isinstance(cell_value, str):
+        return cell_value.strip()
+    return cell_value
+
+
 def extract_concepts_and_collections(
     q: Worksheet,
     r: Worksheet,
@@ -67,20 +78,20 @@ def extract_concepts_and_collections(
             row = cell.row
             if cell.value is None or cell.value in header_names_to_skip:
                 continue
-            uri = q[f"A{row}"].value.split()[0].strip()
+            uri = clean(q[f"A{row}"].value.split()[0])
             uri = prefix_converter.expand(uri) or uri
             concept_data[uri] = {
                 "uri": uri,
                 "curie": config.curies_converter.compress(uri),
-                "pref_label": q[f"B{row}"].value,
+                "pref_label": clean(q[f"B{row}"].value),
                 "pl_language_code": split_and_tidy(q[f"C{row}"].value),
-                "definition": q[f"D{row}"].value,
+                "definition": clean(q[f"D{row}"].value),
                 "def_language_code": split_and_tidy(q[f"E{row}"].value),
                 "alt_labels": split_and_tidy(q[f"F{row}"].value),
                 "children": split_multi_iri(q[f"G{row}"].value, prefix_converter),
-                "provenance": q[f"H{row}"].value,
+                "provenance": clean(q[f"H{row}"].value),
                 # Note in the new template, source_vocab is synonymous with source vocab uri
-                "source_vocab": q[f"I{row}"].value,
+                "source_vocab": clean(q[f"I{row}"].value),
             }
 
     # Iterating over the additional concept page
@@ -90,7 +101,7 @@ def extract_concepts_and_collections(
             row = cell.row
             if cell.value is None or cell.value in header_names_to_skip:
                 continue
-            uri = r[f"A{row}"].value.split()[0].strip()
+            uri = clean(r[f"A{row}"].value.split()[0])
             uri = prefix_converter.expand(uri) or uri
             if uri in additional_concept_iris:
                 msg = f"Concept IRI {uri} used a second time in sheet {r} at row {row} but must be unique."
@@ -131,11 +142,11 @@ def extract_concepts_and_collections(
                 continue
 
             data_collection = {
-                "uri": s[f"A{row}"].value.split()[0].strip(),
-                "pref_label": s[f"B{row}"].value,
-                "definition": s[f"C{row}"].value,
+                "uri": clean(s[f"A{row}"].value.split()[0]),
+                "pref_label": clean(s[f"B{row}"].value),
+                "definition": clean(s[f"C{row}"].value),
                 "members": split_multi_iri(s[f"D{row}"].value, prefix_converter),
-                "provenance": s[f"E{row}"].value,
+                "provenance": clean(s[f"E{row}"].value),
                 "vocab_name": vocab_name,
             }
 
@@ -154,18 +165,20 @@ def extract_concept_scheme(sheet: Worksheet, vocab_name: str = ""):
     uri = sheet["B2"].value
     cs = models.ConceptScheme(
         uri=(prefix_converter.expand(uri) or uri) if uri else None,
-        title=sheet["B3"].value,
-        description=sheet["B4"].value,
-        created=sheet["B5"].value,
+        title=clean(sheet["B3"].value),
+        description=clean(sheet["B4"].value),
+        created=clean(sheet["B5"].value),
         modified=(
-            sheet["B6"].value if sheet["B6"].value is not None else sheet["B5"].value
+            clean(sheet["B6"].value)
+            if sheet["B6"].value is not None
+            else clean(sheet["B5"].value)
         ),
-        creator=sheet["B7"].value,
-        publisher=sheet["B8"].value,
-        version=sheet["B9"].value if sheet["B9"].value is not None else "",
-        provenance=sheet["B10"].value,
-        custodian=sheet["B11"].value,
-        pid=sheet["B12"].value,
+        creator=clean(sheet["B7"].value),
+        publisher=clean(sheet["B8"].value),
+        version=clean(sheet["B9"].value) if sheet["B9"].value is not None else "",
+        provenance=clean(sheet["B10"].value),
+        custodian=clean(sheet["B11"].value),
+        pid=clean(sheet["B12"].value),
         vocab_name=vocab_name,
     )
     return cs  # noqa: RET504
