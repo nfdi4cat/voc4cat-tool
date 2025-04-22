@@ -94,6 +94,15 @@ Optionally a custom XLSX-template-file can be specified for this conversion:
 In addition to `transform` and `convert` voc4cat offers checking and validation under the sub-command `check` and documentation generation under `docs`.
 See the command line help for details.
 
+For maintainers a tool for similarity checks is provided which is based on sentence-transformer model to identify similar preferred labels and definitions.
+It also performs other consistency checks. The tool can either check a single vocabulary
+
+`voc-assistant check voc4cat.ttl`
+
+or compare the additions made against existing concepts:
+
+`voc-assistant compare voc4cat.ttl voc4cat_new.ttl`
+
 ## Feedback and code contributions
 
 We highly appreciate your feedback. Please create an [issue on GitHub](https://github.com/nfdi4cat/voc4cat-tool/issues).
