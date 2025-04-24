@@ -23,7 +23,7 @@ voc4cat was mainly developed to be used in gh-actions but it is also useful as a
 - Check/validate SKOS-vocabularies in rdf/turtle format with the [vocpub](https://w3id.org/profile/vocpub) SHACL-profile.
 - Use a vocabulary-configuration file to specify for example ID ranges for each contributor.
 - Check xlsx vocabulary files for errors or incorrect use of IDs (voc4cat uses pydantic for this validation)
-- Generate documentation from SKOS/turtle vocabulary file using [pyLODE](https://github.com/RDFLib/pyLODE) (or [ontospy](http://lambdamusic.github.io/Ontospy/))
+- Generate documentation from SKOS/turtle vocabulary file using [pyLODE](https://github.com/RDFLib/pyLODE)
 - Express concept-hierarchies in xlsx by indentation.
 - Consistently update all IRIs in the xlsx vocabulary (e.g. with new namespace or IDs)
 
@@ -101,7 +101,9 @@ It also performs other consistency checks. The tool can either check a single vo
 
 or compare the additions made against existing concepts:
 
-`voc-assistant compare voc4cat.ttl voc4cat_new.ttl`
+`voc-assistant compare voc4cat.ttl voc4cat_new.ttl
+
+It creates reports in markdown format.
 
 ## Feedback and code contributions
 
