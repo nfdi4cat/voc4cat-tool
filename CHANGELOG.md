@@ -1,5 +1,19 @@
 # Change log
 
+## Release 0.9.2 (2025-04-24)
+
+Feature:
+
+- Add a command/tool to help with reviewing (e.g. by performing sentence-transformer based similarity analysis) #279, #280
+
+Bug fix:
+
+- Tailing comma in ChildrenIRI raises error #277, #278
+
+Change:
+
+- Remove tailing and starting spaces from prefLabel and other Excel cells #281, #282
+
 ## Release 0.9.1 (2025-03-19)
 
 Bug fixes:
