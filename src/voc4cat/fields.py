@@ -1,136 +1,100 @@
-"""Custom model fields for pydantic
+"""Custom validators for pydantic 2 models.
 
-- Ror (Research Organization Registry)
 - ORCID (Open Researcher and Contributor ID)
+- Ror (Research Organization Registry)
 """
-
-from __future__ import annotations
 
 import logging
 import re
-from collections.abc import Generator
-from typing import Any, ClassVar
 
 import base32_crockford
-from pydantic import BaseConfig, HttpUrl
-from pydantic.errors import UrlError
-from pydantic.fields import ModelField
-from pydantic.typing import AnyCallable
+from pydantic import HttpUrl
 
-__all__ = ["Orcid", "OrcidError"]
+__all__ = [
+    "validate_orcid_url",
+    "validate_ror_url",
+]
 
 logger = logging.getLogger(__name__)
+
+# ===  ORCID (Open Researcher and Contributor ID) validator ===
 
 ORCID_PATTERN = re.compile(
     r"(?P<identifier>[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X]{1})$"
 )
 
 
-class OrcidError(UrlError):
-    code = "orcid"
-    msg_template = "invalid ORCiD"
-
-
-class Orcid(HttpUrl):
-    """
-    ORCID in URL representation as model field for Pydantic.
+def validate_orcid_url(value: HttpUrl) -> None:
+    """Check an ORCiD URL for validity.
 
     The validator enforces compliance with the ORCID guidelines [1]. This
     includes validation of the checksum. An ORCID given as string is converted
     to the corresponding URL form.
 
+    Raises
+    ------
+    ValueError
+        Raised if the URL is not a valid ORCID URL.
+
     [1]  ORCID Support, [Structure of the ORCID Identifier](https://support.orcid.org/hc/en-us/articles/360006897674), accessed 2023-02-22.
     """
+    m = ORCID_PATTERN.search(str(value))
+    if not m:
+        msg = "Value does not match ORCID pattern."
+        raise ValueError(msg)
 
-    allowed_schemes: ClassVar[set(str)] = {"https"}
-
-    @classmethod
-    def __get_validators__(cls) -> Generator[AnyCallable, None, None]:
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, value: Any, field: ModelField, config: BaseConfig) -> Orcid:
-        # Important if pydantic config has validate_assignment set to True
-        if value.__class__ == cls:  # pragma: no cover
-            return value
-
-        m = ORCID_PATTERN.search(value)
-        if not m:
-            msg = "Value does not match ORCID pattern."
-            raise OrcidError(msg)
-
-        identifier = m["identifier"]
-        if not cls.verify_checksum(identifier):
-            msg = "Invalid ORCID checksum."
-            raise OrcidError(msg)
-
-        return HttpUrl.validate(f"https://orcid.org/{identifier}", field, config)
-
-    @staticmethod
-    def verify_checksum(identifier: str) -> bool:
-        """
-        Verify checksum of ORCID identifier string
-        """
-        total: int = 0
-        for digit in identifier[
-            :-1
-        ]:  # exclude the check-digit (last digit or X at the end)
-            if not digit.isdigit():
-                continue
-            total = (total + int(digit)) * 2
-        remainder = total % 11
-        result = (12 - remainder) % 11
-        checkdigit = 10 if identifier[-1] == "X" else int(identifier[-1])
-        return result == checkdigit
+    identifier = m["identifier"]
+    if not verify_checksum(identifier):
+        msg = "Invalid ORCID checksum."
+        raise ValueError(msg)
 
 
-# ===  ROR (Research Organization Registry) identifier field ===
+def verify_checksum(identifier: str) -> bool:
+    """
+    Verify checksum of ORCID identifier string
+    """
+    total: int = 0
+    for digit in identifier[
+        :-1
+    ]:  # exclude the check-digit (last digit or X at the end)
+        if not digit.isdigit():
+            continue
+        total = (total + int(digit)) * 2
+    remainder = total % 11
+    result = (12 - remainder) % 11
+    checkdigit = 10 if identifier[-1] == "X" else int(identifier[-1])
+    return result == checkdigit
+
+
+# ===  ROR (Research Organization Registry) validator ===
 
 ROR_PATTERN = re.compile(
     r"https://ror.org\/(?P<identifier>0[0-9a-hj-km-np-tv-z]{6}[0-9]{2})$"
 )
 
 
-class RorError(UrlError):
-    code = "ror"
-    msg_template = "invalid ROR"
-
-
-class Ror(HttpUrl):
-    """
-    ROR (Research Organization Registry) identifier model field for pydantic.
+def validate_ror_url(value: HttpUrl) -> None:
+    """Check a ROR URL for validity.
 
     ROR identifier are represented as URL. Validation is implemented according
     to the documentation and includes checksum verification [1].
 
+    Raises
+    ------
+    ValueError
+        Raised if the URL is not a valid ROR URL.
+
     [1] Research Organization Registry, [ROR identifier pattern](https://ror.readme.io/docs/ror-identifier-pattern), April 2023.
     """
+    m = ROR_PATTERN.search(str(value))
+    if not m:
+        msg = "Value does not match ROR pattern."
+        raise ValueError(msg)
 
-    allowed_schemes: ClassVar[set(str)] = {"https"}
+    identifier = m["identifier"]
+    id_value = base32_crockford.decode(identifier[:-2])  # last two digits are checksum
+    checksum = str(98 - ((id_value * 100) % 97)).zfill(2)
 
-    @classmethod
-    def __get_validators__(cls) -> Generator[AnyCallable, None, None]:
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, value: Any, field: ModelField, config: BaseConfig) -> Ror:
-        # Important if pydantic config has validate_assignment set to True
-        if value.__class__ == cls:  # pragma: no cover
-            return value
-
-        m = ROR_PATTERN.search(value)
-        if not m:
-            msg = "Value does not match ROR pattern."
-            raise RorError(msg)
-
-        identifier = m["identifier"]
-        id_value = base32_crockford.decode(
-            identifier[:-2]
-        )  # last two digits are checksum
-        checksum = str(98 - ((id_value * 100) % 97)).zfill(2)
-
-        if checksum != identifier[-2:]:
-            msg = "Invalid ROR checksum."
-            raise RorError(msg)
-
-        return HttpUrl.validate(value, field, config)
+    if checksum != identifier[-2:]:
+        msg = "Invalid ROR checksum."
+        raise ValueError(msg)
