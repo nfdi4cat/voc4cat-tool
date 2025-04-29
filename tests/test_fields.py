@@ -1,9 +1,11 @@
 """Tests for voc4cat.fields module."""
 
-import pytest
-from pydantic import BaseModel, ValidationError
+from typing import Annotated
 
-from voc4cat.fields import Orcid, Ror
+import pytest
+from pydantic import AfterValidator, BaseModel, HttpUrl, ValidationError
+
+from voc4cat.fields import validate_orcid_url, validate_ror_url
 
 
 @pytest.mark.parametrize(
@@ -22,7 +24,7 @@ def test_orcid(identifier: str, testdata: str) -> None:
     """Test that a model with Orcid validates correctly."""
 
     class Model(BaseModel):
-        orcid: Orcid
+        orcid: Annotated[HttpUrl, AfterValidator(validate_orcid_url)]
 
     m = Model(orcid=testdata)
 
@@ -45,7 +47,7 @@ def test_orcid_fail(testdata: str) -> None:
     """Test invalid ORCID (wrong checksum or wrong pattern)."""
 
     class Model(BaseModel):
-        orcid: Orcid
+        orcid: Annotated[HttpUrl, AfterValidator(validate_orcid_url)]
 
     with pytest.raises(ValidationError):
         Model(orcid=testdata)
@@ -55,7 +57,7 @@ def test_ror() -> None:
     """Test model instantiation with valid ROR id."""
 
     class Model(BaseModel):
-        ror: Ror
+        ror: Annotated[HttpUrl, AfterValidator(validate_ror_url)]
 
     sample = "https://ror.org/02y72wh86"
     m = Model(ror=sample)
@@ -75,7 +77,7 @@ def test_ror_fail(testdata: str) -> None:
     """Test that a pydantic model with incorrect ROR values fail."""
 
     class Model(BaseModel):
-        ror: Ror
+        ror: Annotated[HttpUrl, AfterValidator(validate_ror_url)]
 
     with pytest.raises(ValidationError):
         Model(ror=testdata)
