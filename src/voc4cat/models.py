@@ -22,7 +22,7 @@ from rdflib import (
 from rdflib.namespace import NamespaceManager
 
 from voc4cat import config
-from voc4cat.fields import Orcid, Ror
+from voc4cat.fields import ORCIDIdentifier, RORIdentifier
 
 logger = logging.getLogger(__name__)
 
@@ -152,8 +152,8 @@ class ConceptScheme(BaseModel):
     description: str
     created: datetime.date
     modified: datetime.date
-    creator: Ror | Orcid | str
-    publisher: Ror | str
+    creator: RORIdentifier | ORCIDIdentifier | str
+    publisher: RORIdentifier | str
     provenance: str
     version: str = "automatic"
     custodian: str | None = None

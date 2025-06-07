@@ -12,7 +12,7 @@ from pydantic.class_validators import root_validator
 from rdflib import Graph
 from rdflib.namespace import NamespaceManager
 
-from voc4cat.fields import Orcid, Ror
+from voc4cat.fields import ORCIDIdentifier, RORIdentifier
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -47,8 +47,8 @@ class IdrangeItem(BaseModel):
     first_id: conint(ge=1)
     last_id: int
     gh_name: constr(regex=r"(^(^$)|[a-zA-Z0-9](?:-?[a-zA-Z0-9]){0,38})$") = ""
-    orcid: Orcid | None = None
-    ror_id: Ror | None = None
+    orcid: ORCIDIdentifier | None = None
+    ror_id: RORIdentifier | None = None
 
     @root_validator  # validates the model not a single field
     def order_of_ids(cls, values):
