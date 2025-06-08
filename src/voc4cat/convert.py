@@ -6,7 +6,7 @@ from typing import Literal
 
 import pyshacl
 from colorama import Fore, Style
-from pydantic.error_wrappers import ValidationError
+from pydantic import ValidationError
 from pyshacl.pytypes import GraphLike
 from rdflib import DCAT, DCTERMS, OWL, PROV, RDF, RDFS, SH, SKOS, Graph
 

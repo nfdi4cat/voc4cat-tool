@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+from pydantic import AnyHttpUrl
 
 from tests.test_cli import (
     CS_CYCLES,
@@ -95,8 +96,12 @@ def test_check_ci_pre(datadir, tmp_path, temp_config, caplog):
     config = temp_config
     config.load_config(tmp_path / "idranges.toml")
     config.IDRANGES.vocabs["myvocab"].id_length = 2
-    config.IDRANGES.vocabs["myvocab"].permanent_iri_part = "http://example.org/test"
-    config.IDRANGES.vocabs["myvocab"].prefix_map = {"ex": "http://example.org/"}
+    config.IDRANGES.vocabs["myvocab"].permanent_iri_part = AnyHttpUrl(
+        "http://example.org/test"
+    )
+    config.IDRANGES.vocabs["myvocab"].prefix_map = {
+        "ex": AnyHttpUrl("http://example.org/")
+    }
     config.load_config(config=config.IDRANGES)
     # Convert vocabulary to ttl and store in vocabdir
     main_cli(["convert", "-v", "--outdir", str(vocabdir), str(inbox)])
@@ -119,8 +124,12 @@ def test_check_ci_post(datadir, tmp_path, temp_config, caplog):
     config = temp_config
     config.load_config(tmp_path / "idranges.toml")
     config.IDRANGES.vocabs["myvocab"].id_length = 2
-    config.IDRANGES.vocabs["myvocab"].permanent_iri_part = "http://example.org/test"
-    config.IDRANGES.vocabs["myvocab"].prefix_map = {"ex": "http://example.org/"}
+    config.IDRANGES.vocabs["myvocab"].permanent_iri_part = AnyHttpUrl(
+        "http://example.org/test"
+    )
+    config.IDRANGES.vocabs["myvocab"].prefix_map = {
+        "ex": AnyHttpUrl("http://example.org/")
+    }
     config.load_config(config=config.IDRANGES)
     # Convert vocabulary to ttl and store in vocabdir
     main_cli(["convert", "-v", "--outdir", str(vocabdir), str(previous)])

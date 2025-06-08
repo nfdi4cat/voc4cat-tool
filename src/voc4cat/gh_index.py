@@ -45,7 +45,7 @@ class IndexPage:
         logger.debug('Repository name (from env.var): "%s"', gh_repo)
 
         for voc, vocdata in config.IDRANGES.vocabs.items():
-            base_url = vocdata.permanent_iri_part.rstrip("_").rstrip("/")
+            base_url = str(vocdata.permanent_iri_part).rstrip("_").rstrip("/")
             self.vocab_data[voc]["url_latest"] = base_url
             self.vocab_data[voc]["url_dev"] = base_url + "/dev"
             # links dev-docs on gh-pages (accessible even with non-resolving base_url)
