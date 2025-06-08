@@ -175,7 +175,7 @@ def extract_concept_scheme(sheet: Worksheet, vocab_name: str = ""):
         ),
         creator=clean(sheet["B7"].value),
         publisher=clean(sheet["B8"].value),
-        version=clean(sheet["B9"].value) if sheet["B9"].value is not None else "",
+        version=clean(str(sheet["B9"].value)) if sheet["B9"].value is not None else "",
         provenance=clean(sheet["B10"].value),
         custodian=clean(sheet["B11"].value),
         pid=clean(sheet["B12"].value),

@@ -5,7 +5,7 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Annotated, Self
+from typing import Annotated
 
 from curies import Converter
 from pydantic import (
@@ -18,6 +18,7 @@ from pydantic import (
 )
 from rdflib import Graph
 from rdflib.namespace import NamespaceManager
+from typing_extensions import Self
 
 from voc4cat.fields import ORCIDIdentifier, RORIdentifier
 
@@ -36,7 +37,8 @@ curies_converter: Converter = Converter.from_prefix_map(
     {prefix: str(url) for prefix, url in NamespaceManager(Graph()).namespaces()}
 )
 
-# Empty rows added to the tables. The keys in the dict must match the table names exactly.
+# Number of empty rows appended to the tables. The keys in the dict must match
+# the table names exactly.
 xlsx_rows_pre_allocated = {
     "Concepts": 25,
     "Additional Concept Features": 25,

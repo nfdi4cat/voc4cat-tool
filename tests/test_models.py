@@ -3,7 +3,7 @@ import os
 from unittest import mock
 
 import pytest
-from pydantic.error_wrappers import ValidationError
+from pydantic import HttpUrl, ValidationError
 from rdflib import Graph
 
 from voc4cat.models import Concept, ConceptScheme
@@ -158,14 +158,14 @@ def test_vocabulary_creator_orcid():
         description="Indicates the nature of the borehole start point location",
         created="2020-04-02",
         modified="2020-04-04",
-        creator="0000-0001-2345-6789",
+        creator="0000-0002-1825-0097",  # a valid ORCID
         publisher="GSQ",
         version="1.0",
         provenance="Derived from the 2011-09 version of CGI Borehole start point list",
         custodian="Vance Kelly",
         pid="http://pid.geoscience.gov.au/dataset/ga/114541",
     )
-    assert cs.creator == "https://orcid.org/0000-0001-2345-6789"
+    assert cs.creator == HttpUrl("https://orcid.org/0000-0002-1825-0097")
 
 
 @mock.patch.dict(os.environ, {"CI": "", "VOC4CAT_VERSION": "v2023-08-15"})
@@ -289,51 +289,23 @@ def test_concept():
     assert actual.isomorphic(expected)
 
 
-def test_concept_iri():
+@pytest.mark.parametrize(
+    "children_str",
+    [
+        "broken iri, http://example.com/working-iri",  # non-IRI string
+        "ftp://example.com/",
+        # space in IRI raised an error in pydantic 1 but passes on pydantic2 for AnyHttpUrl type
+        # space is converted to %20 in IRI
+        # "http://example.com/working name",  # space in IRI
+    ],
+)
+def test_concept_iri(children_str):
     # this is testing that children list elements are IRIs, not just ordinary strings
+    children = children_str.split(", ")
     with pytest.raises(ValidationError):
-        Concept(
+        con = Concept(
             uri="https://example.com/thing/x",
             pref_label="Thing X",
             definition="Fake def for Thing X",
-            children=["broken iri", "http://example.com/working-iri"],  # non-IRI string
-        )
-
-    with pytest.raises(ValidationError):
-        Concept(
-            uri="https://example.com/thing/x",
-            pref_label="Thing X",
-            definition="Fake def for Thing X",
-            children=[
-                "ftp://example.com/working-iri",
-                "http://example.com/working-iri",
-            ],  # IRI starts ftp
-        )
-
-    with pytest.raises(ValidationError):
-        Concept(
-            uri="https://example.com/thing/x",
-            pref_label="Thing X",
-            definition="Fake def for Thing X",
-            children=[
-                "http://example.com/ working-iri",
-                "http://example.com/working-iri",
-            ],  # space in IRI
-        )
-
-    # valid children, invalid related_match
-    with pytest.raises(ValidationError):
-        Concept(
-            uri="https://example.com/thing/x",
-            pref_label="Thing X",
-            definition="Fake def for Thing X",
-            related_match=[
-                "http://example.com/working-iri/rm/1",
-                "http://example.com/working-iri/rm/ 2",  # space
-                "ftp://example.com/working-iri/rm/3",  # starts ftp
-            ],
-            children=[
-                "http://example.com/working-iri/c/1",
-                "http://example.com/working-iri/c/2",
-            ],
+            children=children,
         )

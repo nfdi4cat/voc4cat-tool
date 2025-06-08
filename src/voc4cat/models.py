@@ -2,9 +2,17 @@ import datetime
 import logging
 import os
 from itertools import chain
+from typing import Annotated
 
 from openpyxl import Workbook
-from pydantic import AnyHttpUrl, BaseModel, Field, root_validator, validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    BeforeValidator,
+    Field,
+    field_validator,
+    model_validator,
+)
 from rdflib import (
     DCAT,
     DCTERMS,
@@ -20,9 +28,10 @@ from rdflib import (
     URIRef,
 )
 from rdflib.namespace import NamespaceManager
+from typing_extensions import Self
 
 from voc4cat import config
-from voc4cat.fields import ORCIDIdentifier, RORIdentifier
+from voc4cat.fields import ORCID_PATTERN, ORCIDIdentifier, RORIdentifier
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +51,7 @@ def make_iri_qualifier_listing(item, concepts_by_iri):
     """Return listing of item with one "uri (pref.label)" per row."""
     child_lines = []
     for uri in item:
+        uri = str(uri)
         uri_str = config.curies_converter.compress(uri, passthrough=True)
         if "en" not in concepts_by_iri[uri]:
             child_lines.append(f"{uri_str}")
@@ -55,7 +65,8 @@ def make_iri_qualifier_listing(item, concepts_by_iri):
 # === Pydantic validators used by more than one model ===
 
 
-def split_curie_list(cls, v):
+def split_curie_list(v):
+    """Pydantic before validator to split a comma-separated list of CURIEs."""
     if v is None:
         return []
     if isinstance(v, list):
@@ -63,14 +74,14 @@ def split_curie_list(cls, v):
     return (p.strip() for p in v.split(","))
 
 
-def normalise_curie_to_uri(cls, v):
-    # Commented out code fails due to a curies issue/behavior for invalid URLs
-    # This will fail for e.g. "www.wikipedia.de" (url without protocol)
-    # v_as_uri = config.curies_converter.expand(v) or v
+def normalise_curie_to_uri(v):
+    """Pydantic after validator to convert CURIEs to URIs."""
+    v = str(v)  # Ensure v is a string for processing with curies_converter
     try:
         v = config.curies_converter.standardize_curie(v) or v
         v_as_uri = config.curies_converter.expand(v) or v
     except ValueError:
+        # curies fails for invalid URLs, e.g. "www.wikipedia.de"
         # We keep the problematic value and let pydantic validate it.
         v_as_uri = v
     if not v_as_uri.startswith("http"):
@@ -79,17 +90,22 @@ def normalise_curie_to_uri(cls, v):
     return v_as_uri
 
 
-def check_uri_vs_config(cls, values):
+def normalise_curies_to_uris(values: list) -> list:
+    """Pydantic after validator to convert a list of CURIEs to URIs."""
+    return [normalise_curie_to_uri(v) for v in values]
+
+
+def check_uri_vs_config(values):
     """Root validator to check if uri starts with permanent_iri_part.
 
     Note that it will pass validation if permanent_iri_part is empty.
     """
-    voc_conf = config.IDRANGES.vocabs.get(values["vocab_name"], {})
+    voc_conf = config.IDRANGES.vocabs.get(values.vocab_name, {})
     if not voc_conf:
         return values
 
-    perm_iri_part = getattr(voc_conf, "permanent_iri_part", "")
-    iri, *_fragment = values.get("uri", "").split("#", 1)
+    perm_iri_part = str(getattr(voc_conf, "permanent_iri_part", ""))
+    iri, *_fragment = str(getattr(values, "uri", "")).split("#", 1)
     if not iri.startswith(perm_iri_part):
         msg = "Invalid IRI %s - It must start with %s"
         raise ValueError(msg % (iri, perm_iri_part))
@@ -98,33 +114,33 @@ def check_uri_vs_config(cls, values):
         msg = 'Invalid ID part "%s" in IRI %s. The ID part may only contain digits.'
         raise ValueError(msg % (id_part_of_iri, iri))
 
-    id_pattern = config.ID_PATTERNS.get(values["vocab_name"])
+    id_pattern = config.ID_PATTERNS.get(values.vocab_name)
     match = id_pattern.search(iri)
     if not match:
         msg = "ID part of %s is not matching the configured pattern of %s digits."
-        raise ValueError(msg % (str(values["uri"]), voc_conf.id_length))
+        raise ValueError(msg % (str(getattr(values, "uri", "")), voc_conf.id_length))
 
     return values
 
 
-def check_used_id(cls, values):
+def check_used_id(values):
     """
     Root validator to check if the ID part of the IRI is allowed for the actor.
 
     The first entry in provenance is used as relevant actor. For this actor the
     allowed ID range(s) are read from the config.
     """
-    voc_conf = config.IDRANGES.vocabs.get(values["vocab_name"], {})
+    voc_conf = config.IDRANGES.vocabs.get(values.vocab_name, {})
     if not voc_conf:
         return values
 
     # provenance example value: "0000-0001-2345-6789 Provenance description, ..."
-    if values["provenance"] is not None:
-        actor = values["provenance"].split(",", 1)[0].split(" ", 1)[0].strip()
+    if hasattr(values, "provenance"):
+        actor = values.provenance.split(",", 1)[0].split(" ", 1)[0].strip()
     else:
         actor = ""
-    iri, *_fragment = str(values.get("uri", "")).split("#", 1)
-    id_pattern = config.ID_PATTERNS.get(values["vocab_name"], None)
+    iri, *_fragment = str(getattr(values, "uri", "")).split("#", 1)
+    id_pattern = config.ID_PATTERNS.get(values.vocab_name, None)
     if id_pattern is not None:
         match = id_pattern.search(iri)
         if match:
@@ -139,7 +155,7 @@ def check_used_id(cls, values):
             allowed = any(first <= id_ <= last for first, last in actors_ids)
             if not allowed:
                 msg = 'ID of IRI %s is not in allowed ID range(s) of actor "%s" (from provenance).'
-                raise ValueError(msg % (values["uri"], actor))
+                raise ValueError(msg % (str(getattr(values, "uri", "")), actor))
     return values
 
 
@@ -152,31 +168,38 @@ class ConceptScheme(BaseModel):
     description: str
     created: datetime.date
     modified: datetime.date
-    creator: RORIdentifier | ORCIDIdentifier | str
-    publisher: RORIdentifier | str
+    creator: RORIdentifier | ORCIDIdentifier | str = Field(union_mode="left_to_right")
+    publisher: RORIdentifier | str = Field(union_mode="left_to_right")
     provenance: str
     version: str = "automatic"
     custodian: str | None = None
     pid: str | None = None
     vocab_name: str = Field("", exclude=True)
 
-    @validator("creator")
+    # @validator("creator")
+    @field_validator("creator", mode="after")
+    @classmethod
     def creator_must_be_from_list(cls, v):
         if isinstance(v, str):
-            if v.startswith("http"):
+            if v.startswith("http") or ORCID_PATTERN.match(v):
+                print(f"Creator: {v}")
                 return v
             if v not in ORGANISATIONS:
                 msg = f"Creator must be an ORCID or ROR ID or a string from the organisations list: {', '.join(ORGANISATIONS)}"
                 raise ValueError(msg)
         return v
 
-    @validator("modified")
+    # @validator("modified")
+    @field_validator("modified", mode="after")
+    @classmethod
     def set_modified_date_from_env(cls, v):
         if os.getenv("VOC4CAT_MODIFIED") is not None:
             v = datetime.date.fromisoformat(os.getenv("VOC4CAT_MODIFIED", ""))
         return v
 
-    @validator("publisher")
+    # @validator("publisher")
+    @field_validator("publisher", mode="after")
+    @classmethod
     def publisher_must_be_from_list(cls, v):
         if isinstance(v, str):
             if v.startswith("http"):
@@ -186,10 +209,12 @@ class ConceptScheme(BaseModel):
                 raise ValueError(msg)
         return v
 
-    @validator("version")
+    # @validator("version")
+    @field_validator("version", mode="after")
+    @classmethod
     def version_from_env(cls, v):
-        if os.getenv("CI") is not None:  # Don't track version in GitHub.
-            v = "automatic"
+        # Don't track version in GitHub.
+        v = "automatic" if os.getenv("CI") is not None else str(v)
         version_from_env = os.getenv("VOC4CAT_VERSION")
         if version_from_env is not None:
             if not version_from_env.startswith("v"):
@@ -229,7 +254,7 @@ class ConceptScheme(BaseModel):
         )
         g += tg
 
-        v = URIRef(self.uri)
+        v = URIRef(str(self.uri))
         # For dcterms:identifier
         identifier = v.split("#")[-1] if "#" in v else v.split("/")[-1]
         g.add((v, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
@@ -269,8 +294,8 @@ class ConceptScheme(BaseModel):
 
     def to_excel(self, wb: Workbook):
         ws = wb["Concept Scheme"]
-        ws["B2"] = config.curies_converter.expand(self.uri, passthrough=True)
-        ws["B2"].hyperlink = self.uri
+        ws["B2"] = config.curies_converter.expand(str(self.uri), passthrough=True)
+        ws["B2"].hyperlink = str(self.uri)
         ws["B3"] = self.title
         ws["B4"] = self.description
         ws["B5"] = self.created.isoformat()
@@ -289,50 +314,86 @@ class ConceptScheme(BaseModel):
 
 
 class Concept(BaseModel):
-    uri: AnyHttpUrl
+    uri: Annotated[AnyHttpUrl, BeforeValidator(normalise_curie_to_uri)]
     pref_label: str | list[str]
     alt_labels: list[str] = []
     pl_language_code: list[str] = []
     definition: str | list[str]
     def_language_code: list[str] = []
-    children: list[AnyHttpUrl] = []
-    source_vocab: AnyHttpUrl | None = None
+    children: Annotated[
+        list[AnyHttpUrl],
+        BeforeValidator(split_curie_list),
+        BeforeValidator(normalise_curies_to_uris),
+    ] = []
+    source_vocab: (
+        Annotated[AnyHttpUrl, BeforeValidator(normalise_curie_to_uri)] | None
+    ) = None
     provenance: str | None = None
-    related_match: list[AnyHttpUrl] = []
-    close_match: list[AnyHttpUrl] = []
-    exact_match: list[AnyHttpUrl] = []
-    narrow_match: list[AnyHttpUrl] = []
-    broad_match: list[AnyHttpUrl] = []
+    related_match: Annotated[
+        list[AnyHttpUrl],
+        BeforeValidator(split_curie_list),
+        BeforeValidator(normalise_curies_to_uris),
+    ] = []
+    close_match: Annotated[
+        list[AnyHttpUrl],
+        BeforeValidator(split_curie_list),
+        BeforeValidator(normalise_curies_to_uris),
+    ] = []
+    exact_match: Annotated[
+        list[AnyHttpUrl],
+        BeforeValidator(split_curie_list),
+        BeforeValidator(normalise_curies_to_uris),
+    ] = []
+    narrow_match: Annotated[
+        list[AnyHttpUrl],
+        BeforeValidator(split_curie_list),
+        BeforeValidator(normalise_curies_to_uris),
+    ] = []
+    broad_match: Annotated[
+        list[AnyHttpUrl],
+        BeforeValidator(split_curie_list),
+        BeforeValidator(normalise_curies_to_uris),
+    ] = []
     vocab_name: str = Field("", exclude=True)
 
     # We validate with a reusable (external) validators. With a pre-validator,
     # which is applied before all others, we split and to convert from CURIE to URI.
-    _uri_list_fields = [
-        "children",
-        "related_match",
-        "close_match",
-        "exact_match",
-        "narrow_match",
-        "broad_match",
-    ]
-    _split_uri_list = validator(*_uri_list_fields, pre=True, allow_reuse=True)(
-        split_curie_list
-    )
-    _normalize_uri = validator(
-        "uri",
-        "source_vocab",
-        *_uri_list_fields,
-        each_item=True,
-        pre=True,
-        allow_reuse=True,
-    )(normalise_curie_to_uri)
 
-    _check_uri_vs_config = root_validator(allow_reuse=True)(check_uri_vs_config)
-    _check_used_id = root_validator(allow_reuse=True)(check_used_id)
+    # _uri_list_fields = [
+    #     "children",
+    #     "related_match",
+    #     "close_match",
+    #     "exact_match",
+    #     "narrow_match",
+    #     "broad_match",
+    # ]
+    # _split_uri_list = validator(*_uri_list_fields, mode="before")(
+    #     split_curie_list
+    # )
+
+    # _normalize_uri = validator(
+    #     "uri",
+    #     "source_vocab",
+    #     *_uri_list_fields,
+    #     each_item=True,
+    #     mode="before",
+    # )(normalise_curie_to_uri)
+
+    # _check_uri_vs_config = model_validator(mode="after")(check_uri_vs_config)
+    @model_validator(mode="after")
+    def _check_uri_vs_config(self) -> Self:
+        check_uri_vs_config(self)
+        return self
+
+    # _check_used_id = model_validator(mode="after")(check_used_id)
+    @model_validator(mode="after")
+    def _check_used_id(self) -> Self:
+        check_used_id(self)
+        return self
 
     def to_graph(self):
         g = Graph()
-        c = URIRef(self.uri)
+        c = URIRef(str(self.uri))
 
         g.add((c, RDF.type, SKOS.Concept))
         # For dcterms:identifier
@@ -353,27 +414,27 @@ class Concept(BaseModel):
             for lang_code in self.def_language_code:
                 g.add((c, SKOS.definition, Literal(self.definition, lang=lang_code)))
         for child in self.children:
-            g.add((c, SKOS.narrower, URIRef(child)))
-            g.add((URIRef(child), SKOS.broader, c))
+            g.add((c, SKOS.narrower, URIRef(str(child))))
+            g.add((URIRef(str(child)), SKOS.broader, c))
         if self.source_vocab is not None:
-            g.add((c, RDFS.isDefinedBy, URIRef(self.source_vocab)))
+            g.add((c, RDFS.isDefinedBy, URIRef(str(self.source_vocab))))
         if self.provenance is not None:
             g.add((c, SKOS.historyNote, Literal(self.provenance, lang="en")))
         if self.related_match is not None:
             for related_match in self.related_match:
-                g.add((c, SKOS.relatedMatch, URIRef(related_match)))
+                g.add((c, SKOS.relatedMatch, URIRef(str(related_match))))
         if self.close_match:
             for close_match in self.close_match:
-                g.add((c, SKOS.closeMatch, URIRef(close_match)))
+                g.add((c, SKOS.closeMatch, URIRef(str(close_match))))
         if self.exact_match is not None:
             for exact_match in self.exact_match:
-                g.add((c, SKOS.exactMatch, URIRef(exact_match)))
+                g.add((c, SKOS.exactMatch, URIRef(str(exact_match))))
         if self.narrow_match is not None:
             for narrow_match in self.narrow_match:
-                g.add((c, SKOS.narrowMatch, URIRef(narrow_match)))
+                g.add((c, SKOS.narrowMatch, URIRef(str(narrow_match))))
         if self.broad_match is not None:
             for broad_match in self.broad_match:
-                g.add((c, SKOS.broadMatch, URIRef(broad_match)))
+                g.add((c, SKOS.broadMatch, URIRef(str(broad_match))))
 
         return g
 
@@ -416,9 +477,9 @@ class Concept(BaseModel):
         first_row_exported = False
         for lang in chain(fully_translated, partially_translated):
             ws[f"A{row_no_concepts}"].value = config.curies_converter.compress(
-                self.uri, passthrough=True
+                str(self.uri), passthrough=True
             )
-            ws[f"A{row_no_concepts}"].hyperlink = self.uri
+            ws[f"A{row_no_concepts}"].hyperlink = str(self.uri)
             ws[f"B{row_no_concepts}"] = pref_labels.get(lang, "")
             ws[f"C{row_no_concepts}"] = lang
             ws[f"D{row_no_concepts}"] = definitions.get(lang, "")
@@ -436,9 +497,9 @@ class Concept(BaseModel):
             )
             if self.source_vocab:
                 ws[f"I{row_no_concepts}"] = config.curies_converter.compress(
-                    self.source_vocab, passthrough=True
+                    str(self.source_vocab), passthrough=True
                 )
-                ws[f"I{row_no_concepts}"].hyperlink = self.source_vocab
+                ws[f"I{row_no_concepts}"].hyperlink = str(self.source_vocab)
             else:
                 ws[f"I{row_no_concepts}"] = None
                 ws[f"I{row_no_concepts}"].hyperlink = None
@@ -456,10 +517,10 @@ class Concept(BaseModel):
         ):
             ws = wb["Additional Concept Features"]
             ws[f"A{row_no_features}"].value = (
-                config.curies_converter.compress(self.uri, passthrough=True)
+                config.curies_converter.compress(str(self.uri), passthrough=True)
                 + f" ({pref_labels.get('en', '')})"
             )
-            ws[f"A{row_no_features}"].hyperlink = self.uri
+            ws[f"A{row_no_features}"].hyperlink = str(self.uri)
             ws[f"B{row_no_features}"] = make_iri_qualifier_listing(
                 self.related_match, concepts_by_iri
             )
@@ -480,24 +541,28 @@ class Concept(BaseModel):
 
 
 class Collection(BaseModel):
-    uri: AnyHttpUrl
+    uri: Annotated[AnyHttpUrl, BeforeValidator(normalise_curie_to_uri)]
     pref_label: str
     definition: str
-    members: list[AnyHttpUrl]
+    members: Annotated[
+        list[AnyHttpUrl],
+        BeforeValidator(split_curie_list),
+        BeforeValidator(normalise_curies_to_uris),
+    ] = []
     provenance: str | None = None
     vocab_name: str = Field("", exclude=True)
 
-    _split_uri_list = validator("members", pre=True, allow_reuse=True)(split_curie_list)
-    _normalize_uri = validator(
-        "uri", "members", each_item=True, pre=True, allow_reuse=True
-    )(normalise_curie_to_uri)
+    # _split_uri_list = validator("members", pre=True)(split_curie_list)
+    # _normalize_uri = validator(
+    #     "uri", "members", each_item=True, pre=True
+    # )(normalise_curie_to_uri)
 
-    _check_uri_vs_config = root_validator(allow_reuse=True)(check_uri_vs_config)
-    _check_used_id = root_validator(allow_reuse=True)(check_used_id)
+    _check_uri_vs_config = model_validator(mode="after")(check_uri_vs_config)
+    _check_used_id = model_validator(mode="after")(check_used_id)
 
     def to_graph(self, cs):
         g = Graph()
-        c = URIRef(self.uri)
+        c = URIRef(str(self.uri))
         g.add((c, RDF.type, SKOS.Collection))
 
         # rdfs:isDefinedBy <https://example.org> ;
@@ -512,7 +577,7 @@ class Collection(BaseModel):
         g.add((c, SKOS.prefLabel, Literal(self.pref_label, lang="en")))
         g.add((c, SKOS.definition, Literal(self.definition, lang="en")))
         for member in self.members:
-            g.add((c, SKOS.member, URIRef(member)))
+            g.add((c, SKOS.member, URIRef(str(member))))
         if self.provenance is not None:
             g.add((c, SKOS.historyNote, Literal(self.provenance, lang="en")))
 
@@ -521,9 +586,9 @@ class Collection(BaseModel):
     def to_excel(self, wb: Workbook, row_no: int, concepts_by_iri: dict) -> None:
         ws = wb["Collections"]
         ws[f"A{row_no}"].value = config.curies_converter.compress(
-            self.uri, passthrough=True
+            str(self.uri), passthrough=True
         )  # + f" ({self.pref_label})"
-        ws[f"A{row_no}"].hyperlink = self.uri
+        ws[f"A{row_no}"].hyperlink = str(self.uri)
         ws[f"B{row_no}"] = self.pref_label
         ws[f"C{row_no}"] = self.definition
         ws[f"D{row_no}"] = make_iri_qualifier_listing(self.members, concepts_by_iri)
@@ -538,10 +603,10 @@ class Vocabulary(BaseModel):
     def to_graph(self):
         g = self.concept_scheme.to_graph()
 
-        cs = URIRef(self.concept_scheme.uri)
+        cs = URIRef(str(self.concept_scheme.uri))
         for concept in self.concepts:
             g += concept.to_graph()
-            g.add((URIRef(concept.uri), SKOS.inScheme, cs))
+            g.add((URIRef(str(concept.uri)), SKOS.inScheme, cs))
 
         # create as Top Concepts those Concepts that have no skos:narrower properties with them as objects
         for s in g.subjects(SKOS.inScheme, cs):
@@ -554,7 +619,7 @@ class Vocabulary(BaseModel):
 
         for collection in self.collections:
             g += collection.to_graph(cs)
-            g.add((URIRef(collection.uri), DCTERMS.isPartOf, cs))
-            g.add((cs, DCTERMS.hasPart, URIRef(collection.uri)))
+            g.add((URIRef(str(collection.uri)), DCTERMS.isPartOf, cs))
+            g.add((cs, DCTERMS.hasPart, URIRef(str(collection.uri))))
 
         return g
