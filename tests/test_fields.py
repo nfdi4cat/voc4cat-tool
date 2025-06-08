@@ -3,7 +3,7 @@
 import pytest
 from pydantic import BaseModel, HttpUrl, ValidationError
 
-from voc4cat.fields import ORCIDIdentifier, RORIdentifier
+from voc4cat.fields import ORCIDIdentifier, RORIdentifier, get_orcid_id_part
 
 
 @pytest.mark.parametrize(
@@ -78,3 +78,34 @@ def test_ror_fail(testdata: RORIdentifier) -> None:
 
     with pytest.raises(ValidationError):
         Model(ror=testdata)
+
+
+def test_ror_orcid_example() -> None:
+    """Example usage of ORCIDIdentifier in a model."""
+
+    class Researcher(BaseModel):
+        name: str
+        orcid: ORCIDIdentifier
+        home_organization: RORIdentifier | None = None
+
+        @property
+        def orcid_id_part(self) -> str:
+            """Get just the ID part of the ORCID identifier"""
+            return get_orcid_id_part(self.orcid)
+
+    jane = Researcher(
+        name="Jane Smith",
+        orcid="https://orcid.org/0000-0002-1825-0097",
+        home_organization="https://ror.org/02y72wh86",
+    )
+
+    assert jane.name == "Jane Smith"
+    assert jane.orcid == HttpUrl("https://orcid.org/0000-0002-1825-0097")
+    assert jane.home_organization == HttpUrl("https://ror.org/02y72wh86")
+    assert jane.orcid_id_part == "0000-0002-1825-0097"
+
+    jane2 = Researcher(
+        name="Jane Smith",
+        orcid=HttpUrl("https://orcid.org/0000-0002-1825-0097"),
+    )
+    assert jane2.orcid == HttpUrl("https://orcid.org/0000-0002-1825-0097")
