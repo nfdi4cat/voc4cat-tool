@@ -5,10 +5,17 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
+from typing import Annotated, Self
 
 from curies import Converter
-from pydantic import AnyHttpUrl, BaseModel, conint, constr, validator
-from pydantic.class_validators import root_validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 from rdflib import Graph
 from rdflib.namespace import NamespaceManager
 
@@ -44,30 +51,33 @@ class Checks(BaseModel):
 
 
 class IdrangeItem(BaseModel):
-    first_id: conint(ge=1)
+    first_id: Annotated[int, Field(ge=1)]
     last_id: int
-    gh_name: constr(regex=r"(^(^$)|[a-zA-Z0-9](?:-?[a-zA-Z0-9]){0,38})$") = ""
+    gh_name: Annotated[
+        str, StringConstraints(pattern=r"((^$)|^[a-zA-Z0-9](?:-?[a-zA-Z0-9]){0,38})$")
+    ] = ""
     orcid: ORCIDIdentifier | None = None
     ror_id: RORIdentifier | None = None
 
-    @root_validator  # validates the model not a single field
-    def order_of_ids(cls, values):
-        first, last = values["first_id"], values.get("last_id", "? (missing)")
+    @model_validator(mode="after")
+    def order_of_ids(self) -> Self:
+        first, last = self.first_id, self.last_id
         if last <= first:
             msg = f"last_id ({last}) must be greater than first_id ({first})."
             raise ValueError(msg)
 
-        orcid = values.get("orcid", "")
-        gh = values.get("gh_name", "")
+        orcid = self.orcid
+        gh = self.gh_name
         if not (orcid or gh):
             msg = (
                 "ID range requires a GitHub name or an ORCID "
                 f"(range: {first!s}-{last!s})."
             )
             raise ValueError(msg)
-        return values
+        return self
 
-    @validator("ror_id", "orcid", pre=True)
+    @field_validator("ror_id", "orcid", mode="before")
+    @classmethod
     def handle_empty_field(cls, value):
         # None cannot be expressed in toml so we catch an empty string before validation.
         if value == "":
@@ -76,17 +86,18 @@ class IdrangeItem(BaseModel):
 
 
 class Vocab(BaseModel):
-    id_length: conint(gt=1, lt=19)
+    id_length: Annotated[int, Field(ge=1, lt=19)]
     permanent_iri_part: AnyHttpUrl
     checks: Checks
     prefix_map: dict[str, AnyHttpUrl]
     id_range: list[IdrangeItem] = []
 
-    @validator("id_range")
+    @field_validator("id_range", mode="before")
+    @classmethod
     def check_names_not_empty(cls, value):
         ids_defined = set()
         for idr in value:
-            new_ids = set(range(idr.first_id, idr.last_id + 1))
+            new_ids = set(range(idr["first_id"], idr["last_id"] + 1))
             reused = list(ids_defined & new_ids)
             if reused:
                 msg = f"Overlapping ID ranges for IDs {min(reused)}-{max(reused)}."
@@ -97,15 +108,15 @@ class Vocab(BaseModel):
 
 class IDrangeConfig(BaseModel):
     single_vocab: bool = False
-    vocabs: dict[constr(to_lower=True), Vocab] = {}
+    vocabs: dict[Annotated[str, StringConstraints(to_lower=True)], Vocab] = {}
     default_config: bool = False
 
-    @root_validator
-    def check_names_not_empty(cls, values):
-        if values["single_vocab"] and len(values.get("vocabs", [])) > 1:
+    @model_validator(mode="after")
+    def check_names_not_empty(self) -> Self:
+        if self.single_vocab and len(self.vocabs) > 1:
             msg = 'Inconsistent config: "single_vocab" is true but multiple vocabularies are found.'
             raise ValueError(msg)
-        return values
+        return self
 
 
 # These parameters will be updated/set by load_config.
@@ -148,14 +159,16 @@ def load_config(config_file: Path | None = None, config: IDrangeConfig | None = 
         logger.debug("Config loaded from: %s", config_file)
         new_conf["IDRANGES"] = IDrangeConfig(**conf)
     else:
-        new_conf["IDRANGES"] = IDrangeConfig().parse_raw(config.json())
+        new_conf["IDRANGES"] = IDrangeConfig().model_validate_json(
+            config.model_dump_json()
+        )
         logger.debug("Refreshing global state of config.")
 
     # pre-compile regex patterns for ID part of IRIs for each vocabulary
     id_patterns = {}
     for name in new_conf["IDRANGES"].vocabs:
         voc = new_conf["IDRANGES"].vocabs.get(name)
-        id_patterns[name] = re.compile(r"(?P<identifier>[0-9]{%i})$" % voc.id_length)
+        id_patterns[name] = re.compile(r"(?P<identifier>[0-9]{%i})$" % voc.id_length)  # noqa: UP031
     new_conf["ID_PATTERNS"] = id_patterns
 
     new_conf["ID_RANGES_BY_ACTOR"] = _id_ranges_by_actor(new_conf)
@@ -168,7 +181,7 @@ def load_config(config_file: Path | None = None, config: IDrangeConfig | None = 
         )
         prefix_map = new_conf["IDRANGES"].vocabs[name].prefix_map
         for prefix, uri_prefix in prefix_map.items():
-            curies_converter.add_prefix(prefix, uri_prefix, merge=True)
+            curies_converter.add_prefix(prefix, str(uri_prefix), merge=True)
         CURIES_CONVERTER_MAP[name] = curies_converter
 
     for name, value in new_conf.items():
