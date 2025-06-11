@@ -43,7 +43,7 @@ dependencies = [
   "networkx",
   "openpyxl >= 3.1.5",
   "pillow",
-  "pydantic",
+  "pydantic >= 2.10",
   "pyshacl",
   "rdflib",
   "tomli>=1.1.0; python_version < '3.11'",
