@@ -196,7 +196,9 @@ def rdf_to_excel(
     )
 
     if template_file_path is None:
-        wb = load_template(file_path=(Path(__file__).parent / "blank_043.xlsx"))
+        wb = load_template(
+            file_path=(Path(__file__).parent / "templates" / "vocab" / "blank_043.xlsx")
+        )
     else:
         wb = load_template(file_path=template_file_path)
 
