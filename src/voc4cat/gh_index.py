@@ -13,7 +13,7 @@ from voc4cat.checks import Voc4catError
 
 logger = logging.getLogger(__name__)
 
-TEMPLATES_DIR = Path(__file__).parent / "jinja_templates"
+TEMPLATES_DIR = Path(__file__).parent / "templates" / "docs"
 STYLE_DIR = TEMPLATES_DIR
 
 
