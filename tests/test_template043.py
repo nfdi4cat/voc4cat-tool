@@ -15,7 +15,7 @@ from voc4cat.utils import ConversionError
 
 
 def test_empty_template():
-    test_file = Path(voc4cat.__file__).parent / "blank_043.xlsx"
+    test_file = Path(voc4cat.__file__).parent / "templates" / "vocab" / "blank_043.xlsx"
 
     assert test_file.is_file()
     with pytest.raises(ConversionError) as e:

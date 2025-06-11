@@ -99,7 +99,9 @@ def test_template(monkeypatch, datadir, tmp_path, caplog):
     assert 'Template file must be of type ".xlsx".' in caplog.text
 
     caplog.clear()
-    std_template = str(Path(voc4cat.__file__).parent / "blank_043.xlsx")
+    std_template = str(
+        Path(voc4cat.__file__).parent / "templates" / "vocab" / "blank_043.xlsx"
+    )
     with caplog.at_level(logging.INFO):
         main_cli(["convert", "-v", "--template", std_template, str(tmp_path)])
     assert "->" in caplog.text
