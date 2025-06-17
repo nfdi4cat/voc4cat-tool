@@ -64,6 +64,7 @@ tests = [
 ]
 lint = [
   "ruff",
+  "mypy",
 ]
 dev = [
     # Recursively including the project's own optional dependencies requires pip>=21.2
