@@ -14,14 +14,14 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from src.voc4cat.xlsx_api import (
+from voc4cat.xlsx_api import (
     XLSXProcessorFactory,
     create_xlsx_wrapper,
     import_from_xlsx,
 )
 
 # Import XLSX functionality
-from src.voc4cat.xlsx_common import XLSXConverters, XLSXMetadata
+from voc4cat.xlsx_common import XLSXConverters, XLSXMetadata
 
 # ============================================================================
 # EXISTING MODELS (These remain unchanged - simulate third-party models)
