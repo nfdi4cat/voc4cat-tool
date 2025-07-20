@@ -15,18 +15,27 @@ The demo validates that the imported data matches the original data structure
 and demonstrates proper deserialization of custom patterns and enum values.
 """
 
+import sys
 from pathlib import Path
 
-# Import all the model classes and enums from the original demo
+# Add the project root to Python path to enable imports from tests
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+# Import the create functions from the demo file
 from example.demo_xlsx_vocab_template_create import (
+    create_multilingual_sample_data,
+    create_sample_data,
+)
+
+# Import all the model classes and enums from the test file
+from tests.test_xlsx_integration import (
     Collection,
     ConceptScheme,
     Mapping,
     MappingType,
     MultiLingualConcept,
     Prefix,
-    create_multilingual_sample_data,
-    create_sample_data,
 )
 from voc4cat.xlsx_api import import_from_xlsx
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
