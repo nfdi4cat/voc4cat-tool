@@ -6,6 +6,7 @@ that span multiple modules in the XLSX processing system.
 """
 
 from datetime import date
+from enum import Enum
 from typing import Annotated
 
 import pytest
@@ -14,9 +15,291 @@ from pydantic import BaseModel, Field
 from voc4cat.xlsx_api import XLSXProcessorFactory, export_to_xlsx, import_from_xlsx
 from voc4cat.xlsx_common import XLSXConverters, XLSXMetadata
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
-from voc4cat.xlsx_table import XLSXTableConfig
+from voc4cat.xlsx_table import JoinConfiguration, XLSXTableConfig
 
 from .conftest import Employee, Project, SimpleModel
+
+
+# Vocabulary Template Models (copied from demo files)
+class ObsoletionReason(Enum):
+    """Reasons for obsoleting vocabulary elements."""
+
+    UNCLEAR_DEFINITION = "Not clearly defined or inconsistent usage."
+    ADDED_IN_ERROR = "Added in error."
+    MORE_SPECIFIC_CREATED = "More specific concepts created."
+    CONVERTED_TO_COLLECTION = "Converted to a collection."
+    AMBIGUOUS_MEANING = "The meaning was ambiguous."
+    LACK_OF_EVIDENCE = "Lack of evidence that this function/process/component exists."
+
+
+class MappingType(Enum):
+    """Type of SKOS mapping relation."""
+
+    EXACT_MATCH = "skos:exactMatch"
+    CLOSE_MATCH = "skos:closeMatch"
+    NARROW_MATCH = "skos:narrowMatch"
+    BROAD_MATCH = "skos:broadMatch"
+    RELATED_MATCH = "skos:relatedMatch"
+
+
+class CollectionObsoletionReason(Enum):
+    """Reasons for obsoleting collections."""
+
+    UNCLEAR_DEFINITION = "Not clearly defined or inconsistent usage."
+    ADDED_IN_ERROR = "Added in error."
+    MORE_SPECIFIC_CREATED = "More specific colllections were created."
+    CONVERTED_TO_CONCEPT = "Converted to a concept."
+
+
+class ConceptScheme(BaseModel):
+    """Concept scheme metadata (key-value format)."""
+
+    template_version: Annotated[
+        str,
+        XLSXMetadata(
+            meaning="dcterms:hasVersion",
+            description="Gets increments only on structural changes. Its general pattern is major.minor.rev-JJJJ-MM[a-z].",
+        ),
+    ] = Field(default="1.0.rev-2025-06a")
+
+    vocabulary_iri: Annotated[
+        str,
+        XLSXMetadata(
+            display_name="Vocabulary IRI",
+            meaning="skos:conceptScheme",
+            description="IRI for this vocabulary",
+        ),
+    ] = Field(...)
+
+    prefix: Annotated[
+        str,
+        XLSXMetadata(
+            meaning="vann:preferredNamespacePrefix",
+            description="Registered (or preferred) prefix to be used in CURIES for this vocabulary",
+        ),
+    ] = Field(...)
+
+    title: Annotated[
+        str,
+        XLSXMetadata(meaning="dcterms:title", description="Title of the vocabulary"),
+    ] = Field(...)
+
+    description: Annotated[
+        str,
+        XLSXMetadata(
+            meaning="dcterms:description",
+            description="General description of the vocabulary",
+        ),
+    ] = Field(...)
+
+    version: Annotated[
+        str,
+        XLSXMetadata(
+            meaning="owl:versionInfo",
+            description="Automatically added version specifier for the vocabulary",
+        ),
+    ] = Field(...)
+
+    modified_date: Annotated[
+        date,
+        XLSXMetadata(
+            meaning="dcterms:modified",
+            description="Automatically added date of last modification",
+        ),
+    ] = Field(default_factory=date.today)
+
+
+class Mapping(BaseModel):
+    """External mapping between concepts (table format)."""
+
+    concept_iri: Annotated[
+        str, XLSXMetadata(meaning="skos:Concept", description="IRI of Voc4Cat Concept")
+    ] = Field(...)
+
+    mapping_relation: Annotated[
+        MappingType | None,
+        XLSXMetadata(
+            meaning="skos:mappingRelation", description="Type of mapping relation."
+        ),
+    ] = Field(None)
+
+    mapped_external_concept: str | None = Field(
+        None,
+        description="IRI of mapped external concept",
+    )
+
+
+class Collection(BaseModel):
+    """Collection of concepts (table format)."""
+
+    collection_iri: Annotated[
+        str,
+        XLSXMetadata(
+            meaning="skos:Collection, skos:orderedCollection",
+            description="Collection IRI",
+        ),
+    ] = Field(...)
+
+    language_code: Annotated[
+        str, XLSXMetadata(meaning="dcterms:language", description="Language Code")
+    ] = Field(default="en")
+
+    preferred_label: Annotated[
+        str, XLSXMetadata(meaning="skos:preferredLabel", description="Preferred Label")
+    ] = Field(...)
+
+    definition: Annotated[
+        str, XLSXMetadata(meaning="skos:definition", description="Definition")
+    ] = Field(...)
+
+    parent_collection_iris: (
+        Annotated[
+            list[str],
+            XLSXMetadata(
+                separator_pattern=XLSXConverters.PIPE_ESCAPED,
+                meaning="skos:member",
+                description="Parent Collection IRIs",
+            ),
+        ]
+        | None
+    ) = Field(default=None)
+
+    is_ordered: bool = Field(
+        default=False,
+        description="Ordered? Yes or No (default)",
+    )
+
+    change_note: (
+        Annotated[
+            str, XLSXMetadata(meaning="skos:changeNote", description="Change Note")
+        ]
+        | None
+    ) = Field(None)
+
+    editorial_note: (
+        Annotated[
+            str,
+            XLSXMetadata(meaning="skos:editorialNote", description="Editorial Note"),
+        ]
+        | None
+    ) = Field(None)
+
+    obsoletion_reason: CollectionObsoletionReason | None = Field(
+        None, description="Reason for obsoletion if applicable"
+    )
+
+
+class Prefix(BaseModel):
+    """Namespace prefix mapping (table format)."""
+
+    prefix: Annotated[
+        str, XLSXMetadata(meaning="vann:preferredNamespacePrefix", description="Prefix")
+    ] = Field(...)
+
+    namespace: Annotated[
+        str, XLSXMetadata(meaning="vann:preferredNamespaceUri", description="Namespace")
+    ] = Field(...)
+
+
+class ConceptTranslation(BaseModel):
+    """Translation of a concept in a specific language."""
+
+    concept_iri: Annotated[
+        str,
+        XLSXMetadata(
+            meaning="skos:Concept",
+            description="IRI of the concept being translated",
+        ),
+    ] = Field(...)
+
+    language_code: Annotated[
+        str,
+        XLSXMetadata(
+            meaning="dcterms:language",
+            description="ISO 639-1 language code (e.g., 'en', 'de', 'fr')",
+        ),
+    ] = Field(...)
+
+    preferred_label: Annotated[
+        str,
+        XLSXMetadata(
+            meaning="skos:prefLabel",
+            description="Preferred label in this language",
+        ),
+    ] = Field(...)
+
+    alternate_labels: Annotated[
+        list[str],
+        XLSXMetadata(
+            separator_pattern=XLSXConverters.COMMA,
+            meaning="skos:altLabel",
+            description="Alternative labels in this language",
+        ),
+    ] = Field(default_factory=list)
+
+    definition: Annotated[
+        str | None,
+        XLSXMetadata(
+            meaning="skos:definition",
+            description="Definition of the concept in this language",
+        ),
+    ] = Field(None)
+
+    scope_note: Annotated[
+        str | None,
+        XLSXMetadata(
+            meaning="skos:scopeNote",
+            description="Scope note in this language",
+        ),
+    ] = Field(None)
+
+
+class MultiLingualConcept(BaseModel):
+    """Concept with multi-language support for joined model demonstration."""
+
+    concept_iri: Annotated[
+        str,
+        XLSXMetadata(
+            meaning="skos:Concept",
+            description="Unique IRI identifier for this concept",
+        ),
+    ] = Field(...)
+
+    parent_iris: Annotated[
+        list[str],
+        XLSXMetadata(
+            separator_pattern=XLSXConverters.PIPE,
+            meaning="skos:broader",
+            description="Parent concept IRIs",
+        ),
+    ] = Field(default_factory=list)
+
+    collection_membership: Annotated[
+        list[str],
+        XLSXMetadata(
+            separator_pattern=XLSXConverters.PIPE,
+            meaning="skos:member",
+            description="Collection IRIs this concept belongs to",
+        ),
+    ] = Field(default_factory=list)
+
+    created_date: Annotated[
+        date,
+        XLSXMetadata(
+            meaning="dcterms:created",
+            description="Date when this concept was created",
+        ),
+    ] = Field(default_factory=date.today)
+
+    status: Annotated[
+        str,
+        XLSXMetadata(
+            meaning="adms:status",
+            description="Status of this concept (draft, published, deprecated)",
+        ),
+    ] = Field(default="draft")
+
+    translations: list[ConceptTranslation] = Field(default_factory=list)
 
 
 # Integration Tests
@@ -398,6 +681,345 @@ class TestIntegration:
         imported_simple = import_from_xlsx(temp_file, SimpleModel, format_type="table")
         assert len(imported_simple) == 1
         assert imported_simple[0].name == "test"
+
+    def test_vocabulary_template_round_trip_integration(self, temp_file):
+        """Test complete vocabulary template round-trip with all SKOS vocabulary features."""
+
+        # Create sample vocabulary data (adapted from demo files)
+        def create_sample_data():
+            concept_scheme = ConceptScheme(
+                vocabulary_iri="https://example.org/photocatalysis/",
+                prefix="photo",
+                title="Photocatalysis Vocabulary",
+                description="A controlled vocabulary for photocatalysis research and applications",
+                version="1.0.0",
+            )
+
+            mappings = [
+                Mapping(
+                    concept_iri="https://example.org/photocatalysis/TiO2",
+                    mapping_relation=MappingType.EXACT_MATCH,
+                    mapped_external_concept="http://purl.obolibrary.org/obo/CHEBI_32234",
+                ),
+                Mapping(
+                    concept_iri="https://example.org/photocatalysis/Semiconductor",
+                    mapping_relation=MappingType.CLOSE_MATCH,
+                    mapped_external_concept="https://dbpedia.org/resource/Semiconductor",
+                ),
+            ]
+
+            collections = [
+                Collection(
+                    collection_iri="https://example.org/photocatalysis/PhotocatalystMaterials",
+                    preferred_label="Photocatalyst Materials",
+                    definition="Collection of materials used as photocatalysts",
+                    is_ordered=True,
+                ),
+                Collection(
+                    collection_iri="https://example.org/photocatalysis/OpticalProperties",
+                    preferred_label="Optical Properties",
+                    definition="Collection of optical properties relevant to photocatalysis",
+                    parent_collection_iris=[
+                        "https://example.org/photocatalysis/MaterialProperties",
+                        "https://example.org/photocatalysis/PhysicalProperties",
+                    ],
+                ),
+            ]
+
+            prefixes = [
+                Prefix(prefix="skos", namespace="http://www.w3.org/2004/02/skos/core#"),
+                Prefix(prefix="dcterms", namespace="http://purl.org/dc/terms/"),
+                Prefix(prefix="photo", namespace="https://example.org/photocatalysis/"),
+            ]
+
+            return concept_scheme, mappings, collections, prefixes
+
+        def create_multilingual_concepts():
+            return [
+                MultiLingualConcept(
+                    concept_iri="https://example.org/photocatalysis/TiO2",
+                    parent_iris=[
+                        "https://example.org/photocatalysis/PhotocatalystMaterials"
+                    ],
+                    collection_membership=[
+                        "https://example.org/photocatalysis/Materials"
+                    ],
+                    status="published",
+                    translations=[
+                        ConceptTranslation(
+                            concept_iri="https://example.org/photocatalysis/TiO2",
+                            language_code="en",
+                            preferred_label="Titanium Dioxide",
+                            alternate_labels=["Titania", "Titanium(IV) oxide"],
+                            definition="A widely used photocatalyst material with excellent properties.",
+                            scope_note="Used in self-cleaning surfaces and air purification.",
+                        ),
+                        ConceptTranslation(
+                            concept_iri="https://example.org/photocatalysis/TiO2",
+                            language_code="de",
+                            preferred_label="Titandioxid",
+                            alternate_labels=["Titania"],
+                            definition="Ein weit verbreitetes Photokatalysator-Material.",
+                            scope_note="Verwendet in selbstreinigenden Oberflächen.",
+                        ),
+                    ],
+                ),
+                MultiLingualConcept(
+                    concept_iri="https://example.org/photocatalysis/BandGap",
+                    parent_iris=[
+                        "https://example.org/photocatalysis/MaterialProperty",
+                        "https://example.org/photocatalysis/ElectronicProperty",
+                    ],
+                    collection_membership=[
+                        "https://example.org/photocatalysis/OpticalProperties"
+                    ],
+                    status="published",
+                    translations=[
+                        ConceptTranslation(
+                            concept_iri="https://example.org/photocatalysis/BandGap",
+                            language_code="en",
+                            preferred_label="Band Gap",
+                            alternate_labels=["Energy gap", "Electronic band gap"],
+                            definition="Energy difference between valence and conduction bands.",
+                            scope_note="Critical for photocatalytic activity.",
+                        ),
+                    ],
+                ),
+            ]
+
+        # Create test data
+        concept_scheme, mappings, collections, prefixes = create_sample_data()
+        multilingual_concepts = create_multilingual_concepts()
+
+        # Configuration for different formats
+        kv_config = XLSXKeyValueConfig(title="Concept Scheme Metadata")
+        table_config = XLSXTableConfig()
+
+        # Test 1: Export ConceptScheme (key-value format)
+        export_to_xlsx(
+            concept_scheme,
+            temp_file,
+            format_type="keyvalue",
+            config=kv_config,
+            sheet_name="ConceptScheme",
+        )
+
+        # Test 2: Export Collections (table format)
+        export_to_xlsx(
+            collections,
+            temp_file,
+            format_type="table",
+            config=table_config,
+            sheet_name="Collections",
+        )
+
+        # Test 3: Export Mappings (table format)
+        export_to_xlsx(
+            mappings,
+            temp_file,
+            format_type="table",
+            config=table_config,
+            sheet_name="Mappings",
+        )
+
+        # Test 4: Export Prefixes (table format)
+        export_to_xlsx(
+            prefixes,
+            temp_file,
+            format_type="table",
+            config=table_config,
+            sheet_name="Prefixes",
+        )
+
+        # Test 5: Export multi-language concepts with join configuration
+        join_config = JoinConfiguration(
+            primary_model=MultiLingualConcept,
+            related_models={"translations": ConceptTranslation},
+            join_keys={"translations": "concept_iri"},
+            flattened_fields=[
+                "concept_iri",
+                "language_code",
+                "preferred_label",
+                "alternate_labels",
+                "definition",
+                "scope_note",
+                "parent_iris",
+                "collection_membership",
+                "created_date",
+                "status",
+            ],
+            field_mappings={
+                "concept_iri": ("primary", "concept_iri"),
+                "language_code": ("related", "language_code"),
+                "preferred_label": ("related", "preferred_label"),
+                "alternate_labels": ("related", "alternate_labels"),
+                "definition": ("related", "definition"),
+                "scope_note": ("related", "scope_note"),
+                "parent_iris": ("primary", "parent_iris"),
+                "collection_membership": ("primary", "collection_membership"),
+                "created_date": ("primary", "created_date"),
+                "status": ("primary", "status"),
+            },
+            list_fields={"alternate_labels", "parent_iris", "collection_membership"},
+        )
+
+        concepts_config = XLSXTableConfig(title="Multi-Language Concepts")
+        joined_processor = XLSXProcessorFactory.create_joined_table_processor(
+            join_config, concepts_config
+        )
+        joined_processor.export(multilingual_concepts, temp_file, "Concepts")
+
+        # Now test round-trip imports and validate data integrity
+
+        # Import ConceptScheme
+        imported_concept_scheme = import_from_xlsx(
+            temp_file,
+            ConceptScheme,
+            format_type="keyvalue",
+            config=kv_config,
+            sheet_name="ConceptScheme",
+        )
+
+        # Import Collections
+        imported_collections = import_from_xlsx(
+            temp_file,
+            Collection,
+            format_type="table",
+            config=table_config,
+            sheet_name="Collections",
+        )
+
+        # Import Mappings
+        imported_mappings = import_from_xlsx(
+            temp_file,
+            Mapping,
+            format_type="table",
+            config=table_config,
+            sheet_name="Mappings",
+        )
+
+        # Import Prefixes
+        imported_prefixes = import_from_xlsx(
+            temp_file,
+            Prefix,
+            format_type="table",
+            config=table_config,
+            sheet_name="Prefixes",
+        )
+
+        # Import Concepts (multi-language joined format)
+        # Use the same joined processor for import that was used for export
+        imported_concepts = joined_processor.import_data(
+            temp_file, MultiLingualConcept, "Concepts"
+        )
+
+        # Validate ConceptScheme round-trip
+        assert imported_concept_scheme.title == concept_scheme.title
+        assert imported_concept_scheme.vocabulary_iri == concept_scheme.vocabulary_iri
+        assert imported_concept_scheme.prefix == concept_scheme.prefix
+        assert imported_concept_scheme.description == concept_scheme.description
+        assert imported_concept_scheme.version == concept_scheme.version
+
+        # Validate Collections round-trip
+        assert len(imported_collections) == len(collections)
+        for orig, imp in zip(collections, imported_collections):
+            assert orig.collection_iri == imp.collection_iri
+            assert orig.preferred_label == imp.preferred_label
+            assert orig.definition == imp.definition
+            assert orig.is_ordered == imp.is_ordered
+            assert orig.parent_collection_iris == imp.parent_collection_iris
+
+        # Validate Mappings round-trip with enum preservation
+        assert len(imported_mappings) == len(mappings)
+        for orig, imp in zip(mappings, imported_mappings):
+            assert orig.concept_iri == imp.concept_iri
+            assert orig.mapping_relation == imp.mapping_relation
+            assert orig.mapped_external_concept == imp.mapped_external_concept
+
+        # Validate specific enum deserialization
+        exact_match = next(
+            (
+                m
+                for m in imported_mappings
+                if m.mapping_relation == MappingType.EXACT_MATCH
+            ),
+            None,
+        )
+        assert exact_match is not None
+        assert exact_match.mapping_relation.value == "skos:exactMatch"
+
+        # Validate Prefixes round-trip
+        assert len(imported_prefixes) == len(prefixes)
+        skos_prefix = next((p for p in imported_prefixes if p.prefix == "skos"), None)
+        assert skos_prefix is not None
+        assert skos_prefix.namespace == "http://www.w3.org/2004/02/skos/core#"
+
+        # Validate Concepts round-trip (focus on critical features)
+        # The joined processor properly reconstructs the nested MultiLingualConcept objects
+        assert len(imported_concepts) == len(multilingual_concepts)
+
+        # Check first concept (TiO2) with complex lists and multiple translations
+        tio2_concept = next(
+            (c for c in imported_concepts if "TiO2" in c.concept_iri), None
+        )
+        assert tio2_concept is not None
+        assert tio2_concept.status == "published"
+        assert len(tio2_concept.parent_iris) == 1
+        assert (
+            tio2_concept.parent_iris[0]
+            == "https://example.org/photocatalysis/PhotocatalystMaterials"
+        )
+        assert len(tio2_concept.collection_membership) == 1
+        assert (
+            tio2_concept.collection_membership[0]
+            == "https://example.org/photocatalysis/Materials"
+        )
+
+        # Check translations are properly reconstructed
+        assert len(tio2_concept.translations) == 2  # EN and DE
+
+        # Check English translation
+        tio2_en = next(
+            (t for t in tio2_concept.translations if t.language_code == "en"), None
+        )
+        assert tio2_en is not None
+        assert tio2_en.preferred_label == "Titanium Dioxide"
+        assert "Titania" in tio2_en.alternate_labels
+        assert "Titanium(IV) oxide" in tio2_en.alternate_labels
+        assert (
+            tio2_en.definition
+            == "A widely used photocatalyst material with excellent properties."
+        )
+
+        # Check German translation
+        tio2_de = next(
+            (t for t in tio2_concept.translations if t.language_code == "de"), None
+        )
+        assert tio2_de is not None
+        assert tio2_de.preferred_label == "Titandioxid"
+        assert "Titania" in tio2_de.alternate_labels
+
+        # Check second concept (BandGap) with multiple parent IRIs
+        bandgap_concept = next(
+            (c for c in imported_concepts if "BandGap" in c.concept_iri), None
+        )
+        assert bandgap_concept is not None
+        assert len(bandgap_concept.parent_iris) == 2
+        assert "MaterialProperty" in bandgap_concept.parent_iris[0]
+        assert "ElectronicProperty" in bandgap_concept.parent_iris[1]
+        assert len(bandgap_concept.collection_membership) == 1
+        assert "OpticalProperties" in bandgap_concept.collection_membership[0]
+
+        # Check BandGap translations
+        assert len(bandgap_concept.translations) == 1  # Only EN
+        bandgap_en = bandgap_concept.translations[0]
+        assert bandgap_en.language_code == "en"
+        assert bandgap_en.preferred_label == "Band Gap"
+        assert "Energy gap" in bandgap_en.alternate_labels
+        assert "Electronic band gap" in bandgap_en.alternate_labels
+
+        # Validate SKOS metadata preservation (check that XLSXMetadata annotations work)
+        # This is implicit in successful round-trip but validates the SKOS vocabulary structure
 
 
 if __name__ == "__main__":
