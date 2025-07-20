@@ -11,6 +11,8 @@ from typing import Annotated, Optional, Union
 import pytest
 from pydantic import BaseModel, Field
 
+from voc4cat.fields import ORCIDIdentifier, RORIdentifier
+from voc4cat.xlsx_api import export_to_xlsx, import_from_xlsx
 from voc4cat.xlsx_common import (
     FieldAnalysis,
     XLSXConfig,
@@ -24,6 +26,42 @@ from voc4cat.xlsx_common import (
 )
 
 from .conftest import DemoModelWithMetadata, Priority, SimpleModel, Status
+
+
+# ORCID/ROR Test Model (only used in this file)
+class ResearcherModel(BaseModel):
+    """Test model for ORCID/ROR identifiers."""
+
+    name: str
+    orcid: ORCIDIdentifier
+    home_organization: RORIdentifier | None = None
+
+
+@pytest.fixture
+def sample_researcher():
+    """Sample researcher with ORCID and ROR for testing."""
+    return ResearcherModel(
+        name="Dr. Jane Smith",
+        orcid="https://orcid.org/0000-0002-1825-0097",
+        home_organization="https://ror.org/02y72wh86",
+    )
+
+
+@pytest.fixture
+def sample_researchers():
+    """Sample researcher list for table testing."""
+    return [
+        ResearcherModel(
+            name="Dr. Jane Smith",
+            orcid="https://orcid.org/0000-0002-1825-0097",
+            home_organization="https://ror.org/02y72wh86",
+        ),
+        ResearcherModel(
+            name="Dr. John Doe",
+            orcid="0000-0002-1694-233X",  # Test ID-only format
+            home_organization=None,
+        ),
+    ]
 
 
 # Tests for XLSXMetadata
@@ -621,6 +659,141 @@ class TestAdvancedFieldAnalysis:
         # Union with more than 2 types (non-Optional) should raise error
         with pytest.raises(ValueError, match="Units are only valid for numeric fields"):
             _validate_unit_usage("field", Union[str, int], "kg")
+
+
+# Tests for ORCID and ROR Field Types in XLSX
+class TestORCIDRORXLSXIntegration:
+    """Tests for ORCID and ROR field types in XLSX import/export."""
+
+    def test_orcid_ror_field_analysis(self):
+        """Test field analysis for ORCID and ROR field types."""
+
+        fields = XLSXFieldAnalyzer.analyze_model(ResearcherModel)
+        assert len(fields) == 3
+
+        # Check ORCID field - ORCIDIdentifier resolves to HttpUrl during field analysis
+        orcid_field = next(f for f in fields.values() if f.name == "orcid")
+        from pydantic import HttpUrl
+
+        assert orcid_field.field_type == HttpUrl
+        assert not orcid_field.is_optional
+
+        # Check ROR field - RORIdentifier also resolves to HttpUrl during field analysis
+        ror_field = next(f for f in fields.values() if f.name == "home_organization")
+        assert ror_field.is_optional
+        # The actual field_type for optional fields varies by Python version
+        field_type_str = str(ror_field.field_type)
+        assert (
+            field_type_str.startswith(("typing.Optional", "typing.Union"))
+            or "| None" in field_type_str
+        )
+
+    def test_orcid_ror_xlsx_round_trip_keyvalue(self, temp_file, sample_researcher):
+        """Test ORCID and ROR fields in key-value XLSX format round-trip."""
+
+        # Export to XLSX
+        export_to_xlsx(sample_researcher, temp_file, format_type="keyvalue")
+
+        # Import from XLSX
+        imported = import_from_xlsx(temp_file, ResearcherModel, format_type="keyvalue")
+
+        # Verify data integrity
+        assert imported.name == sample_researcher.name
+        assert str(imported.orcid) == str(sample_researcher.orcid)
+        assert str(imported.home_organization) == str(
+            sample_researcher.home_organization
+        )
+
+        # Verify types are preserved
+        assert isinstance(imported.orcid, type(sample_researcher.orcid))
+        assert isinstance(
+            imported.home_organization, type(sample_researcher.home_organization)
+        )
+
+    def test_orcid_ror_xlsx_round_trip_table(self, temp_file, sample_researchers):
+        """Test ORCID and ROR fields in table XLSX format round-trip."""
+
+        # Export to XLSX
+        export_to_xlsx(sample_researchers, temp_file, format_type="table")
+
+        # Import from XLSX
+        imported = import_from_xlsx(temp_file, ResearcherModel, format_type="table")
+
+        # Verify data integrity
+        assert len(imported) == len(sample_researchers)
+
+        # First researcher
+        assert imported[0].name == sample_researchers[0].name
+        assert str(imported[0].orcid) == str(sample_researchers[0].orcid)
+        assert str(imported[0].home_organization) == str(
+            sample_researchers[0].home_organization
+        )
+
+        # Second researcher
+        assert imported[1].name == sample_researchers[1].name
+        assert str(imported[1].orcid) == str(sample_researchers[1].orcid)
+        assert imported[1].home_organization is None
+
+    def test_orcid_ror_serialization_engine(self):
+        """Test ORCID and ROR field serialization/deserialization."""
+
+        class ResearcherModel(BaseModel):
+            orcid: ORCIDIdentifier
+            ror: RORIdentifier
+
+        engine = XLSXSerializationEngine()
+
+        # Test ORCID serialization
+        orcid_field = FieldAnalysis(name="orcid", field_type=ORCIDIdentifier)
+        from pydantic import HttpUrl
+
+        orcid_value = HttpUrl("https://orcid.org/0000-0002-1825-0097")
+
+        serialized_orcid = engine.serialize_value(orcid_value, orcid_field)
+        assert serialized_orcid == "https://orcid.org/0000-0002-1825-0097"
+
+        # Test ORCID deserialization
+        deserialized_orcid = engine.deserialize_value(
+            "https://orcid.org/0000-0002-1825-0097", orcid_field, ResearcherModel
+        )
+        assert str(deserialized_orcid) == "https://orcid.org/0000-0002-1825-0097"
+
+        # Test ROR serialization
+        ror_field = FieldAnalysis(name="ror", field_type=RORIdentifier)
+        ror_value = HttpUrl("https://ror.org/02y72wh86")
+
+        serialized_ror = engine.serialize_value(ror_value, ror_field)
+        assert serialized_ror == "https://ror.org/02y72wh86"
+
+        # Test ROR deserialization
+        deserialized_ror = engine.deserialize_value(
+            "https://ror.org/02y72wh86", ror_field, ResearcherModel
+        )
+        assert str(deserialized_ror) == "https://ror.org/02y72wh86"
+
+    def test_orcid_ror_validation_errors_on_import(self, temp_file, sample_researcher):
+        """Test that invalid ORCID/ROR values raise validation errors during import."""
+
+        export_to_xlsx(sample_researcher, temp_file, format_type="keyvalue")
+
+        # Now manually corrupt the Excel file by reading and modifying
+        from openpyxl import load_workbook
+
+        workbook = load_workbook(temp_file)
+        worksheet = workbook.active
+
+        # Find the ORCID value and corrupt it
+        for row in worksheet.iter_rows():
+            for cell in row:
+                if cell.value == str(sample_researcher.orcid):
+                    cell.value = "invalid-orcid-format"
+                    break
+
+        workbook.save(temp_file)
+
+        # Try to import corrupted data
+        with pytest.raises(ValueError, match="validation error"):
+            import_from_xlsx(temp_file, ResearcherModel, format_type="keyvalue")
 
 
 if __name__ == "__main__":

@@ -83,8 +83,6 @@ class DemoModelWithMetadata(BaseModel):
 @pytest.fixture(scope="session")
 def datadir():
     """DATADIR as a LocalPath"""
-    from pathlib import Path
-
     return Path(__file__).resolve().parent / "data"
 
 
@@ -175,6 +173,48 @@ def temp_file():
     with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
         yield Path(f.name)
     Path(f.name).unlink(missing_ok=True)
+
+
+# Additional XLSX Testing Fixtures for Optimized Testing
+@pytest.fixture
+def sample_employee():
+    """Single employee for key-value testing."""
+    return Employee(
+        employee_id=1,
+        first_name="John",
+        last_name="Doe",
+        email="john@test.com",
+        hire_date=date(2023, 1, 1),
+        salary=50000.0,
+        status=Status.ACTIVE,
+        department="Engineering",
+        is_active=True,
+    )
+
+
+@pytest.fixture
+def sample_project():
+    """Single project for key-value testing."""
+    return Project(
+        project_id=1,
+        project_name="Test Project",
+        start_date=date(2024, 1, 1),
+        priority=Priority.HIGH,
+        budget=100000.0,
+        description="Test project description",
+        end_date=None,
+        is_completed=False,
+    )
+
+
+@pytest.fixture
+def xlsx_metadata_map():
+    """Common XLSX metadata for Employee model."""
+    return {
+        "salary": XLSXMetadata(unit="USD", description="Annual salary"),
+        "first_name": XLSXMetadata(description="Employee first name"),
+        "hire_date": XLSXMetadata(description="Date of hire"),
+    }
 
 
 @pytest.fixture
