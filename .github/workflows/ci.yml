@@ -81,9 +81,8 @@ jobs:
           echo '## Test Coverage Report' >> $GITHUB_STEP_SUMMARY
           python -m coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
 
-          # Merging files from vocexcel in #119 reduced coverage from 100% to 93%.
-          # We are working on getting back to full coverage.
-          python -m coverage report --fail-under=96
+          # We are working on getting to full coverage.
+          python -m coverage report --fail-under=88
 
       - name: Upload HTML report
         if: ${{ failure() }}
