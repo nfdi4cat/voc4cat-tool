@@ -12,11 +12,7 @@ CS_SIMPLE = "concept-scheme-simple.xlsx"
 CS_SIMPLE_TURTLE = "concept-scheme-simple.ttl"
 CS_CYCLES = "concept-scheme-with-cycles.xlsx"
 CS_CYCLES_TURTLE = "concept-scheme-with-cycles.ttl"
-CS_CYCLES_INDENT = "concept-scheme-with-cycles_indent.xlsx"
-CS_CYCLES_INDENT_IRI = "concept-scheme-with-cycles_indent_iri.xlsx"
-CS_CYCLES_INDENT_DOT = "concept-scheme-with-cycles_indent-by-dot.xlsx"
 CS_CYCLES_MULTI_LANG = "concept-scheme-with-cycles_multilang.xlsx"
-CS_CYCLES_MULTI_LANG_IND = "concept-scheme-with-cycles_multilang_indent_iri.xlsx"
 
 
 def test_run_cli_app_no_args_entrypoint(monkeypatch, capsys):
