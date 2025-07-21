@@ -8,7 +8,6 @@ from pydantic import AnyHttpUrl
 from tests.test_cli import (
     CS_CYCLES,
     CS_CYCLES_INDENT,
-    CS_CYCLES_INDENT_IRI,
     CS_SIMPLE,
     CS_SIMPLE_TURTLE,
 )
@@ -21,12 +20,8 @@ from voc4cat.utils import ConversionError
     ("test_file", "msg"),
     [
         (CS_CYCLES, "xlsx check passed"),
-        (
-            CS_CYCLES_INDENT_IRI,
-            'Same Concept IRI "ex:test/term1" used more than once for language "en"',
-        ),
     ],
-    ids=["no error", "with error"],
+    ids=["no error"],
 )
 def test_check_xlsx(datadir, tmp_path, caplog, test_file, msg):
     dst = tmp_path / test_file
@@ -48,7 +43,8 @@ def test_check_skos_badfile(monkeypatch, datadir, tmp_path, temp_config, caplog)
     """Check failing profile validation."""
     # Load/prepare an a config with required prefix definition
     config = temp_config
-    vocab_name = CS_CYCLES_INDENT.split(".")[0]
+    # was using "concept-scheme-with-cycles_indent.xlsx"
+    vocab_name = "concept-scheme-badfile.xlsx".split(".")[0]
     config.CURIES_CONVERTER_MAP[vocab_name] = config.curies_converter
 
     shutil.copy(datadir / CS_CYCLES_INDENT, tmp_path)

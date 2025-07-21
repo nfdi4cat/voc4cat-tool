@@ -24,7 +24,6 @@ voc4cat was mainly developed to be used in gh-actions but it is also useful as a
 - Use a vocabulary-configuration file to specify for example ID ranges for each contributor.
 - Check xlsx vocabulary files for errors or incorrect use of IDs (voc4cat uses pydantic for this validation)
 - Generate documentation from SKOS/turtle vocabulary file using [pyLODE](https://github.com/RDFLib/pyLODE)
-- Express concept-hierarchies in xlsx by indentation.
 - Consistently update all IRIs in the xlsx vocabulary (e.g. with new namespace or IDs)
 
 voc4cat works on files or folders. If a folder is given all matching files are processed at once.
@@ -62,17 +61,7 @@ With voc4cat you can later replace these later by different namespaces and/or di
 
 The files used below to demonstrate some commands can be found in the example folder of the [repository](https://github.com/nfdi4cat/voc4cat-tool/).
 
-For expressing hierarchies in SKOS ("broader"/"narrower") voc4cat offers two options. One way is to enter a list of children IRIs  (in sheet "Concepts"). However, filling the Children URI columns with lists of IRIs can be tedious. Therefore, voc4cat offers a second easier way to express hierarchies between concepts and that is by indentation. voc4Cat understands Excel-indentation (the default) but can also work with other indentation formats (e.g. 3 spaces per level). To switch between the two representations, use the `transform` sub-command. For example, use
-
-`voc4cat transform --from-indent --outdir outbox example/photocatalysis_example_indented_prelim-IDs.xlsx`
-
-or if you were using 3 spaces per level (This file does not yet exist.)
-
-`voc4cat transform --from-indent --indent "   " --inplace outbox outbox\photocatalysis_example_prelim-IDs.xlsx`
-
-to convert to ChildrenURI-hierarchy. To create such a file convert for example from ChildrenURI-hierarchy to indentation by
-
-`voc4cat transform --to-indent --indent "   " --outdir outbox example/photocatalysis_example_prelim-IDs.xlsx`
+For expressing hierarchies in SKOS ("broader"/"narrower") voc4cat uses children IRIs in the sheet "Concepts". Enter a list of children IRIs in the Children URI columns to define the concept hierarchy.
 
 As mentioned above, you can replace all IDs belonging to a given prefix (here `temp`) by numeric IDs e.g. starting from 1001:
 
