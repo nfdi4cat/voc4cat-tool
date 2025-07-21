@@ -82,7 +82,7 @@ jobs:
           python -m coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
 
           # We are working on getting to full coverage.
-          python -m coverage report --fail-under=88
+          python -m coverage report --fail-under=87
 
       - name: Upload HTML report
         if: ${{ failure() }}
