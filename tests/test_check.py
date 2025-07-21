@@ -3,11 +3,11 @@ import shutil
 from pathlib import Path
 
 import pytest
+from openpyxl import load_workbook
 from pydantic import AnyHttpUrl
 
 from tests.test_cli import (
     CS_CYCLES,
-    CS_CYCLES_INDENT,
     CS_SIMPLE,
     CS_SIMPLE_TURTLE,
 )
@@ -29,7 +29,34 @@ def test_check_xlsx(datadir, tmp_path, caplog, test_file, msg):
     with caplog.at_level(logging.INFO):
         main_cli(["check", "--inplace", str(dst)])
     assert msg in caplog.text
-    # TODO check that erroneous cells get colored.
+
+
+def test_check_xlsx_with_cell_coloring(datadir, tmp_path, caplog):
+    """Test that erroneous cells get colored when duplicates are found."""
+    test_file = "concept-scheme-duplicates.xlsx"
+    dst = tmp_path / test_file
+    shutil.copy(datadir / test_file, dst)
+
+    with caplog.at_level(logging.ERROR):
+        main_cli(["check", "--inplace", str(dst)])
+
+    # Check that the error was logged
+    assert 'Same Concept IRI "ex:test01" used more than once for language "en"' in caplog.text
+
+    # Check that cells were colored orange
+    wb = load_workbook(dst)
+    ws = wb["Concepts"]
+
+    # Expected orange color from check.py: PatternFill("solid", start_color="00FFCC00")
+    expected_color = "00FFCC00"
+
+    # Check that the duplicate concept IRI cells are colored (rows 3 and 4, columns A and C)
+    assert ws["A3"].fill.start_color.rgb == expected_color, "First duplicate IRI cell should be colored orange"
+    assert ws["C3"].fill.start_color.rgb == expected_color, "First duplicate language cell should be colored orange"
+    assert ws["A4"].fill.start_color.rgb == expected_color, "Second duplicate IRI cell should be colored orange"
+    assert ws["C4"].fill.start_color.rgb == expected_color, "Second duplicate language cell should be colored orange"
+
+    wb.close()
 
 
 def test_check_skos_rdf(datadir, tmp_path, caplog):
@@ -43,15 +70,10 @@ def test_check_skos_badfile(monkeypatch, datadir, tmp_path, temp_config, caplog)
     """Check failing profile validation."""
     # Load/prepare an a config with required prefix definition
     config = temp_config
-    # was using "concept-scheme-with-cycles_indent.xlsx"
-    vocab_name = "concept-scheme-badfile.xlsx".split(".")[0]
+    vocab_name = "concept-scheme-badfile"
     config.CURIES_CONVERTER_MAP[vocab_name] = config.curies_converter
-
-    shutil.copy(datadir / CS_CYCLES_INDENT, tmp_path)
-    monkeypatch.chdir(tmp_path)
-    main_cli(["convert", CS_CYCLES_INDENT])
     with caplog.at_level(logging.ERROR), pytest.raises(ConversionError):
-        main_cli(["check", str(Path(CS_CYCLES_INDENT).with_suffix(".ttl"))])
+        main_cli(["check", str(Path(datadir / vocab_name).with_suffix(".ttl"))])
     assert "VIOLATION: Validation Result in MinCountConstraintComponent" in caplog.text
 
 
