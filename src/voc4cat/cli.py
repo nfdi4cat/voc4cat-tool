@@ -217,26 +217,6 @@ def add_transform_subparser(subparsers, options):
         metavar=("PREFIX-MAPPING", "START-ID"),
         type=str,
     )
-    xlsxopt_meg.add_argument(
-        "--from-indent",
-        help=("Convert concept sheet with indentation to children-URI hierarchy."),
-        action="store_true",
-    )
-    xlsxopt_meg.add_argument(
-        "--to-indent",
-        help=("Convert concept sheet from children-URI hierarchy to indentation."),
-        action="store_true",
-    )
-    xlsxopt.add_argument(
-        "--indent",
-        help=(
-            "Separator character(s) to read/write indented hierarchies "
-            'or "xlsx" to use xlsx-indent. (default: "xlsx")'
-        ),
-        default="xlsx",
-        type=str,
-        metavar=("SEPARATOR",),
-    )
     parser.add_argument(
         "--inplace",  # was "--no-warn"
         help=(
