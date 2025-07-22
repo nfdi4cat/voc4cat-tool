@@ -61,7 +61,7 @@ With voc4cat you can later replace these later by different namespaces and/or di
 
 The files used below to demonstrate some commands can be found in the example folder of the [repository](https://github.com/nfdi4cat/voc4cat-tool/).
 
-For expressing hierarchies in SKOS ("broader"/"narrower") voc4cat uses children IRIs in the sheet "Concepts". Enter a list of children IRIs in the Children URI columns to define the concept hierarchy.
+For expressing hierarchies in SKOS ("broader"/"narrower") voc4cat uses parent IRIs in the sheet "Concepts". Enter a list of parent IRIs in the Parent IRIs column to define the concept hierarchy. Each concept can have zero, one or even multiple parents, to represent hierarchical relationships to broader concepts.
 
 As mentioned above, you can replace all IDs belonging to a given prefix (here `temp`) by numeric IDs e.g. starting from 1001:
 

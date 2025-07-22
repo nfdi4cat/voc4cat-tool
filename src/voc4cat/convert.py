@@ -270,7 +270,7 @@ def rdf_to_excel(
             "pl_language_code": [],
             "definition": [],
             "def_language_code": [],
-            "children": [],
+            "parents": [],
             "alt_labels": [],
             "source_vocab": None,
             "provenance": None,
@@ -287,8 +287,8 @@ def rdf_to_excel(
             elif p == SKOS.definition:
                 holder["definition"].append(str(o))
                 holder["def_language_code"].append(o.language)
-            elif p == SKOS.narrower:
-                holder["children"].append(str(o))
+            elif p == SKOS.broader:
+                holder["parents"].append(str(o))
             elif p == SKOS.altLabel:
                 holder["alt_labels"].append(str(o))
             elif p == RDFS.isDefinedBy:
@@ -318,7 +318,7 @@ def rdf_to_excel(
             pl_language_code=lang_code,
             definition=holder["definition"],
             def_language_code=holder["def_language_code"],
-            children=holder["children"],
+            parents=holder["parents"],
             alt_labels=holder["alt_labels"],
             source_vocab=holder["source_vocab"],
             provenance=holder["provenance"],
