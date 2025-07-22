@@ -24,7 +24,7 @@ RDF_FILE_ENDINGS = {
     ".n3": "n3",
 }
 KNOWN_FILE_ENDINGS = [str(x) for x in RDF_FILE_ENDINGS] + EXCEL_FILE_ENDINGS
-KNOWN_TEMPLATE_VERSIONS = ["0.4.3"]
+KNOWN_TEMPLATE_VERSIONS = ["0.4.3, rev. 2025-07a"]
 LATEST_TEMPLATE = KNOWN_TEMPLATE_VERSIONS[-1]
 
 
@@ -43,14 +43,14 @@ def load_template(file_path: Path) -> Workbook:
 
 
 def get_template_version(wb: Workbook) -> str:
-    # try 0.4.3 location
+    # try 0.4.3 location in Concept Scheme sheet
     try:
-        intro_sheet = wb["Introduction"]
+        concept_scheme_sheet = wb["Concept Scheme"]
     except KeyError as exc:  # non-existing worksheet
         msg = "The version of the Excel template cannot be determined."
         logger.exception(msg)
         raise Voc4catError(msg) from exc
-    return intro_sheet["J11"].value
+    return concept_scheme_sheet["B13"].value
 
 
 def is_supported_template(wb):
