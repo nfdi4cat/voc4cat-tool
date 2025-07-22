@@ -265,7 +265,7 @@ def test_concept():
         uri="https://example.com/thing/x",
         pref_label="Thing X",
         definition="Fake def for Thing X",
-        children=["https://example.com/thing/y", "https://example.com/thing/z"],
+        parents=["https://example.com/thing/y", "https://example.com/thing/z"],
         close_match=[
             "https://example.com/thing/other",
             "https://example.com/thing/otherother",
@@ -276,12 +276,12 @@ def test_concept():
         data="""@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
         @prefix dcterms: <http://purl.org/dc/terms/> .
         @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-<https://example.com/thing/y> skos:broader <https://example.com/thing/x> .
-<https://example.com/thing/z> skos:broader <https://example.com/thing/x> .
+<https://example.com/thing/y> skos:narrower <https://example.com/thing/x> .
+<https://example.com/thing/z> skos:narrower <https://example.com/thing/x> .
 <https://example.com/thing/x> a skos:Concept ;
+    skos:broader <https://example.com/thing/y>, <https://example.com/thing/z> ;
     skos:closeMatch <https://example.com/thing/other>, <https://example.com/thing/otherother> ;
     skos:definition "Fake def for Thing X"@en ;
-    skos:narrower <https://example.com/thing/y>, <https://example.com/thing/z> ;
     dcterms:identifier "x"^^xsd:token ;
     skos:prefLabel "Thing X"@en ."""
     )
@@ -290,7 +290,7 @@ def test_concept():
 
 
 @pytest.mark.parametrize(
-    "children_str",
+    "parents_str",
     [
         "broken iri, http://example.com/working-iri",  # non-IRI string
         "ftp://example.com/",
@@ -299,13 +299,13 @@ def test_concept():
         # "http://example.com/working name",  # space in IRI
     ],
 )
-def test_concept_iri(children_str):
-    # this is testing that children list elements are IRIs, not just ordinary strings
-    children = children_str.split(", ")
+def test_concept_iri(parents_str):
+    # this is testing that parents list elements are IRIs, not just ordinary strings
+    parents = parents_str.split(", ")
     with pytest.raises(ValidationError):
         con = Concept(
             uri="https://example.com/thing/x",
             pref_label="Thing X",
             definition="Fake def for Thing X",
-            children=children,
+            parents=parents,
         )

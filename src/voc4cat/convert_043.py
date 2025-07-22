@@ -88,7 +88,7 @@ def extract_concepts_and_collections(
                 "definition": clean(q[f"D{row}"].value),
                 "def_language_code": split_and_tidy(q[f"E{row}"].value),
                 "alt_labels": split_and_tidy(q[f"F{row}"].value),
-                "children": split_multi_iri(q[f"G{row}"].value, prefix_converter),
+                "parents": split_multi_iri(q[f"G{row}"].value, prefix_converter),
                 "provenance": clean(q[f"H{row}"].value),
                 # Note in the new template, source_vocab is synonymous with source vocab uri
                 "source_vocab": clean(q[f"I{row}"].value),

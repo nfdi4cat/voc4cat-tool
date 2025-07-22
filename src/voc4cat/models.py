@@ -320,7 +320,7 @@ class Concept(BaseModel):
     pl_language_code: list[str] = []
     definition: str | list[str]
     def_language_code: list[str] = []
-    children: Annotated[
+    parents: Annotated[
         list[AnyHttpUrl],
         BeforeValidator(split_curie_list),
         BeforeValidator(normalise_curies_to_uris),
@@ -360,7 +360,7 @@ class Concept(BaseModel):
     # which is applied before all others, we split and to convert from CURIE to URI.
 
     # _uri_list_fields = [
-    #     "children",
+    #     "parents",
     #     "related_match",
     #     "close_match",
     #     "exact_match",
@@ -413,9 +413,9 @@ class Concept(BaseModel):
         else:
             for lang_code in self.def_language_code:
                 g.add((c, SKOS.definition, Literal(self.definition, lang=lang_code)))
-        for child in self.children:
-            g.add((c, SKOS.narrower, URIRef(str(child))))
-            g.add((URIRef(str(child)), SKOS.broader, c))
+        for parent in self.parents:
+            g.add((c, SKOS.broader, URIRef(str(parent))))
+            g.add((URIRef(str(parent)), SKOS.narrower, c))
         if self.source_vocab is not None:
             g.add((c, RDFS.isDefinedBy, URIRef(str(self.source_vocab))))
         if self.provenance is not None:
@@ -493,7 +493,7 @@ class Concept(BaseModel):
             first_row_exported = True
             ws[f"F{row_no_concepts}"] = ",\n".join(self.alt_labels)
             ws[f"G{row_no_concepts}"] = make_iri_qualifier_listing(
-                self.children, concepts_by_iri
+                self.parents, concepts_by_iri
             )
             if self.source_vocab:
                 ws[f"I{row_no_concepts}"] = config.curies_converter.compress(
