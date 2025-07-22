@@ -1,5 +1,13 @@
 # Change log
 
+## Unreleased
+
+**BREAKING CHANGE:**
+
+- Hierarchy definition changed from ChildrenIRI to ParentIRI approach.
+  Excel templates now use "Parent IRIs" column instead of "Children URI" column.
+  Each concept specifies its parent concepts rather than its children concepts.
+
 ## Release 0.9.2 (2025-04-24)
 
 Feature:

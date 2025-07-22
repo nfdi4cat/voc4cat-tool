@@ -19,12 +19,6 @@
         <http://example.org/example_collection_member_3> ;
     skos:prefLabel "Example Collection Preferred Label"@en .
 
-<http://example.org/exhaustive_children_example_1> skos:broader <http://example.org/exhaustive_concept_iri> .
-
-<http://example.org/exhaustive_children_example_2> skos:broader <http://example.org/exhaustive_concept_iri> .
-
-<http://example.org/exhaustive_children_example_3> skos:broader <http://example.org/exhaustive_concept_iri> .
-
 <https://linked.data.gov.au/org/cgi-gtwg> a sdo:Organization ;
     sdo:name "https://linked.data.gov.au/org/cgi-gtwg" ;
     sdo:url "https://linked.data.gov.au/org/cgi-gtwg"^^xsd:anyURI .
@@ -66,3 +60,24 @@ cs: a skos:ConceptScheme ;
     skos:relatedMatch <http://example.org/example_related_match> ,
         <http://example.org/example_related_match2>;
     skos:topConceptOf cs: .
+
+<http://example.org/exhaustive_children_example_1> a skos:Concept ;
+    dcterms:identifier "exhaustive_children_example_1"^^xsd:token ;
+    skos:definition "First example child concept"@en ;
+    skos:broader <http://example.org/exhaustive_concept_iri> ;
+    skos:inScheme <http://example.org/exhaustive_concept_scheme_vocabulary_iri> ;
+    skos:prefLabel "Example Child 1"@en .
+
+<http://example.org/exhaustive_children_example_2> a skos:Concept ;
+    dcterms:identifier "exhaustive_children_example_2"^^xsd:token ;
+    skos:definition "Second example child concept"@en ;
+    skos:broader <http://example.org/exhaustive_concept_iri> ;
+    skos:inScheme <http://example.org/exhaustive_concept_scheme_vocabulary_iri> ;
+    skos:prefLabel "Example Child 2"@en .
+
+<http://example.org/exhaustive_children_example_3> a skos:Concept ;
+    dcterms:identifier "exhaustive_children_example_3"^^xsd:token ;
+    skos:definition "Third example child concept"@en ;
+    skos:broader <http://example.org/exhaustive_concept_iri> ;
+    skos:inScheme <http://example.org/exhaustive_concept_scheme_vocabulary_iri> ;
+    skos:prefLabel "Example Child 3"@en .

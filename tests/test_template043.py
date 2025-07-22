@@ -31,7 +31,7 @@ def test_simple():
         Path(__file__).parent / "templ_versions" / "043_simple_valid.xlsx",
         output_type="graph",
     )
-    assert len(g) == 147  # noqa: PLR2004
+    assert len(g) == 115  # noqa: PLR2004
     assert (
         URIRef(
             "http://resource.geosciml.org/classifierscheme/cgi/2016.01/particletype"
