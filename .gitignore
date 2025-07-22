@@ -103,3 +103,6 @@ _version.py
 
 # Playground
 .sandbox
+
+# AI tools
+.claude/

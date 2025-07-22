@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 # Storing project metadata in pyproject.toml https://peps.python.org/pep-0621/
 name = "voc4cat"
-description = "SKOS vocabulary management tool of NFDI4Cat."
+description = "SKOS vocabulary management tool by NFDI4Cat."
 authors = [
   # Authors sorted by number of commits as of 2023-07-04
   {name = "David Linke", email = "david.linke@catalysis.de"},
