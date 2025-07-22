@@ -3,6 +3,8 @@
 For a new vocabulary one would probably start with an xlsx file that does not yet have permanent IRIs.
 The typical workflow involves:
 
+**Warning: The examples files were not yet updated to the new "Parent IRI" notation.**
+
 - `photocatalysis_example_prelim-IDs.xlsx`
   - This file contains temporary IRIs for concepts and uses children-IRI columns to express hierarchy between concepts.
 - `photocatalysis_example.xlsx`

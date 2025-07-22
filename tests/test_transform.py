@@ -8,7 +8,6 @@ from openpyxl import load_workbook
 from rdflib import DCTERMS, OWL, SKOS, XSD, Graph, Literal
 
 from tests.test_cli import (
-    CS_CYCLES,
     CS_CYCLES_MULTI_LANG,
     CS_SIMPLE,
     CS_SIMPLE_TURTLE,
@@ -155,10 +154,10 @@ def test_make_ids_invalid_base_iri(datadir):
 def test_make_ids_variants(monkeypatch, datadir, tmp_path, indir, outdir):
     # fmt: off
     expected_concepts = [
-        ("ex:test/0001001", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/0001002, ex:test/0001003",),
-        ("ex:test/0001002", "term2", "en", "def for term2", "en", "AltLbl for term2", None,),
-        ("ex:test/0001003", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/0001004",),
-        ("ex:test/0001004", "term4", "en", "def for term4", "en", "AltLbl for term4", None, ),
+        ("ex:test/0001001", "term1", "en", "def for term1", "en", "AltLbl for term1", None,),
+        ("ex:test/0001002", "term2", "en", "def for term2", "en", "AltLbl for term2", "ex:test/0001001",),
+        ("ex:test/0001003", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/0001001",),
+        ("ex:test/0001004", "term4", "en", "def for term4", "en", "AltLbl for term4", "ex:test/0001003",),
         ("ex:test/0001005", "term5", "en", "def for term5", "en", "AltLbl for term5", None, ),
         ("ex:test/0001006", "term6", "en", "def for term6", "en", "AltLbl for term6", None,),
     ]
@@ -209,10 +208,10 @@ def test_make_ids_variants(monkeypatch, datadir, tmp_path, indir, outdir):
 def test_make_ids_base_iri(monkeypatch, datadir, tmp_path):
     # fmt: off
     expected_concepts = [
-        ("https://example.com/new_0001001", "term1", "en", "def for term1", "en", "AltLbl for term1", "https://example.com/new_0001002, https://example.com/new_0001003",),
-        ("https://example.com/new_0001002", "term2", "en", "def for term2", "en", "AltLbl for term2", None,),
-        ("https://example.com/new_0001003", "term3", "en", "def for term3", "en", "AltLbl for term3", "https://example.com/new_0001004",),
-        ("https://example.com/new_0001004", "term4", "en", "def for term4", "en", "AltLbl for term4", None, ),
+        ("https://example.com/new_0001001", "term1", "en", "def for term1", "en", "AltLbl for term1", None,),
+        ("https://example.com/new_0001002", "term2", "en", "def for term2", "en", "AltLbl for term2", "https://example.com/new_0001001",),
+        ("https://example.com/new_0001003", "term3", "en", "def for term3", "en", "AltLbl for term3", "https://example.com/new_0001001",),
+        ("https://example.com/new_0001004", "term4", "en", "def for term4", "en", "AltLbl for term4", "https://example.com/new_0001003", ),
         ("https://example.com/new_0001005", "term5", "en", "def for term5", "en", "AltLbl for term5", None, ),
         ("https://example.com/new_0001006", "term6", "en", "def for term6", "en", "AltLbl for term6", None,),
     ]
@@ -265,10 +264,10 @@ def test_make_ids_base_iri(monkeypatch, datadir, tmp_path):
 def test_make_ids_multilang(tmp_path, datadir):
     # fmt: off
     expected_concepts = [
-        ("ex:test/0001001", "term1", "en", "def for term1", "en", "AltLbl for term1", "ex:test/0001002, ex:test/0001003",),
-        ("ex:test/0001002", "term2", "en", "def for term2", "en", "AltLbl for term2", "ex:test/0001004",),
-        ("ex:test/0001003", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/0001004",),
-        ("ex:test/0001004", "term4", "en", "def for term4", "en", "AltLbl for term4", None, ),
+        ("ex:test/0001001", "term1", "en", "def for term1", "en", "AltLbl for term1", None,),
+        ("ex:test/0001002", "term2", "en", "def for term2", "en", "AltLbl for term2", "ex:test/0001001",),
+        ("ex:test/0001003", "term3", "en", "def for term3", "en", "AltLbl for term3", "ex:test/0001001",),
+        ("ex:test/0001004", "term4", "en", "def for term4", "en", "AltLbl for term4", "ex:test/0001003",),
         ("ex:test/0001004", "Begr4", "de", "Def für Begr4", "de", "AltLbl für Begr4", None, ),
         ("ex:test/0001001", "Begr1", "de", "Def für Begr1", "de", "AltLbl für Begr1", None, ),
     ]
@@ -291,8 +290,6 @@ def test_make_ids_multilang(tmp_path, datadir):
         ws.iter_rows(min_row=3, max_col=7, values_only=True), expected_concepts
     ):
         assert row == expected_row
-
-
 
 
 # ===== Tests for options --split / --join =====
