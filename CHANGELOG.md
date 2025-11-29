@@ -1,12 +1,19 @@
 # Change log
 
-## Unreleased
+## Release 0.10.0 (2025-11-29)
 
-**BREAKING CHANGE:**
+> [!IMPORTANT]
+> Due to the change of hierarchy notation, it is not possible to use XLSX templates made for earlier versions.
 
-- Hierarchy definition changed from ChildrenIRI to ParentIRI approach.
-  Excel templates now use "Parent IRIs" column instead of "Children URI" column.
+Features:
+
+- **BREAKING** Hierarchy definition changed from ChildrenIRI to ParentIRI approach.
   Each concept specifies its parent concepts rather than its children concepts.
+- **BREAKING** Removed functionality to express concept-hierarchies by indentation in Excel cells.
+
+Changes:
+
+- **BREAKING** Read version number from Concept Scheme Sheet (cell B13) instead of Introduction sheet
 
 ## Release 0.9.2 (2025-04-24)
 
