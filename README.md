@@ -90,7 +90,7 @@ It also performs other consistency checks. The tool can either check a single vo
 
 or compare the additions made against existing concepts:
 
-`voc-assistant compare voc4cat.ttl voc4cat_new.ttl
+`voc-assistant compare voc4cat.ttl voc4cat_new.ttl`
 
 It creates reports in markdown format.
 
