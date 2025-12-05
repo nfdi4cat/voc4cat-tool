@@ -12,6 +12,7 @@ from voc4cat.check import check
 from voc4cat.checks import Voc4catError
 from voc4cat.convert import convert
 from voc4cat.docs import docs
+from voc4cat.template_v1 import template_cmd
 from voc4cat.transform import transform
 from voc4cat.utils import ConversionError
 
@@ -385,6 +386,31 @@ def add_docs_subparser(subparsers, options):
     parser.set_defaults(func=docs)
 
 
+def add_template_subparser(subparsers, options):
+    """Generate blank vocabulary templates."""
+    parser = subparsers.add_parser(
+        "template",
+        description="Generate blank vocabulary templates.",
+        help="Generate blank vocabulary templates.",
+        **options,
+    )
+    parser.add_argument(
+        "--version",
+        help='Template version to generate (default: "1.0")',
+        choices=["1.0"],
+        default="1.0",
+        dest="template_version",  # avoid conflict with root --version
+    )
+    # Note: VOCAB is not required for template generation
+    parser.add_argument(
+        "VOCAB",
+        nargs="?",
+        type=Path,
+        help="Not used for template generation (placeholder for common options).",
+    )
+    parser.set_defaults(func=template_cmd)
+
+
 def main_cli(raw_args=None):
     """Setup CLI app and run commands based on args."""
     # Create root parser for cli app
@@ -409,6 +435,7 @@ def main_cli(raw_args=None):
     add_convert_subparser(subparsers, common_options)
     add_check_subparser(subparsers, common_options)
     add_docs_subparser(subparsers, common_options)
+    add_template_subparser(subparsers, common_options)
 
     if not raw_args:
         parser.print_help()
