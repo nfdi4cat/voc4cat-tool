@@ -232,6 +232,7 @@ select = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = [
   "S101",   # assert in tests is OK
+  "PLR2004", # Allow numbers instead of named constants in tests
 ]
 
 [tool.ruff.lint.mccabe]
