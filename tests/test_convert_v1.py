@@ -13,6 +13,7 @@ from rdflib import SKOS, Graph, Literal, Namespace
 
 from voc4cat.convert_v1 import (
     build_concept_to_collections_map,
+    excel_to_rdf_v1,
     extract_collections_from_rdf,
     extract_concept_scheme_from_rdf,
     extract_concepts_from_rdf,
@@ -54,7 +55,8 @@ class TestExtractConceptScheme:
         graph = Graph().parse(PHOTOCATALYSIS_TTL, format="turtle")
         data = extract_concept_scheme_from_rdf(graph)
 
-        assert data["vocabulary_iri"] == "https://example.org"
+        # URI should have trailing slash (VocPub 5.2 convention)
+        assert data["vocabulary_iri"] == "https://example.org/"
         assert (
             "photocatalysis" in data["title"].lower()
             or "example" in data["title"].lower()
@@ -606,3 +608,56 @@ class TestCollectionMembership:
 
         # In concept-scheme-simple.ttl, test01-test04 are members of test10 collection
         assert has_membership, "Some concepts should have collection membership"
+
+
+class TestRoundTrip:
+    """Tests for lossless round-trip conversion RDF -> XLSX -> RDF."""
+
+    def test_roundtrip_photocatalysis(self, tmp_path, temp_config):
+        """Test that photocatalysis RDF -> XLSX -> RDF produces isomorphic graphs."""
+        if not PHOTOCATALYSIS_TTL.exists():
+            pytest.skip("Photocatalysis example not found")
+
+        # Load original
+        original = Graph().parse(PHOTOCATALYSIS_TTL, format="turtle")
+
+        # RDF -> XLSX
+        xlsx_path = tmp_path / "photocatalysis.xlsx"
+        rdf_to_excel_v1(PHOTOCATALYSIS_TTL, xlsx_path)
+
+        # XLSX -> RDF
+        roundtrip = excel_to_rdf_v1(xlsx_path, output_type="graph")
+
+        # Check triple counts
+        assert len(original) == len(roundtrip), (
+            f"Triple count mismatch: original={len(original)}, roundtrip={len(roundtrip)}"
+        )
+
+        # Check isomorphism
+        assert original.isomorphic(roundtrip), (
+            "Graphs are not isomorphic after round-trip conversion"
+        )
+
+    def test_roundtrip_preserves_all_predicates(self, tmp_path, temp_config):
+        """Test that all predicates are preserved during round-trip."""
+        if not PHOTOCATALYSIS_TTL.exists():
+            pytest.skip("Photocatalysis example not found")
+
+        # Load original
+        original = Graph().parse(PHOTOCATALYSIS_TTL, format="turtle")
+
+        # RDF -> XLSX -> RDF
+        xlsx_path = tmp_path / "photocatalysis.xlsx"
+        rdf_to_excel_v1(PHOTOCATALYSIS_TTL, xlsx_path)
+        roundtrip = excel_to_rdf_v1(xlsx_path, output_type="graph")
+
+        # Get all predicates
+        original_predicates = set(p for _, p, _ in original)
+        roundtrip_predicates = set(p for _, p, _ in roundtrip)
+
+        # Same predicates
+        assert original_predicates == roundtrip_predicates, (
+            f"Predicate mismatch.\n"
+            f"Only in original: {original_predicates - roundtrip_predicates}\n"
+            f"Only in roundtrip: {roundtrip_predicates - original_predicates}"
+        )
