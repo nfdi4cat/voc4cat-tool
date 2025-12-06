@@ -7,8 +7,9 @@ Ideas are marked as done here if they have been implemented in dev-1.0.0 branch 
 ## Implementation plan
 
 - Step 1: Create python code that generates the structure of `src/voc4cat/templates/vocab/blank_1.0_min.xlsx` (but not the enum sheet)
-- Step 2: Adapt converter to output data of current rdf-schema into the new template reusing `src/voc4cat/models.py`
-- Step 3: Add support for new columns in new template to read their data and output as RDF. The two way conversion RDF <-> XLXS must be lossless.
+- Step 2a: Adapt converter to output v043 rdf data of current rdf-schema into the new template reusing `src/voc4cat/models.py`
+- Step 2b: Adapt converter for roundtripping with v043 rdf and xlsx v1.0
+- Step 3: Add support for new columns in template v1.0 to read their data and output as RDF. The two way conversion RDF <-> XLXS must be lossless.
 - Step 4: Make concept scheme table read only. Instead integrate the metadata into IDranges file and read from it.
 - (minor & optional): Step 5: Output IDrange contributor info to template(?)
 
