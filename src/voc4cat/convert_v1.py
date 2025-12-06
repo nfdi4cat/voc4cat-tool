@@ -1,15 +1,34 @@
-"""Converter for RDF vocabularies to v1.0 Excel template format.
+"""Converter for RDF vocabularies to/from v1.0 Excel template format.
 
-This module provides functions to convert existing RDF vocabularies into
-the v1.0 Excel template structure. It extracts data from RDF graphs and
-outputs to the v1.0 template using the xlsx_api infrastructure.
+This module provides functions to convert between RDF vocabularies and
+the v1.0 Excel template structure, supporting bidirectional conversion:
+- RDF -> XLSX: Extract data from RDF graphs into v1.0 template
+- XLSX -> RDF: Read v1.0 template and generate RDF graph
+
+The two-way conversion is designed to be lossless (isomorphic graphs).
 """
 
 import logging
 from collections import defaultdict
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal as TypingLiteral
 
-from rdflib import DCAT, DCTERMS, OWL, PROV, RDF, RDFS, SKOS, Graph, Literal
+import curies
+from rdflib import (
+    DCAT,
+    DCTERMS,
+    OWL,
+    PROV,
+    RDF,
+    RDFS,
+    SKOS,
+    XSD,
+    Graph,
+    Literal,
+    Namespace,
+    URIRef,
+)
 
 from voc4cat import config
 from voc4cat.models_v1 import (
@@ -20,10 +39,13 @@ from voc4cat.models_v1 import (
     MappingV1,
     PrefixV1,
 )
-from voc4cat.utils import RDF_FILE_ENDINGS
-from voc4cat.xlsx_api import export_to_xlsx
+from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS
+from voc4cat.xlsx_api import export_to_xlsx, import_from_xlsx
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
 from voc4cat.xlsx_table import XLSXTableConfig
+
+# schema.org namespace (not in rdflib by default)
+SDO = Namespace("https://schema.org/")
 
 logger = logging.getLogger(__name__)
 
@@ -778,3 +800,780 @@ def rdf_to_excel_v1(
 
     logger.info("Conversion complete: %s", output_file_path)
     return output_file_path
+
+
+# =============================================================================
+# XLSX -> RDF Conversion (Step 3)
+# =============================================================================
+
+# --- Aggregated Data Structures ---
+
+# TODO Do we need these dataclasses, or can we just use pydantic models?
+
+
+@dataclass
+class AggregatedConcept:
+    """Aggregated concept data from multiple XLSX rows (one per language)."""
+
+    iri: str
+    pref_labels: dict[str, str] = field(default_factory=dict)  # {lang: label}
+    definitions: dict[str, str] = field(default_factory=dict)  # {lang: definition}
+    alt_labels: dict[str, list[str]] = field(default_factory=dict)  # {lang: [labels]}
+    parent_iris: list[str] = field(default_factory=list)
+    member_of_collections: list[str] = field(default_factory=list)
+    source_vocab_iri: str = ""
+    change_note: str = ""
+
+
+@dataclass
+class AggregatedCollection:
+    """Aggregated collection data from multiple XLSX rows (one per language)."""
+
+    iri: str
+    pref_labels: dict[str, str] = field(default_factory=dict)  # {lang: label}
+    definitions: dict[str, str] = field(default_factory=dict)  # {lang: definition}
+    parent_collection_iris: list[str] = field(default_factory=list)
+    change_note: str = ""
+
+
+# --- XLSX Reading Functions ---
+
+
+def read_concept_scheme_v1(filepath: Path) -> ConceptSchemeV1:
+    """Read ConceptScheme data from v1.0 XLSX file.
+
+    Args:
+        filepath: Path to the XLSX file.
+
+    Returns:
+        ConceptSchemeV1 model instance.
+    """
+    return import_from_xlsx(
+        filepath,
+        ConceptSchemeV1,
+        format_type="keyvalue",
+        sheet_name="Concept Scheme",
+    )
+
+
+def read_concepts_v1(filepath: Path) -> list[ConceptV1]:
+    """Read Concepts from v1.0 XLSX file.
+
+    Args:
+        filepath: Path to the XLSX file.
+
+    Returns:
+        List of ConceptV1 model instances (one per row).
+    """
+    # Must match the config used during export
+    config = XLSXTableConfig(title="Concepts")
+    return import_from_xlsx(
+        filepath,
+        ConceptV1,
+        format_type="table",
+        config=config,
+        sheet_name="Concepts",
+    )
+
+
+def read_collections_v1(filepath: Path) -> list[CollectionV1]:
+    """Read Collections from v1.0 XLSX file.
+
+    Args:
+        filepath: Path to the XLSX file.
+
+    Returns:
+        List of CollectionV1 model instances (one per row).
+    """
+    # Must match the config used during export
+    config = XLSXTableConfig(title="Collections")
+    return import_from_xlsx(
+        filepath,
+        CollectionV1,
+        format_type="table",
+        config=config,
+        sheet_name="Collections",
+    )
+
+
+def read_mappings_v1(filepath: Path) -> list[MappingV1]:
+    """Read Mappings from v1.0 XLSX file.
+
+    Args:
+        filepath: Path to the XLSX file.
+
+    Returns:
+        List of MappingV1 model instances (one per row).
+    """
+    # Must match the config used during export
+    config = XLSXTableConfig(title="Mappings")
+    return import_from_xlsx(
+        filepath,
+        MappingV1,
+        format_type="table",
+        config=config,
+        sheet_name="Mappings",
+    )
+
+
+def read_prefixes_v1(filepath: Path) -> list[PrefixV1]:
+    """Read Prefixes from v1.0 XLSX file.
+
+    Args:
+        filepath: Path to the XLSX file.
+
+    Returns:
+        List of PrefixV1 model instances.
+    """
+    # Must match the config used during export
+    config = XLSXTableConfig(title="Prefix mappings")
+    return import_from_xlsx(
+        filepath,
+        PrefixV1,
+        format_type="table",
+        config=config,
+        sheet_name="Prefixes",
+    )
+
+
+# --- CURIE Handling ---
+
+
+def build_curies_converter_from_prefixes(prefixes: list[PrefixV1]) -> curies.Converter:
+    """Build a curies converter from prefix list.
+
+    Args:
+        prefixes: List of PrefixV1 with prefix and namespace.
+
+    Returns:
+        Configured curies.Converter.
+    """
+    records = [
+        curies.Record(prefix=p.prefix, uri_prefix=p.namespace)
+        for p in prefixes
+        if p.prefix and p.namespace
+    ]
+    return curies.Converter(records)
+
+
+def expand_curie(curie_or_iri: str, converter: curies.Converter) -> str:
+    """Expand a CURIE to full IRI, or return as-is if already an IRI.
+
+    Args:
+        curie_or_iri: CURIE (e.g., "ex:0001") or full IRI.
+        converter: Curies converter to use.
+
+    Returns:
+        Full IRI string.
+    """
+    if not curie_or_iri:
+        return ""
+    # Try to expand; if it fails or returns None, assume it's already an IRI
+    expanded = converter.expand(curie_or_iri)
+    return expanded if expanded else curie_or_iri
+
+
+def expand_iri_list(iri_string: str, converter: curies.Converter) -> list[str]:
+    """Expand a space-separated string of CURIEs/IRIs to list of full IRIs.
+
+    Args:
+        iri_string: Space-separated CURIEs or IRIs.
+        converter: Curies converter to use.
+
+    Returns:
+        List of full IRI strings.
+    """
+    if not iri_string or not iri_string.strip():
+        return []
+    return [expand_curie(part.strip(), converter) for part in iri_string.split()]
+
+
+# --- Aggregation Functions ---
+
+
+def aggregate_concepts(
+    concept_rows: list[ConceptV1], converter: curies.Converter
+) -> dict[str, AggregatedConcept]:
+    """Aggregate multi-row concept data into single AggregatedConcept per IRI.
+
+    The v1.0 template has one row per (concept_iri, language). This function
+    merges them back:
+    - First row for each IRI contains structural data (parent_iris, etc.)
+    - All rows contribute language-specific data (pref_label, definition, alt_labels)
+
+    Args:
+        concept_rows: List of ConceptV1 from XLSX.
+        converter: Curies converter for IRI expansion.
+
+    Returns:
+        Dict mapping full IRI to AggregatedConcept.
+    """
+    concepts: dict[str, AggregatedConcept] = {}
+
+    for row in concept_rows:
+        # Skip empty rows
+        if not row.concept_iri:
+            continue
+
+        iri = expand_curie(row.concept_iri, converter)
+
+        if iri not in concepts:
+            # First row for this concept - create new entry
+            concepts[iri] = AggregatedConcept(
+                iri=iri,
+                parent_iris=expand_iri_list(row.parent_iris, converter),
+                member_of_collections=expand_iri_list(
+                    row.member_of_collections, converter
+                ),
+                source_vocab_iri=expand_curie(row.source_vocab_iri, converter)
+                if row.source_vocab_iri
+                else "",
+                change_note=row.change_note or "",
+            )
+
+        concept = concepts[iri]
+
+        # Add language-specific data
+        lang = row.language_code or "en"
+        if row.preferred_label:
+            concept.pref_labels[lang] = row.preferred_label
+        if row.definition:
+            concept.definitions[lang] = row.definition
+        if row.alternate_labels:
+            # Split by " | " separator
+            labels = [lbl.strip() for lbl in row.alternate_labels.split(" | ")]
+            concept.alt_labels[lang] = labels
+
+    return concepts
+
+
+def aggregate_collections(
+    collection_rows: list[CollectionV1], converter: curies.Converter
+) -> dict[str, AggregatedCollection]:
+    """Aggregate multi-row collection data into single AggregatedCollection per IRI.
+
+    Args:
+        collection_rows: List of CollectionV1 from XLSX.
+        converter: Curies converter for IRI expansion.
+
+    Returns:
+        Dict mapping full IRI to AggregatedCollection.
+    """
+    collections: dict[str, AggregatedCollection] = {}
+
+    for row in collection_rows:
+        # Skip empty rows
+        if not row.collection_iri:
+            continue
+
+        iri = expand_curie(row.collection_iri, converter)
+
+        if iri not in collections:
+            # First row for this collection
+            collections[iri] = AggregatedCollection(
+                iri=iri,
+                parent_collection_iris=expand_iri_list(
+                    row.parent_collection_iris, converter
+                ),
+                change_note=row.change_note or "",
+            )
+
+        collection = collections[iri]
+
+        # Add language-specific data
+        lang = row.language_code or "en"
+        if row.preferred_label:
+            collection.pref_labels[lang] = row.preferred_label
+        if row.definition:
+            collection.definitions[lang] = row.definition
+
+    return collections
+
+
+# --- Inverse Relationship Builders ---
+
+
+def build_collection_members_from_concepts(
+    concepts: dict[str, AggregatedConcept],
+) -> dict[str, list[str]]:
+    """Build collection -> members map from concept membership data.
+
+    Inverts the concept.member_of_collections relationship.
+
+    Args:
+        concepts: Dict of aggregated concepts.
+
+    Returns:
+        Dict: {collection_iri: [member_concept_iris]}
+    """
+    collection_members: dict[str, list[str]] = defaultdict(list)
+
+    for concept_iri, concept in concepts.items():
+        for collection_iri in concept.member_of_collections:
+            collection_members[collection_iri].append(concept_iri)
+
+    return dict(collection_members)
+
+
+def build_narrower_map(
+    concepts: dict[str, AggregatedConcept],
+) -> dict[str, list[str]]:
+    """Build parent -> children (narrower) map from broader relationships.
+
+    Inverts the concept.parent_iris (broader) relationship.
+
+    Args:
+        concepts: Dict of aggregated concepts.
+
+    Returns:
+        Dict: {parent_iri: [child_iris]}
+    """
+    narrower: dict[str, list[str]] = defaultdict(list)
+
+    for concept_iri, concept in concepts.items():
+        for parent_iri in concept.parent_iris:
+            narrower[parent_iri].append(concept_iri)
+
+    return dict(narrower)
+
+
+# --- Identifier Extraction ---
+
+
+def extract_identifier(iri: str) -> str:
+    """Extract dcterms:identifier value from IRI.
+
+    For 'https://example.org/0000004' -> '0000004'
+    For 'https://example.org/' -> 'example.org'
+
+    Args:
+        iri: Full IRI string.
+
+    Returns:
+        Identifier string suitable for dcterms:identifier.
+    """
+    if "#" in iri:
+        return iri.split("#")[-1]
+
+    # Remove trailing slash for processing
+    cleaned = iri.rstrip("/")
+    last_segment = cleaned.split("/")[-1]
+
+    # If the last segment is empty (e.g., just "https://example.org/"),
+    # use the domain
+    if not last_segment:
+        # Extract domain from URL
+        parts = cleaned.split("//")
+        if len(parts) > 1:
+            return parts[1].split("/")[0]
+        return cleaned
+
+    return last_segment
+
+
+# --- RDF Graph Building Functions ---
+
+
+def build_organization_graph(org_iri: str) -> Graph:
+    """Build RDF graph for an Organization.
+
+    Args:
+        org_iri: IRI of the organization (creator or publisher).
+
+    Returns:
+        Graph with Organization triples.
+    """
+    g = Graph()
+    org = URIRef(org_iri)
+
+    g.add((org, RDF.type, SDO.Organization))
+
+    # Use the IRI itself as name (could be improved with lookup)
+    g.add((org, SDO.name, Literal(org_iri, lang="en")))
+    g.add((org, SDO.url, Literal(org_iri, datatype=XSD.anyURI)))
+
+    return g
+
+
+def build_concept_scheme_graph(
+    cs: ConceptSchemeV1,
+    concepts: dict[str, AggregatedConcept],
+    collections: dict[str, AggregatedCollection],
+) -> Graph:
+    """Build RDF graph for ConceptScheme.
+
+    Args:
+        cs: ConceptSchemeV1 data.
+        concepts: Aggregated concepts (to compute hasTopConcept).
+        collections: Aggregated collections (to compute hasPart).
+
+    Returns:
+        Graph with ConceptScheme triples.
+    """
+    g = Graph()
+    scheme_iri = URIRef(cs.vocabulary_iri)
+
+    # Type
+    g.add((scheme_iri, RDF.type, SKOS.ConceptScheme))
+
+    # Identifier
+    identifier = extract_identifier(cs.vocabulary_iri)
+    g.add((scheme_iri, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
+
+    # Basic metadata
+    if cs.title:
+        g.add((scheme_iri, SKOS.prefLabel, Literal(cs.title, lang="en")))
+    if cs.description:
+        g.add((scheme_iri, SKOS.definition, Literal(cs.description, lang="en")))
+
+    # Dates
+    if cs.created_date:
+        g.add(
+            (
+                scheme_iri,
+                DCTERMS.created,
+                Literal(cs.created_date, datatype=XSD.date),
+            )
+        )
+    if cs.modified_date:
+        g.add(
+            (
+                scheme_iri,
+                DCTERMS.modified,
+                Literal(cs.modified_date, datatype=XSD.date),
+            )
+        )
+
+    # Creator and Publisher (with Organization triples)
+    if cs.creator:
+        creator_ref = URIRef(cs.creator)
+        g.add((scheme_iri, DCTERMS.creator, creator_ref))
+        g += build_organization_graph(cs.creator)
+
+    if cs.publisher:
+        publisher_ref = URIRef(cs.publisher)
+        g.add((scheme_iri, DCTERMS.publisher, publisher_ref))
+        # Only add org graph if different from creator
+        if cs.publisher != cs.creator:
+            g += build_organization_graph(cs.publisher)
+
+    # Version
+    if cs.version:
+        g.add((scheme_iri, OWL.versionInfo, Literal(cs.version)))
+
+    # Change note / history note
+    if cs.change_note:
+        g.add((scheme_iri, SKOS.historyNote, Literal(cs.change_note, lang="en")))
+
+    # Custodian
+    if cs.custodian:
+        g.add((scheme_iri, DCAT.contactPoint, Literal(cs.custodian)))
+
+    # Catalogue PID
+    if cs.catalogue_pid:
+        if cs.catalogue_pid.startswith("http"):
+            g.add((scheme_iri, RDFS.seeAlso, URIRef(cs.catalogue_pid)))
+        else:
+            g.add((scheme_iri, RDFS.seeAlso, Literal(cs.catalogue_pid)))
+
+    # hasTopConcept - concepts with no broader
+    for concept_iri, concept in concepts.items():
+        if not concept.parent_iris:
+            g.add((scheme_iri, SKOS.hasTopConcept, URIRef(concept_iri)))
+
+    # hasPart - links to collections
+    for collection_iri in collections:
+        g.add((scheme_iri, DCTERMS.hasPart, URIRef(collection_iri)))
+
+    return g
+
+
+def build_concept_graph(
+    concept: AggregatedConcept,
+    scheme_iri: URIRef,
+    narrower_map: dict[str, list[str]],
+) -> Graph:
+    """Build RDF graph for a single Concept.
+
+    Args:
+        concept: Aggregated concept data.
+        scheme_iri: URIRef of the ConceptScheme.
+        narrower_map: Map of parent -> children for narrower relationships.
+
+    Returns:
+        Graph with Concept triples.
+    """
+    g = Graph()
+    c = URIRef(concept.iri)
+
+    # Type
+    g.add((c, RDF.type, SKOS.Concept))
+
+    # Identifier
+    identifier = extract_identifier(concept.iri)
+    g.add((c, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
+
+    # Labels per language
+    for lang, label in concept.pref_labels.items():
+        g.add((c, SKOS.prefLabel, Literal(label, lang=lang)))
+
+    for lang, definition in concept.definitions.items():
+        g.add((c, SKOS.definition, Literal(definition, lang=lang)))
+
+    for lang, labels in concept.alt_labels.items():
+        for label in labels:
+            g.add((c, SKOS.altLabel, Literal(label, lang=lang)))
+
+    # Broader (parent)
+    for parent_iri in concept.parent_iris:
+        g.add((c, SKOS.broader, URIRef(parent_iri)))
+
+    # Narrower (computed inverse)
+    for child_iri in narrower_map.get(concept.iri, []):
+        g.add((c, SKOS.narrower, URIRef(child_iri)))
+
+    # In scheme
+    g.add((c, SKOS.inScheme, scheme_iri))
+
+    # rdfs:isDefinedBy - only add if source_vocab_iri is specified
+    # It indicates the vocabulary that defines the concept. If not provided,
+    # the concept is understood to be defined by the current scheme.
+    if concept.source_vocab_iri:
+        g.add((c, RDFS.isDefinedBy, URIRef(concept.source_vocab_iri)))
+
+    # Top concept of (if no broader)
+    if not concept.parent_iris:
+        g.add((c, SKOS.topConceptOf, scheme_iri))
+
+    # Change note / history note
+    if concept.change_note:
+        g.add((c, SKOS.historyNote, Literal(concept.change_note, lang="en")))
+
+    return g
+
+
+def build_collection_graph(
+    collection: AggregatedCollection,
+    scheme_iri: URIRef,
+    collection_members: dict[str, list[str]],
+) -> Graph:
+    """Build RDF graph for a single Collection.
+
+    Args:
+        collection: Aggregated collection data.
+        scheme_iri: URIRef of the ConceptScheme.
+        collection_members: Map of collection -> member IRIs.
+
+    Returns:
+        Graph with Collection triples.
+    """
+    g = Graph()
+    c = URIRef(collection.iri)
+
+    # Type
+    g.add((c, RDF.type, SKOS.Collection))
+
+    # Identifier
+    identifier = extract_identifier(collection.iri)
+    g.add((c, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
+
+    # Labels per language
+    for lang, label in collection.pref_labels.items():
+        g.add((c, SKOS.prefLabel, Literal(label, lang=lang)))
+
+    for lang, definition in collection.definitions.items():
+        g.add((c, SKOS.definition, Literal(definition, lang=lang)))
+
+    # Members (from inverted concept membership)
+    for member_iri in collection_members.get(collection.iri, []):
+        g.add((c, SKOS.member, URIRef(member_iri)))
+
+    # In scheme
+    g.add((c, SKOS.inScheme, scheme_iri))
+
+    # rdfs:isDefinedBy - points to ConceptScheme (convention)
+    g.add((c, RDFS.isDefinedBy, scheme_iri))
+
+    # isPartOf
+    g.add((c, DCTERMS.isPartOf, scheme_iri))
+
+    # Change note / history note
+    if collection.change_note:
+        g.add((c, SKOS.historyNote, Literal(collection.change_note, lang="en")))
+
+    return g
+
+
+def build_mappings_graph(
+    mappings: list[MappingV1], converter: curies.Converter
+) -> Graph:
+    """Build RDF graph for all mappings.
+
+    Args:
+        mappings: List of MappingV1 from XLSX.
+        converter: Curies converter for IRI expansion.
+
+    Returns:
+        Graph with mapping triples.
+    """
+    g = Graph()
+
+    for mapping in mappings:
+        if not mapping.concept_iri:
+            continue
+
+        concept_iri = URIRef(expand_curie(mapping.concept_iri, converter))
+
+        # Related matches
+        for match_iri in expand_iri_list(mapping.related_matches, converter):
+            g.add((concept_iri, SKOS.relatedMatch, URIRef(match_iri)))
+
+        # Close matches
+        for match_iri in expand_iri_list(mapping.close_matches, converter):
+            g.add((concept_iri, SKOS.closeMatch, URIRef(match_iri)))
+
+        # Exact matches
+        for match_iri in expand_iri_list(mapping.exact_matches, converter):
+            g.add((concept_iri, SKOS.exactMatch, URIRef(match_iri)))
+
+        # Narrower matches
+        for match_iri in expand_iri_list(mapping.narrower_matches, converter):
+            g.add((concept_iri, SKOS.narrowMatch, URIRef(match_iri)))
+
+        # Broader matches
+        for match_iri in expand_iri_list(mapping.broader_matches, converter):
+            g.add((concept_iri, SKOS.broadMatch, URIRef(match_iri)))
+
+    return g
+
+
+# --- Main XLSX -> RDF Converter ---
+
+
+def excel_to_rdf_v1(
+    file_to_convert_path: Path,
+    output_file_path: Path | None = None,
+    output_format: TypingLiteral["turtle", "xml", "json-ld"] = "turtle",
+    output_type: TypingLiteral["file", "graph"] = "file",
+) -> Path | Graph:
+    """Convert a v1.0 Excel template to RDF vocabulary.
+
+    Args:
+        file_to_convert_path: Path to the XLSX file.
+        output_file_path: Optional path for output RDF file.
+                         Defaults to same name with .ttl extension.
+        output_format: RDF serialization format ("turtle", "xml", "json-ld").
+        output_type: "file" to serialize to file, "graph" to return Graph object.
+
+    Returns:
+        Path to the generated RDF file, or Graph object if output_type="graph".
+
+    Raises:
+        ValueError: If the input file is not a supported Excel format.
+    """
+    if file_to_convert_path.suffix.lower() not in EXCEL_FILE_ENDINGS:
+        msg = (
+            "Files for conversion must end with one of the Excel file formats: "
+            f"'{', '.join(EXCEL_FILE_ENDINGS)}'"
+        )
+        raise ValueError(msg)
+
+    logger.info("Reading XLSX file: %s", file_to_convert_path)
+
+    # Read all sheets
+    logger.debug("Reading Concept Scheme...")
+    concept_scheme = read_concept_scheme_v1(file_to_convert_path)
+
+    logger.debug("Reading Prefixes...")
+    prefixes = read_prefixes_v1(file_to_convert_path)
+
+    logger.debug("Reading Concepts...")
+    concept_rows = read_concepts_v1(file_to_convert_path)
+
+    logger.debug("Reading Collections...")
+    collection_rows = read_collections_v1(file_to_convert_path)
+
+    logger.debug("Reading Mappings...")
+    mapping_rows = read_mappings_v1(file_to_convert_path)
+
+    # Build curies converter from prefixes
+    converter = build_curies_converter_from_prefixes(prefixes)
+
+    # Aggregate multi-row data
+    logger.debug("Aggregating concepts...")
+    concepts = aggregate_concepts(concept_rows, converter)
+
+    logger.debug("Aggregating collections...")
+    collections = aggregate_collections(collection_rows, converter)
+
+    # Build inverse relationships
+    logger.debug("Building inverse relationships...")
+    collection_members = build_collection_members_from_concepts(concepts)
+    narrower_map = build_narrower_map(concepts)
+
+    # Build the complete graph
+    logger.debug("Building RDF graph...")
+    scheme_iri = URIRef(concept_scheme.vocabulary_iri)
+
+    graph = build_concept_scheme_graph(concept_scheme, concepts, collections)
+
+    for concept in concepts.values():
+        graph += build_concept_graph(concept, scheme_iri, narrower_map)
+
+    for collection in collections.values():
+        graph += build_collection_graph(collection, scheme_iri, collection_members)
+
+    graph += build_mappings_graph(mapping_rows, converter)
+
+    # Bind prefixes for nice serialization
+    for prefix_model in prefixes:
+        if prefix_model.prefix and prefix_model.namespace:
+            graph.bind(prefix_model.prefix, Namespace(prefix_model.namespace))
+
+    logger.info("Built graph with %d triples", len(graph))
+
+    if output_type == "graph":
+        return graph
+
+    # Serialize to file
+    if output_file_path is None:
+        if output_format == "xml":
+            suffix = ".rdf"
+        elif output_format == "json-ld":
+            suffix = ".json-ld"
+        else:
+            suffix = ".ttl"
+        output_file_path = file_to_convert_path.with_suffix(suffix)
+
+    logger.info("Serializing to: %s", output_file_path)
+    graph.serialize(destination=str(output_file_path), format=output_format)
+
+    logger.info("Conversion complete: %s", output_file_path)
+    return output_file_path
+
+
+# --- Debugging Utilities ---
+
+
+def compare_graphs(g1: Graph, g2: Graph) -> dict:
+    """Compare two graphs and return differences.
+
+    Useful for debugging round-trip conversion issues.
+
+    Args:
+        g1: First graph (e.g., original).
+        g2: Second graph (e.g., round-tripped).
+
+    Returns:
+        Dict with "only_in_g1" and "only_in_g2" triple lists.
+    """
+    only_in_g1 = list(g1 - g2)
+    only_in_g2 = list(g2 - g1)
+
+    return {
+        "only_in_g1": only_in_g1,
+        "only_in_g2": only_in_g2,
+        "g1_count": len(g1),
+        "g2_count": len(g2),
+        "common_count": len(g1) - len(only_in_g1),
+    }
