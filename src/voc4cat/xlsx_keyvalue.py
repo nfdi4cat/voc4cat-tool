@@ -364,7 +364,14 @@ class XLSXKeyValueFormatter(XLSXFormatter):
                     converted_value = self.serialization_engine.deserialize_value(
                         raw_value, field_analysis, model_class
                     )
-                    field_data[field_name] = converted_value
+                    # If value is None, only add it if the field accepts None (is optional)
+                    # Otherwise, skip it so Pydantic uses the model's default value
+                    if converted_value is not None:
+                        field_data[field_name] = converted_value
+                    elif field_analysis.is_optional:
+                        # Field accepts None, so include it
+                        field_data[field_name] = None
+                    # else: skip None for non-optional fields with defaults
                 except Exception as e:
                     raise XLSXDeserializationError(field_name, raw_value, e) from e
 
