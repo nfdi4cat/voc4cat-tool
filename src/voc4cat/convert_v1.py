@@ -9,6 +9,7 @@ The two-way conversion is designed to be lossless (isomorphic graphs).
 """
 
 import logging
+import os
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -50,6 +51,52 @@ from voc4cat.xlsx_table import XLSXTableConfig
 SDO = Namespace("https://schema.org/")
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Provenance URL Helpers
+# =============================================================================
+
+
+def build_provenance_url(entity_id: str, vocab_name: str) -> str:
+    """Build a git blame URL for an entity.
+
+    The URL points to the version-specific TTL file on GitHub.
+    Format: https://github.com/{owner}/{repo}/blame/{version}/vocabularies/{vocab_name}/{entity_id}.ttl
+
+    Args:
+        entity_id: The concept or collection ID (e.g., "0000004").
+        vocab_name: The vocabulary name from idranges.toml (e.g., "voc4cat").
+
+    Returns:
+        The provenance URL, or empty string if GITHUB_REPOSITORY is not set.
+    """
+    github_repo = os.getenv("GITHUB_REPOSITORY", "")
+    if not github_repo:
+        return ""
+
+    version = os.getenv("VOC4CAT_VERSION", "") or "main"
+    return f"https://github.com/{github_repo}/blame/{version}/vocabularies/{vocab_name}/{entity_id}.ttl"
+
+
+def extract_entity_id_from_iri(iri: str) -> str:
+    """Extract the entity ID from a full IRI.
+
+    Handles both slash-based and hash-based IRIs.
+
+    Examples:
+        'https://w3id.org/nfdi4cat/voc4cat/0000004' -> '0000004'
+        'https://example.org/vocab#concept123' -> 'concept123'
+
+    Args:
+        iri: Full IRI string.
+
+    Returns:
+        The entity ID portion.
+    """
+    if "#" in iri:
+        return iri.split("#")[-1]
+    return iri.rstrip("/").split("/")[-1]
 
 
 # =============================================================================
@@ -490,13 +537,14 @@ def rdf_concepts_to_v1(
     concepts_data: dict[str, dict[str, dict]],
     concept_to_collections: dict[str, list[str]],
     concept_to_ordered_collections: dict[str, dict[str, int]] | None = None,
+    vocab_name: str = "",
 ) -> list[ConceptV1]:
     """Convert extracted concepts to ConceptV1 models.
 
     Creates one ConceptV1 row per (concept_iri, language) combination.
     The first row for each concept includes: parent_iris, member_of_collections,
     member_of_ordered_collection, source_vocab_iri/license/rights_holder,
-    change_note, obsolete_reason, influenced_by_iris.
+    change_note, obsolete_reason, influenced_by_iris, provenance.
     Subsequent rows (other languages) have structural fields empty but include
     editorial_note per language.
 
@@ -505,6 +553,7 @@ def rdf_concepts_to_v1(
         concept_to_collections: Mapping from concept IRI to collection IRIs.
         concept_to_ordered_collections: Mapping from concept IRI to
             {ordered_collection_iri: position}.
+        vocab_name: Vocabulary name for provenance URL generation.
 
     Returns:
         List of ConceptV1 model instances.
@@ -517,6 +566,10 @@ def rdf_concepts_to_v1(
 
     for concept_iri, lang_data in concepts_data.items():
         is_first_row = True
+
+        # Generate provenance URL (same for all language rows)
+        entity_id = extract_entity_id_from_iri(concept_iri)
+        provenance_url = build_provenance_url(entity_id, vocab_name)
 
         # Get deprecation info from any language (it's the same for all)
         first_lang_data = next(iter(lang_data.values()), {})
@@ -600,6 +653,7 @@ def rdf_concepts_to_v1(
                 ]
                 influenced_by_iris_str = " ".join(influenced_iris_strs)
 
+                provenance = provenance_url
                 is_first_row = False
             else:
                 parent_iris_str = ""
@@ -611,6 +665,7 @@ def rdf_concepts_to_v1(
                 change_note = ""
                 obsolete_reason = ""
                 influenced_by_iris_str = ""
+                provenance = ""
 
             concepts_v1.append(
                 ConceptV1(
@@ -622,6 +677,7 @@ def rdf_concepts_to_v1(
                     parent_iris=parent_iris_str,
                     member_of_collections=member_of_collections_str,
                     member_of_ordered_collection=member_of_ordered_collection_str,
+                    provenance=provenance,
                     change_note=change_note,
                     editorial_note=editorial_note,
                     obsolete_reason=obsolete_reason,
@@ -638,18 +694,20 @@ def rdf_concepts_to_v1(
 def rdf_collections_to_v1(
     collections_data: dict[str, dict[str, dict]],
     collection_to_parents: dict[str, list[str]],
+    vocab_name: str = "",
 ) -> list[CollectionV1]:
     """Convert extracted collections to CollectionV1 models.
 
     Creates one CollectionV1 row per (collection_iri, language) combination.
     The first row includes: parent_collection_iris, ordered, change_note,
-    obsolete_reason.
+    obsolete_reason, provenance.
     Subsequent rows (other languages) have structural fields empty but include
     editorial_note per language.
 
     Args:
         collections_data: Nested dict from extract_collections_from_rdf.
         collection_to_parents: Mapping from collection IRI to parent collection IRIs.
+        vocab_name: Vocabulary name for provenance URL generation.
 
     Returns:
         List of CollectionV1 model instances.
@@ -660,6 +718,10 @@ def rdf_collections_to_v1(
 
     for collection_iri, lang_data in collections_data.items():
         is_first_row = True
+
+        # Generate provenance URL (same for all language rows)
+        entity_id = extract_entity_id_from_iri(collection_iri)
+        provenance_url = build_provenance_url(entity_id, vocab_name)
 
         # Get deprecation info from any language (it's the same for all)
         first_lang_data = next(iter(lang_data.values()), {})
@@ -715,12 +777,14 @@ def rdf_collections_to_v1(
                     )
                 obsolete_reason = data.get("obsolete_reason", "")
 
+                provenance = provenance_url
                 is_first_row = False
             else:
                 parent_iris_str = ""
                 ordered = ""
                 change_note = ""
                 obsolete_reason = ""
+                provenance = ""
 
             collections_v1.append(
                 CollectionV1(
@@ -730,6 +794,7 @@ def rdf_collections_to_v1(
                     definition=data.get("definition", ""),
                     parent_collection_iris=parent_iris_str,
                     ordered=ordered,
+                    provenance=provenance,
                     change_note=change_note,
                     editorial_note=editorial_note,
                     obsolete_reason=obsolete_reason,
@@ -1021,9 +1086,14 @@ def rdf_to_excel_v1(
     logger.debug("Converting to v1.0 models...")
     concept_scheme_v1 = rdf_concept_scheme_to_v1(cs_data)
     concepts_v1 = rdf_concepts_to_v1(
-        concepts_data, concept_to_collections, concept_to_ordered_collections
+        concepts_data,
+        concept_to_collections,
+        concept_to_ordered_collections,
+        vocab_name,
     )
-    collections_v1 = rdf_collections_to_v1(collections_data, collection_to_parents)
+    collections_v1 = rdf_collections_to_v1(
+        collections_data, collection_to_parents, vocab_name
+    )
     mappings_v1 = rdf_mappings_to_v1(mappings_data)
     prefixes_v1 = build_prefixes_v1()
 
@@ -1802,6 +1872,7 @@ def build_concept_graph(
     concept: AggregatedConcept,
     scheme_iri: URIRef,
     narrower_map: dict[str, list[str]],
+    vocab_name: str = "",
 ) -> Graph:
     """Build RDF graph for a single Concept.
 
@@ -1809,6 +1880,7 @@ def build_concept_graph(
         concept: Aggregated concept data.
         scheme_iri: URIRef of the ConceptScheme.
         narrower_map: Map of parent -> children for narrower relationships.
+        vocab_name: Vocabulary name for provenance URL generation.
 
     Returns:
         Graph with Concept triples.
@@ -1878,6 +1950,14 @@ def build_concept_graph(
     if concept.replaced_by_iri:
         g.add((c, DCTERMS.isReplacedBy, URIRef(concept.replaced_by_iri)))
 
+    # Provenance (git blame URL)
+    entity_id = extract_entity_id_from_iri(concept.iri)
+    provenance_url = build_provenance_url(entity_id, vocab_name)
+    if provenance_url:
+        provenance_uri = URIRef(provenance_url)
+        g.add((c, DCTERMS.provenance, provenance_uri))
+        g.add((c, RDFS.seeAlso, provenance_uri))
+
     return g
 
 
@@ -1886,6 +1966,7 @@ def build_collection_graph(
     scheme_iri: URIRef,
     collection_members: dict[str, list[str]],
     ordered_collection_members: dict[str, list[str]] | None = None,
+    vocab_name: str = "",
 ) -> Graph:
     """Build RDF graph for a single Collection.
 
@@ -1895,6 +1976,7 @@ def build_collection_graph(
         collection_members: Map of collection -> member IRIs (unordered).
         ordered_collection_members: Map of ordered collection -> member IRIs
             in order. Used for building skos:memberList.
+        vocab_name: Vocabulary name for provenance URL generation.
 
     Returns:
         Graph with Collection triples.
@@ -1962,6 +2044,14 @@ def build_collection_graph(
     # Replaced by (dct:isReplacedBy)
     if collection.replaced_by_iri:
         g.add((c, DCTERMS.isReplacedBy, URIRef(collection.replaced_by_iri)))
+
+    # Provenance (git blame URL)
+    entity_id = extract_entity_id_from_iri(collection.iri)
+    provenance_url = build_provenance_url(entity_id, vocab_name)
+    if provenance_url:
+        provenance_uri = URIRef(provenance_url)
+        g.add((c, DCTERMS.provenance, provenance_uri))
+        g.add((c, RDFS.seeAlso, provenance_uri))
 
     return g
 
@@ -2042,6 +2132,9 @@ def excel_to_rdf_v1(
 
     logger.info("Reading XLSX file: %s", file_to_convert_path)
 
+    # Get vocabulary name from filename (used for provenance URLs)
+    vocab_name = file_to_convert_path.stem.lower()
+
     # Read all sheets
     logger.debug("Reading Concept Scheme...")
     concept_scheme = read_concept_scheme_v1(file_to_convert_path)
@@ -2081,11 +2174,15 @@ def excel_to_rdf_v1(
     graph = build_concept_scheme_graph(concept_scheme, concepts, collections)
 
     for concept in concepts.values():
-        graph += build_concept_graph(concept, scheme_iri, narrower_map)
+        graph += build_concept_graph(concept, scheme_iri, narrower_map, vocab_name)
 
     for collection in collections.values():
         graph += build_collection_graph(
-            collection, scheme_iri, collection_members, ordered_collection_members
+            collection,
+            scheme_iri,
+            collection_members,
+            ordered_collection_members,
+            vocab_name,
         )
 
     graph += build_mappings_graph(mapping_rows, converter)

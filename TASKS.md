@@ -13,11 +13,10 @@ Ideas are marked as done here if they have been implemented in dev-1.0.0 branch 
 - [done] Step 4: Improve deprecation handling
   - Enum (string) in skos:historyNote - if present and filled with reason from enum, add "OBSOLETE " at the start of the  prefLabel of the concept (only for default language "en") if the prefLabel does not yet start likewise.
   - Add dct:replacedBy if the concept was replaced by another one to RDF. - How to enter info in xlsx? Re-use changeNote column and special notation `replaced_by <IRI>`.
-- Step 5: Improved and more precise provenance info modelling
+- [done] Step 5: Improved and more precise provenance info modelling
   - Use prov:has_provenance for linking version-specific git blame page on github; for this add another column "Provenance" in concepts sheet before "Change Note" (read only)
   - Output the link also as rdfs:seeAlso (for Skosmos)
-
-- Step 6: Make concept scheme table read only. Instead integrate the metadata into IDranges file and read from it.
+- Step 6: Make concept scheme table read only. Instead integrate the metadata into IDranges file and read from it. The idranges file probably should also have a version for its structure.
 - Step 7 (minor & optional): Output IDrange contributor info to a "ID ranges" sheet in xlsx (read-only)
 
 Each step should be done in a separate PR and each step should be well tested.

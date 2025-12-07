@@ -18,11 +18,13 @@ from voc4cat.convert_v1 import (
     build_concept_to_collections_map,
     build_concept_to_ordered_collections_map,
     build_curies_converter_from_prefixes,
+    build_provenance_url,
     convert_rdf_043_to_v1,
     excel_to_rdf_v1,
     extract_collections_from_rdf,
     extract_concept_scheme_from_rdf,
     extract_concepts_from_rdf,
+    extract_entity_id_from_iri,
     extract_mappings_from_rdf,
     format_change_note_with_replaced_by,
     parse_ordered_collection_positions,
@@ -393,6 +395,7 @@ class TestConceptsSheetStructure:
             "Parent IRIs",
             "Member of collection(s)",
             "Member of ordered collection # position",
+            "Provenance (read-only)",
             "Change Note",
             "Editorial Note",
             "Obsoletion reason",
@@ -450,6 +453,7 @@ class TestCollectionsSheetStructure:
             "Definition",
             "Parent Collection IRIs",
             "Ordered? Yes or No (default)",
+            "Provenance (read-only)",
             "Change Note*",
             "Editorial Note",
             "Obsoletion reason",
@@ -1675,3 +1679,198 @@ class TestDeprecationRoundTrip:
         pref_labels = list(result.objects(EX.old, SKOS.prefLabel))
         assert len(pref_labels) == 1
         assert str(pref_labels[0]).startswith("OBSOLETE ")
+
+
+# =============================================================================
+# Provenance URL Tests (Step 5)
+# =============================================================================
+
+
+class TestExtractEntityIdFromIri:
+    """Tests for extract_entity_id_from_iri function."""
+
+    def test_slash_iri(self):
+        """Test extracting ID from slash-based IRI."""
+        iri = "https://w3id.org/nfdi4cat/voc4cat/0000004"
+        assert extract_entity_id_from_iri(iri) == "0000004"
+
+    def test_hash_iri(self):
+        """Test extracting ID from hash-based IRI."""
+        iri = "https://example.org/vocab#concept123"
+        assert extract_entity_id_from_iri(iri) == "concept123"
+
+    def test_trailing_slash(self):
+        """Test extracting ID from IRI with trailing slash."""
+        iri = "https://example.org/vocab/term001/"
+        assert extract_entity_id_from_iri(iri) == "term001"
+
+    def test_simple_iri(self):
+        """Test extracting ID from simple IRI."""
+        iri = "http://example.org/test01"
+        assert extract_entity_id_from_iri(iri) == "test01"
+
+
+class TestBuildProvenanceUrl:
+    """Tests for build_provenance_url function."""
+
+    def test_with_all_env_vars(self, monkeypatch):
+        """Test URL generation with all env vars set."""
+        monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/voc4cat")
+        monkeypatch.setenv("VOC4CAT_VERSION", "v2025-10-14")
+
+        url = build_provenance_url("0000004", "voc4cat")
+
+        expected = "https://github.com/nfdi4cat/voc4cat/blame/v2025-10-14/vocabularies/voc4cat/0000004.ttl"
+        assert url == expected
+
+    def test_no_version_uses_main(self, monkeypatch):
+        """Test URL generation uses 'main' when no version set."""
+        monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/voc4cat")
+        monkeypatch.delenv("VOC4CAT_VERSION", raising=False)
+
+        url = build_provenance_url("0000004", "voc4cat")
+
+        assert "/blame/main/" in url
+        assert "v2025" not in url
+
+    def test_empty_version_uses_main(self, monkeypatch):
+        """Test URL generation uses 'main' when version is empty string."""
+        monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/voc4cat")
+        monkeypatch.setenv("VOC4CAT_VERSION", "")
+
+        url = build_provenance_url("0000004", "voc4cat")
+
+        assert "/blame/main/" in url
+
+    def test_no_github_repo_returns_empty(self, monkeypatch):
+        """Test URL generation returns empty when no GITHUB_REPOSITORY."""
+        monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.setenv("VOC4CAT_VERSION", "v2025-01-01")
+
+        url = build_provenance_url("0000004", "voc4cat")
+
+        assert url == ""
+
+    def test_different_vocab_names(self, monkeypatch):
+        """Test URL generation with different vocabulary names."""
+        monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/test-vocab")
+        monkeypatch.setenv("VOC4CAT_VERSION", "v1.0.0")
+
+        url = build_provenance_url("test123", "myvocab")
+
+        expected = "https://github.com/nfdi4cat/test-vocab/blame/v1.0.0/vocabularies/myvocab/test123.ttl"
+        assert url == expected
+
+
+class TestProvenanceInXlsx:
+    """Tests for provenance column in generated XLSX files."""
+
+    def test_provenance_column_has_url_when_env_set(
+        self, tmp_path, temp_config, monkeypatch
+    ):
+        """Test that Provenance column is populated when env vars are set."""
+        monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/test-vocab")
+        monkeypatch.setenv("VOC4CAT_VERSION", "v2025-01-01")
+
+        output_path = tmp_path / "output.xlsx"
+        rdf_to_excel_v1(CS_SIMPLE_TTL, output_path)
+
+        wb = load_workbook(output_path)
+        ws = wb["Concepts"]
+
+        # Find Provenance column (column I based on our header order)
+        # Row 5 is first data row (row 4 is header)
+        provenance_value = ws["I5"].value
+
+        assert provenance_value is not None
+        assert "github.com" in provenance_value
+        assert "/blame/" in provenance_value
+        assert "v2025-01-01" in provenance_value
+
+    def test_provenance_column_empty_when_env_not_set(
+        self, tmp_path, temp_config, monkeypatch
+    ):
+        """Test that Provenance column is empty when GITHUB_REPOSITORY not set."""
+        monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.delenv("VOC4CAT_VERSION", raising=False)
+
+        output_path = tmp_path / "output.xlsx"
+        rdf_to_excel_v1(CS_SIMPLE_TTL, output_path)
+
+        wb = load_workbook(output_path)
+        ws = wb["Concepts"]
+
+        # Provenance column should be empty
+        provenance_value = ws["I5"].value
+        assert provenance_value is None or provenance_value == ""
+
+
+class TestProvenanceInRdf:
+    """Tests for provenance triples in generated RDF."""
+
+    def test_xlsx_to_rdf_generates_provenance_triples(
+        self, tmp_path, temp_config, monkeypatch
+    ):
+        """Test that XLSX->RDF generates dct:provenance triples."""
+        from rdflib import DCTERMS, RDFS, URIRef
+
+        monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/voc4cat")
+        monkeypatch.setenv("VOC4CAT_VERSION", "v2025-01-01")
+
+        # First convert RDF -> XLSX
+        xlsx_path = tmp_path / "test.xlsx"
+        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path)
+
+        # Then convert XLSX -> RDF
+        graph = excel_to_rdf_v1(xlsx_path, output_type="graph")
+
+        # Check for provenance triples on a concept
+        concept_iri = URIRef("http://example.org/test01")
+
+        provenance_urls = list(graph.objects(concept_iri, DCTERMS.provenance))
+        assert len(provenance_urls) == 1
+        assert "github.com" in str(provenance_urls[0])
+        assert "/blame/v2025-01-01/" in str(provenance_urls[0])
+
+        # Also check rdfs:seeAlso
+        see_also_urls = list(graph.objects(concept_iri, RDFS.seeAlso))
+        assert len(see_also_urls) >= 1
+        # Should contain the same provenance URL
+        assert str(provenance_urls[0]) in [str(u) for u in see_also_urls]
+
+    def test_no_provenance_when_env_not_set(self, tmp_path, temp_config, monkeypatch):
+        """Test that no provenance triples when GITHUB_REPOSITORY not set."""
+        from rdflib import DCTERMS, URIRef
+
+        monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.delenv("VOC4CAT_VERSION", raising=False)
+
+        xlsx_path = tmp_path / "test.xlsx"
+        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path)
+
+        graph = excel_to_rdf_v1(xlsx_path, output_type="graph")
+
+        concept_iri = URIRef("http://example.org/test01")
+
+        # Should have no dct:provenance triples
+        provenance_urls = list(graph.objects(concept_iri, DCTERMS.provenance))
+        assert len(provenance_urls) == 0
+
+    def test_collection_has_provenance(self, tmp_path, temp_config, monkeypatch):
+        """Test that collections also get provenance triples."""
+        from rdflib import DCTERMS, URIRef
+
+        monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/test-vocab")
+        monkeypatch.setenv("VOC4CAT_VERSION", "v2025-01-01")
+
+        xlsx_path = tmp_path / "test.xlsx"
+        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path)
+
+        graph = excel_to_rdf_v1(xlsx_path, output_type="graph")
+
+        # Collection IRI from concept-scheme-simple.ttl (ex:test10)
+        collection_iri = URIRef("http://example.org/test10")
+
+        provenance_urls = list(graph.objects(collection_iri, DCTERMS.provenance))
+        assert len(provenance_urls) == 1
+        assert "test10.ttl" in str(provenance_urls[0])
