@@ -9,11 +9,18 @@ from pathlib import Path
 from openpyxl import Workbook
 
 from voc4cat.models_v1 import (
+    CONCEPT_SCHEME_SHEET_NAME,
+    CONCEPT_SCHEME_SHEET_TITLE,
     DEFAULT_PREFIXES,
     EXAMPLE_COLLECTIONS,
     EXAMPLE_CONCEPT_SCHEME,
     EXAMPLE_CONCEPTS,
     EXAMPLE_MAPPINGS,
+    ID_RANGES_SHEET_NAME,
+    ID_RANGES_SHEET_TITLE,
+    PREFIXES_SHEET_NAME,
+    PREFIXES_SHEET_TITLE,
+    IDRangeInfoV1,
 )
 from voc4cat.xlsx_api import export_to_xlsx
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
@@ -64,7 +71,10 @@ def generate_template_v1(output_path: Path | None = None) -> Workbook:
     # 4. Mappings (table format)
     _export_mappings(temp_path)
 
-    # 5. Prefixes (table format)
+    # 5. ID Ranges (table format, read-only, headers only)
+    _export_id_ranges(temp_path)
+
+    # 6. Prefixes (table format)
     _export_prefixes(temp_path)
 
     # Load the workbook to return and possibly adjust
@@ -87,14 +97,14 @@ def generate_template_v1(output_path: Path | None = None) -> Workbook:
 def _export_concept_scheme(filepath: Path) -> None:
     """Export Concept Scheme sheet in key-value format."""
     config = XLSXKeyValueConfig(
-        title="Concept Scheme",
+        title=CONCEPT_SCHEME_SHEET_TITLE,
     )
     export_to_xlsx(
         EXAMPLE_CONCEPT_SCHEME,
         filepath,
         format_type="keyvalue",
         config=config,
-        sheet_name="Concept Scheme",
+        sheet_name=CONCEPT_SCHEME_SHEET_NAME,
     )
 
 
@@ -141,28 +151,44 @@ def _export_mappings(filepath: Path) -> None:
     )
 
 
+def _export_id_ranges(filepath: Path) -> None:
+    """Export ID Ranges sheet in table format with headers only (read-only)."""
+    config = XLSXTableConfig(
+        title=ID_RANGES_SHEET_TITLE,
+    )
+    # Export with empty row to get headers only
+    export_to_xlsx(
+        [IDRangeInfoV1()],
+        filepath,
+        format_type="table",
+        config=config,
+        sheet_name=ID_RANGES_SHEET_NAME,
+    )
+
+
 def _export_prefixes(filepath: Path) -> None:
     """Export Prefixes sheet in table format with default prefixes."""
     config = XLSXTableConfig(
-        title="Prefix mappings",
+        title=PREFIXES_SHEET_TITLE,
     )
     export_to_xlsx(
         DEFAULT_PREFIXES,
         filepath,
         format_type="table",
         config=config,
-        sheet_name="Prefixes",
+        sheet_name=PREFIXES_SHEET_NAME,
     )
 
 
 def _reorder_sheets(wb: Workbook) -> None:
     """Reorder sheets to match expected template order."""
     expected_order = [
-        "Concept Scheme",
+        CONCEPT_SCHEME_SHEET_NAME,
         "Concepts",
         "Collections",
         "Mappings",
-        "Prefixes",
+        ID_RANGES_SHEET_NAME,
+        PREFIXES_SHEET_NAME,
     ]
 
     # Get current sheet order

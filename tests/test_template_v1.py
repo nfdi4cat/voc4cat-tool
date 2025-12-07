@@ -36,7 +36,7 @@ class TestTemplateGeneration:
     """Tests for template generation functionality."""
 
     def test_generate_template_creates_all_sheets(self, tmp_path):
-        """Verify all 5 sheets are created (excluding Enums)."""
+        """Verify all 6 sheets are created."""
         output_path = tmp_path / "test_template.xlsx"
         wb = generate_template_v1(output_path)
 
@@ -45,6 +45,7 @@ class TestTemplateGeneration:
             "Concepts",
             "Collections",
             "Mappings",
+            "ID Ranges",
             "Prefixes",
         }
         actual_sheets = set(wb.sheetnames)
@@ -64,9 +65,10 @@ class TestTemplateGeneration:
             "Concepts",
             "Collections",
             "Mappings",
+            "ID Ranges",
             "Prefixes",
         ]
-        actual_order = wb.sheetnames[:5]
+        actual_order = wb.sheetnames[:6]
 
         assert actual_order == expected_order, (
             f"Sheet order mismatch: expected {expected_order}, got {actual_order}"
@@ -225,6 +227,23 @@ class TestTemplateGeneration:
 
         for field in expected_fields:
             assert field in found_fields, f"Missing field: {field}"
+
+    def test_id_ranges_sheet_has_correct_structure(self, tmp_path):
+        """Verify ID Ranges sheet has title and correct headers."""
+        output_path = tmp_path / "test_template.xlsx"
+        wb = generate_template_v1(output_path)
+        ws = wb["ID Ranges"]
+
+        # Check title row
+        assert ws["A1"].value == "ID Ranges (read-only)"
+
+        # Check headers (row 3)
+        expected_headers = ["gh-name", "ID Range", "Unused IDs"]
+        actual_headers = [ws["A3"].value, ws["B3"].value, ws["C3"].value]
+        assert actual_headers == expected_headers
+
+        # Data row should be empty (headers only in blank template)
+        assert ws["A4"].value is None or ws["A4"].value == ""
 
 
 class TestTemplateComparisonWithReference:

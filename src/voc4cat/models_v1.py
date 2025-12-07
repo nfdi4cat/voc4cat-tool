@@ -34,6 +34,9 @@ OBSOLETION_REASONS_COLLECTIONS = [
 
 # === Concept Scheme (key-value format) ===
 
+CONCEPT_SCHEME_SHEET_NAME = "Concept Scheme"
+CONCEPT_SCHEME_SHEET_TITLE = "Concept Scheme (read-only)"
+
 
 class ConceptSchemeV1(BaseModel):
     """Concept Scheme metadata - rendered as key-value pairs in Excel."""
@@ -492,6 +495,9 @@ class MappingV1(BaseModel):
 
 # === Prefixes (table format) ===
 
+PREFIXES_SHEET_NAME = "Prefixes"
+PREFIXES_SHEET_TITLE = "Prefix mappings (read-only)"
+
 
 class PrefixV1(BaseModel):
     """Prefix namespace mapping row in the Prefixes table."""
@@ -507,6 +513,37 @@ class PrefixV1(BaseModel):
         str,
         XLSXMetadata(
             display_name="Namespace",
+        ),
+    ] = ""
+
+
+# === ID Ranges (table format, read-only) ===
+
+ID_RANGES_SHEET_NAME = "ID Ranges"
+ID_RANGES_SHEET_TITLE = "ID Ranges (read-only)"
+
+
+class IDRangeInfoV1(BaseModel):
+    """ID range information row in the ID Ranges table (read-only)."""
+
+    gh_name: Annotated[
+        str,
+        XLSXMetadata(
+            display_name="gh-name",
+        ),
+    ] = ""
+
+    id_range: Annotated[
+        str,
+        XLSXMetadata(
+            display_name="ID Range",
+        ),
+    ] = ""
+
+    unused_ids: Annotated[
+        str,
+        XLSXMetadata(
+            display_name="Unused IDs",
         ),
     ] = ""
 
