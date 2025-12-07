@@ -533,6 +533,81 @@ def rdf_concept_scheme_to_v1(data: dict) -> ConceptSchemeV1:
     )
 
 
+def config_to_concept_scheme_v1(
+    vocab_config: "config.Vocab",
+    rdf_scheme: ConceptSchemeV1 | None = None,
+) -> ConceptSchemeV1:
+    """Build ConceptSchemeV1 from idranges.toml config with optional RDF fallback.
+
+    Config values override RDF values. RDF fills gaps for empty config fields.
+    Warnings are logged for required fields (vocabulary_iri, title) that are
+    empty in both sources.
+
+    Args:
+        vocab_config: Vocab configuration from idranges.toml.
+        rdf_scheme: Optional ConceptSchemeV1 extracted from RDF (for fallback).
+
+    Returns:
+        ConceptSchemeV1 model instance with merged data.
+    """
+
+    def get_field(
+        config_val: str, rdf_val: str, field_name: str, required: bool = False
+    ) -> str:
+        """Get field value, preferring config over RDF."""
+        result = config_val.strip() if config_val else ""
+        if not result and rdf_val:
+            result = rdf_val.strip() if rdf_val else ""
+        if not result and required:
+            logger.warning(
+                "ConceptScheme field '%s' is empty in both config and RDF.", field_name
+            )
+        return result
+
+    # Get RDF values (or empty defaults)
+    rdf = rdf_scheme or ConceptSchemeV1()
+
+    return ConceptSchemeV1(
+        template_version=TEMPLATE_VERSION,
+        vocabulary_iri=get_field(
+            vocab_config.vocabulary_iri,
+            rdf.vocabulary_iri,
+            "vocabulary_iri",
+            required=True,
+        ),
+        prefix=get_field(vocab_config.prefix, rdf.prefix, "prefix"),
+        title=get_field(vocab_config.title, rdf.title, "title", required=True),
+        description=get_field(vocab_config.description, rdf.description, "description"),
+        created_date=get_field(
+            vocab_config.created_date, rdf.created_date, "created_date"
+        ),
+        # Auto-generated fields come from RDF only (not in config)
+        modified_date=rdf.modified_date,
+        version=rdf.version,
+        contributor=rdf.contributor,
+        # Multi-line fields from config
+        creator=get_field(vocab_config.creator, rdf.creator, "creator"),
+        publisher=get_field(vocab_config.publisher, rdf.publisher, "publisher"),
+        custodian=get_field(vocab_config.custodian, rdf.custodian, "custodian"),
+        # URL fields
+        catalogue_pid=get_field(
+            vocab_config.catalogue_pid, rdf.catalogue_pid, "catalogue_pid"
+        ),
+        documentation=get_field(
+            vocab_config.documentation, rdf.documentation, "documentation"
+        ),
+        issue_tracker=get_field(
+            vocab_config.issue_tracker, rdf.issue_tracker, "issue_tracker"
+        ),
+        helpdesk=get_field(vocab_config.helpdesk, rdf.helpdesk, "helpdesk"),
+        repository=get_field(vocab_config.repository, rdf.repository, "repository"),
+        homepage=get_field(vocab_config.homepage, rdf.homepage, "homepage"),
+        conforms_to=get_field(vocab_config.conforms_to, rdf.conforms_to, "conforms_to"),
+        # Change note from RDF only (not in config)
+        change_note=rdf.change_note,
+    )
+
+
 def rdf_concepts_to_v1(
     concepts_data: dict[str, dict[str, dict]],
     concept_to_collections: dict[str, list[str]],
@@ -895,8 +970,8 @@ def export_vocabulary_v1(
         prefixes: List of PrefixV1 model instances.
         output_path: Path to save the Excel file.
     """
-    # 1. Concept Scheme (key-value format)
-    kv_config = XLSXKeyValueConfig(title="Concept Scheme")
+    # 1. Concept Scheme (key-value format, read-only)
+    kv_config = XLSXKeyValueConfig(title="Concept Scheme (read-only)")
     export_to_xlsx(
         concept_scheme,
         output_path,
@@ -1025,13 +1100,20 @@ def _reorder_sheets(wb) -> None:
 def rdf_to_excel_v1(
     file_to_convert_path: Path,
     output_file_path: Path | None = None,
+    vocab_config: "config.Vocab | None" = None,
 ) -> Path:
     """Convert an RDF vocabulary to v1.0 Excel template.
+
+    If vocab_config is provided, ConceptScheme metadata is merged from config
+    (config values override RDF, RDF fills gaps). The "Concept Scheme (read-only)"
+    sheet is populated from this merged data.
 
     Args:
         file_to_convert_path: Path to the RDF file (.ttl, .rdf, etc.).
         output_file_path: Optional path for output Excel file.
                          Defaults to same name with .xlsx extension.
+        vocab_config: Optional Vocab config from idranges.toml. If provided,
+                     scheme metadata is merged (config overrides RDF).
 
     Returns:
         Path to the generated Excel file.
@@ -1084,7 +1166,17 @@ def rdf_to_excel_v1(
 
     # Convert to v1.0 models
     logger.debug("Converting to v1.0 models...")
-    concept_scheme_v1 = rdf_concept_scheme_to_v1(cs_data)
+
+    # Build ConceptScheme - either from config (merged with RDF) or RDF only
+    if vocab_config is not None:
+        logger.debug(
+            "Using vocab config for ConceptScheme metadata (config overrides RDF)."
+        )
+        rdf_scheme = rdf_concept_scheme_to_v1(cs_data)
+        concept_scheme_v1 = config_to_concept_scheme_v1(vocab_config, rdf_scheme)
+    else:
+        concept_scheme_v1 = rdf_concept_scheme_to_v1(cs_data)
+
     concepts_v1 = rdf_concepts_to_v1(
         concepts_data,
         concept_to_collections,
@@ -2107,8 +2199,13 @@ def excel_to_rdf_v1(
     output_file_path: Path | None = None,
     output_format: TypingLiteral["turtle", "xml", "json-ld"] = "turtle",
     output_type: TypingLiteral["file", "graph"] = "file",
+    *,
+    vocab_config: "config.Vocab",
 ) -> Path | Graph:
     """Convert a v1.0 Excel template to RDF vocabulary.
+
+    ConceptScheme metadata is read from vocab_config (idranges.toml).
+    The "Concept Scheme" sheet in Excel is read-only and never read.
 
     Args:
         file_to_convert_path: Path to the XLSX file.
@@ -2116,6 +2213,7 @@ def excel_to_rdf_v1(
                          Defaults to same name with .ttl extension.
         output_format: RDF serialization format ("turtle", "xml", "json-ld").
         output_type: "file" to serialize to file, "graph" to return Graph object.
+        vocab_config: Vocab config from idranges.toml with scheme metadata.
 
     Returns:
         Path to the generated RDF file, or Graph object if output_type="graph".
@@ -2135,9 +2233,8 @@ def excel_to_rdf_v1(
     # Get vocabulary name from filename (used for provenance URLs)
     vocab_name = file_to_convert_path.stem.lower()
 
-    # Read all sheets
-    logger.debug("Reading Concept Scheme...")
-    concept_scheme = read_concept_scheme_v1(file_to_convert_path)
+    # Build ConceptScheme from config (Excel sheet is read-only, never read)
+    concept_scheme = config_to_concept_scheme_v1(vocab_config)
 
     logger.debug("Reading Prefixes...")
     prefixes = read_prefixes_v1(file_to_convert_path)

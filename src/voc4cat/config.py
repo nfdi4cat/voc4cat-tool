@@ -88,11 +88,29 @@ class IdrangeItem(BaseModel):
 
 
 class Vocab(BaseModel):
+    # Required fields
     id_length: Annotated[int, Field(ge=1, lt=19)]
     permanent_iri_part: AnyHttpUrl
     checks: Checks
     prefix_map: dict[str, AnyHttpUrl]
     id_range: list[IdrangeItem] = []
+
+    # Scheme metadata fields (all optional, used for ConceptScheme in Excel)
+    vocabulary_iri: str = ""
+    prefix: str = ""
+    title: str = ""
+    description: str = ""
+    created_date: str = ""
+    creator: str = ""  # Multi-line: "<orcid-URL or ror> <name>" per line
+    publisher: str = ""  # Multi-line: "<orcid-URL or ror> <name>" per line
+    custodian: str = ""  # Multi-line: "<name> <gh-profile-URL> <orcid-URL>" per line
+    catalogue_pid: str = ""
+    documentation: str = ""
+    issue_tracker: str = ""
+    helpdesk: str = ""
+    repository: str = ""
+    homepage: str = ""
+    conforms_to: str = ""
 
     @field_validator("id_range", mode="before")
     @classmethod
@@ -109,6 +127,7 @@ class Vocab(BaseModel):
 
 
 class IDrangeConfig(BaseModel):
+    config_version: str = "1.0"
     single_vocab: bool = False
     vocabs: dict[Annotated[str, StringConstraints(to_lower=True)], Vocab] = {}
     default_config: bool = False

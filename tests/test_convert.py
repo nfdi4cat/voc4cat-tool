@@ -15,6 +15,7 @@ from voc4cat.cli import main_cli
 from voc4cat.convert_043 import split_multi_iri
 
 
+@pytest.mark.skip(reason="043 xlsx import removed in v1.0")
 @pytest.mark.parametrize(
     "test_file",
     [CS_SIMPLE, ""],
@@ -41,8 +42,16 @@ def test_run_voc4cat(datadir, tmp_path, test_file, temp_config):
 @pytest.mark.parametrize(
     ("outputdir", "testfile"),
     [
-        ("out", CS_CYCLES),
-        ("", CS_CYCLES),
+        pytest.param(
+            "out",
+            CS_CYCLES,
+            marks=pytest.mark.skip(reason="043 xlsx import removed in v1.0"),
+        ),
+        pytest.param(
+            "",
+            CS_CYCLES,
+            marks=pytest.mark.skip(reason="043 xlsx import removed in v1.0"),
+        ),
         ("out", CS_CYCLES_TURTLE),
         ("", CS_CYCLES_TURTLE),
     ],

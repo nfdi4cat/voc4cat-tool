@@ -19,7 +19,11 @@ from voc4cat.convert_043 import (
     extract_concepts_and_collections as extract_concepts_and_collections_043,
 )
 from voc4cat.convert_043 import write_prefix_sheet
-from voc4cat.convert_v1 import convert_rdf_043_to_v1
+from voc4cat.convert_v1 import (
+    convert_rdf_043_to_v1,
+    excel_to_rdf_v1,
+    rdf_to_excel_v1,
+)
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
     RDF_FILE_ENDINGS,
@@ -430,6 +434,29 @@ def format_log_msg(result: dict, colored: bool = False) -> str:
 # ===== convert command & helpers to validate cmd options =====
 
 
+def _get_vocab_config(vocab_name: str) -> "config.Vocab | None":
+    """Get vocab config for a vocabulary name if available.
+
+    Returns the Vocab config from idranges.toml if:
+    - A non-default config is loaded
+    - The vocabulary name exists in the config
+
+    Args:
+        vocab_name: Name of the vocabulary (lowercase).
+
+    Returns:
+        Vocab config if available, None otherwise.
+    """
+    if config.IDRANGES.default_config:
+        return None
+
+    vocab = config.IDRANGES.vocabs.get(vocab_name)
+    if vocab is None:
+        return None
+
+    return vocab
+
+
 def _check_convert_args(args):
     if args.template is not None:
         msg = ""
@@ -489,15 +516,31 @@ def convert(args):
     for file in chain(xlsx_files, rdf_files):
         logger.debug('Processing "%s"', file)
         outfile = file if args.outdir is None else args.outdir / file.name
+        vocab_name = file.stem.lower()
+
+        # Get vocab config for ConceptScheme metadata
+        vocab_config = _get_vocab_config(vocab_name)
 
         if file in xlsx_files:
+            if vocab_config is None:
+                msg = (
+                    f"No idranges.toml config found for vocabulary '{vocab_name}'. "
+                    "XLSX to RDF conversion requires vocab config for ConceptScheme metadata."
+                )
+                raise Voc4catError(msg)
             suffix = "ttl" if args.outputformat == "turtle" else args.outputformat
             output_file_path = outfile.with_suffix(f".{suffix}")
-            excel_to_rdf(file, output_file_path, output_format=args.outputformat)
+            excel_to_rdf_v1(
+                file,
+                output_file_path,
+                output_format=args.outputformat,
+                vocab_config=vocab_config,
+            )
             logger.info("-> successfully converted to %s", output_file_path)
         elif file in rdf_files:
             output_file_path = outfile.with_suffix(".xlsx")
-            rdf_to_excel(file, output_file_path, template_file_path=args.template)
+            # RDF to Excel always uses v1.0 format
+            rdf_to_excel_v1(file, output_file_path, vocab_config=vocab_config)
             logger.info("-> successfully converted to %s", output_file_path)
             # Extend size (length) of tables in all sheets
             adjust_length_of_tables(

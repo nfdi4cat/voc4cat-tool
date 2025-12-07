@@ -16,8 +16,8 @@ Ideas are marked as done here if they have been implemented in dev-1.0.0 branch 
 - [done] Step 5: Improved and more precise provenance info modelling
   - Use prov:has_provenance for linking version-specific git blame page on github; for this add another column "Provenance" in concepts sheet before "Change Note" (read only)
   - Output the link also as rdfs:seeAlso (for Skosmos)
-- Step 6: Make concept scheme table read only. Instead integrate the metadata into IDranges file and read from it. The idranges file probably should also have a version for its structure.
-- Step 7 (minor & optional): Output IDrange contributor info to a "ID ranges" sheet in xlsx (read-only)
+- [done] Step 6: Make concept scheme table read only. Instead integrate the metadata into IDranges file and read from it. The idranges file probably should also have a version for its structure.
+- Step 7 (minor & optional): Output IDrange contributor info to a "ID ranges" sheet in xlsx (read-only). Make a table with 3 columns gh-name, id-ranges, unused IDs in range. Give ID ranges as string like "0001040 - 0001050", in unused IDs give the number of unused ID and the first unused, e.g. "next unused: 0001040, unused: 10"
 
 Each step should be done in a separate PR and each step should be well tested.
 

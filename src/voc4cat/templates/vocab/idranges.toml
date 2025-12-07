@@ -1,6 +1,9 @@
 # ==== General Configuration ====
 # Documentation of the TOML format: https://toml.io/en/latest
 
+# Configuration format version (for future compatibility)
+config_version = "1.0"
+
 # Allow only a single vocabulary (default) or multiple vocabularies in the repository.
 single_vocab = true
 
@@ -11,18 +14,78 @@ single_vocab = true
 [vocabs.myvocab]
 # Length of integer IDs in vocabulary. IDs will be left-padded with zeros to specified length.
 id_length = 7
-# permanent part of IRIs defined in the vocabulary
+# permanent part of IRIs defined in the vocabulary (used to construct concept IRIs)
 permanent_iri_part = "https://example.org/"
 
+# ==== Vocabulary Metadata (for ConceptScheme) ====
+# These fields populate the read-only "Concept Scheme" sheet in Excel.
+# All fields are optional. If omitted, defaults to empty string.
+
+# IRI for the vocabulary (skos:ConceptScheme)
+# vocabulary_iri = "https://example.org/vocab/"
+
+# Registered (or preferred) prefix for this vocabulary
+# prefix = "ex"
+
+# Title of the vocabulary
+# title = "My Vocabulary"
+
+# General description of the vocabulary
+# description = "Description of the vocabulary"
+
+# Date of creation (ISO-8601 format: YYYY-MM-DD)
+# created_date = "2025-01-01"
+
+# Creator(s) - multi-line text, each line: "<orcid-URL or ror-URL> <name>"
+# creator = """
+# https://orcid.org/0000-0001-2345-6788 Alice Smith
+# https://orcid.org/0000-0001-2345-6789 Sofia Garcia
+# """
+
+# Publisher(s) - multi-line text, each line: "<orcid-URL or ror-URL> <name>"
+# publisher = """
+# https://ror.org/04fa4r544 Example Organization
+# """
+
+# Custodian(s) - multi-line text, each line: "<name> <gh-profile-URL> <orcid-URL>"
+# custodian = """
+# Alice Smith https://github.com/asmith https://orcid.org/0000-0001-2345-6789
+# """
+
+# DOI or other catalogue persistent identifier
+# catalogue_pid = ""
+
+# URL of documentation or guidelines
+# documentation = ""
+
+# URL of issue tracker
+# issue_tracker = ""
+
+# URL of helpdesk
+# helpdesk = ""
+
+# URL of repository or online vocabulary editor
+# repository = ""
+
+# URL of homepage
+# homepage = ""
+
+# URL of SHACL profile the vocabulary conforms to
+# conforms_to = ""
+
+# ==== Checks Configuration ====
 # Section to configure checks (useful in CI pipeline)
 [vocabs.myvocab.checks]
 # Deleting allowed (relevant in CI-pipeline)
 allow_delete = false
 
+# ==== Prefix Map ====
+# Namespace prefix mappings used for CURIE expansion/compression
 [vocabs.myvocab.prefix_map]
 ex = "https://example.org/"
-photo = "https://example.org/nfdi4cat/photo/"
+exp = "https://example.org/plus/"
 
+# ==== ID Ranges ====
 # Section of IDranges for coordinating the allocation of numeric ID ranges to
 # contributors for each vocabulary. Each idrange contains the same keys:
 #
@@ -42,8 +105,8 @@ ror_id = "https://ror.org/04fa4r544"
 [[vocabs.myvocab.id_range]]
 first_id = 11
 last_id = 20
-gh_name = "unknown"
+gh_name = "another-contributor"
 orcid = ""
 ror_id = ""
 
-# Continue with as many [[myvocab.idrange]] sections as needed.
+# Continue with as many [[vocabs.myvocab.id_range]] sections as needed.
