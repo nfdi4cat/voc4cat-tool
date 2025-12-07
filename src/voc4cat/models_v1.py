@@ -277,6 +277,14 @@ class ConceptV1(BaseModel):
         ),
     ] = ""
 
+    provenance: Annotated[
+        str,
+        XLSXMetadata(
+            display_name="Provenance (read-only)",
+            meaning="dct:provenance,\nrdfs:seeAlso",
+        ),
+    ] = ""
+
     change_note: Annotated[
         str,
         XLSXMetadata(
@@ -383,6 +391,14 @@ class CollectionV1(BaseModel):
         str,
         XLSXMetadata(
             display_name="Ordered? Yes or No (default)",
+        ),
+    ] = ""
+
+    provenance: Annotated[
+        str,
+        XLSXMetadata(
+            display_name="Provenance (read-only)",
+            meaning="dct:provenance,\nrdfs:seeAlso",
         ),
     ] = ""
 
