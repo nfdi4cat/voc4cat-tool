@@ -41,7 +41,10 @@ def test_check_xlsx_with_cell_coloring(datadir, tmp_path, caplog):
         main_cli(["check", "--inplace", str(dst)])
 
     # Check that the error was logged
-    assert 'Same Concept IRI "ex:test01" used more than once for language "en"' in caplog.text
+    assert (
+        'Same Concept IRI "ex:test01" used more than once for language "en"'
+        in caplog.text
+    )
 
     # Check that cells were colored orange
     wb = load_workbook(dst)
@@ -51,10 +54,18 @@ def test_check_xlsx_with_cell_coloring(datadir, tmp_path, caplog):
     expected_color = "00FFCC00"
 
     # Check that the duplicate concept IRI cells are colored (rows 3 and 4, columns A and C)
-    assert ws["A3"].fill.start_color.rgb == expected_color, "First duplicate IRI cell should be colored orange"
-    assert ws["C3"].fill.start_color.rgb == expected_color, "First duplicate language cell should be colored orange"
-    assert ws["A4"].fill.start_color.rgb == expected_color, "Second duplicate IRI cell should be colored orange"
-    assert ws["C4"].fill.start_color.rgb == expected_color, "Second duplicate language cell should be colored orange"
+    assert ws["A3"].fill.start_color.rgb == expected_color, (
+        "First duplicate IRI cell should be colored orange"
+    )
+    assert ws["C3"].fill.start_color.rgb == expected_color, (
+        "First duplicate language cell should be colored orange"
+    )
+    assert ws["A4"].fill.start_color.rgb == expected_color, (
+        "Second duplicate IRI cell should be colored orange"
+    )
+    assert ws["C4"].fill.start_color.rgb == expected_color, (
+        "Second duplicate language cell should be colored orange"
+    )
 
     wb.close()
 
@@ -89,6 +100,7 @@ def test_check_missing_vocab(caplog):
     assert "Argument VOCAB is required for this sub-command" in caplog.text
 
 
+@pytest.mark.skip(reason="043 xlsx import removed in v1.0")
 def test_check_overwrite_warning(monkeypatch, datadir, tmp_path, caplog):
     shutil.copy(datadir / CS_SIMPLE, tmp_path / CS_SIMPLE)
     monkeypatch.chdir(tmp_path)
@@ -102,6 +114,7 @@ def test_check_overwrite_warning(monkeypatch, datadir, tmp_path, caplog):
         main_cli(["check", str(tmp_path / CS_SIMPLE)])
 
 
+@pytest.mark.skip(reason="043 xlsx import removed in v1.0")
 def test_check_ci_pre(datadir, tmp_path, temp_config, caplog):
     inbox = tmp_path / "inbox"
     inbox.mkdir()
@@ -130,6 +143,7 @@ def test_check_ci_pre(datadir, tmp_path, temp_config, caplog):
     assert "Found 1 xlsx file" in caplog.text
 
 
+@pytest.mark.skip(reason="043 xlsx import removed in v1.0")
 def test_check_ci_post(datadir, tmp_path, temp_config, caplog):
     previous = tmp_path / "previous"
     previous.mkdir()

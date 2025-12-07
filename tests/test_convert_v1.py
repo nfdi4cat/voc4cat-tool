@@ -11,6 +11,7 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from rdflib import SKOS, Graph, Literal, Namespace
 
+from tests.conftest import make_vocab_config_from_rdf
 from voc4cat.convert_v1 import (
     OBSOLETE_PREFIX,
     aggregate_collections,
@@ -19,6 +20,7 @@ from voc4cat.convert_v1 import (
     build_concept_to_ordered_collections_map,
     build_curies_converter_from_prefixes,
     build_provenance_url,
+    config_to_concept_scheme_v1,
     convert_rdf_043_to_v1,
     excel_to_rdf_v1,
     extract_collections_from_rdf,
@@ -649,12 +651,17 @@ class TestRoundTrip:
         # Load original
         original = Graph().parse(PHOTOCATALYSIS_TTL, format="turtle")
 
+        # Create vocab config from RDF for roundtrip
+        vocab_config = make_vocab_config_from_rdf(original)
+
         # RDF -> XLSX
         xlsx_path = tmp_path / "photocatalysis.xlsx"
-        rdf_to_excel_v1(PHOTOCATALYSIS_TTL, xlsx_path)
+        rdf_to_excel_v1(PHOTOCATALYSIS_TTL, xlsx_path, vocab_config=vocab_config)
 
         # XLSX -> RDF
-        roundtrip = excel_to_rdf_v1(xlsx_path, output_type="graph")
+        roundtrip = excel_to_rdf_v1(
+            xlsx_path, output_type="graph", vocab_config=vocab_config
+        )
 
         # Check that concept count matches
         from rdflib import RDF
@@ -675,28 +682,48 @@ class TestRoundTrip:
             f"Only in roundtrip: {roundtrip_labels - original_labels}"
         )
 
-    def test_roundtrip_preserves_all_predicates(self, tmp_path, temp_config):
-        """Test that all predicates are preserved during round-trip."""
-        if not PHOTOCATALYSIS_TTL.exists():
-            pytest.skip("Photocatalysis example not found")
+    def test_roundtrip_preserves_concept_predicates(self, tmp_path, temp_config):
+        """Test that concept-level predicates are preserved during round-trip.
 
-        # Load original
-        original = Graph().parse(PHOTOCATALYSIS_TTL, format="turtle")
+        Note: ConceptScheme predicates may differ since scheme metadata now comes
+        from config, not RDF. This test focuses on concept/collection predicates.
+        Uses v1.0 format test data (not 043 format which cannot be roundtripped).
+        """
+        # Load original v1.0 format data
+        original = Graph().parse(V1_COMPREHENSIVE_TTL, format="turtle")
+
+        # Create vocab config from RDF for roundtrip
+        vocab_config = make_vocab_config_from_rdf(original)
 
         # RDF -> XLSX -> RDF
-        xlsx_path = tmp_path / "photocatalysis.xlsx"
-        rdf_to_excel_v1(PHOTOCATALYSIS_TTL, xlsx_path)
-        roundtrip = excel_to_rdf_v1(xlsx_path, output_type="graph")
+        xlsx_path = tmp_path / "v1_comprehensive.xlsx"
+        rdf_to_excel_v1(V1_COMPREHENSIVE_TTL, xlsx_path, vocab_config=vocab_config)
+        roundtrip = excel_to_rdf_v1(
+            xlsx_path, output_type="graph", vocab_config=vocab_config
+        )
 
-        # Get all predicates
-        original_predicates = set(p for _, p, _ in original)
-        roundtrip_predicates = set(p for _, p, _ in roundtrip)
+        # Get predicates used with concepts (not scheme-level)
+        from rdflib import RDF
 
-        # Same predicates
-        assert original_predicates == roundtrip_predicates, (
-            f"Predicate mismatch.\n"
-            f"Only in original: {original_predicates - roundtrip_predicates}\n"
-            f"Only in roundtrip: {roundtrip_predicates - original_predicates}"
+        original_concepts = set(original.subjects(RDF.type, SKOS.Concept))
+        roundtrip_concepts = set(roundtrip.subjects(RDF.type, SKOS.Concept))
+
+        # Get predicates on concepts
+        original_concept_predicates = set()
+        for concept in original_concepts:
+            for _, p, _ in original.triples((concept, None, None)):
+                original_concept_predicates.add(p)
+
+        roundtrip_concept_predicates = set()
+        for concept in roundtrip_concepts:
+            for _, p, _ in roundtrip.triples((concept, None, None)):
+                roundtrip_concept_predicates.add(p)
+
+        # Concept predicates should be the same
+        assert original_concept_predicates == roundtrip_concept_predicates, (
+            f"Concept predicate mismatch.\n"
+            f"Only in original: {original_concept_predicates - roundtrip_concept_predicates}\n"
+            f"Only in roundtrip: {roundtrip_concept_predicates - original_concept_predicates}"
         )
 
 
@@ -876,12 +903,17 @@ class TestV1RoundTrip:
         # Load original
         original = Graph().parse(V1_COMPREHENSIVE_TTL, format="turtle")
 
+        # Create vocab config from RDF for roundtrip
+        vocab_config = make_vocab_config_from_rdf(original)
+
         # RDF -> XLSX
         xlsx_path = tmp_path / "v1_comprehensive.xlsx"
-        rdf_to_excel_v1(V1_COMPREHENSIVE_TTL, xlsx_path)
+        rdf_to_excel_v1(V1_COMPREHENSIVE_TTL, xlsx_path, vocab_config=vocab_config)
 
         # XLSX -> RDF
-        roundtrip = excel_to_rdf_v1(xlsx_path, output_type="graph")
+        roundtrip = excel_to_rdf_v1(
+            xlsx_path, output_type="graph", vocab_config=vocab_config
+        )
 
         # Check triple counts
         original_count = len(original)
@@ -894,10 +926,15 @@ class TestV1RoundTrip:
 
     def test_roundtrip_preserves_editorial_note(self, tmp_path, temp_config):
         """Test that editorial notes survive round-trip."""
+        original = Graph().parse(V1_COMPREHENSIVE_TTL, format="turtle")
+        vocab_config = make_vocab_config_from_rdf(original)
+
         # RDF -> XLSX -> RDF
         xlsx_path = tmp_path / "editorial_note.xlsx"
-        rdf_to_excel_v1(V1_COMPREHENSIVE_TTL, xlsx_path)
-        roundtrip = excel_to_rdf_v1(xlsx_path, output_type="graph")
+        rdf_to_excel_v1(V1_COMPREHENSIVE_TTL, xlsx_path, vocab_config=vocab_config)
+        roundtrip = excel_to_rdf_v1(
+            xlsx_path, output_type="graph", vocab_config=vocab_config
+        )
 
         # Check editorial note is preserved
         from rdflib import SKOS, URIRef
@@ -911,10 +948,15 @@ class TestV1RoundTrip:
 
     def test_roundtrip_preserves_obsolete(self, tmp_path, temp_config):
         """Test that obsolete concepts survive round-trip."""
+        original = Graph().parse(V1_COMPREHENSIVE_TTL, format="turtle")
+        vocab_config = make_vocab_config_from_rdf(original)
+
         # RDF -> XLSX -> RDF
         xlsx_path = tmp_path / "obsolete.xlsx"
-        rdf_to_excel_v1(V1_COMPREHENSIVE_TTL, xlsx_path)
-        roundtrip = excel_to_rdf_v1(xlsx_path, output_type="graph")
+        rdf_to_excel_v1(V1_COMPREHENSIVE_TTL, xlsx_path, vocab_config=vocab_config)
+        roundtrip = excel_to_rdf_v1(
+            xlsx_path, output_type="graph", vocab_config=vocab_config
+        )
 
         # Check deprecated flag and history note are preserved
         from rdflib import OWL, SKOS, URIRef
@@ -935,10 +977,15 @@ class TestV1RoundTrip:
         """Test that source attribution survives round-trip."""
         from rdflib import DCTERMS, PROV, URIRef
 
+        original = Graph().parse(V1_COMPREHENSIVE_TTL, format="turtle")
+        vocab_config = make_vocab_config_from_rdf(original)
+
         # RDF -> XLSX -> RDF
         xlsx_path = tmp_path / "source_attr.xlsx"
-        rdf_to_excel_v1(V1_COMPREHENSIVE_TTL, xlsx_path)
-        roundtrip = excel_to_rdf_v1(xlsx_path, output_type="graph")
+        rdf_to_excel_v1(V1_COMPREHENSIVE_TTL, xlsx_path, vocab_config=vocab_config)
+        roundtrip = excel_to_rdf_v1(
+            xlsx_path, output_type="graph", vocab_config=vocab_config
+        )
 
         photocat_ns = "https://w3id.org/nfdi4cat/voc4cat-photocat/"
         concept_iri = URIRef(f"{photocat_ns}0000002")
@@ -959,10 +1006,15 @@ class TestV1RoundTrip:
         """Test that ordered collections survive round-trip."""
         from rdflib import SKOS, URIRef
 
+        original = Graph().parse(V1_COMPREHENSIVE_TTL, format="turtle")
+        vocab_config = make_vocab_config_from_rdf(original)
+
         # RDF -> XLSX -> RDF
         xlsx_path = tmp_path / "ordered_coll.xlsx"
-        rdf_to_excel_v1(V1_COMPREHENSIVE_TTL, xlsx_path)
-        roundtrip = excel_to_rdf_v1(xlsx_path, output_type="graph")
+        rdf_to_excel_v1(V1_COMPREHENSIVE_TTL, xlsx_path, vocab_config=vocab_config)
+        roundtrip = excel_to_rdf_v1(
+            xlsx_path, output_type="graph", vocab_config=vocab_config
+        )
 
         photocat_ns = "https://w3id.org/nfdi4cat/voc4cat-photocat/"
         coll_iri = URIRef(f"{photocat_ns}coll002")
@@ -1611,13 +1663,16 @@ class TestDeprecationRoundTrip:
         input_ttl = tmp_path / "test.ttl"
         g.serialize(destination=str(input_ttl), format="turtle")
 
+        # Create vocab config from the graph
+        vocab_config = make_vocab_config_from_rdf(g)
+
         # Convert RDF -> XLSX
         xlsx_path = tmp_path / "test.xlsx"
-        rdf_to_excel_v1(input_ttl, xlsx_path)
+        rdf_to_excel_v1(input_ttl, xlsx_path, vocab_config=vocab_config)
 
         # Convert XLSX -> RDF
         output_ttl = tmp_path / "output.ttl"
-        excel_to_rdf_v1(xlsx_path, output_ttl)
+        excel_to_rdf_v1(xlsx_path, output_ttl, vocab_config=vocab_config)
 
         # Load result and verify
         result = Graph().parse(output_ttl, format="turtle")
@@ -1664,13 +1719,16 @@ class TestDeprecationRoundTrip:
         input_ttl = tmp_path / "test.ttl"
         g.serialize(destination=str(input_ttl), format="turtle")
 
+        # Create vocab config from the graph
+        vocab_config = make_vocab_config_from_rdf(g)
+
         # Convert RDF -> XLSX
         xlsx_path = tmp_path / "test.xlsx"
-        rdf_to_excel_v1(input_ttl, xlsx_path)
+        rdf_to_excel_v1(input_ttl, xlsx_path, vocab_config=vocab_config)
 
         # Convert XLSX -> RDF
         output_ttl = tmp_path / "output.ttl"
-        excel_to_rdf_v1(xlsx_path, output_ttl)
+        excel_to_rdf_v1(xlsx_path, output_ttl, vocab_config=vocab_config)
 
         # Load result and verify
         result = Graph().parse(output_ttl, format="turtle")
@@ -1809,7 +1867,7 @@ class TestProvenanceInRdf:
     """Tests for provenance triples in generated RDF."""
 
     def test_xlsx_to_rdf_generates_provenance_triples(
-        self, tmp_path, temp_config, monkeypatch
+        self, tmp_path, temp_config, test_vocab_config, monkeypatch
     ):
         """Test that XLSX->RDF generates dct:provenance triples."""
         from rdflib import DCTERMS, RDFS, URIRef
@@ -1819,10 +1877,12 @@ class TestProvenanceInRdf:
 
         # First convert RDF -> XLSX
         xlsx_path = tmp_path / "test.xlsx"
-        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path)
+        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path, vocab_config=test_vocab_config)
 
         # Then convert XLSX -> RDF
-        graph = excel_to_rdf_v1(xlsx_path, output_type="graph")
+        graph = excel_to_rdf_v1(
+            xlsx_path, output_type="graph", vocab_config=test_vocab_config
+        )
 
         # Check for provenance triples on a concept
         concept_iri = URIRef("http://example.org/test01")
@@ -1838,7 +1898,9 @@ class TestProvenanceInRdf:
         # Should contain the same provenance URL
         assert str(provenance_urls[0]) in [str(u) for u in see_also_urls]
 
-    def test_no_provenance_when_env_not_set(self, tmp_path, temp_config, monkeypatch):
+    def test_no_provenance_when_env_not_set(
+        self, tmp_path, temp_config, test_vocab_config, monkeypatch
+    ):
         """Test that no provenance triples when GITHUB_REPOSITORY not set."""
         from rdflib import DCTERMS, URIRef
 
@@ -1846,9 +1908,11 @@ class TestProvenanceInRdf:
         monkeypatch.delenv("VOC4CAT_VERSION", raising=False)
 
         xlsx_path = tmp_path / "test.xlsx"
-        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path)
+        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path, vocab_config=test_vocab_config)
 
-        graph = excel_to_rdf_v1(xlsx_path, output_type="graph")
+        graph = excel_to_rdf_v1(
+            xlsx_path, output_type="graph", vocab_config=test_vocab_config
+        )
 
         concept_iri = URIRef("http://example.org/test01")
 
@@ -1856,7 +1920,9 @@ class TestProvenanceInRdf:
         provenance_urls = list(graph.objects(concept_iri, DCTERMS.provenance))
         assert len(provenance_urls) == 0
 
-    def test_collection_has_provenance(self, tmp_path, temp_config, monkeypatch):
+    def test_collection_has_provenance(
+        self, tmp_path, temp_config, test_vocab_config, monkeypatch
+    ):
         """Test that collections also get provenance triples."""
         from rdflib import DCTERMS, URIRef
 
@@ -1864,9 +1930,11 @@ class TestProvenanceInRdf:
         monkeypatch.setenv("VOC4CAT_VERSION", "v2025-01-01")
 
         xlsx_path = tmp_path / "test.xlsx"
-        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path)
+        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path, vocab_config=test_vocab_config)
 
-        graph = excel_to_rdf_v1(xlsx_path, output_type="graph")
+        graph = excel_to_rdf_v1(
+            xlsx_path, output_type="graph", vocab_config=test_vocab_config
+        )
 
         # Collection IRI from concept-scheme-simple.ttl (ex:test10)
         collection_iri = URIRef("http://example.org/test10")
@@ -1874,3 +1942,184 @@ class TestProvenanceInRdf:
         provenance_urls = list(graph.objects(collection_iri, DCTERMS.provenance))
         assert len(provenance_urls) == 1
         assert "test10.ttl" in str(provenance_urls[0])
+
+
+# =============================================================================
+# Tests for Step 6: ConceptScheme from Config
+# =============================================================================
+
+
+class TestConfigToConceptSchemeV1:
+    """Tests for config_to_concept_scheme_v1() function."""
+
+    def test_config_only_creates_scheme(self, datadir, temp_config):
+        """Test creating ConceptScheme from config without RDF fallback."""
+        config = temp_config
+        config.load_config(datadir / "idranges_with_scheme.toml")
+
+        vocab = config.IDRANGES.vocabs["myvocab"]
+        scheme = config_to_concept_scheme_v1(vocab)
+
+        assert scheme.vocabulary_iri == "https://example.org/vocab/"
+        assert scheme.prefix == "ex"
+        assert scheme.title == "Test Vocabulary"
+        assert scheme.description == "A test vocabulary for unit tests."
+        assert scheme.created_date == "2025-01-15"
+        assert "Alice Smith" in scheme.creator
+        assert "Example Organization" in scheme.publisher
+        assert "Bob Jones" in scheme.custodian
+        assert scheme.template_version == TEMPLATE_VERSION
+
+    def test_config_overrides_rdf(self, datadir, temp_config):
+        """Test that config values override RDF values."""
+        from voc4cat.models_v1 import ConceptSchemeV1
+
+        config = temp_config
+        config.load_config(datadir / "idranges_with_scheme.toml")
+        vocab = config.IDRANGES.vocabs["myvocab"]
+
+        # Create an RDF scheme with different values
+        rdf_scheme = ConceptSchemeV1(
+            vocabulary_iri="http://rdf-value.org/",
+            title="RDF Title",
+            description="RDF Description",
+            created_date="2020-01-01",
+            modified_date="2024-06-01",  # Only in RDF
+            version="1.2.3",  # Only in RDF
+        )
+
+        scheme = config_to_concept_scheme_v1(vocab, rdf_scheme)
+
+        # Config values should override
+        assert scheme.vocabulary_iri == "https://example.org/vocab/"
+        assert scheme.title == "Test Vocabulary"
+        assert scheme.description == "A test vocabulary for unit tests."
+        assert scheme.created_date == "2025-01-15"
+
+        # RDF-only values should be preserved
+        assert scheme.modified_date == "2024-06-01"
+        assert scheme.version == "1.2.3"
+
+    def test_rdf_fills_gaps(self, temp_config):
+        """Test that RDF fills gaps when config fields are empty."""
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.models_v1 import ConceptSchemeV1
+
+        # Create a minimal vocab config (empty scheme fields)
+        vocab = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+        )
+
+        # Create RDF scheme with values
+        rdf_scheme = ConceptSchemeV1(
+            vocabulary_iri="http://rdf-value.org/",
+            title="RDF Title",
+            description="RDF Description",
+        )
+
+        scheme = config_to_concept_scheme_v1(vocab, rdf_scheme)
+
+        # RDF values should fill gaps
+        assert scheme.vocabulary_iri == "http://rdf-value.org/"
+        assert scheme.title == "RDF Title"
+        assert scheme.description == "RDF Description"
+
+    def test_logs_warning_for_missing_required_fields(self, temp_config, caplog):
+        """Test that warnings are logged for missing required fields."""
+        import logging
+
+        from voc4cat.config import Checks, Vocab
+
+        # Create a minimal vocab config (empty scheme fields)
+        vocab = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+        )
+
+        with caplog.at_level(logging.WARNING):
+            config_to_concept_scheme_v1(vocab)
+
+        # Should have warnings for required fields
+        assert "vocabulary_iri" in caplog.text
+        assert "title" in caplog.text
+
+
+class TestRdfToExcelWithConfig:
+    """Tests for rdf_to_excel_v1() with vocab_config parameter."""
+
+    def test_config_used_for_scheme_metadata(self, tmp_path, datadir, temp_config):
+        """Test that config is used for ConceptScheme when provided."""
+        config = temp_config
+        config.load_config(datadir / "idranges_with_scheme.toml")
+        vocab = config.IDRANGES.vocabs["myvocab"]
+
+        output_path = tmp_path / "output.xlsx"
+        rdf_to_excel_v1(CS_SIMPLE_TTL, output_path, vocab_config=vocab)
+
+        # Verify the Concept Scheme sheet has config values
+        wb = load_workbook(output_path)
+        ws = wb["Concept Scheme"]
+
+        # Find vocabulary IRI row (config value should override RDF)
+        found_iri = False
+        found_title = False
+        for row in range(4, 30):
+            if ws[f"A{row}"].value == "Vocabulary IRI":
+                # Config value should be used, not RDF value
+                assert ws[f"B{row}"].value == "https://example.org/vocab/"
+                found_iri = True
+            if ws[f"A{row}"].value == "Title":
+                assert ws[f"B{row}"].value == "Test Vocabulary"
+                found_title = True
+
+        assert found_iri, "Vocabulary IRI field not found"
+        assert found_title, "Title field not found"
+
+    def test_without_config_uses_rdf(self, tmp_path, temp_config):
+        """Test that RDF is used when no config provided."""
+        output_path = tmp_path / "output.xlsx"
+        rdf_to_excel_v1(CS_SIMPLE_TTL, output_path)
+
+        wb = load_workbook(output_path)
+        ws = wb["Concept Scheme"]
+
+        # Should have RDF value (from concept-scheme-simple.ttl)
+        found = False
+        for row in range(4, 30):
+            if ws[f"A{row}"].value == "Vocabulary IRI":
+                assert ws[f"B{row}"].value == "http://example.org/test/"
+                found = True
+                break
+
+        assert found, "Vocabulary IRI field not found"
+
+
+class TestExcelToRdfWithConfig:
+    """Tests for excel_to_rdf_v1() with vocab_config parameter."""
+
+    def test_config_used_ignores_excel_scheme(self, tmp_path, datadir, temp_config):
+        """Test that config is used and Excel scheme is ignored."""
+        from rdflib import SKOS, URIRef
+
+        config = temp_config
+        config.load_config(datadir / "idranges_with_scheme.toml")
+        vocab = config.IDRANGES.vocabs["myvocab"]
+
+        # First create an Excel file with RDF data
+        xlsx_path = tmp_path / "test.xlsx"
+        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path)  # Without config
+
+        # Now convert back to RDF using config
+        graph = excel_to_rdf_v1(xlsx_path, output_type="graph", vocab_config=vocab)
+
+        # The ConceptScheme should have config values
+        scheme_iri = URIRef("https://example.org/vocab/")
+        titles = list(graph.objects(scheme_iri, SKOS.prefLabel))
+
+        assert len(titles) == 1
+        assert str(titles[0]) == "Test Vocabulary"

@@ -26,7 +26,7 @@ def test_import(datadir, caplog, temp_config):
     assert config.IDRANGES.default_config is False
     assert len(config.IDRANGES.vocabs) == 1
     assert "myvocab" in config.IDRANGES.vocabs
-    assert len(config.IDRANGES.vocabs["myvocab"].id_range) == 3  # noqa: PLR2004
+    assert len(config.IDRANGES.vocabs["myvocab"].id_range) == 3
 
 
 def test_non_existing_config_file(tmp_path, caplog, temp_config):
@@ -112,3 +112,97 @@ def test_gh_name_invalid(temp_config, gh_name):
     config = temp_config
     with pytest.raises(ValidationError):
         config.IdrangeItem(first_id=1, last_id=2, gh_name=gh_name)
+
+
+# === Tests for config_version and scheme metadata fields ===
+
+
+def test_config_version_default(temp_config):
+    """Test that config_version defaults to '1.0'."""
+    config = temp_config
+    assert config.IDRANGES.config_version == "1.0"
+
+
+def test_config_version_from_file(datadir, temp_config):
+    """Test config_version is read from file."""
+    config = temp_config
+    config.load_config(datadir / "idranges_with_scheme.toml")
+    assert config.IDRANGES.config_version == "1.0"
+
+
+def test_scheme_metadata_fields_all_present(datadir, temp_config):
+    """Test all scheme metadata fields are read correctly."""
+    config = temp_config
+    config.load_config(datadir / "idranges_with_scheme.toml")
+
+    vocab = config.IDRANGES.vocabs["myvocab"]
+
+    assert vocab.vocabulary_iri == "https://example.org/vocab/"
+    assert vocab.prefix == "ex"
+    assert vocab.title == "Test Vocabulary"
+    assert vocab.description == "A test vocabulary for unit tests."
+    assert vocab.created_date == "2025-01-15"
+    assert "Alice Smith" in vocab.creator
+    assert "https://orcid.org/0000-0001-2345-6789" in vocab.creator
+    assert "Example Organization" in vocab.publisher
+    assert "Bob Jones" in vocab.custodian
+    assert vocab.catalogue_pid == "https://doi.org/10.1234/example"
+    assert vocab.documentation == "https://example.org/docs"
+    assert vocab.issue_tracker == "https://github.com/example/vocab/issues"
+    assert vocab.helpdesk == "https://example.org/helpdesk"
+    assert vocab.repository == "https://github.com/example/vocab"
+    assert vocab.homepage == "https://example.org"
+    assert vocab.conforms_to == "https://w3id.org/profile/vocpub"
+
+
+def test_scheme_metadata_fields_defaults(datadir, temp_config):
+    """Test scheme metadata fields default to empty strings when not present."""
+    config = temp_config
+    # Load config without scheme metadata (valid_idranges.toml)
+    config.load_config(datadir / VALID_CONFIG)
+
+    vocab = config.IDRANGES.vocabs["myvocab"]
+
+    # All scheme metadata fields should be empty strings
+    assert vocab.vocabulary_iri == ""
+    assert vocab.prefix == ""
+    assert vocab.title == ""
+    assert vocab.description == ""
+    assert vocab.created_date == ""
+    assert vocab.creator == ""
+    assert vocab.publisher == ""
+    assert vocab.custodian == ""
+    assert vocab.catalogue_pid == ""
+    assert vocab.documentation == ""
+    assert vocab.issue_tracker == ""
+    assert vocab.helpdesk == ""
+    assert vocab.repository == ""
+    assert vocab.homepage == ""
+    assert vocab.conforms_to == ""
+
+
+def test_multiline_creator_field(datadir, temp_config):
+    """Test multi-line creator field parsing."""
+    config = temp_config
+    config.load_config(datadir / "idranges_with_scheme.toml")
+
+    vocab = config.IDRANGES.vocabs["myvocab"]
+
+    # Creator should contain multiple lines
+    lines = [line.strip() for line in vocab.creator.strip().split("\n") if line.strip()]
+    assert len(lines) == 2
+    assert "Alice Smith" in lines[0]
+    assert "Example Org" in lines[1]
+
+
+def test_backward_compatibility_no_config_version(datadir, temp_config):
+    """Test that old config files without config_version still work."""
+    config = temp_config
+    # valid_idranges.toml doesn't have config_version
+    config.load_config(datadir / VALID_CONFIG)
+
+    # Should default to "1.0"
+    assert config.IDRANGES.config_version == "1.0"
+    # Rest should work normally
+    assert config.IDRANGES.single_vocab is True
+    assert "myvocab" in config.IDRANGES.vocabs
