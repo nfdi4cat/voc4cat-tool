@@ -13,6 +13,25 @@ from voc4cat.xlsx_common import XLSXMetadata
 TEMPLATE_VERSION = "1.0.rev-2025-06a"
 
 
+# === Obsoletion Reason Enums ===
+
+OBSOLETION_REASONS_CONCEPTS = [
+    "The concept is not clearly defined and usage has been inconsistent.",
+    "This concept was added in error.",
+    "More specific concepts were created.",
+    "This concept was converted to a collection.",
+    "The meaning of the concept is ambiguous.",
+    "Lack of evidence that this function/process/component exists.",
+]
+
+OBSOLETION_REASONS_COLLECTIONS = [
+    "The collection is not clearly defined and usage has been inconsistent.",
+    "This collection was added in error.",
+    "More collections were created.",
+    "This collection was converted to a concept.",
+]
+
+
 # === Concept Scheme (key-value format) ===
 
 
@@ -277,8 +296,8 @@ class ConceptV1(BaseModel):
     obsolete_reason: Annotated[
         str,
         XLSXMetadata(
-            display_name="Obsolete and set reason (History Note)",
-            meaning="skos:historyNote",
+            display_name="Obsoletion reason",
+            meaning="owl:deprecated,\nskos:historyNote",
         ),
     ] = ""
 
@@ -286,7 +305,7 @@ class ConceptV1(BaseModel):
         str,
         XLSXMetadata(
             display_name="Influenced by IRIs",
-            meaning="prov:wasInformedBy",
+            meaning="prov:wasInfluencedBy",
         ),
     ] = ""
 
@@ -294,7 +313,7 @@ class ConceptV1(BaseModel):
         str,
         XLSXMetadata(
             display_name="Source Vocab IRI or URL",
-            meaning="dct:isVersionOf",
+            meaning="prov:hadPrimarySource",
         ),
     ] = ""
 
@@ -386,8 +405,8 @@ class CollectionV1(BaseModel):
     obsolete_reason: Annotated[
         str,
         XLSXMetadata(
-            display_name="Obsolete and set reason (History Note)",
-            meaning="skos:historyNote",
+            display_name="Obsoletion reason",
+            meaning="owl:deprecated,\nskos:historyNote",
         ),
     ] = ""
 

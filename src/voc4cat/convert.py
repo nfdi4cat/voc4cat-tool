@@ -19,6 +19,7 @@ from voc4cat.convert_043 import (
     extract_concepts_and_collections as extract_concepts_and_collections_043,
 )
 from voc4cat.convert_043 import write_prefix_sheet
+from voc4cat.convert_v1 import convert_rdf_043_to_v1
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
     RDF_FILE_ENDINGS,
@@ -457,11 +458,34 @@ def convert(args):
 
     _check_convert_args(args)
 
+    # Check for --from option (043 to v1.0 RDF conversion)
+    from_format = getattr(args, "from_format", "auto")
+
     files = [args.VOCAB] if args.VOCAB.is_file() else [*Path(args.VOCAB).iterdir()]
     xlsx_files = [f for f in files if f.suffix.lower() in EXCEL_FILE_ENDINGS]
     rdf_files = [f for f in files if f.suffix.lower() in RDF_FILE_ENDINGS]
 
-    # convert xlsx and rdf files
+    # Handle --from 043: RDF-to-RDF conversion (043 -> v1.0)
+    if from_format == "043":
+        if xlsx_files:
+            logger.warning(
+                "XLSX files ignored when using --from 043 (RDF-to-RDF conversion only)"
+            )
+        for file in rdf_files:
+            logger.debug('Converting 043 RDF to v1.0: "%s"', file)
+            outfile = file if args.outdir is None else args.outdir / file.name
+            suffix = "ttl" if args.outputformat == "turtle" else args.outputformat
+            # Add _v1 suffix to distinguish from input
+            output_file_path = outfile.with_stem(f"{outfile.stem}_v1").with_suffix(
+                f".{suffix}"
+            )
+            convert_rdf_043_to_v1(
+                file, output_file_path, output_format=args.outputformat
+            )
+            logger.info("-> successfully converted to %s", output_file_path)
+        return
+
+    # Default behavior: xlsx <-> rdf conversion
     for file in chain(xlsx_files, rdf_files):
         logger.debug('Processing "%s"', file)
         outfile = file if args.outdir is None else args.outdir / file.name

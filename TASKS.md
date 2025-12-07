@@ -9,9 +9,16 @@ Ideas are marked as done here if they have been implemented in dev-1.0.0 branch 
 - Step 1: Create python code that generates the structure of `src/voc4cat/templates/vocab/blank_1.0_min.xlsx` (but not the enum sheet)
 - Step 2a: Adapt converter to output v043 rdf data of current rdf-schema into the new template reusing `src/voc4cat/models.py`
 - Step 2b: Adapt converter for roundtripping with v043 rdf and xlsx v1.0
-- Step 3: Add support for new columns in template v1.0 to read their data and output as RDF. The two way conversion RDF <-> XLXS must be lossless.
-- Step 4: Make concept scheme table read only. Instead integrate the metadata into IDranges file and read from it.
-- (minor & optional): Step 5: Output IDrange contributor info to template(?)
+- Step 3: Add support for new columns in template v1.0 to read their data and output as RDF. The two way conversion RDF <-> XLXS must be lossless. In order to convert existing RDF data created with template 043 we need to be able to read in these RDF data and convert them into V1.0 RDF. We only need a one-way conversion 043-to-v1.0.
+- Step 4: Improve deprecation handling
+  - Enum (string) in skos:historyNote - if present and filled with reason from enum, add "OBSOLETE " at the start of the  prefLabel of the concept (only for default language "en") if the prefLabel does not yet start likewise.
+  - Add dct:replacedBy if the concept was replaced by another one to RDF. - How to enter info in xlsx? Re-use changeNote column and special notation `replaced_by <IRI>`.
+- Step 5: Improved and more precise provenance info modelling
+  - Use prov:has_provenance for linking version-specific git blame page on github; for this add another column "Provenance" in concepts sheet before "Change Note" (read only)
+  - Output the link also as rdfs:seeAlso (for Skosmos)
+
+- Step 6: Make concept scheme table read only. Instead integrate the metadata into IDranges file and read from it.
+- Step 7 (minor & optional): Output IDrange contributor info to a "ID ranges" sheet in xlsx (read-only)
 
 Each step should be done in a separate PR and each step should be well tested.
 
