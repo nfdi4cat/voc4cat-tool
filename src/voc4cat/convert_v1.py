@@ -33,12 +33,19 @@ from rdflib import (
 
 from voc4cat import config
 from voc4cat.models_v1 import (
+    CONCEPT_SCHEME_SHEET_NAME,
+    CONCEPT_SCHEME_SHEET_TITLE,
+    ID_RANGES_SHEET_NAME,
+    ID_RANGES_SHEET_TITLE,
     OBSOLETION_REASONS_COLLECTIONS,
     OBSOLETION_REASONS_CONCEPTS,
+    PREFIXES_SHEET_NAME,
+    PREFIXES_SHEET_TITLE,
     TEMPLATE_VERSION,
     CollectionV1,
     ConceptSchemeV1,
     ConceptV1,
+    IDRangeInfoV1,
     MappingV1,
     PrefixV1,
 )
@@ -946,6 +953,139 @@ def build_prefixes_v1() -> list[PrefixV1]:
 
 
 # =============================================================================
+# ID Range Info Functions
+# =============================================================================
+
+
+def extract_used_ids(
+    concepts: list[ConceptV1],
+    collections: list[CollectionV1],
+    vocab_config: "config.Vocab",
+) -> set[int]:
+    """Extract numeric IDs used by concepts and collections.
+
+    Parses concept and collection IRIs to extract numeric IDs that match
+    the vocabulary's ID pattern (based on permanent_iri_part and id_length).
+
+    Args:
+        concepts: List of ConceptV1 model instances.
+        collections: List of CollectionV1 model instances.
+        vocab_config: Vocab config with permanent_iri_part and id_length.
+
+    Returns:
+        Set of integer IDs that are in use.
+    """
+    import re
+
+    used_ids: set[int] = set()
+
+    # Build regex pattern for extracting numeric IDs
+    # IDs are at the end of the IRI and have a fixed length
+    id_length = vocab_config.id_length
+    pattern = re.compile(rf"(\d{{{id_length}}})$")
+
+    # Get permanent IRI part for filtering
+    permanent_iri = str(vocab_config.permanent_iri_part).rstrip("/")
+
+    # Get curies converter for expanding CURIEs
+    converter = config.curies_converter
+
+    # Process concepts - extract from concept_iri field
+    seen_iris: set[str] = set()
+    for concept in concepts:
+        iri = concept.concept_iri
+        if not iri or iri in seen_iris:
+            continue
+        seen_iris.add(iri)
+
+        # Expand CURIE if needed
+        expanded_iri = expand_curie(iri, converter)
+
+        # Check if IRI belongs to this vocabulary
+        if not expanded_iri.startswith(permanent_iri):
+            continue
+
+        # Extract numeric ID
+        match = pattern.search(expanded_iri)
+        if match:
+            used_ids.add(int(match.group(1)))
+
+    # Process collections - extract from collection_iri field
+    seen_iris.clear()
+    for collection in collections:
+        iri = collection.collection_iri
+        if not iri or iri in seen_iris:
+            continue
+        seen_iris.add(iri)
+
+        # Expand CURIE if needed
+        expanded_iri = expand_curie(iri, converter)
+
+        # Check if IRI belongs to this vocabulary
+        if not expanded_iri.startswith(permanent_iri):
+            continue
+
+        # Extract numeric ID
+        match = pattern.search(expanded_iri)
+        if match:
+            used_ids.add(int(match.group(1)))
+
+    return used_ids
+
+
+def build_id_range_info(
+    vocab_config: "config.Vocab",
+    used_ids: set[int],
+) -> list[IDRangeInfoV1]:
+    """Build ID range info rows from config and usage data.
+
+    Args:
+        vocab_config: Vocab config with id_range list and id_length.
+        used_ids: Set of integer IDs that are in use.
+
+    Returns:
+        List of IDRangeInfoV1 model instances.
+    """
+    rows: list[IDRangeInfoV1] = []
+    id_length = vocab_config.id_length
+
+    for idr in vocab_config.id_range:
+        # Determine identifier: gh_name or orcid fallback
+        if idr.gh_name:
+            identifier = idr.gh_name
+        elif idr.orcid:
+            identifier = str(idr.orcid)
+        else:
+            identifier = "unknown"
+
+        # Format range string with zero-padding
+        range_str = f"{idr.first_id:0{id_length}d} - {idr.last_id:0{id_length}d}"
+
+        # Calculate unused IDs in this range
+        range_ids = set(range(idr.first_id, idr.last_id + 1))
+        unused_in_range = range_ids - used_ids
+
+        if not unused_in_range:
+            unused_str = "all used"
+        else:
+            first_unused = min(unused_in_range)
+            unused_str = (
+                f"next unused: {first_unused:0{id_length}d}, "
+                f"unused: {len(unused_in_range)}"
+            )
+
+        rows.append(
+            IDRangeInfoV1(
+                gh_name=identifier,
+                id_range=range_str,
+                unused_ids=unused_str,
+            )
+        )
+
+    return rows
+
+
+# =============================================================================
 # Excel Export Function
 # =============================================================================
 
@@ -957,6 +1097,7 @@ def export_vocabulary_v1(
     mappings: list[MappingV1],
     prefixes: list[PrefixV1],
     output_path: Path,
+    id_ranges: list[IDRangeInfoV1] | None = None,
 ) -> None:
     """Export v1.0 vocabulary data to Excel.
 
@@ -969,15 +1110,17 @@ def export_vocabulary_v1(
         mappings: List of MappingV1 model instances.
         prefixes: List of PrefixV1 model instances.
         output_path: Path to save the Excel file.
+        id_ranges: Optional list of IDRangeInfoV1 model instances. If provided,
+                  an "ID Ranges" sheet is added showing contributor allocations.
     """
     # 1. Concept Scheme (key-value format, read-only)
-    kv_config = XLSXKeyValueConfig(title="Concept Scheme (read-only)")
+    kv_config = XLSXKeyValueConfig(title=CONCEPT_SCHEME_SHEET_TITLE)
     export_to_xlsx(
         concept_scheme,
         output_path,
         format_type="keyvalue",
         config=kv_config,
-        sheet_name="Concept Scheme",
+        sheet_name=CONCEPT_SCHEME_SHEET_NAME,
     )
 
     # 2. Concepts (table format)
@@ -1044,14 +1187,36 @@ def export_vocabulary_v1(
             sheet_name="Mappings",
         )
 
-    # 5. Prefixes (table format)
-    table_config = XLSXTableConfig(title="Prefix mappings")
+    # 5. ID Ranges (table format, read-only)
+    if id_ranges:
+        table_config = XLSXTableConfig(title=ID_RANGES_SHEET_TITLE)
+        export_to_xlsx(
+            id_ranges,
+            output_path,
+            format_type="table",
+            config=table_config,
+            sheet_name=ID_RANGES_SHEET_NAME,
+        )
+    else:
+        # Export empty ID Ranges sheet with just headers
+        empty_id_range = [IDRangeInfoV1()]
+        table_config = XLSXTableConfig(title=ID_RANGES_SHEET_TITLE)
+        export_to_xlsx(
+            empty_id_range,
+            output_path,
+            format_type="table",
+            config=table_config,
+            sheet_name=ID_RANGES_SHEET_NAME,
+        )
+
+    # 6. Prefixes (table format)
+    table_config = XLSXTableConfig(title=PREFIXES_SHEET_TITLE)
     export_to_xlsx(
         prefixes,
         output_path,
         format_type="table",
         config=table_config,
-        sheet_name="Prefixes",
+        sheet_name=PREFIXES_SHEET_NAME,
     )
 
     # Reorder sheets and set freeze panes
@@ -1071,11 +1236,12 @@ def export_vocabulary_v1(
 def _reorder_sheets(wb) -> None:
     """Reorder sheets to match expected template order."""
     expected_order = [
-        "Concept Scheme",
+        CONCEPT_SCHEME_SHEET_NAME,
         "Concepts",
         "Collections",
         "Mappings",
-        "Prefixes",
+        ID_RANGES_SHEET_NAME,
+        PREFIXES_SHEET_NAME,
     ]
 
     current_sheets = wb.sheetnames
@@ -1189,6 +1355,13 @@ def rdf_to_excel_v1(
     mappings_v1 = rdf_mappings_to_v1(mappings_data)
     prefixes_v1 = build_prefixes_v1()
 
+    # Build ID range info if vocab_config is provided
+    id_ranges_v1: list[IDRangeInfoV1] | None = None
+    if vocab_config is not None and vocab_config.id_range:
+        logger.debug("Building ID range info...")
+        used_ids = extract_used_ids(concepts_v1, collections_v1, vocab_config)
+        id_ranges_v1 = build_id_range_info(vocab_config, used_ids)
+
     # Determine output path
     if output_file_path is None:
         output_file_path = file_to_convert_path.with_suffix(".xlsx")
@@ -1202,6 +1375,7 @@ def rdf_to_excel_v1(
         mappings_v1,
         prefixes_v1,
         output_file_path,
+        id_ranges=id_ranges_v1,
     )
 
     logger.info("Conversion complete: %s", output_file_path)
@@ -1270,7 +1444,7 @@ def read_concept_scheme_v1(filepath: Path) -> ConceptSchemeV1:
         filepath,
         ConceptSchemeV1,
         format_type="keyvalue",
-        sheet_name="Concept Scheme",
+        sheet_name=CONCEPT_SCHEME_SHEET_NAME,
     )
 
 
@@ -1344,13 +1518,13 @@ def read_prefixes_v1(filepath: Path) -> list[PrefixV1]:
         List of PrefixV1 model instances.
     """
     # Must match the config used during export
-    config = XLSXTableConfig(title="Prefix mappings")
+    config = XLSXTableConfig(title=PREFIXES_SHEET_TITLE)
     return import_from_xlsx(
         filepath,
         PrefixV1,
         format_type="table",
         config=config,
-        sheet_name="Prefixes",
+        sheet_name=PREFIXES_SHEET_NAME,
     )
 
 

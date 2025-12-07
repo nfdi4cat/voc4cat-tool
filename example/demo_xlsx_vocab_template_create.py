@@ -293,7 +293,7 @@ def main():
     # Configuration for key-value format (ConceptScheme)
     # Note: Units disabled, descriptions and meanings enabled
     kv_config = XLSXKeyValueConfig(
-        title="Concept Scheme Metadata",
+        title="Concept Scheme (read-only)",
     )
 
     # Configuration for table format (other sheets)

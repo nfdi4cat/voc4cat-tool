@@ -2123,3 +2123,433 @@ class TestExcelToRdfWithConfig:
 
         assert len(titles) == 1
         assert str(titles[0]) == "Test Vocabulary"
+
+
+# =============================================================================
+# ID Ranges Tests (Step 7)
+# =============================================================================
+
+
+class TestExtractUsedIds:
+    """Tests for extract_used_ids() function."""
+
+    def test_extract_ids_from_concepts(self, temp_config):
+        """Test that concept IDs are extracted correctly."""
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import extract_used_ids
+        from voc4cat.models_v1 import ConceptV1
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+        )
+
+        concepts = [
+            ConceptV1(concept_iri="https://example.org/0000001"),
+            ConceptV1(concept_iri="https://example.org/0000001"),  # Duplicate
+            ConceptV1(concept_iri="https://example.org/0000005"),
+            ConceptV1(concept_iri="https://example.org/0000010"),
+        ]
+        collections = []
+
+        used_ids = extract_used_ids(concepts, collections, vocab_config)
+
+        assert used_ids == {1, 5, 10}
+
+    def test_extract_ids_from_collections(self, temp_config):
+        """Test that collection IDs are extracted correctly."""
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import extract_used_ids
+        from voc4cat.models_v1 import CollectionV1
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+        )
+
+        concepts = []
+        collections = [
+            CollectionV1(collection_iri="https://example.org/0000020"),
+            CollectionV1(collection_iri="https://example.org/0000025"),
+        ]
+
+        used_ids = extract_used_ids(concepts, collections, vocab_config)
+
+        assert used_ids == {20, 25}
+
+    def test_extract_ids_combined(self, temp_config):
+        """Test that both concept and collection IDs are extracted."""
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import extract_used_ids
+        from voc4cat.models_v1 import CollectionV1, ConceptV1
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+        )
+
+        concepts = [
+            ConceptV1(concept_iri="https://example.org/0000001"),
+            ConceptV1(concept_iri="https://example.org/0000002"),
+        ]
+        collections = [
+            CollectionV1(collection_iri="https://example.org/0000003"),
+        ]
+
+        used_ids = extract_used_ids(concepts, collections, vocab_config)
+
+        assert used_ids == {1, 2, 3}
+
+    def test_ignores_foreign_iris(self, temp_config):
+        """Test that IRIs from other vocabularies are ignored."""
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import extract_used_ids
+        from voc4cat.models_v1 import ConceptV1
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+        )
+
+        concepts = [
+            ConceptV1(concept_iri="https://example.org/0000001"),
+            ConceptV1(concept_iri="https://other.org/0000002"),  # Foreign
+        ]
+        collections = []
+
+        used_ids = extract_used_ids(concepts, collections, vocab_config)
+
+        assert used_ids == {1}
+
+    def test_handles_empty_iris(self, temp_config):
+        """Test that empty IRIs are handled gracefully."""
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import extract_used_ids
+        from voc4cat.models_v1 import CollectionV1, ConceptV1
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+        )
+
+        concepts = [
+            ConceptV1(concept_iri=""),
+            ConceptV1(concept_iri="https://example.org/0000001"),
+        ]
+        collections = [CollectionV1(collection_iri="")]
+
+        used_ids = extract_used_ids(concepts, collections, vocab_config)
+
+        assert used_ids == {1}
+
+
+class TestBuildIdRangeInfo:
+    """Tests for build_id_range_info() function."""
+
+    def test_build_single_range(self, temp_config):
+        """Test building info for a single ID range."""
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import build_id_range_info
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+            id_range=[
+                {"first_id": 1, "last_id": 10, "gh_name": "alice"},
+            ],
+        )
+
+        used_ids = {1, 2, 3}
+        rows = build_id_range_info(vocab_config, used_ids)
+
+        assert len(rows) == 1
+        assert rows[0].gh_name == "alice"
+        assert rows[0].id_range == "0000001 - 0000010"
+        assert rows[0].unused_ids == "next unused: 0000004, unused: 7"
+
+    def test_build_multiple_ranges(self, temp_config):
+        """Test building info for multiple ID ranges."""
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import build_id_range_info
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+            id_range=[
+                {"first_id": 1, "last_id": 10, "gh_name": "alice"},
+                {"first_id": 11, "last_id": 20, "gh_name": "bob"},
+            ],
+        )
+
+        used_ids = {1, 11, 12}
+        rows = build_id_range_info(vocab_config, used_ids)
+
+        assert len(rows) == 2
+        assert rows[0].gh_name == "alice"
+        assert rows[0].unused_ids == "next unused: 0000002, unused: 9"
+        assert rows[1].gh_name == "bob"
+        assert rows[1].unused_ids == "next unused: 0000013, unused: 8"
+
+    def test_all_ids_used(self, temp_config):
+        """Test when all IDs in a range are used."""
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import build_id_range_info
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+            id_range=[
+                {"first_id": 1, "last_id": 3, "gh_name": "alice"},
+            ],
+        )
+
+        used_ids = {1, 2, 3}
+        rows = build_id_range_info(vocab_config, used_ids)
+
+        assert len(rows) == 1
+        assert rows[0].unused_ids == "all used"
+
+    def test_orcid_fallback(self, temp_config):
+        """Test that ORCID is used when gh_name is empty."""
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import build_id_range_info
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+            id_range=[
+                {
+                    "first_id": 1,
+                    "last_id": 10,
+                    "gh_name": "",
+                    "orcid": "https://orcid.org/0000-0001-2345-6789",
+                },
+            ],
+        )
+
+        used_ids = set()
+        rows = build_id_range_info(vocab_config, used_ids)
+
+        assert len(rows) == 1
+        assert rows[0].gh_name == "https://orcid.org/0000-0001-2345-6789"
+
+    def test_zero_padding(self, temp_config):
+        """Test that ID padding respects id_length from config."""
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import build_id_range_info
+
+        vocab_config = Vocab(
+            id_length=5,  # Shorter padding
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+            id_range=[
+                {"first_id": 1, "last_id": 100, "gh_name": "alice"},
+            ],
+        )
+
+        used_ids = {1}
+        rows = build_id_range_info(vocab_config, used_ids)
+
+        assert rows[0].id_range == "00001 - 00100"
+        assert rows[0].unused_ids == "next unused: 00002, unused: 99"
+
+
+class TestIdRangesSheetExport:
+    """Tests for ID Ranges sheet in exported Excel files."""
+
+    def test_id_ranges_sheet_created(self, tmp_path, temp_config, datadir):
+        """Test that ID Ranges sheet is created when vocab_config has id_range."""
+        from openpyxl import load_workbook
+
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import rdf_to_excel_v1
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+            vocabulary_iri="https://example.org/",
+            title="Test Vocabulary",
+            id_range=[
+                {"first_id": 1, "last_id": 10, "gh_name": "alice"},
+            ],
+        )
+
+        xlsx_path = tmp_path / "test.xlsx"
+        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path, vocab_config=vocab_config)
+
+        wb = load_workbook(xlsx_path)
+        assert "ID Ranges" in wb.sheetnames
+
+    def test_id_ranges_sheet_position(self, tmp_path, temp_config, datadir):
+        """Test that ID Ranges sheet is positioned before Prefixes."""
+        from openpyxl import load_workbook
+
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import rdf_to_excel_v1
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+            vocabulary_iri="https://example.org/",
+            title="Test Vocabulary",
+            id_range=[
+                {"first_id": 1, "last_id": 10, "gh_name": "alice"},
+            ],
+        )
+
+        xlsx_path = tmp_path / "test.xlsx"
+        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path, vocab_config=vocab_config)
+
+        wb = load_workbook(xlsx_path)
+        id_ranges_idx = wb.sheetnames.index("ID Ranges")
+        prefixes_idx = wb.sheetnames.index("Prefixes")
+        assert id_ranges_idx < prefixes_idx
+
+    def test_id_ranges_sheet_content(self, tmp_path, temp_config, datadir):
+        """Test that ID Ranges sheet has correct content."""
+        from openpyxl import load_workbook
+
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import rdf_to_excel_v1
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+            vocabulary_iri="https://example.org/",
+            title="Test Vocabulary",
+            id_range=[
+                {"first_id": 1, "last_id": 10, "gh_name": "alice"},
+                {"first_id": 11, "last_id": 20, "gh_name": "bob"},
+            ],
+        )
+
+        xlsx_path = tmp_path / "test.xlsx"
+        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path, vocab_config=vocab_config)
+
+        wb = load_workbook(xlsx_path)
+        ws = wb["ID Ranges"]
+
+        # Check title row
+        assert ws["A1"].value == "ID Ranges (read-only)"
+
+        # Check headers (row 3)
+        assert ws["A3"].value == "gh-name"
+        assert ws["B3"].value == "ID Range"
+        assert ws["C3"].value == "Unused IDs"
+
+        # Check data rows (row 4+)
+        assert ws["A4"].value == "alice"
+        assert ws["B4"].value == "0000001 - 0000010"
+        assert ws["A5"].value == "bob"
+        assert ws["B5"].value == "0000011 - 0000020"
+
+    def test_id_ranges_empty_when_no_config(self, tmp_path, temp_config):
+        """Test that ID Ranges sheet is empty when no config provided."""
+        from openpyxl import load_workbook
+
+        from voc4cat.convert_v1 import rdf_to_excel_v1
+
+        xlsx_path = tmp_path / "test.xlsx"
+        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path)  # No vocab_config
+
+        wb = load_workbook(xlsx_path)
+        assert "ID Ranges" in wb.sheetnames
+        ws = wb["ID Ranges"]
+
+        # Should have title and headers but no data
+        assert ws["A1"].value == "ID Ranges (read-only)"
+        assert ws["A3"].value == "gh-name"
+        # Data row should be empty
+        assert ws["A4"].value is None or ws["A4"].value == ""
+
+    def test_unused_ids_calculation(self, tmp_path, temp_config):
+        """Test that unused IDs are calculated correctly from vocabulary content."""
+        from openpyxl import load_workbook
+        from rdflib import RDF, SKOS, Graph, Literal, Namespace, URIRef
+
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import rdf_to_excel_v1
+
+        # Create RDF with known concept IRIs
+        EX = Namespace("https://example.org/")
+        graph = Graph()
+        graph.bind("skos", SKOS)
+        graph.bind("ex", EX)
+
+        # ConceptScheme
+        scheme = EX[""]
+        graph.add((scheme, RDF.type, SKOS.ConceptScheme))
+        graph.add((scheme, SKOS.prefLabel, Literal("Test", lang="en")))
+
+        # Add concepts with specific IDs
+        for concept_id in [1, 2, 5]:
+            concept_iri = URIRef(f"https://example.org/{concept_id:07d}")
+            graph.add((concept_iri, RDF.type, SKOS.Concept))
+            graph.add(
+                (
+                    concept_iri,
+                    SKOS.prefLabel,
+                    Literal(f"Concept {concept_id}", lang="en"),
+                )
+            )
+            graph.add(
+                (
+                    concept_iri,
+                    SKOS.definition,
+                    Literal(f"Definition {concept_id}", lang="en"),
+                )
+            )
+            graph.add((scheme, SKOS.hasTopConcept, concept_iri))
+
+        # Save RDF to file
+        ttl_path = tmp_path / "test.ttl"
+        graph.serialize(ttl_path, format="turtle")
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+            vocabulary_iri="https://example.org/",
+            title="Test Vocabulary",
+            id_range=[
+                {"first_id": 1, "last_id": 10, "gh_name": "alice"},
+            ],
+        )
+
+        xlsx_path = tmp_path / "test.xlsx"
+        rdf_to_excel_v1(ttl_path, xlsx_path, vocab_config=vocab_config)
+
+        wb = load_workbook(xlsx_path)
+        ws = wb["ID Ranges"]
+
+        # With IDs 1, 2, 5 used in range 1-10, we have 7 unused
+        # First unused should be 3
+        unused_value = ws["C4"].value
+        assert "next unused: 0000003" in unused_value
+        assert "unused: 7" in unused_value
