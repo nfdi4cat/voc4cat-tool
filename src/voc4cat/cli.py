@@ -257,6 +257,17 @@ def add_convert_subparser(subparsers, options):
         choices=["turtle", "xml", "json-ld"],
         default="turtle",
     )
+    skosopt.add_argument(
+        "--from",
+        dest="from_format",
+        help=(
+            "Source format version for RDF-to-RDF conversion. Use '043' to convert "
+            "template 0.4.3 RDF to current RDF format. (default: auto - no conversion)"
+        ),
+        required=False,
+        choices=["043", "auto"],
+        default="auto",
+    )
     xlsxopt = parser.add_argument_group("Creating Excel/xlsx")
     xlsxopt.add_argument(
         "-t",

@@ -119,7 +119,9 @@ def extract_concepts_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
     Returns:
         Nested dict: {concept_iri: {language: concept_data_dict}}
         Each concept_data_dict contains: preferred_label, definition,
-        alternate_labels, parent_iris, source_vocab_iri, change_note.
+        alternate_labels, parent_iris, source_vocab_iri, change_note,
+        editorial_note, obsolete_reason, influenced_by_iris,
+        source_vocab_license, source_vocab_rights_holder.
     """
     # Structure: {iri: {lang: {field: value}}}
     concepts_by_iri_lang: dict[str, dict[str, dict]] = defaultdict(
@@ -132,9 +134,15 @@ def extract_concepts_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
             "pref_labels": {},  # {lang: label}
             "definitions": {},  # {lang: definition}
             "alt_labels": {},  # {lang: [labels]}
+            "editorial_notes": {},  # {lang: note}
             "parent_iris": [],
             "source_vocab_iri": "",
+            "source_vocab_license": "",
+            "source_vocab_rights_holder": "",
             "change_note": "",
+            "obsolete_reason": "",
+            "is_deprecated": False,
+            "influenced_by_iris": [],
         }
     )
 
@@ -154,12 +162,26 @@ def extract_concepts_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
                 if lang not in data["alt_labels"]:
                     data["alt_labels"][lang] = []
                 data["alt_labels"][lang].append(str(o))
+            elif p == SKOS.editorialNote:
+                lang = o.language if isinstance(o, Literal) and o.language else "en"
+                data["editorial_notes"][lang] = str(o)
             elif p == SKOS.broader:
                 data["parent_iris"].append(str(o))
-            elif p == RDFS.isDefinedBy:
+            elif p == PROV.hadPrimarySource:
                 data["source_vocab_iri"] = str(o)
-            elif p in [SKOS.historyNote, DCTERMS.provenance, PROV.wasDerivedFrom]:
+            elif p == DCTERMS.license:
+                data["source_vocab_license"] = str(o)
+            elif p == DCTERMS.rightsHolder:
+                data["source_vocab_rights_holder"] = str(o)
+            elif p == SKOS.changeNote:
                 data["change_note"] = str(o)
+            elif p == OWL.deprecated:
+                data["is_deprecated"] = str(o).lower() == "true"
+            elif p == SKOS.historyNote:
+                # historyNote is used for obsoletion reason when deprecated
+                data["obsolete_reason"] = str(o)
+            elif p == PROV.wasInfluencedBy:
+                data["influenced_by_iris"].append(str(o))
 
     # Second pass: organize by IRI and language
     for iri, data in concept_data.items():
@@ -173,13 +195,21 @@ def extract_concepts_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
             langs_ordered.insert(0, "en")
 
         for lang in langs_ordered:
+            # Only include obsolete_reason if concept is deprecated
+            obsolete_reason = data["obsolete_reason"] if data["is_deprecated"] else ""
+
             concepts_by_iri_lang[iri][lang] = {
                 "preferred_label": data["pref_labels"].get(lang, ""),
                 "definition": data["definitions"].get(lang, ""),
                 "alternate_labels": data["alt_labels"].get(lang, []),
+                "editorial_note": data["editorial_notes"].get(lang, ""),
                 "parent_iris": data["parent_iris"],
                 "source_vocab_iri": data["source_vocab_iri"],
+                "source_vocab_license": data["source_vocab_license"],
+                "source_vocab_rights_holder": data["source_vocab_rights_holder"],
                 "change_note": data["change_note"],
+                "obsolete_reason": obsolete_reason,
+                "influenced_by_iris": data["influenced_by_iris"],
             }
 
     return dict(concepts_by_iri_lang)
@@ -193,8 +223,11 @@ def extract_collections_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
 
     Returns:
         Nested dict: {collection_iri: {language: collection_data_dict}}
-        Each collection_data_dict contains: preferred_label, definition, change_note.
+        Each collection_data_dict contains: preferred_label, definition, change_note,
+        editorial_note, obsolete_reason, ordered, members.
     """
+    from rdflib.collection import Collection as RDFCollection
+
     collections_by_iri_lang: dict[str, dict[str, dict]] = defaultdict(
         lambda: defaultdict(dict)
     )
@@ -204,14 +237,30 @@ def extract_collections_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
         lambda: {
             "pref_labels": {},  # {lang: label}
             "definitions": {},  # {lang: definition}
+            "editorial_notes": {},  # {lang: note}
             "change_note": "",
-            "members": [],  # member IRIs (concepts or collections)
+            "obsolete_reason": "",
+            "is_deprecated": False,
+            "ordered": False,
+            "members": [],  # member IRIs (concepts or collections) - unordered
+            "ordered_members": [],  # member IRIs in order - for OrderedCollection
         }
     )
 
+    # Process both Collection and OrderedCollection types
+    collection_iris = set()
     for s in graph.subjects(RDF.type, SKOS.Collection):
+        collection_iris.add(s)
+    for s in graph.subjects(RDF.type, SKOS.OrderedCollection):
+        collection_iris.add(s)
+
+    for s in collection_iris:
         iri = str(s)
         data = collection_data[iri]
+
+        # Check if it's an OrderedCollection
+        if (s, RDF.type, SKOS.OrderedCollection) in graph:
+            data["ordered"] = True
 
         for p, o in graph.predicate_objects(s):
             if p == SKOS.prefLabel:
@@ -220,10 +269,26 @@ def extract_collections_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
             elif p == SKOS.definition:
                 lang = o.language if isinstance(o, Literal) and o.language else "en"
                 data["definitions"][lang] = str(o)
-            elif p in [SKOS.historyNote, DCTERMS.provenance, PROV.wasDerivedFrom]:
+            elif p == SKOS.editorialNote:
+                lang = o.language if isinstance(o, Literal) and o.language else "en"
+                data["editorial_notes"][lang] = str(o)
+            elif p == SKOS.changeNote:
                 data["change_note"] = str(o)
+            elif p == OWL.deprecated:
+                data["is_deprecated"] = str(o).lower() == "true"
+            elif p == SKOS.historyNote:
+                # historyNote is used for obsoletion reason when deprecated
+                data["obsolete_reason"] = str(o)
             elif p == SKOS.member:
                 data["members"].append(str(o))
+            elif p == SKOS.memberList:
+                # Parse RDF List for ordered members
+                try:
+                    rdf_list = RDFCollection(graph, o)
+                    data["ordered_members"] = [str(m) for m in rdf_list]
+                except Exception:
+                    # If parsing fails, fall back to empty list
+                    data["ordered_members"] = []
 
     # Second pass: organize by IRI and language
     for iri, data in collection_data.items():
@@ -234,12 +299,19 @@ def extract_collections_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
             langs_ordered.remove("en")
             langs_ordered.insert(0, "en")
 
+        # Only include obsolete_reason if collection is deprecated
+        obsolete_reason = data["obsolete_reason"] if data["is_deprecated"] else ""
+
         for lang in langs_ordered:
             collections_by_iri_lang[iri][lang] = {
                 "preferred_label": data["pref_labels"].get(lang, ""),
                 "definition": data["definitions"].get(lang, ""),
+                "editorial_note": data["editorial_notes"].get(lang, ""),
                 "change_note": data["change_note"],
+                "obsolete_reason": obsolete_reason,
+                "ordered": data["ordered"],
                 "members": data["members"],
+                "ordered_members": data["ordered_members"],
             }
 
     return dict(collections_by_iri_lang)
@@ -338,6 +410,40 @@ def build_collection_hierarchy_map(graph: Graph) -> dict[str, list[str]]:
     return dict(collection_to_parents)
 
 
+def build_concept_to_ordered_collections_map(
+    graph: Graph,
+) -> dict[str, dict[str, int]]:
+    """Build mapping from concept IRIs to ordered collections with positions.
+
+    Args:
+        graph: The RDF graph to analyze.
+
+    Returns:
+        Dict: {concept_iri: {collection_iri: position}}
+        Position is 1-indexed (first member is position 1).
+    """
+    from rdflib.collection import Collection as RDFCollection
+
+    concept_to_ordered: dict[str, dict[str, int]] = defaultdict(dict)
+
+    for collection_iri in graph.subjects(RDF.type, SKOS.OrderedCollection):
+        # Get the memberList
+        member_list_node = graph.value(collection_iri, SKOS.memberList)
+        if member_list_node:
+            try:
+                rdf_list = RDFCollection(graph, member_list_node)
+                for position, member in enumerate(rdf_list, start=1):
+                    member_iri = str(member)
+                    # Only map if member is a concept
+                    if (member, RDF.type, SKOS.Concept) in graph:
+                        concept_to_ordered[member_iri][str(collection_iri)] = position
+            except Exception:
+                # If parsing fails, skip this collection
+                pass
+
+    return dict(concept_to_ordered)
+
+
 # =============================================================================
 # Model Conversion Functions
 # =============================================================================
@@ -371,21 +477,28 @@ def rdf_concept_scheme_to_v1(data: dict) -> ConceptSchemeV1:
 def rdf_concepts_to_v1(
     concepts_data: dict[str, dict[str, dict]],
     concept_to_collections: dict[str, list[str]],
+    concept_to_ordered_collections: dict[str, dict[str, int]] | None = None,
 ) -> list[ConceptV1]:
     """Convert extracted concepts to ConceptV1 models.
 
     Creates one ConceptV1 row per (concept_iri, language) combination.
-    The first row for each concept includes: parent_iris, member_of_collections.
-    Subsequent rows (other languages) have these fields empty.
+    The first row for each concept includes: parent_iris, member_of_collections,
+    member_of_ordered_collection, source_vocab_iri/license/rights_holder,
+    change_note, obsolete_reason, influenced_by_iris.
+    Subsequent rows (other languages) have structural fields empty but include
+    editorial_note per language.
 
     Args:
         concepts_data: Nested dict from extract_concepts_from_rdf.
         concept_to_collections: Mapping from concept IRI to collection IRIs.
+        concept_to_ordered_collections: Mapping from concept IRI to
+            {ordered_collection_iri: position}.
 
     Returns:
         List of ConceptV1 model instances.
     """
     concepts_v1 = []
+    concept_to_ordered_collections = concept_to_ordered_collections or {}
 
     # Use curies converter to compress IRIs
     converter = config.curies_converter
@@ -397,9 +510,12 @@ def rdf_concepts_to_v1(
             # Compress the concept IRI
             concept_iri_display = converter.compress(concept_iri, passthrough=True)
 
-            # Format alternate labels (join with separator)
+            # Format alternate labels (join with | separator, no spaces around |)
             alt_labels = data.get("alternate_labels", [])
             alt_labels_str = " | ".join(alt_labels) if alt_labels else ""
+
+            # Editorial note is per-language
+            editorial_note = data.get("editorial_note", "")
 
             # Only include structural data in first row
             if is_first_row:
@@ -410,22 +526,48 @@ def rdf_concepts_to_v1(
                 ]
                 parent_iris_str = " ".join(parent_iris_strs)
 
-                # Format member_of_collections
+                # Format member_of_collections (regular collections only)
                 collections = concept_to_collections.get(concept_iri, [])
                 collections_strs = [
                     converter.compress(c, passthrough=True) for c in collections
                 ]
                 member_of_collections_str = " ".join(collections_strs)
 
+                # Format member_of_ordered_collection (format: collIRI # pos)
+                ordered_colls = concept_to_ordered_collections.get(concept_iri, {})
+                ordered_parts = []
+                for coll_iri, position in ordered_colls.items():
+                    coll_display = converter.compress(coll_iri, passthrough=True)
+                    ordered_parts.append(f"{coll_display} # {position}")
+                member_of_ordered_collection_str = " ".join(ordered_parts)
+
+                # Source vocab attribution
                 source_vocab_iri = data.get("source_vocab_iri", "")
+                source_vocab_license = data.get("source_vocab_license", "")
+                source_vocab_rights_holder = data.get("source_vocab_rights_holder", "")
+
+                # Notes
                 change_note = data.get("change_note", "")
+                obsolete_reason = data.get("obsolete_reason", "")
+
+                # Influenced by IRIs
+                influenced_iris = data.get("influenced_by_iris", [])
+                influenced_iris_strs = [
+                    converter.compress(i, passthrough=True) for i in influenced_iris
+                ]
+                influenced_by_iris_str = " ".join(influenced_iris_strs)
 
                 is_first_row = False
             else:
                 parent_iris_str = ""
                 member_of_collections_str = ""
+                member_of_ordered_collection_str = ""
                 source_vocab_iri = ""
+                source_vocab_license = ""
+                source_vocab_rights_holder = ""
                 change_note = ""
+                obsolete_reason = ""
+                influenced_by_iris_str = ""
 
             concepts_v1.append(
                 ConceptV1(
@@ -436,8 +578,14 @@ def rdf_concepts_to_v1(
                     alternate_labels=alt_labels_str,
                     parent_iris=parent_iris_str,
                     member_of_collections=member_of_collections_str,
-                    source_vocab_iri=source_vocab_iri,
+                    member_of_ordered_collection=member_of_ordered_collection_str,
                     change_note=change_note,
+                    editorial_note=editorial_note,
+                    obsolete_reason=obsolete_reason,
+                    influenced_by_iris=influenced_by_iris_str,
+                    source_vocab_iri=source_vocab_iri,
+                    source_vocab_license=source_vocab_license,
+                    source_vocab_rights_holder=source_vocab_rights_holder,
                 )
             )
 
@@ -451,6 +599,10 @@ def rdf_collections_to_v1(
     """Convert extracted collections to CollectionV1 models.
 
     Creates one CollectionV1 row per (collection_iri, language) combination.
+    The first row includes: parent_collection_iris, ordered, change_note,
+    obsolete_reason.
+    Subsequent rows (other languages) have structural fields empty but include
+    editorial_note per language.
 
     Args:
         collections_data: Nested dict from extract_collections_from_rdf.
@@ -471,6 +623,9 @@ def rdf_collections_to_v1(
                 collection_iri, passthrough=True
             )
 
+            # Editorial note is per-language
+            editorial_note = data.get("editorial_note", "")
+
             if is_first_row:
                 # Format parent collection IRIs
                 parents = collection_to_parents.get(collection_iri, [])
@@ -479,12 +634,19 @@ def rdf_collections_to_v1(
                 ]
                 parent_iris_str = " ".join(parents_strs)
 
+                # Ordered flag
+                ordered = "Yes" if data.get("ordered", False) else ""
+
+                # Notes
                 change_note = data.get("change_note", "")
+                obsolete_reason = data.get("obsolete_reason", "")
 
                 is_first_row = False
             else:
                 parent_iris_str = ""
+                ordered = ""
                 change_note = ""
+                obsolete_reason = ""
 
             collections_v1.append(
                 CollectionV1(
@@ -493,7 +655,10 @@ def rdf_collections_to_v1(
                     preferred_label=data.get("preferred_label", ""),
                     definition=data.get("definition", ""),
                     parent_collection_iris=parent_iris_str,
+                    ordered=ordered,
                     change_note=change_note,
+                    editorial_note=editorial_note,
+                    obsolete_reason=obsolete_reason,
                 )
             )
 
@@ -772,13 +937,18 @@ def rdf_to_excel_v1(
     logger.debug("Building concept-to-collections map...")
     concept_to_collections = build_concept_to_collections_map(graph)
 
+    logger.debug("Building concept-to-ordered-collections map...")
+    concept_to_ordered_collections = build_concept_to_ordered_collections_map(graph)
+
     logger.debug("Building collection hierarchy map...")
     collection_to_parents = build_collection_hierarchy_map(graph)
 
     # Convert to v1.0 models
     logger.debug("Converting to v1.0 models...")
     concept_scheme_v1 = rdf_concept_scheme_to_v1(cs_data)
-    concepts_v1 = rdf_concepts_to_v1(concepts_data, concept_to_collections)
+    concepts_v1 = rdf_concepts_to_v1(
+        concepts_data, concept_to_collections, concept_to_ordered_collections
+    )
     collections_v1 = rdf_collections_to_v1(collections_data, collection_to_parents)
     mappings_v1 = rdf_mappings_to_v1(mappings_data)
     prefixes_v1 = build_prefixes_v1()
@@ -819,10 +989,17 @@ class AggregatedConcept:
     pref_labels: dict[str, str] = field(default_factory=dict)  # {lang: label}
     definitions: dict[str, str] = field(default_factory=dict)  # {lang: definition}
     alt_labels: dict[str, list[str]] = field(default_factory=dict)  # {lang: [labels]}
+    editorial_notes: dict[str, str] = field(default_factory=dict)  # {lang: note}
     parent_iris: list[str] = field(default_factory=list)
     member_of_collections: list[str] = field(default_factory=list)
+    # {ordered_collection_iri: position}
+    ordered_collection_positions: dict[str, int] = field(default_factory=dict)
     source_vocab_iri: str = ""
+    source_vocab_license: str = ""
+    source_vocab_rights_holder: str = ""
     change_note: str = ""
+    obsolete_reason: str = ""
+    influenced_by_iris: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -832,8 +1009,11 @@ class AggregatedCollection:
     iri: str
     pref_labels: dict[str, str] = field(default_factory=dict)  # {lang: label}
     definitions: dict[str, str] = field(default_factory=dict)  # {lang: definition}
+    editorial_notes: dict[str, str] = field(default_factory=dict)  # {lang: note}
     parent_collection_iris: list[str] = field(default_factory=list)
+    ordered: bool = False
     change_note: str = ""
+    obsolete_reason: str = ""
 
 
 # --- XLSX Reading Functions ---
@@ -991,6 +1171,54 @@ def expand_iri_list(iri_string: str, converter: curies.Converter) -> list[str]:
 # --- Aggregation Functions ---
 
 
+def parse_ordered_collection_positions(
+    position_string: str, converter: curies.Converter
+) -> dict[str, int]:
+    """Parse ordered collection position string to dict.
+
+    Format: "collIRI # pos" or "collIRI#pos" with optional whitespace.
+    Multiple entries are space-separated (outside the # separator).
+
+    Args:
+        position_string: String like "ex:coll1 # 1 ex:coll2 # 2"
+        converter: Curies converter for IRI expansion.
+
+    Returns:
+        Dict mapping collection IRI to position (1-indexed).
+    """
+    if not position_string or not position_string.strip():
+        return {}
+
+    result: dict[str, int] = {}
+
+    # Split by whitespace, but we need to handle "collIRI # pos" as a unit
+    # Strategy: first split by "#" to find each entry
+    parts = position_string.split("#")
+
+    # Each part except first has: "pos [collIRI...]"
+    # Each part except last has: "[...collIRI]"
+    for i in range(len(parts) - 1):
+        # Get the collection IRI (last token before #)
+        left_tokens = parts[i].strip().split()
+        if not left_tokens:
+            continue
+        coll_curie = left_tokens[-1]
+
+        # Get the position (first token after #)
+        right_tokens = parts[i + 1].strip().split()
+        if not right_tokens:
+            continue
+        try:
+            position = int(right_tokens[0])
+        except ValueError:
+            continue
+
+        coll_iri = expand_curie(coll_curie, converter)
+        result[coll_iri] = position
+
+    return result
+
+
 def aggregate_concepts(
     concept_rows: list[ConceptV1], converter: curies.Converter
 ) -> dict[str, AggregatedConcept]:
@@ -999,7 +1227,8 @@ def aggregate_concepts(
     The v1.0 template has one row per (concept_iri, language). This function
     merges them back:
     - First row for each IRI contains structural data (parent_iris, etc.)
-    - All rows contribute language-specific data (pref_label, definition, alt_labels)
+    - All rows contribute language-specific data (pref_label, definition,
+      alt_labels, editorial_note)
 
     Args:
         concept_rows: List of ConceptV1 from XLSX.
@@ -1018,17 +1247,24 @@ def aggregate_concepts(
         iri = expand_curie(row.concept_iri, converter)
 
         if iri not in concepts:
-            # First row for this concept - create new entry
+            # First row for this concept - create new entry with structural data
             concepts[iri] = AggregatedConcept(
                 iri=iri,
                 parent_iris=expand_iri_list(row.parent_iris, converter),
                 member_of_collections=expand_iri_list(
                     row.member_of_collections, converter
                 ),
+                ordered_collection_positions=parse_ordered_collection_positions(
+                    row.member_of_ordered_collection, converter
+                ),
                 source_vocab_iri=expand_curie(row.source_vocab_iri, converter)
                 if row.source_vocab_iri
                 else "",
+                source_vocab_license=row.source_vocab_license or "",
+                source_vocab_rights_holder=row.source_vocab_rights_holder or "",
                 change_note=row.change_note or "",
+                obsolete_reason=row.obsolete_reason or "",
+                influenced_by_iris=expand_iri_list(row.influenced_by_iris, converter),
             )
 
         concept = concepts[iri]
@@ -1040,9 +1276,12 @@ def aggregate_concepts(
         if row.definition:
             concept.definitions[lang] = row.definition
         if row.alternate_labels:
-            # Split by " | " separator
-            labels = [lbl.strip() for lbl in row.alternate_labels.split(" | ")]
+            # Split by "|" separator (with or without spaces), trim each label
+            labels = [lbl.strip() for lbl in row.alternate_labels.split("|")]
+            labels = [lbl for lbl in labels if lbl]  # Remove empty strings
             concept.alt_labels[lang] = labels
+        if row.editorial_note:
+            concept.editorial_notes[lang] = row.editorial_note
 
     return concepts
 
@@ -1051,6 +1290,12 @@ def aggregate_collections(
     collection_rows: list[CollectionV1], converter: curies.Converter
 ) -> dict[str, AggregatedCollection]:
     """Aggregate multi-row collection data into single AggregatedCollection per IRI.
+
+    The v1.0 template has one row per (collection_iri, language). This function
+    merges them back:
+    - First row for each IRI contains structural data (parent_iris, ordered, etc.)
+    - All rows contribute language-specific data (pref_label, definition,
+      editorial_note)
 
     Args:
         collection_rows: List of CollectionV1 from XLSX.
@@ -1069,13 +1314,18 @@ def aggregate_collections(
         iri = expand_curie(row.collection_iri, converter)
 
         if iri not in collections:
-            # First row for this collection
+            # First row for this collection - create new entry with structural data
+            # Parse "Yes" as True for ordered flag
+            is_ordered = row.ordered.strip().lower() == "yes" if row.ordered else False
+
             collections[iri] = AggregatedCollection(
                 iri=iri,
                 parent_collection_iris=expand_iri_list(
                     row.parent_collection_iris, converter
                 ),
+                ordered=is_ordered,
                 change_note=row.change_note or "",
+                obsolete_reason=row.obsolete_reason or "",
             )
 
         collection = collections[iri]
@@ -1086,6 +1336,8 @@ def aggregate_collections(
             collection.pref_labels[lang] = row.preferred_label
         if row.definition:
             collection.definitions[lang] = row.definition
+        if row.editorial_note:
+            collection.editorial_notes[lang] = row.editorial_note
 
     return collections
 
@@ -1135,6 +1387,36 @@ def build_narrower_map(
             narrower[parent_iri].append(concept_iri)
 
     return dict(narrower)
+
+
+def build_ordered_collection_members(
+    concepts: dict[str, AggregatedConcept],
+) -> dict[str, list[str]]:
+    """Build ordered collection -> ordered members list from concept positions.
+
+    Uses the concept.ordered_collection_positions to build ordered member lists.
+
+    Args:
+        concepts: Dict of aggregated concepts.
+
+    Returns:
+        Dict: {ordered_collection_iri: [member_iris_in_order]}
+        Members are sorted by their position values.
+    """
+    # Collect members with positions
+    collection_members: dict[str, list[tuple[int, str]]] = defaultdict(list)
+
+    for concept_iri, concept in concepts.items():
+        for coll_iri, position in concept.ordered_collection_positions.items():
+            collection_members[coll_iri].append((position, concept_iri))
+
+    # Sort by position and return just the IRIs
+    result: dict[str, list[str]] = {}
+    for coll_iri, members in collection_members.items():
+        members.sort(key=lambda x: x[0])  # Sort by position
+        result[coll_iri] = [iri for _, iri in members]
+
+    return result
 
 
 # --- Identifier Extraction ---
@@ -1324,6 +1606,10 @@ def build_concept_graph(
         for label in labels:
             g.add((c, SKOS.altLabel, Literal(label, lang=lang)))
 
+    # Editorial notes per language
+    for lang, note in concept.editorial_notes.items():
+        g.add((c, SKOS.editorialNote, Literal(note, lang=lang)))
+
     # Broader (parent)
     for parent_iri in concept.parent_iris:
         g.add((c, SKOS.broader, URIRef(parent_iri)))
@@ -1335,19 +1621,30 @@ def build_concept_graph(
     # In scheme
     g.add((c, SKOS.inScheme, scheme_iri))
 
-    # rdfs:isDefinedBy - only add if source_vocab_iri is specified
-    # It indicates the vocabulary that defines the concept. If not provided,
-    # the concept is understood to be defined by the current scheme.
+    # Source vocabulary attribution (verbatim copy)
     if concept.source_vocab_iri:
-        g.add((c, RDFS.isDefinedBy, URIRef(concept.source_vocab_iri)))
+        g.add((c, PROV.hadPrimarySource, URIRef(concept.source_vocab_iri)))
+    if concept.source_vocab_license:
+        g.add((c, DCTERMS.license, URIRef(concept.source_vocab_license)))
+    if concept.source_vocab_rights_holder:
+        g.add((c, DCTERMS.rightsHolder, Literal(concept.source_vocab_rights_holder)))
+
+    # Influenced by IRIs (prov:wasInfluencedBy)
+    for influenced_iri in concept.influenced_by_iris:
+        g.add((c, PROV.wasInfluencedBy, URIRef(influenced_iri)))
 
     # Top concept of (if no broader)
     if not concept.parent_iris:
         g.add((c, SKOS.topConceptOf, scheme_iri))
 
-    # Change note / history note
+    # Change note
     if concept.change_note:
-        g.add((c, SKOS.historyNote, Literal(concept.change_note, lang="en")))
+        g.add((c, SKOS.changeNote, Literal(concept.change_note, lang="en")))
+
+    # Obsoletion (deprecated concept)
+    if concept.obsolete_reason:
+        g.add((c, OWL.deprecated, Literal(True)))
+        g.add((c, SKOS.historyNote, Literal(concept.obsolete_reason, lang="en")))
 
     return g
 
@@ -1356,22 +1653,32 @@ def build_collection_graph(
     collection: AggregatedCollection,
     scheme_iri: URIRef,
     collection_members: dict[str, list[str]],
+    ordered_collection_members: dict[str, list[str]] | None = None,
 ) -> Graph:
     """Build RDF graph for a single Collection.
 
     Args:
         collection: Aggregated collection data.
         scheme_iri: URIRef of the ConceptScheme.
-        collection_members: Map of collection -> member IRIs.
+        collection_members: Map of collection -> member IRIs (unordered).
+        ordered_collection_members: Map of ordered collection -> member IRIs
+            in order. Used for building skos:memberList.
 
     Returns:
         Graph with Collection triples.
     """
+    from rdflib import BNode
+    from rdflib.collection import Collection as RDFCollection
+
+    ordered_collection_members = ordered_collection_members or {}
     g = Graph()
     c = URIRef(collection.iri)
 
-    # Type
-    g.add((c, RDF.type, SKOS.Collection))
+    # Type - either OrderedCollection or Collection
+    if collection.ordered:
+        g.add((c, RDF.type, SKOS.OrderedCollection))
+    else:
+        g.add((c, RDF.type, SKOS.Collection))
 
     # Identifier
     identifier = extract_identifier(collection.iri)
@@ -1384,9 +1691,23 @@ def build_collection_graph(
     for lang, definition in collection.definitions.items():
         g.add((c, SKOS.definition, Literal(definition, lang=lang)))
 
-    # Members (from inverted concept membership)
-    for member_iri in collection_members.get(collection.iri, []):
-        g.add((c, SKOS.member, URIRef(member_iri)))
+    # Editorial notes per language
+    for lang, note in collection.editorial_notes.items():
+        g.add((c, SKOS.editorialNote, Literal(note, lang=lang)))
+
+    # Members - different handling for ordered vs unordered collections
+    if collection.ordered:
+        # OrderedCollection uses skos:memberList with RDF List
+        ordered_members = ordered_collection_members.get(collection.iri, [])
+        if ordered_members:
+            list_node = BNode()
+            member_refs = [URIRef(m) for m in ordered_members]
+            RDFCollection(g, list_node, member_refs)
+            g.add((c, SKOS.memberList, list_node))
+    else:
+        # Regular Collection uses skos:member
+        for member_iri in collection_members.get(collection.iri, []):
+            g.add((c, SKOS.member, URIRef(member_iri)))
 
     # In scheme
     g.add((c, SKOS.inScheme, scheme_iri))
@@ -1397,9 +1718,14 @@ def build_collection_graph(
     # isPartOf
     g.add((c, DCTERMS.isPartOf, scheme_iri))
 
-    # Change note / history note
+    # Change note
     if collection.change_note:
-        g.add((c, SKOS.historyNote, Literal(collection.change_note, lang="en")))
+        g.add((c, SKOS.changeNote, Literal(collection.change_note, lang="en")))
+
+    # Obsoletion (deprecated collection)
+    if collection.obsolete_reason:
+        g.add((c, OWL.deprecated, Literal(True)))
+        g.add((c, SKOS.historyNote, Literal(collection.obsolete_reason, lang="en")))
 
     return g
 
@@ -1509,6 +1835,7 @@ def excel_to_rdf_v1(
     # Build inverse relationships
     logger.debug("Building inverse relationships...")
     collection_members = build_collection_members_from_concepts(concepts)
+    ordered_collection_members = build_ordered_collection_members(concepts)
     narrower_map = build_narrower_map(concepts)
 
     # Build the complete graph
@@ -1521,7 +1848,9 @@ def excel_to_rdf_v1(
         graph += build_concept_graph(concept, scheme_iri, narrower_map)
 
     for collection in collections.values():
-        graph += build_collection_graph(collection, scheme_iri, collection_members)
+        graph += build_collection_graph(
+            collection, scheme_iri, collection_members, ordered_collection_members
+        )
 
     graph += build_mappings_graph(mapping_rows, converter)
 
@@ -1577,3 +1906,216 @@ def compare_graphs(g1: Graph, g2: Graph) -> dict:
         "g2_count": len(g2),
         "common_count": len(g1) - len(only_in_g1),
     }
+
+
+# =============================================================================
+# 043 to v1.0 RDF Conversion
+# =============================================================================
+
+# Predicates that are transformed from 043 to v1.0
+PREDICATES_043_TO_V1 = {
+    # On concepts: rdfs:isDefinedBy -> prov:hadPrimarySource
+    # (handled specially - only for concepts)
+    # Change notes: various 043 predicates -> skos:changeNote
+    SKOS.historyNote: SKOS.changeNote,
+    DCTERMS.provenance: SKOS.changeNote,
+    PROV.wasDerivedFrom: SKOS.changeNote,
+}
+
+# Predicates that are preserved as-is (known/expected in v1.0)
+PREDICATES_PRESERVED = {
+    # RDF basics
+    RDF.type,
+    # SKOS core
+    SKOS.ConceptScheme,
+    SKOS.Concept,
+    SKOS.Collection,
+    SKOS.prefLabel,
+    SKOS.altLabel,
+    SKOS.definition,
+    SKOS.broader,
+    SKOS.narrower,
+    SKOS.related,
+    SKOS.inScheme,
+    SKOS.topConceptOf,
+    SKOS.hasTopConcept,
+    SKOS.member,
+    SKOS.note,
+    SKOS.scopeNote,
+    SKOS.example,
+    SKOS.changeNote,
+    SKOS.editorialNote,
+    SKOS.historyNote,  # Will be transformed, but listed for completeness
+    SKOS.notation,
+    # SKOS mappings
+    SKOS.exactMatch,
+    SKOS.closeMatch,
+    SKOS.broadMatch,
+    SKOS.narrowMatch,
+    SKOS.relatedMatch,
+    # Dublin Core
+    DCTERMS.identifier,
+    DCTERMS.created,
+    DCTERMS.modified,
+    DCTERMS.creator,
+    DCTERMS.publisher,
+    DCTERMS.contributor,
+    DCTERMS.license,
+    DCTERMS.rightsHolder,
+    DCTERMS.source,
+    DCTERMS.hasPart,
+    DCTERMS.isPartOf,
+    DCTERMS.provenance,  # Will be transformed
+    # OWL
+    OWL.versionInfo,
+    OWL.deprecated,
+    # PROV
+    PROV.hadPrimarySource,
+    PROV.wasInfluencedBy,
+    PROV.wasDerivedFrom,  # Will be transformed
+    # RDFS
+    RDFS.isDefinedBy,  # Will be transformed for concepts
+    RDFS.label,
+    RDFS.comment,
+    RDFS.seeAlso,
+    # DCAT
+    DCAT.contactPoint,
+}
+
+
+def convert_rdf_043_to_v1(
+    input_path: Path,
+    output_path: Path | None = None,
+    output_format: TypingLiteral["turtle", "xml", "json-ld"] = "turtle",
+) -> Path:
+    """Convert a 0.4.3 format RDF vocabulary to v1.0 RDF format.
+
+    This performs predicate transformations:
+    - rdfs:isDefinedBy (on concepts) -> prov:hadPrimarySource
+    - skos:historyNote (non-obsolete) -> skos:changeNote
+    - dcterms:provenance -> skos:changeNote
+    - prov:wasDerivedFrom -> skos:changeNote
+
+    Unknown predicates are dropped with a warning.
+
+    Args:
+        input_path: Path to the 043 RDF file.
+        output_path: Optional path for output. Defaults to input with _v1 suffix.
+        output_format: RDF serialization format.
+
+    Returns:
+        Path to the generated v1.0 RDF file.
+    """
+    if input_path.suffix.lower() not in RDF_FILE_ENDINGS:
+        msg = (
+            "Files for conversion must end with one of the RDF file formats: "
+            f"'{', '.join(RDF_FILE_ENDINGS.keys())}'"
+        )
+        raise ValueError(msg)
+
+    logger.info("Converting 043 RDF to v1.0: %s", input_path)
+
+    # Parse input
+    input_graph = Graph().parse(
+        str(input_path),
+        format=RDF_FILE_ENDINGS[input_path.suffix.lower()],
+    )
+
+    # Create output graph
+    output_graph = Graph()
+
+    # Copy namespace bindings
+    for prefix, namespace in input_graph.namespaces():
+        output_graph.bind(prefix, namespace)
+
+    # Ensure prov namespace is bound (needed for new predicates)
+    output_graph.bind("prov", PROV)
+
+    # Get all concepts for special handling of rdfs:isDefinedBy
+    concepts = set(input_graph.subjects(RDF.type, SKOS.Concept))
+
+    # Track unknown predicates for warning
+    unknown_predicates: set[URIRef] = set()
+
+    # Process each triple
+    for s, p, o in input_graph:
+        new_triple = _transform_triple_043_to_v1(s, p, o, concepts, unknown_predicates)
+        if new_triple:
+            output_graph.add(new_triple)
+
+    # Log warnings for unknown predicates
+    if unknown_predicates:
+        logger.warning(
+            "Dropped %d unknown predicate type(s) during 043->v1.0 conversion:",
+            len(unknown_predicates),
+        )
+        for pred in sorted(unknown_predicates, key=str):
+            count = len(list(input_graph.triples((None, pred, None))))
+            logger.warning("  - %s (%d triples)", pred, count)
+
+    # Determine output path
+    if output_path is None:
+        if output_format == "xml":
+            suffix = ".rdf"
+        elif output_format == "json-ld":
+            suffix = ".jsonld"
+        else:
+            suffix = ".ttl"
+        # Add _v1 suffix before extension
+        output_path = input_path.with_stem(f"{input_path.stem}_v1").with_suffix(suffix)
+
+    # Serialize
+    logger.info("Writing v1.0 RDF to: %s", output_path)
+    output_graph.serialize(destination=str(output_path), format=output_format)
+
+    logger.info(
+        "Conversion complete: %d triples in, %d triples out",
+        len(input_graph),
+        len(output_graph),
+    )
+
+    return output_path
+
+
+def _transform_triple_043_to_v1(
+    s: URIRef,
+    p: URIRef,
+    o,
+    concepts: set[URIRef],
+    unknown_predicates: set[URIRef],
+) -> tuple | None:
+    """Transform a single triple from 043 to v1.0 format.
+
+    Args:
+        s: Subject
+        p: Predicate
+        o: Object
+        concepts: Set of concept IRIs (for rdfs:isDefinedBy handling)
+        unknown_predicates: Set to collect unknown predicates
+
+    Returns:
+        Transformed triple (s, p, o) or None if dropped.
+    """
+    # Special case: rdfs:isDefinedBy on concepts -> prov:hadPrimarySource
+    # For non-concepts (collections, scheme), preserve rdfs:isDefinedBy as-is
+    if p == RDFS.isDefinedBy:
+        if s in concepts:
+            return (s, PROV.hadPrimarySource, o)
+        return (s, p, o)  # Preserve for collections/scheme
+
+    # Check for predicates that need transformation
+    if p in PREDICATES_043_TO_V1:
+        new_predicate = PREDICATES_043_TO_V1[p]
+        return (s, new_predicate, o)
+
+    # Check if predicate is known/preserved
+    if p in PREDICATES_PRESERVED:
+        return (s, p, o)
+
+    # Check for schema.org predicates (used for organizations)
+    if str(p).startswith("https://schema.org/"):
+        return (s, p, o)
+
+    # Unknown predicate - collect for warning and drop
+    unknown_predicates.add(p)
+    return None

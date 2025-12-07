@@ -1,0 +1,148 @@
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sdo: <https://schema.org/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix photocat: <https://w3id.org/nfdi4cat/voc4cat-photocat/> .
+
+# =============================================================================
+# Comprehensive v1.0 Test Vocabulary
+# Based on photocatalysis domain, testing all v1.0 features
+# =============================================================================
+
+# --- Organization ---
+
+<https://ror.org/04t3en479> a sdo:Organization ;
+    sdo:name "NFDI4Cat" ;
+    sdo:url "https://ror.org/04t3en479"^^xsd:anyURI .
+
+# --- Concept Scheme ---
+
+photocat: a skos:ConceptScheme ;
+    dcterms:identifier ""^^xsd:token ;
+    dcterms:created "2025-01-01"^^xsd:date ;
+    dcterms:modified "2025-06-01"^^xsd:date ;
+    dcterms:creator <https://ror.org/04t3en479> ;
+    dcterms:publisher <https://ror.org/04t3en479> ;
+    dcterms:hasPart photocat:coll001,
+        photocat:coll002 ;
+    owl:versionInfo "1.0.0" ;
+    skos:definition "A test vocabulary for photocatalysis concepts demonstrating all v1.0 features."@en ;
+    skos:prefLabel "Photocatalysis Test Vocabulary"@en ;
+    skos:hasTopConcept photocat:0000001,
+        photocat:0000004 ;
+    dcat:contactPoint "Test Custodian" .
+
+# --- Concept 1: Top concept with multi-language support ---
+
+photocat:0000001 a skos:Concept ;
+    dcterms:identifier "0000001"^^xsd:token ;
+    skos:prefLabel "photocatalyst"@en,
+        "Photokatalysator"@de ;
+    skos:definition "A substance that increases the rate of a photoreaction."@en,
+        "Ein Stoff, der die Geschwindigkeit einer Photoreaktion erhöht."@de ;
+    skos:altLabel "photo catalyst"@en,
+        "light-activated catalyst"@en,
+        "Lichtkatalysator"@de ;
+    skos:editorialNote "Review multi-language labels for accuracy."@en ;
+    skos:changeNote "Initial creation of photocatalyst concept."@en ;
+    skos:narrower photocat:0000002,
+        photocat:0000003 ;
+    skos:inScheme photocat: ;
+    skos:topConceptOf photocat: .
+
+# --- Concept 2: Child concept with source attribution ---
+
+photocat:0000002 a skos:Concept ;
+    dcterms:identifier "0000002"^^xsd:token ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    dcterms:rightsHolder "IUPAC Gold Book" ;
+    prov:hadPrimarySource <https://goldbook.iupac.org/terms/view/P04580> ;
+    prov:wasInfluencedBy <https://doi.org/10.1351/goldbook.P04580>,
+        <https://en.wikipedia.org/wiki/Semiconductor> ;
+    skos:prefLabel "semiconductor photocatalyst"@en,
+        "Halbleiter-Photokatalysator"@de ;
+    skos:definition "A semiconductor material that can catalyze photoreactions."@en,
+        "Ein Halbleitermaterial, das Photoreaktionen katalysieren kann."@de ;
+    skos:altLabel "semiconductor catalyst"@en ;
+    skos:broader photocat:0000001 ;
+    skos:narrower photocat:0000003 ;
+    skos:changeNote "Added source attribution from IUPAC."@en ;
+    skos:inScheme photocat: .
+
+# --- Concept 3: Grandchild in ordered collection ---
+
+photocat:0000003 a skos:Concept ;
+    dcterms:identifier "0000003"^^xsd:token ;
+    skos:prefLabel "titanium dioxide"@en,
+        "Titandioxid"@de ;
+    skos:definition "A metal oxide semiconductor commonly used as a photocatalyst."@en,
+        "Ein Metalloxid-Halbleiter, der häufig als Photokatalysator verwendet wird."@de ;
+    skos:altLabel "TiO2"@en,
+        "titania"@en ;
+    skos:broader photocat:0000002 ;
+    skos:editorialNote "Consider adding crystal structure variants."@en ;
+    skos:inScheme photocat: ;
+    skos:exactMatch <http://purl.obolibrary.org/obo/CHEBI_32234> ;
+    skos:relatedMatch <https://pubchem.ncbi.nlm.nih.gov/compound/26042> .
+
+# --- Concept 4: Top concept with mappings ---
+
+photocat:0000004 a skos:Concept ;
+    dcterms:identifier "0000004"^^xsd:token ;
+    skos:prefLabel "photocatalytic reaction"@en,
+        "photokatalytische Reaktion"@de ;
+    skos:definition "A chemical reaction accelerated by the action of a photocatalyst."@en,
+        "Eine chemische Reaktion, die durch die Wirkung eines Photokatalysators beschleunigt wird."@de ;
+    skos:changeNote "Extended definition to include mechanism."@en ;
+    skos:inScheme photocat: ;
+    skos:topConceptOf photocat: ;
+    skos:closeMatch <http://purl.obolibrary.org/obo/GO_0042221> ;
+    skos:broadMatch <http://purl.obolibrary.org/obo/CHEBI_50904> ;
+    skos:narrowMatch <https://example.org/external/water-splitting> .
+
+# --- Concept 5: Obsolete concept ---
+
+photocat:0000005 a skos:Concept ;
+    dcterms:identifier "0000005"^^xsd:token ;
+    owl:deprecated true ;
+    skos:prefLabel "photo-catalyst"@en ;
+    skos:definition "Deprecated term for photocatalyst."@en ;
+    skos:historyNote "This concept was added in error."@en ;
+    skos:broader photocat:0000001 ;
+    skos:inScheme photocat: .
+
+# --- Collection 1: Regular collection with multi-language ---
+
+photocat:coll001 a skos:Collection ;
+    dcterms:identifier "coll001"^^xsd:token ;
+    dcterms:isPartOf photocat: ;
+    rdfs:isDefinedBy photocat: ;
+    skos:prefLabel "Material Types"@en,
+        "Materialtypen"@de ;
+    skos:definition "A collection of photocatalyst material types."@en,
+        "Eine Sammlung von Photokatalysator-Materialtypen."@de ;
+    skos:editorialNote "May need subcollections for organic/inorganic."@en ;
+    skos:changeNote "Initial collection creation."@en ;
+    skos:member photocat:0000002,
+        photocat:0000003 ;
+    skos:inScheme photocat: .
+
+# --- Collection 2: Ordered collection ---
+
+photocat:coll002 a skos:OrderedCollection ;
+    dcterms:identifier "coll002"^^xsd:token ;
+    dcterms:isPartOf photocat: ;
+    rdfs:isDefinedBy photocat: ;
+    skos:prefLabel "Analysis Steps"@en,
+        "Analyseschritte"@de ;
+    skos:definition "An ordered collection of analysis methodology steps."@en,
+        "Eine geordnete Sammlung von Analysemethodik-Schritten."@de ;
+    skos:editorialNote "Verify step ordering with domain experts."@en ;
+    skos:changeNote "Created ordered collection for methodology."@en ;
+    skos:memberList ( photocat:0000003 photocat:0000004 ) ;
+    skos:inScheme photocat: .

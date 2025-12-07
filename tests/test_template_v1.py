@@ -95,7 +95,7 @@ class TestTemplateGeneration:
             "Member of ordered collection # position",
             "Change Note",
             "Editorial Note",
-            "Obsolete and set reason (History Note)",
+            "Obsoletion reason",
             "Influenced by IRIs",
             "Source Vocab IRI or URL",
             "Source Vocab License",
@@ -137,7 +137,7 @@ class TestTemplateGeneration:
             "Ordered? Yes or No (default)",
             "Change Note*",
             "Editorial Note",
-            "Obsolete and set reason (History Note)",
+            "Obsoletion reason",
         ]
 
         for col, expected_header in enumerate(expected_headers, 1):
@@ -357,6 +357,6 @@ class TestModels:
 
     def test_default_prefixes_count(self):
         """Test that default prefixes list has expected entries."""
-        assert len(DEFAULT_PREFIXES) == 2, (  # noqa: PLR2004
+        assert len(DEFAULT_PREFIXES) == 2, (
             f"Expected 2 prefixes, got {len(DEFAULT_PREFIXES)}"
         )
