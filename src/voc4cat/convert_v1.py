@@ -32,6 +32,8 @@ from rdflib import (
 
 from voc4cat import config
 from voc4cat.models_v1 import (
+    OBSOLETION_REASONS_COLLECTIONS,
+    OBSOLETION_REASONS_CONCEPTS,
     TEMPLATE_VERSION,
     CollectionV1,
     ConceptSchemeV1,
@@ -143,6 +145,7 @@ def extract_concepts_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
             "obsolete_reason": "",
             "is_deprecated": False,
             "influenced_by_iris": [],
+            "replaced_by_iri": "",
         }
     )
 
@@ -182,6 +185,8 @@ def extract_concepts_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
                 data["obsolete_reason"] = str(o)
             elif p == PROV.wasInfluencedBy:
                 data["influenced_by_iris"].append(str(o))
+            elif p == DCTERMS.isReplacedBy:
+                data["replaced_by_iri"] = str(o)
 
     # Second pass: organize by IRI and language
     for iri, data in concept_data.items():
@@ -210,6 +215,8 @@ def extract_concepts_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
                 "change_note": data["change_note"],
                 "obsolete_reason": obsolete_reason,
                 "influenced_by_iris": data["influenced_by_iris"],
+                "replaced_by_iri": data["replaced_by_iri"],
+                "is_deprecated": data["is_deprecated"],
             }
 
     return dict(concepts_by_iri_lang)
@@ -244,6 +251,7 @@ def extract_collections_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
             "ordered": False,
             "members": [],  # member IRIs (concepts or collections) - unordered
             "ordered_members": [],  # member IRIs in order - for OrderedCollection
+            "replaced_by_iri": "",
         }
     )
 
@@ -289,6 +297,8 @@ def extract_collections_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
                 except Exception:
                     # If parsing fails, fall back to empty list
                     data["ordered_members"] = []
+            elif p == DCTERMS.isReplacedBy:
+                data["replaced_by_iri"] = str(o)
 
     # Second pass: organize by IRI and language
     for iri, data in collection_data.items():
@@ -312,6 +322,8 @@ def extract_collections_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
                 "ordered": data["ordered"],
                 "members": data["members"],
                 "ordered_members": data["ordered_members"],
+                "replaced_by_iri": data["replaced_by_iri"],
+                "is_deprecated": data["is_deprecated"],
             }
 
     return dict(collections_by_iri_lang)
@@ -506,6 +518,29 @@ def rdf_concepts_to_v1(
     for concept_iri, lang_data in concepts_data.items():
         is_first_row = True
 
+        # Get deprecation info from any language (it's the same for all)
+        first_lang_data = next(iter(lang_data.values()), {})
+        is_deprecated = first_lang_data.get("is_deprecated", False)
+        obsolete_reason_raw = first_lang_data.get("obsolete_reason", "")
+        replaced_by_iri = first_lang_data.get("replaced_by_iri", "")
+
+        # Validate and fix English prefLabel if needed
+        en_pref_label = lang_data.get("en", {}).get("preferred_label", "")
+        if en_pref_label:
+            corrected_label, errors = validate_deprecation(
+                pref_label=en_pref_label,
+                is_deprecated=is_deprecated,
+                history_note=obsolete_reason_raw,
+                valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+                entity_iri=concept_iri,
+                entity_type="concept",
+            )
+            for error in errors:
+                logger.error(error)
+            # Update the English prefLabel in the data
+            if "en" in lang_data:
+                lang_data["en"]["preferred_label"] = corrected_label
+
         for lang, data in lang_data.items():
             # Compress the concept IRI
             concept_iri_display = converter.compress(concept_iri, passthrough=True)
@@ -546,8 +581,16 @@ def rdf_concepts_to_v1(
                 source_vocab_license = data.get("source_vocab_license", "")
                 source_vocab_rights_holder = data.get("source_vocab_rights_holder", "")
 
-                # Notes
+                # Notes - handle replaced_by_iri
                 change_note = data.get("change_note", "")
+                if replaced_by_iri:
+                    # Format change_note with replaced_by notation
+                    compressed_replacement = converter.compress(
+                        replaced_by_iri, passthrough=True
+                    )
+                    change_note = format_change_note_with_replaced_by(
+                        compressed_replacement
+                    )
                 obsolete_reason = data.get("obsolete_reason", "")
 
                 # Influenced by IRIs
@@ -618,6 +661,29 @@ def rdf_collections_to_v1(
     for collection_iri, lang_data in collections_data.items():
         is_first_row = True
 
+        # Get deprecation info from any language (it's the same for all)
+        first_lang_data = next(iter(lang_data.values()), {})
+        is_deprecated = first_lang_data.get("is_deprecated", False)
+        obsolete_reason_raw = first_lang_data.get("obsolete_reason", "")
+        replaced_by_iri = first_lang_data.get("replaced_by_iri", "")
+
+        # Validate and fix English prefLabel if needed
+        en_pref_label = lang_data.get("en", {}).get("preferred_label", "")
+        if en_pref_label:
+            corrected_label, errors = validate_deprecation(
+                pref_label=en_pref_label,
+                is_deprecated=is_deprecated,
+                history_note=obsolete_reason_raw,
+                valid_reasons=OBSOLETION_REASONS_COLLECTIONS,
+                entity_iri=collection_iri,
+                entity_type="collection",
+            )
+            for error in errors:
+                logger.error(error)
+            # Update the English prefLabel in the data
+            if "en" in lang_data:
+                lang_data["en"]["preferred_label"] = corrected_label
+
         for lang, data in lang_data.items():
             collection_iri_display = converter.compress(
                 collection_iri, passthrough=True
@@ -637,8 +703,16 @@ def rdf_collections_to_v1(
                 # Ordered flag
                 ordered = "Yes" if data.get("ordered", False) else ""
 
-                # Notes
+                # Notes - handle replaced_by_iri
                 change_note = data.get("change_note", "")
+                if replaced_by_iri:
+                    # Format change_note with replaced_by notation
+                    compressed_replacement = converter.compress(
+                        replaced_by_iri, passthrough=True
+                    )
+                    change_note = format_change_note_with_replaced_by(
+                        compressed_replacement
+                    )
                 obsolete_reason = data.get("obsolete_reason", "")
 
                 is_first_row = False
@@ -1000,6 +1074,7 @@ class AggregatedConcept:
     change_note: str = ""
     obsolete_reason: str = ""
     influenced_by_iris: list[str] = field(default_factory=list)
+    replaced_by_iri: str = ""
 
 
 @dataclass
@@ -1014,6 +1089,7 @@ class AggregatedCollection:
     ordered: bool = False
     change_note: str = ""
     obsolete_reason: str = ""
+    replaced_by_iri: str = ""
 
 
 # --- XLSX Reading Functions ---
@@ -1168,6 +1244,100 @@ def expand_iri_list(iri_string: str, converter: curies.Converter) -> list[str]:
     return [expand_curie(part.strip(), converter) for part in iri_string.split()]
 
 
+# --- Deprecation Handling Functions ---
+
+OBSOLETE_PREFIX = "OBSOLETE "
+
+
+def parse_replaced_by_from_change_note(change_note: str) -> str | None:
+    """Extract IRI from 'replaced_by <IRI>' notation in change note.
+
+    The change note may contain other text. Only lines starting with
+    'replaced_by ' are parsed. Returns the first match.
+
+    Args:
+        change_note: The change note text to parse.
+
+    Returns:
+        The IRI/CURIE string if found, None otherwise.
+    """
+    if not change_note:
+        return None
+
+    for line in change_note.split("\n"):
+        line = line.strip()
+        if line.lower().startswith("replaced_by "):
+            # Extract the IRI (everything after "replaced_by ")
+            parts = line.split(maxsplit=1)
+            if len(parts) == 2:
+                return parts[1].strip()
+    return None
+
+
+def format_change_note_with_replaced_by(replaced_by_iri: str) -> str:
+    """Format a change note with replaced_by notation.
+
+    Args:
+        replaced_by_iri: The IRI of the replacement concept/collection.
+
+    Returns:
+        Formatted change note string.
+    """
+    return f"replaced_by {replaced_by_iri}"
+
+
+def validate_deprecation(
+    pref_label: str,
+    is_deprecated: bool,
+    history_note: str,
+    valid_reasons: list[str],
+    entity_iri: str,
+    entity_type: str,
+) -> tuple[str, list[str]]:
+    """Validate deprecation consistency and optionally fix prefLabel.
+
+    Validation rules:
+    1. If prefLabel starts with "OBSOLETE " but owl:deprecated is NOT true -> ERROR
+    2. If owl:deprecated true but historyNote not in valid_reasons -> ERROR
+    3. If owl:deprecated true + valid historyNote + no "OBSOLETE " prefix -> add prefix
+
+    Args:
+        pref_label: The English preferred label.
+        is_deprecated: Whether owl:deprecated is true.
+        history_note: The skos:historyNote value (obsoletion reason).
+        valid_reasons: List of valid obsoletion reason strings.
+        entity_iri: IRI of the concept/collection (for error messages).
+        entity_type: "concept" or "collection" (for error messages).
+
+    Returns:
+        Tuple of (corrected_pref_label, list_of_error_messages).
+        The corrected_pref_label may have "OBSOLETE " prefix added if needed.
+    """
+    errors: list[str] = []
+    corrected_label = pref_label
+    has_obsolete_prefix = pref_label.startswith(OBSOLETE_PREFIX)
+
+    # Rule 1: OBSOLETE prefix without owl:deprecated -> ERROR
+    if has_obsolete_prefix and not is_deprecated:
+        errors.append(
+            f"{entity_type.capitalize()} {entity_iri}: prefLabel starts with "
+            f"'{OBSOLETE_PREFIX}' but owl:deprecated is not set to true."
+        )
+
+    # Rule 2: owl:deprecated true without valid historyNote -> ERROR
+    if is_deprecated and history_note not in valid_reasons:
+        errors.append(
+            f"{entity_type.capitalize()} {entity_iri}: owl:deprecated is true but "
+            f"skos:historyNote '{history_note}' is not a valid obsoletion reason."
+        )
+
+    # Rule 3: owl:deprecated true + valid historyNote + no prefix -> add prefix
+    if is_deprecated and history_note in valid_reasons and not has_obsolete_prefix:
+        corrected_label = OBSOLETE_PREFIX + pref_label
+
+    return corrected_label, errors
+
+
 # --- Aggregation Functions ---
 
 
@@ -1230,6 +1400,9 @@ def aggregate_concepts(
     - All rows contribute language-specific data (pref_label, definition,
       alt_labels, editorial_note)
 
+    Also validates deprecation consistency and auto-adds "OBSOLETE " prefix
+    to English prefLabel if needed.
+
     Args:
         concept_rows: List of ConceptV1 from XLSX.
         converter: Curies converter for IRI expansion.
@@ -1248,6 +1421,13 @@ def aggregate_concepts(
 
         if iri not in concepts:
             # First row for this concept - create new entry with structural data
+            # Parse replaced_by from change_note
+            change_note = row.change_note or ""
+            replaced_by_curie = parse_replaced_by_from_change_note(change_note)
+            replaced_by_iri = (
+                expand_curie(replaced_by_curie, converter) if replaced_by_curie else ""
+            )
+
             concepts[iri] = AggregatedConcept(
                 iri=iri,
                 parent_iris=expand_iri_list(row.parent_iris, converter),
@@ -1262,9 +1442,10 @@ def aggregate_concepts(
                 else "",
                 source_vocab_license=row.source_vocab_license or "",
                 source_vocab_rights_holder=row.source_vocab_rights_holder or "",
-                change_note=row.change_note or "",
+                change_note=change_note,
                 obsolete_reason=row.obsolete_reason or "",
                 influenced_by_iris=expand_iri_list(row.influenced_by_iris, converter),
+                replaced_by_iri=replaced_by_iri,
             )
 
         concept = concepts[iri]
@@ -1283,6 +1464,24 @@ def aggregate_concepts(
         if row.editorial_note:
             concept.editorial_notes[lang] = row.editorial_note
 
+    # Second pass: validate deprecation for English prefLabels
+    for iri, concept in concepts.items():
+        en_pref_label = concept.pref_labels.get("en", "")
+        if en_pref_label:
+            is_deprecated = bool(concept.obsolete_reason)
+            corrected_label, errors = validate_deprecation(
+                pref_label=en_pref_label,
+                is_deprecated=is_deprecated,
+                history_note=concept.obsolete_reason,
+                valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+                entity_iri=iri,
+                entity_type="concept",
+            )
+            for error in errors:
+                logger.error(error)
+            # Update the English prefLabel
+            concept.pref_labels["en"] = corrected_label
+
     return concepts
 
 
@@ -1296,6 +1495,9 @@ def aggregate_collections(
     - First row for each IRI contains structural data (parent_iris, ordered, etc.)
     - All rows contribute language-specific data (pref_label, definition,
       editorial_note)
+
+    Also validates deprecation consistency and auto-adds "OBSOLETE " prefix
+    to English prefLabel if needed.
 
     Args:
         collection_rows: List of CollectionV1 from XLSX.
@@ -1318,14 +1520,22 @@ def aggregate_collections(
             # Parse "Yes" as True for ordered flag
             is_ordered = row.ordered.strip().lower() == "yes" if row.ordered else False
 
+            # Parse replaced_by from change_note
+            change_note = row.change_note or ""
+            replaced_by_curie = parse_replaced_by_from_change_note(change_note)
+            replaced_by_iri = (
+                expand_curie(replaced_by_curie, converter) if replaced_by_curie else ""
+            )
+
             collections[iri] = AggregatedCollection(
                 iri=iri,
                 parent_collection_iris=expand_iri_list(
                     row.parent_collection_iris, converter
                 ),
                 ordered=is_ordered,
-                change_note=row.change_note or "",
+                change_note=change_note,
                 obsolete_reason=row.obsolete_reason or "",
+                replaced_by_iri=replaced_by_iri,
             )
 
         collection = collections[iri]
@@ -1338,6 +1548,24 @@ def aggregate_collections(
             collection.definitions[lang] = row.definition
         if row.editorial_note:
             collection.editorial_notes[lang] = row.editorial_note
+
+    # Second pass: validate deprecation for English prefLabels
+    for iri, collection in collections.items():
+        en_pref_label = collection.pref_labels.get("en", "")
+        if en_pref_label:
+            is_deprecated = bool(collection.obsolete_reason)
+            corrected_label, errors = validate_deprecation(
+                pref_label=en_pref_label,
+                is_deprecated=is_deprecated,
+                history_note=collection.obsolete_reason,
+                valid_reasons=OBSOLETION_REASONS_COLLECTIONS,
+                entity_iri=iri,
+                entity_type="collection",
+            )
+            for error in errors:
+                logger.error(error)
+            # Update the English prefLabel
+            collection.pref_labels["en"] = corrected_label
 
     return collections
 
@@ -1646,6 +1874,10 @@ def build_concept_graph(
         g.add((c, OWL.deprecated, Literal(True)))
         g.add((c, SKOS.historyNote, Literal(concept.obsolete_reason, lang="en")))
 
+    # Replaced by (dct:isReplacedBy)
+    if concept.replaced_by_iri:
+        g.add((c, DCTERMS.isReplacedBy, URIRef(concept.replaced_by_iri)))
+
     return g
 
 
@@ -1726,6 +1958,10 @@ def build_collection_graph(
     if collection.obsolete_reason:
         g.add((c, OWL.deprecated, Literal(True)))
         g.add((c, SKOS.historyNote, Literal(collection.obsolete_reason, lang="en")))
+
+    # Replaced by (dct:isReplacedBy)
+    if collection.replaced_by_iri:
+        g.add((c, DCTERMS.isReplacedBy, URIRef(collection.replaced_by_iri)))
 
     return g
 

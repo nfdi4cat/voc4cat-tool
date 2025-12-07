@@ -12,6 +12,8 @@ from openpyxl.utils import get_column_letter
 from rdflib import SKOS, Graph, Literal, Namespace
 
 from voc4cat.convert_v1 import (
+    OBSOLETE_PREFIX,
+    aggregate_collections,
     aggregate_concepts,
     build_concept_to_collections_map,
     build_concept_to_ordered_collections_map,
@@ -22,13 +24,23 @@ from voc4cat.convert_v1 import (
     extract_concept_scheme_from_rdf,
     extract_concepts_from_rdf,
     extract_mappings_from_rdf,
+    format_change_note_with_replaced_by,
     parse_ordered_collection_positions,
+    parse_replaced_by_from_change_note,
     rdf_concept_scheme_to_v1,
     rdf_concepts_to_v1,
     rdf_mappings_to_v1,
     rdf_to_excel_v1,
+    validate_deprecation,
 )
-from voc4cat.models_v1 import TEMPLATE_VERSION, PrefixV1
+from voc4cat.models_v1 import (
+    OBSOLETION_REASONS_COLLECTIONS,
+    OBSOLETION_REASONS_CONCEPTS,
+    TEMPLATE_VERSION,
+    CollectionV1,
+    ConceptV1,
+    PrefixV1,
+)
 
 # Test data paths
 TEST_DATA_DIR = Path(__file__).parent / "data"
@@ -1251,3 +1263,415 @@ class TestConvert043ToV1:
         # Verify it's valid XML
         converted = Graph().parse(result_path, format="xml")
         assert len(converted) > 0
+
+
+# =============================================================================
+# Step 4: Deprecation Handling Tests
+# =============================================================================
+
+
+class TestParseReplacedByFromChangeNote:
+    """Tests for parse_replaced_by_from_change_note function."""
+
+    def test_parse_simple_replaced_by(self):
+        """Test parsing simple replaced_by notation."""
+        note = "replaced_by ex:newConcept"
+        result = parse_replaced_by_from_change_note(note)
+        assert result == "ex:newConcept"
+
+    def test_parse_replaced_by_full_iri(self):
+        """Test parsing replaced_by with full IRI."""
+        note = "replaced_by https://example.org/newConcept"
+        result = parse_replaced_by_from_change_note(note)
+        assert result == "https://example.org/newConcept"
+
+    def test_parse_replaced_by_case_insensitive(self):
+        """Test that replaced_by is case-insensitive."""
+        note = "Replaced_By ex:newConcept"
+        result = parse_replaced_by_from_change_note(note)
+        assert result == "ex:newConcept"
+
+    def test_parse_replaced_by_multiline(self):
+        """Test parsing replaced_by from multiline note."""
+        note = "Some other text\nreplaced_by ex:newConcept\nMore text"
+        result = parse_replaced_by_from_change_note(note)
+        assert result == "ex:newConcept"
+
+    def test_parse_empty_note(self):
+        """Test parsing empty note returns None."""
+        assert parse_replaced_by_from_change_note("") is None
+        assert parse_replaced_by_from_change_note(None) is None
+
+    def test_parse_note_without_replaced_by(self):
+        """Test parsing note without replaced_by returns None."""
+        note = "This is a regular change note"
+        result = parse_replaced_by_from_change_note(note)
+        assert result is None
+
+
+class TestFormatChangeNoteWithReplacedBy:
+    """Tests for format_change_note_with_replaced_by function."""
+
+    def test_format_simple(self):
+        """Test formatting replaced_by notation."""
+        result = format_change_note_with_replaced_by("ex:newConcept")
+        assert result == "replaced_by ex:newConcept"
+
+
+class TestValidateDeprecation:
+    """Tests for validate_deprecation function."""
+
+    def test_valid_deprecated_concept(self):
+        """Test valid deprecated concept passes validation."""
+        label, errors = validate_deprecation(
+            pref_label="OBSOLETE Old Concept",
+            is_deprecated=True,
+            history_note=OBSOLETION_REASONS_CONCEPTS[0],
+            valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+            entity_iri="http://example.org/old",
+            entity_type="concept",
+        )
+        assert errors == []
+        assert label == "OBSOLETE Old Concept"
+
+    def test_auto_add_obsolete_prefix(self):
+        """Test that OBSOLETE prefix is auto-added when missing."""
+        label, errors = validate_deprecation(
+            pref_label="Old Concept",  # Missing OBSOLETE prefix
+            is_deprecated=True,
+            history_note=OBSOLETION_REASONS_CONCEPTS[0],
+            valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+            entity_iri="http://example.org/old",
+            entity_type="concept",
+        )
+        assert errors == []
+        assert label == "OBSOLETE Old Concept"
+
+    def test_error_obsolete_prefix_without_deprecated(self):
+        """Test error when OBSOLETE prefix exists but owl:deprecated is not set."""
+        label, errors = validate_deprecation(
+            pref_label="OBSOLETE Old Concept",
+            is_deprecated=False,  # Not deprecated!
+            history_note="",
+            valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+            entity_iri="http://example.org/old",
+            entity_type="concept",
+        )
+        assert len(errors) == 1
+        assert "OBSOLETE" in errors[0]
+        assert "owl:deprecated" in errors[0]
+
+    def test_error_deprecated_without_valid_reason(self):
+        """Test error when owl:deprecated but historyNote is not valid."""
+        label, errors = validate_deprecation(
+            pref_label="Old Concept",
+            is_deprecated=True,
+            history_note="Invalid reason not in enum",
+            valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+            entity_iri="http://example.org/old",
+            entity_type="concept",
+        )
+        assert len(errors) == 1
+        assert "not a valid obsoletion reason" in errors[0]
+
+    def test_valid_non_deprecated_concept(self):
+        """Test valid non-deprecated concept passes validation."""
+        label, errors = validate_deprecation(
+            pref_label="Active Concept",
+            is_deprecated=False,
+            history_note="",
+            valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+            entity_iri="http://example.org/active",
+            entity_type="concept",
+        )
+        assert errors == []
+        assert label == "Active Concept"
+
+    def test_collection_uses_different_enum(self):
+        """Test collection validation uses OBSOLETION_REASONS_COLLECTIONS."""
+        # This reason is valid for collections but not concepts
+        collection_reason = OBSOLETION_REASONS_COLLECTIONS[0]
+
+        # Should fail with concept enum
+        _, errors = validate_deprecation(
+            pref_label="Old",
+            is_deprecated=True,
+            history_note=collection_reason,
+            valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+            entity_iri="http://example.org/old",
+            entity_type="concept",
+        )
+        assert len(errors) == 1  # Invalid for concepts
+
+        # Should pass with collection enum
+        _, errors = validate_deprecation(
+            pref_label="Old",
+            is_deprecated=True,
+            history_note=collection_reason,
+            valid_reasons=OBSOLETION_REASONS_COLLECTIONS,
+            entity_iri="http://example.org/old",
+            entity_type="collection",
+        )
+        assert errors == []
+
+
+class TestDeprecationRdfExtraction:
+    """Tests for extracting dct:isReplacedBy from RDF."""
+
+    def test_extract_replaced_by_from_concept(self):
+        """Test extracting dct:isReplacedBy from a concept."""
+        from rdflib import DCTERMS, OWL, RDF
+
+        EX = Namespace("http://example.org/")
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+
+        # Create deprecated concept with replacement
+        g.add((EX.oldConcept, RDF.type, SKOS.Concept))
+        g.add((EX.oldConcept, SKOS.prefLabel, Literal("OBSOLETE Old", lang="en")))
+        g.add((EX.oldConcept, OWL.deprecated, Literal(True)))
+        g.add(
+            (
+                EX.oldConcept,
+                SKOS.historyNote,
+                Literal(OBSOLETION_REASONS_CONCEPTS[0], lang="en"),
+            )
+        )
+        g.add((EX.oldConcept, DCTERMS.isReplacedBy, EX.newConcept))
+
+        # Create replacement concept
+        g.add((EX.newConcept, RDF.type, SKOS.Concept))
+        g.add((EX.newConcept, SKOS.prefLabel, Literal("New Concept", lang="en")))
+
+        concepts = extract_concepts_from_rdf(g)
+
+        old_data = concepts[str(EX.oldConcept)]["en"]
+        assert old_data["replaced_by_iri"] == str(EX.newConcept)
+        assert old_data["is_deprecated"] is True
+
+    def test_extract_replaced_by_from_collection(self):
+        """Test extracting dct:isReplacedBy from a collection."""
+        from rdflib import DCTERMS, OWL, RDF
+
+        EX = Namespace("http://example.org/")
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+
+        # Create deprecated collection with replacement
+        g.add((EX.oldColl, RDF.type, SKOS.Collection))
+        g.add((EX.oldColl, SKOS.prefLabel, Literal("OBSOLETE Old Coll", lang="en")))
+        g.add((EX.oldColl, OWL.deprecated, Literal(True)))
+        g.add(
+            (
+                EX.oldColl,
+                SKOS.historyNote,
+                Literal(OBSOLETION_REASONS_COLLECTIONS[0], lang="en"),
+            )
+        )
+        g.add((EX.oldColl, DCTERMS.isReplacedBy, EX.newColl))
+
+        # Create replacement collection
+        g.add((EX.newColl, RDF.type, SKOS.Collection))
+        g.add((EX.newColl, SKOS.prefLabel, Literal("New Collection", lang="en")))
+
+        collections = extract_collections_from_rdf(g)
+
+        old_data = collections[str(EX.oldColl)]["en"]
+        assert old_data["replaced_by_iri"] == str(EX.newColl)
+        assert old_data["is_deprecated"] is True
+
+
+class TestDeprecationXlsxAggregation:
+    """Tests for deprecation handling in XLSX aggregation."""
+
+    def test_aggregate_concepts_parses_replaced_by(self):
+        """Test that aggregate_concepts parses replaced_by from change_note."""
+        prefixes = [
+            PrefixV1(prefix="ex", namespace="http://example.org/"),
+        ]
+        converter = build_curies_converter_from_prefixes(prefixes)
+
+        rows = [
+            ConceptV1(
+                concept_iri="ex:oldConcept",
+                language_code="en",
+                preferred_label="OBSOLETE Old Concept",
+                definition="An old concept",
+                obsolete_reason=OBSOLETION_REASONS_CONCEPTS[0],
+                change_note="replaced_by ex:newConcept",
+            ),
+        ]
+
+        concepts = aggregate_concepts(rows, converter)
+
+        assert "http://example.org/oldConcept" in concepts
+        concept = concepts["http://example.org/oldConcept"]
+        assert concept.replaced_by_iri == "http://example.org/newConcept"
+
+    def test_aggregate_concepts_adds_obsolete_prefix(self):
+        """Test that aggregate_concepts auto-adds OBSOLETE prefix."""
+        prefixes = [
+            PrefixV1(prefix="ex", namespace="http://example.org/"),
+        ]
+        converter = build_curies_converter_from_prefixes(prefixes)
+
+        rows = [
+            ConceptV1(
+                concept_iri="ex:oldConcept",
+                language_code="en",
+                preferred_label="Old Concept",  # Missing OBSOLETE prefix
+                definition="An old concept",
+                obsolete_reason=OBSOLETION_REASONS_CONCEPTS[0],
+            ),
+        ]
+
+        concepts = aggregate_concepts(rows, converter)
+
+        concept = concepts["http://example.org/oldConcept"]
+        assert concept.pref_labels["en"].startswith(OBSOLETE_PREFIX)
+
+    def test_aggregate_collections_parses_replaced_by(self):
+        """Test that aggregate_collections parses replaced_by from change_note."""
+        prefixes = [
+            PrefixV1(prefix="ex", namespace="http://example.org/"),
+        ]
+        converter = build_curies_converter_from_prefixes(prefixes)
+
+        rows = [
+            CollectionV1(
+                collection_iri="ex:oldColl",
+                language_code="en",
+                preferred_label="OBSOLETE Old Collection",
+                definition="An old collection",
+                obsolete_reason=OBSOLETION_REASONS_COLLECTIONS[0],
+                change_note="replaced_by ex:newColl",
+            ),
+        ]
+
+        collections = aggregate_collections(rows, converter)
+
+        assert "http://example.org/oldColl" in collections
+        collection = collections["http://example.org/oldColl"]
+        assert collection.replaced_by_iri == "http://example.org/newColl"
+
+
+class TestDeprecationRoundTrip:
+    """Tests for deprecation round-trip (RDF -> XLSX -> RDF)."""
+
+    def test_roundtrip_deprecated_concept_with_replacement(self, tmp_path, temp_config):
+        """Test round-trip of deprecated concept with dct:isReplacedBy."""
+        from rdflib import DCTERMS, OWL, RDF, XSD
+
+        EX = Namespace("http://example.org/")
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+
+        # Create concept scheme
+        g.add((EX[""], RDF.type, SKOS.ConceptScheme))
+        g.add((EX[""], SKOS.prefLabel, Literal("Test Scheme", lang="en")))
+        g.add((EX[""], DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        # Create deprecated concept with replacement
+        g.add((EX.oldConcept, RDF.type, SKOS.Concept))
+        g.add(
+            (EX.oldConcept, SKOS.prefLabel, Literal("OBSOLETE Old Concept", lang="en"))
+        )
+        g.add(
+            (
+                EX.oldConcept,
+                SKOS.definition,
+                Literal("An obsolete concept", lang="en"),
+            )
+        )
+        g.add((EX.oldConcept, SKOS.inScheme, EX[""]))
+        g.add((EX.oldConcept, OWL.deprecated, Literal(True)))
+        g.add(
+            (
+                EX.oldConcept,
+                SKOS.historyNote,
+                Literal(OBSOLETION_REASONS_CONCEPTS[0], lang="en"),
+            )
+        )
+        g.add((EX.oldConcept, DCTERMS.isReplacedBy, EX.newConcept))
+
+        # Create replacement concept
+        g.add((EX.newConcept, RDF.type, SKOS.Concept))
+        g.add((EX.newConcept, SKOS.prefLabel, Literal("New Concept", lang="en")))
+        g.add((EX.newConcept, SKOS.definition, Literal("The replacement", lang="en")))
+        g.add((EX.newConcept, SKOS.inScheme, EX[""]))
+
+        # Save to TTL
+        input_ttl = tmp_path / "test.ttl"
+        g.serialize(destination=str(input_ttl), format="turtle")
+
+        # Convert RDF -> XLSX
+        xlsx_path = tmp_path / "test.xlsx"
+        rdf_to_excel_v1(input_ttl, xlsx_path)
+
+        # Convert XLSX -> RDF
+        output_ttl = tmp_path / "output.ttl"
+        excel_to_rdf_v1(xlsx_path, output_ttl)
+
+        # Load result and verify
+        result = Graph().parse(output_ttl, format="turtle")
+
+        # Verify dct:isReplacedBy is preserved
+        replaced_by = list(result.objects(EX.oldConcept, DCTERMS.isReplacedBy))
+        assert len(replaced_by) == 1
+        assert str(replaced_by[0]) == str(EX.newConcept)
+
+        # Verify owl:deprecated is preserved
+        deprecated = list(result.objects(EX.oldConcept, OWL.deprecated))
+        assert len(deprecated) == 1
+        assert str(deprecated[0]).lower() == "true"
+
+    def test_roundtrip_obsolete_prefix_preserved(self, tmp_path, temp_config):
+        """Test that OBSOLETE prefix is preserved in round-trip."""
+        from rdflib import DCTERMS, OWL, RDF, XSD
+
+        EX = Namespace("http://example.org/")
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+
+        # Create concept scheme
+        g.add((EX[""], RDF.type, SKOS.ConceptScheme))
+        g.add((EX[""], SKOS.prefLabel, Literal("Test Scheme", lang="en")))
+        g.add((EX[""], DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        # Create deprecated concept with OBSOLETE prefix
+        g.add((EX.old, RDF.type, SKOS.Concept))
+        g.add((EX.old, SKOS.prefLabel, Literal("OBSOLETE Test Concept", lang="en")))
+        g.add((EX.old, SKOS.definition, Literal("An obsolete concept", lang="en")))
+        g.add((EX.old, SKOS.inScheme, EX[""]))
+        g.add((EX.old, OWL.deprecated, Literal(True)))
+        g.add(
+            (
+                EX.old,
+                SKOS.historyNote,
+                Literal(OBSOLETION_REASONS_CONCEPTS[1], lang="en"),
+            )
+        )
+
+        # Save to TTL
+        input_ttl = tmp_path / "test.ttl"
+        g.serialize(destination=str(input_ttl), format="turtle")
+
+        # Convert RDF -> XLSX
+        xlsx_path = tmp_path / "test.xlsx"
+        rdf_to_excel_v1(input_ttl, xlsx_path)
+
+        # Convert XLSX -> RDF
+        output_ttl = tmp_path / "output.ttl"
+        excel_to_rdf_v1(xlsx_path, output_ttl)
+
+        # Load result and verify
+        result = Graph().parse(output_ttl, format="turtle")
+
+        # Verify prefLabel still has OBSOLETE prefix
+        pref_labels = list(result.objects(EX.old, SKOS.prefLabel))
+        assert len(pref_labels) == 1
+        assert str(pref_labels[0]).startswith("OBSOLETE ")
