@@ -37,6 +37,13 @@ def test_validate_config_has_idrange(datadir, temp_config):
         checks={},
         prefix_map={},
         id_range=[],
+        # Mandatory fields
+        vocabulary_iri="https://example.org/another/",
+        title="Another Vocabulary",
+        description="Another test vocabulary",
+        created_date="2025-01-01",
+        creator="Test Author",
+        repository="https://github.com/test/another",
     )
     config.IDRANGES.vocabs["another_vocab"] = extra_vocab
     config.load_config(config=config.IDRANGES)

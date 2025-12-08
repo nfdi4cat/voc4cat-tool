@@ -17,24 +17,22 @@ id_length = 7
 # permanent part of IRIs defined in the vocabulary (used to construct concept IRIs)
 permanent_iri_part = "https://example.org/"
 
-# ==== Vocabulary Metadata (for ConceptScheme) ====
-# These fields populate the read-only "Concept Scheme" sheet in Excel.
-# All fields are optional. If omitted, defaults to empty string.
+# The fields below are metadata for the Concept Scheme
 
 # IRI for the vocabulary (skos:ConceptScheme)
-# vocabulary_iri = "https://example.org/vocab/"
+vocabulary_iri = "https://example.org/vocab/"
 
 # Registered (or preferred) prefix for this vocabulary
-# prefix = "ex"
+prefix = "ex"
 
 # Title of the vocabulary
-# title = "My Vocabulary"
+title = "My Vocabulary"
 
 # General description of the vocabulary
-# description = "Description of the vocabulary"
+description = "Description of the vocabulary"
 
 # Date of creation (ISO-8601 format: YYYY-MM-DD)
-# created_date = "2025-01-01"
+created_date = "2025-01-01"
 
 # Creator(s) - multi-line text, each line: "<orcid-URL or ror-URL> <name>"
 # creator = """
