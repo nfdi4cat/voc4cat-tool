@@ -2000,53 +2000,69 @@ class TestConfigToConceptSchemeV1:
         assert scheme.modified_date == "2024-06-01"
         assert scheme.version == "1.2.3"
 
-    def test_rdf_fills_gaps(self, temp_config):
-        """Test that RDF fills gaps when config fields are empty."""
+    def test_rdf_fills_gaps_for_optional_fields(self, temp_config):
+        """Test that RDF fills gaps for optional fields when config fields are empty."""
         from voc4cat.config import Checks, Vocab
         from voc4cat.models_v1 import ConceptSchemeV1
 
-        # Create a minimal vocab config (empty scheme fields)
+        # Create a vocab config with mandatory fields but empty optional fields
         vocab = Vocab(
             id_length=7,
             permanent_iri_part="https://example.org/",
             checks=Checks(allow_delete=False),
             prefix_map={"ex": "https://example.org/"},
+            # Mandatory fields
+            vocabulary_iri="https://example.org/vocab/",
+            title="Config Title",
+            description="Config Description",
+            created_date="2025-01-01",
+            creator="Test Author",
+            repository="https://github.com/test/vocab",
+            # Optional fields left empty
+            publisher="",
+            custodian="",
         )
 
-        # Create RDF scheme with values
+        # Create RDF scheme with optional values that should fill gaps
         rdf_scheme = ConceptSchemeV1(
-            vocabulary_iri="http://rdf-value.org/",
-            title="RDF Title",
-            description="RDF Description",
+            vocabulary_iri="http://rdf-value.org/",  # Will be overridden by config
+            title="RDF Title",  # Will be overridden by config
+            description="RDF Description",  # Will be overridden by config
+            publisher="RDF Publisher",  # Will fill gap
+            custodian="RDF Custodian",  # Will fill gap
+            modified_date="2024-06-01",  # Only in RDF
         )
 
         scheme = config_to_concept_scheme_v1(vocab, rdf_scheme)
 
-        # RDF values should fill gaps
-        assert scheme.vocabulary_iri == "http://rdf-value.org/"
-        assert scheme.title == "RDF Title"
-        assert scheme.description == "RDF Description"
+        # Config mandatory values should override
+        assert scheme.vocabulary_iri == "https://example.org/vocab/"
+        assert scheme.title == "Config Title"
+        assert scheme.description == "Config Description"
 
-    def test_logs_warning_for_missing_required_fields(self, temp_config, caplog):
-        """Test that warnings are logged for missing required fields."""
-        import logging
+        # RDF optional values should fill gaps
+        assert scheme.publisher == "RDF Publisher"
+        assert scheme.custodian == "RDF Custodian"
+        assert scheme.modified_date == "2024-06-01"
+
+    def test_mandatory_fields_required_in_config(self, temp_config):
+        """Test that mandatory fields must be in config (can't rely on RDF)."""
+        from pydantic import ValidationError
 
         from voc4cat.config import Checks, Vocab
 
-        # Create a minimal vocab config (empty scheme fields)
-        vocab = Vocab(
-            id_length=7,
-            permanent_iri_part="https://example.org/",
-            checks=Checks(allow_delete=False),
-            prefix_map={"ex": "https://example.org/"},
-        )
+        # Try to create a vocab config without mandatory fields - should fail
+        with pytest.raises(ValidationError) as excinfo:
+            Vocab(
+                id_length=7,
+                permanent_iri_part="https://example.org/",
+                checks=Checks(allow_delete=False),
+                prefix_map={"ex": "https://example.org/"},
+                # Missing: vocabulary_iri, title, description, created_date, creator, repository
+            )
 
-        with caplog.at_level(logging.WARNING):
-            config_to_concept_scheme_v1(vocab)
-
-        # Should have warnings for required fields
-        assert "vocabulary_iri" in caplog.text
-        assert "title" in caplog.text
+        error_msg = str(excinfo.value)
+        assert "Mandatory ConceptScheme fields are empty" in error_msg
 
 
 class TestRdfToExcelWithConfig:
@@ -2144,6 +2160,12 @@ class TestExtractUsedIds:
             permanent_iri_part="https://example.org/",
             checks=Checks(allow_delete=False),
             prefix_map={"ex": "https://example.org/"},
+            vocabulary_iri="https://example.org/vocab/",
+            title="Test Vocabulary",
+            description="Test description",
+            created_date="2025-01-01",
+            creator="Test Author",
+            repository="https://github.com/test/vocab",
         )
 
         concepts = [
@@ -2158,7 +2180,7 @@ class TestExtractUsedIds:
 
         assert used_ids == {1, 5, 10}
 
-    def test_extract_ids_from_collections(self, temp_config):
+    def test_extract_ids_from_collections(self, temp_config, mandatory_fields):
         """Test that collection IDs are extracted correctly."""
         from voc4cat.config import Checks, Vocab
         from voc4cat.convert_v1 import extract_used_ids
@@ -2169,6 +2191,7 @@ class TestExtractUsedIds:
             permanent_iri_part="https://example.org/",
             checks=Checks(allow_delete=False),
             prefix_map={"ex": "https://example.org/"},
+            **mandatory_fields,
         )
 
         concepts = []
@@ -2181,7 +2204,7 @@ class TestExtractUsedIds:
 
         assert used_ids == {20, 25}
 
-    def test_extract_ids_combined(self, temp_config):
+    def test_extract_ids_combined(self, temp_config, mandatory_fields):
         """Test that both concept and collection IDs are extracted."""
         from voc4cat.config import Checks, Vocab
         from voc4cat.convert_v1 import extract_used_ids
@@ -2192,6 +2215,7 @@ class TestExtractUsedIds:
             permanent_iri_part="https://example.org/",
             checks=Checks(allow_delete=False),
             prefix_map={"ex": "https://example.org/"},
+            **mandatory_fields,
         )
 
         concepts = [
@@ -2206,7 +2230,7 @@ class TestExtractUsedIds:
 
         assert used_ids == {1, 2, 3}
 
-    def test_ignores_foreign_iris(self, temp_config):
+    def test_ignores_foreign_iris(self, temp_config, mandatory_fields):
         """Test that IRIs from other vocabularies are ignored."""
         from voc4cat.config import Checks, Vocab
         from voc4cat.convert_v1 import extract_used_ids
@@ -2217,6 +2241,7 @@ class TestExtractUsedIds:
             permanent_iri_part="https://example.org/",
             checks=Checks(allow_delete=False),
             prefix_map={"ex": "https://example.org/"},
+            **mandatory_fields,
         )
 
         concepts = [
@@ -2229,7 +2254,7 @@ class TestExtractUsedIds:
 
         assert used_ids == {1}
 
-    def test_handles_empty_iris(self, temp_config):
+    def test_handles_empty_iris(self, temp_config, mandatory_fields):
         """Test that empty IRIs are handled gracefully."""
         from voc4cat.config import Checks, Vocab
         from voc4cat.convert_v1 import extract_used_ids
@@ -2240,6 +2265,7 @@ class TestExtractUsedIds:
             permanent_iri_part="https://example.org/",
             checks=Checks(allow_delete=False),
             prefix_map={"ex": "https://example.org/"},
+            **mandatory_fields,
         )
 
         concepts = [
@@ -2256,7 +2282,7 @@ class TestExtractUsedIds:
 class TestBuildIdRangeInfo:
     """Tests for build_id_range_info() function."""
 
-    def test_build_single_range(self, temp_config):
+    def test_build_single_range(self, temp_config, mandatory_fields):
         """Test building info for a single ID range."""
         from voc4cat.config import Checks, Vocab
         from voc4cat.convert_v1 import build_id_range_info
@@ -2269,6 +2295,7 @@ class TestBuildIdRangeInfo:
             id_range=[
                 {"first_id": 1, "last_id": 10, "gh_name": "alice"},
             ],
+            **mandatory_fields,
         )
 
         used_ids = {1, 2, 3}
@@ -2279,7 +2306,7 @@ class TestBuildIdRangeInfo:
         assert rows[0].id_range == "0000001 - 0000010"
         assert rows[0].unused_ids == "next unused: 0000004, unused: 7"
 
-    def test_build_multiple_ranges(self, temp_config):
+    def test_build_multiple_ranges(self, temp_config, mandatory_fields):
         """Test building info for multiple ID ranges."""
         from voc4cat.config import Checks, Vocab
         from voc4cat.convert_v1 import build_id_range_info
@@ -2293,6 +2320,7 @@ class TestBuildIdRangeInfo:
                 {"first_id": 1, "last_id": 10, "gh_name": "alice"},
                 {"first_id": 11, "last_id": 20, "gh_name": "bob"},
             ],
+            **mandatory_fields,
         )
 
         used_ids = {1, 11, 12}
@@ -2304,7 +2332,7 @@ class TestBuildIdRangeInfo:
         assert rows[1].gh_name == "bob"
         assert rows[1].unused_ids == "next unused: 0000013, unused: 8"
 
-    def test_all_ids_used(self, temp_config):
+    def test_all_ids_used(self, temp_config, mandatory_fields):
         """Test when all IDs in a range are used."""
         from voc4cat.config import Checks, Vocab
         from voc4cat.convert_v1 import build_id_range_info
@@ -2317,6 +2345,7 @@ class TestBuildIdRangeInfo:
             id_range=[
                 {"first_id": 1, "last_id": 3, "gh_name": "alice"},
             ],
+            **mandatory_fields,
         )
 
         used_ids = {1, 2, 3}
@@ -2325,7 +2354,7 @@ class TestBuildIdRangeInfo:
         assert len(rows) == 1
         assert rows[0].unused_ids == "all used"
 
-    def test_orcid_fallback(self, temp_config):
+    def test_orcid_fallback(self, temp_config, mandatory_fields):
         """Test that ORCID is used when gh_name is empty."""
         from voc4cat.config import Checks, Vocab
         from voc4cat.convert_v1 import build_id_range_info
@@ -2343,6 +2372,7 @@ class TestBuildIdRangeInfo:
                     "orcid": "https://orcid.org/0000-0001-2345-6789",
                 },
             ],
+            **mandatory_fields,
         )
 
         used_ids = set()
@@ -2351,7 +2381,7 @@ class TestBuildIdRangeInfo:
         assert len(rows) == 1
         assert rows[0].gh_name == "https://orcid.org/0000-0001-2345-6789"
 
-    def test_zero_padding(self, temp_config):
+    def test_zero_padding(self, temp_config, mandatory_fields):
         """Test that ID padding respects id_length from config."""
         from voc4cat.config import Checks, Vocab
         from voc4cat.convert_v1 import build_id_range_info
@@ -2364,6 +2394,7 @@ class TestBuildIdRangeInfo:
             id_range=[
                 {"first_id": 1, "last_id": 100, "gh_name": "alice"},
             ],
+            **mandatory_fields,
         )
 
         used_ids = {1}
@@ -2390,6 +2421,10 @@ class TestIdRangesSheetExport:
             prefix_map={"ex": "https://example.org/"},
             vocabulary_iri="https://example.org/",
             title="Test Vocabulary",
+            description="Test description",
+            created_date="2025-01-01",
+            creator="Test Author",
+            repository="https://github.com/test/vocab",
             id_range=[
                 {"first_id": 1, "last_id": 10, "gh_name": "alice"},
             ],
@@ -2415,6 +2450,10 @@ class TestIdRangesSheetExport:
             prefix_map={"ex": "https://example.org/"},
             vocabulary_iri="https://example.org/",
             title="Test Vocabulary",
+            description="Test description",
+            created_date="2025-01-01",
+            creator="Test Author",
+            repository="https://github.com/test/vocab",
             id_range=[
                 {"first_id": 1, "last_id": 10, "gh_name": "alice"},
             ],
@@ -2442,6 +2481,10 @@ class TestIdRangesSheetExport:
             prefix_map={"ex": "https://example.org/"},
             vocabulary_iri="https://example.org/",
             title="Test Vocabulary",
+            description="Test description",
+            created_date="2025-01-01",
+            creator="Test Author",
+            repository="https://github.com/test/vocab",
             id_range=[
                 {"first_id": 1, "last_id": 10, "gh_name": "alice"},
                 {"first_id": 11, "last_id": 20, "gh_name": "bob"},
@@ -2537,6 +2580,10 @@ class TestIdRangesSheetExport:
             prefix_map={"ex": "https://example.org/"},
             vocabulary_iri="https://example.org/",
             title="Test Vocabulary",
+            description="Test description",
+            created_date="2025-01-01",
+            creator="Test Author",
+            repository="https://github.com/test/vocab",
             id_range=[
                 {"first_id": 1, "last_id": 10, "gh_name": "alice"},
             ],

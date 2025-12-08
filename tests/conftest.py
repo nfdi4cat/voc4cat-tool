@@ -125,7 +125,23 @@ def test_vocab_config():
         vocabulary_iri="http://example.org/test/",
         title="Test Vocabulary",
         description="Test vocabulary for unit tests",
+        created_date="2025-01-01",
+        creator="https://orcid.org/0000-0001-2345-6789",
+        repository="https://github.com/test/vocab",
     )
+
+
+@pytest.fixture
+def mandatory_fields():
+    """Default mandatory fields for testing - can be merged into test Vocab configs."""
+    return {
+        "vocabulary_iri": "https://example.org/vocab/",
+        "title": "Test Vocabulary",
+        "description": "Test vocabulary for unit tests",
+        "created_date": "2025-01-01",
+        "creator": "https://orcid.org/0000-0001-2345-6789",
+        "repository": "https://github.com/test/vocab",
+    }
 
 
 def make_vocab_config_from_rdf(graph, vocab_iri: str | None = None):
@@ -154,6 +170,7 @@ def make_vocab_config_from_rdf(graph, vocab_iri: str | None = None):
     title = ""
     description = ""
     created_date = ""
+    creator = ""
 
     # Get title from concept scheme's prefLabel
     for obj in graph.objects(scheme_uri, SKOS.prefLabel):
@@ -170,8 +187,23 @@ def make_vocab_config_from_rdf(graph, vocab_iri: str | None = None):
         created_date = str(obj)
         break
 
+    # Get creator
+    for obj in graph.objects(scheme_uri, DCTERMS.creator):
+        creator = str(obj)
+        break
+
     # Derive permanent_iri_part from vocab_iri
     permanent_iri_part = vocab_iri.rstrip("/") + "/"
+
+    # Provide defaults for mandatory fields if not found in RDF
+    if not title:
+        title = "Test Vocabulary"
+    if not description:
+        description = "Test vocabulary for unit tests"
+    if not created_date:
+        created_date = "2025-01-01"
+    if not creator:
+        creator = "https://orcid.org/0000-0001-2345-6789"
 
     return Vocab(
         id_length=7,
@@ -182,6 +214,8 @@ def make_vocab_config_from_rdf(graph, vocab_iri: str | None = None):
         title=title,
         description=description,
         created_date=created_date,
+        creator=creator,
+        repository="https://github.com/test/vocab",  # Always provide default
     )
 
 

@@ -125,6 +125,30 @@ class Vocab(BaseModel):
             ids_defined = ids_defined | new_ids
         return value
 
+    @model_validator(mode="after")
+    def validate_required_scheme_fields(self) -> Self:
+        """Validate that mandatory ConceptScheme metadata fields are not empty."""
+        required_fields = [
+            "vocabulary_iri",
+            "title",
+            "description",
+            "created_date",
+            "creator",
+            "repository",
+        ]
+
+        missing = []
+        for field_name in required_fields:
+            value = getattr(self, field_name)
+            if not value or not value.strip():
+                missing.append(field_name)
+
+        if missing:
+            msg = f"Mandatory ConceptScheme fields are empty: {', '.join(missing)}"
+            raise ValueError(msg)
+
+        return self
+
 
 class IDrangeConfig(BaseModel):
     config_version: str = "1.0"
