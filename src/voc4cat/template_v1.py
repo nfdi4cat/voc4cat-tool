@@ -95,9 +95,10 @@ def generate_template_v1(output_path: Path | None = None) -> Workbook:
 
 
 def _export_concept_scheme(filepath: Path) -> None:
-    """Export Concept Scheme sheet in key-value format."""
+    """Export Concept Scheme sheet in key-value format (read-only)."""
     config = XLSXKeyValueConfig(
         title=CONCEPT_SCHEME_SHEET_TITLE,
+        table_style="TableStyleMedium16",
     )
     export_to_xlsx(
         EXAMPLE_CONCEPT_SCHEME,
@@ -113,6 +114,7 @@ def _export_concepts(filepath: Path) -> None:
     config = XLSXTableConfig(
         title="Concepts",
         freeze_panes=True,
+        table_style="TableStyleMedium2",
     )
     export_to_xlsx(
         EXAMPLE_CONCEPTS,
@@ -127,6 +129,7 @@ def _export_collections(filepath: Path) -> None:
     """Export Collections sheet in table format."""
     config = XLSXTableConfig(
         title="Collections",
+        table_style="TableStyleMedium7",
     )
     export_to_xlsx(
         EXAMPLE_COLLECTIONS,
@@ -141,6 +144,7 @@ def _export_mappings(filepath: Path) -> None:
     """Export Mappings sheet in table format."""
     config = XLSXTableConfig(
         title="Mappings",
+        table_style="TableStyleMedium3",
     )
     export_to_xlsx(
         EXAMPLE_MAPPINGS,
@@ -155,6 +159,7 @@ def _export_id_ranges(filepath: Path) -> None:
     """Export ID Ranges sheet in table format with headers only (read-only)."""
     config = XLSXTableConfig(
         title=ID_RANGES_SHEET_TITLE,
+        table_style="TableStyleMedium16",
     )
     # Export with empty row to get headers only
     export_to_xlsx(
@@ -167,9 +172,10 @@ def _export_id_ranges(filepath: Path) -> None:
 
 
 def _export_prefixes(filepath: Path) -> None:
-    """Export Prefixes sheet in table format with default prefixes."""
+    """Export Prefixes sheet in table format with default prefixes (read-only)."""
     config = XLSXTableConfig(
         title=PREFIXES_SHEET_TITLE,
+        table_style="TableStyleMedium16",
     )
     export_to_xlsx(
         DEFAULT_PREFIXES,

@@ -44,6 +44,7 @@ class XLSXTableConfig(XLSXConfig):
     table_style: str = "TableStyleMedium9"
     header_row_color: str | None = None
     freeze_panes: bool = True
+    bold_fields: set[str] = field(default_factory=set)
 
 
 # Join configuration for complex relationships
@@ -502,25 +503,20 @@ class XLSXTableFormatter(XLSXFormatter):
 
             header_text = self._format_header_text(field_analysis)
             worksheet[header_cell] = header_text
-            worksheet[header_cell].font = Font(bold=True)
 
-            # Add header styling
+            # Only apply explicit header styling if configured
+            # Otherwise, let the table style control header appearance (font, color, fill)
             if (
                 hasattr(self.config, "header_row_color")
                 and self.config.header_row_color
             ):
+                worksheet[header_cell].font = Font(bold=True)
                 header_fill = PatternFill(
                     start_color=self.config.header_row_color,
                     end_color=self.config.header_row_color,
                     fill_type="solid",
                 )
-            else:
-                header_fill = PatternFill(
-                    start_color="CCCCCC",
-                    end_color="CCCCCC",
-                    fill_type="solid",
-                )
-            worksheet[header_cell].fill = header_fill
+                worksheet[header_cell].fill = header_fill
 
     def _write_data_rows(
         self,
@@ -549,6 +545,9 @@ class XLSXTableFormatter(XLSXFormatter):
                     data_cell.value = formatted_value
                     # Apply data cell formatting (vertical center, left align, text wrap for strings)
                     self._apply_data_cell_formatting(data_cell, field_analysis)
+                    # Apply bold formatting for specified fields
+                    if field_analysis.name in self.config.bold_fields:
+                        data_cell.font = Font(bold=True)
                 except Exception as e:
                     raise XLSXSerializationError(field_analysis.name, value, e) from e
 

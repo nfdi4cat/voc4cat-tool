@@ -46,6 +46,7 @@ class XLSXKeyValueConfig(XLSXConfig):
     unit_column_width: int = 10
     description_column_width: int = 50
     meaning_column_width: int = 40
+    table_style: str = "TableStyleMedium9"
 
 
 # Key-value formatter
@@ -228,7 +229,7 @@ class XLSXKeyValueFormatter(XLSXFormatter):
         # Create table object
         table = Table(displayName=table_name, ref=table_range)
         table.tableStyleInfo = TableStyleInfo(
-            name=getattr(config, "table_style", "TableStyleMedium9"),
+            name=config.table_style,
             showFirstColumn=False,
             showLastColumn=False,
             showRowStripes=True,
