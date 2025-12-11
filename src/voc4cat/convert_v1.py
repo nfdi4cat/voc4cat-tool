@@ -2587,10 +2587,113 @@ PREDICATES_PRESERVED = {
 }
 
 
+def _enrich_concept_scheme_from_config(
+    graph: Graph,
+    vocab_config: "config.Vocab",
+) -> None:
+    """Enrich ConceptScheme metadata in graph using config values.
+
+    Updates ConceptScheme triples in-place. Config values override existing
+    RDF values where provided.
+
+    Args:
+        graph: The RDF graph to modify (mutated in place).
+        vocab_config: Vocab configuration from idranges.toml.
+    """
+    # Find the ConceptScheme subject
+    scheme_iri = None
+    for s in graph.subjects(RDF.type, SKOS.ConceptScheme):
+        scheme_iri = s
+        break
+
+    if scheme_iri is None:
+        logger.warning("No ConceptScheme found in graph, skipping metadata enrichment")
+        return
+
+    # Extract existing RDF data and merge with config
+    rdf_data = extract_concept_scheme_from_rdf(graph)
+    rdf_scheme = rdf_concept_scheme_to_v1(rdf_data)
+    enriched = config_to_concept_scheme_v1(vocab_config, rdf_scheme)
+
+    # Define predicate-to-field mappings for update
+    # Each tuple: (predicate, field_name, is_literal, lang_or_datatype)
+    metadata_mappings = [
+        (SKOS.prefLabel, "title", True, "en"),
+        (SKOS.definition, "description", True, "en"),
+        (DCTERMS.created, "created_date", True, XSD.date),
+        (DCTERMS.modified, "modified_date", True, XSD.date),
+        (OWL.versionInfo, "version", True, None),
+        (SKOS.historyNote, "change_note", True, "en"),
+        (DCAT.contactPoint, "custodian", True, None),
+    ]
+
+    # Update metadata triples
+    for predicate, field_name, is_literal, type_or_lang in metadata_mappings:
+        value = getattr(enriched, field_name, "")
+        if not value:
+            continue
+
+        # Remove existing triple(s) for this predicate
+        graph.remove((scheme_iri, predicate, None))
+
+        # Add new triple
+        if is_literal:
+            if type_or_lang == "en":
+                obj = Literal(value, lang="en")
+            elif type_or_lang is not None:
+                obj = Literal(value, datatype=type_or_lang)
+            else:
+                obj = Literal(value)
+            graph.add((scheme_iri, predicate, obj))
+
+    # Handle URI-valued predicates separately (creator, publisher)
+    # These fields may contain multi-line text with format "<URL> <name>" per line
+    for predicate, field_name in [
+        (DCTERMS.creator, "creator"),
+        (DCTERMS.publisher, "publisher"),
+    ]:
+        value = getattr(enriched, field_name, "")
+        if not value:
+            continue
+
+        # Remove existing
+        graph.remove((scheme_iri, predicate, None))
+
+        # Extract URL(s) from value - may be single URL or multi-line "<URL> <name>"
+        urls_found = []
+        for line in value.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            # Check if line starts with URL
+            if line.startswith("http"):
+                # Extract just the URL (first space-separated token)
+                url = line.split(None, 1)[0]
+                urls_found.append(url)
+            elif " " not in line and "/" in line:
+                # Might be a bare URL without space
+                urls_found.append(line)
+
+        # Add first URL found (RDF typically has single creator/publisher)
+        if urls_found:
+            graph.add((scheme_iri, predicate, URIRef(urls_found[0])))
+
+    # Handle catalogue_pid -> rdfs:seeAlso
+    if enriched.catalogue_pid:
+        graph.remove((scheme_iri, RDFS.seeAlso, None))
+        if enriched.catalogue_pid.startswith("http"):
+            graph.add((scheme_iri, RDFS.seeAlso, URIRef(enriched.catalogue_pid)))
+        else:
+            graph.add((scheme_iri, RDFS.seeAlso, Literal(enriched.catalogue_pid)))
+
+    logger.debug("Enriched ConceptScheme metadata from config")
+
+
 def convert_rdf_043_to_v1(
     input_path: Path,
     output_path: Path | None = None,
     output_format: TypingLiteral["turtle", "xml", "json-ld"] = "turtle",
+    vocab_config: "config.Vocab | None" = None,
 ) -> Path:
     """Convert a 0.4.3 format RDF vocabulary to v1.0 RDF format.
 
@@ -2600,12 +2703,16 @@ def convert_rdf_043_to_v1(
     - dcterms:provenance -> skos:changeNote
     - prov:wasDerivedFrom -> skos:changeNote
 
+    If vocab_config is provided, ConceptScheme metadata is enriched from
+    the config (config values override RDF values).
+
     Unknown predicates are dropped with a warning.
 
     Args:
         input_path: Path to the 043 RDF file.
         output_path: Optional path for output. Defaults to input with _v1 suffix.
         output_format: RDF serialization format.
+        vocab_config: Optional Vocab config for metadata enrichment.
 
     Returns:
         Path to the generated v1.0 RDF file.
@@ -2656,6 +2763,10 @@ def convert_rdf_043_to_v1(
         for pred in sorted(unknown_predicates, key=str):
             count = len(list(input_graph.triples((None, pred, None))))
             logger.warning("  - %s (%d triples)", pred, count)
+
+    # Enrich ConceptScheme metadata from config if provided
+    if vocab_config is not None:
+        _enrich_concept_scheme_from_config(output_graph, vocab_config)
 
     # Determine output path
     if output_path is None:
