@@ -22,6 +22,7 @@ from voc4cat.convert_v1 import (
     build_provenance_url,
     config_to_concept_scheme_v1,
     convert_rdf_043_to_v1,
+    derive_contributors,
     excel_to_rdf_v1,
     extract_collections_from_rdf,
     extract_concept_scheme_from_rdf,
@@ -29,6 +30,7 @@ from voc4cat.convert_v1 import (
     extract_entity_id_from_iri,
     extract_mappings_from_rdf,
     format_change_note_with_replaced_by,
+    format_contributor_string,
     parse_ordered_collection_positions,
     parse_replaced_by_from_change_note,
     rdf_concept_scheme_to_v1,
@@ -2596,3 +2598,297 @@ class TestIdRangesSheetExport:
         unused_value = ws["C4"].value
         assert "next unused: 0000003" in unused_value
         assert "unused: 7" in unused_value
+
+
+# =============================================================================
+# Tests for Contributor Derivation
+# =============================================================================
+
+
+class TestFormatContributorString:
+    """Tests for format_contributor_string function."""
+
+    def test_with_orcid_and_name(self, temp_config):
+        """Test formatting with ORCID and name."""
+        config = temp_config
+        idr = config.IdrangeItem(
+            first_id=1,
+            last_id=10,
+            gh_name="testuser",
+            name="Test User",
+            orcid="0000-0001-2345-6789",
+        )
+        result = format_contributor_string(idr)
+        assert result == "Test User https://orcid.org/0000-0001-2345-6789"
+
+    def test_with_orcid_url_and_name(self, temp_config):
+        """Test formatting with full ORCID URL and name."""
+        config = temp_config
+        idr = config.IdrangeItem(
+            first_id=1,
+            last_id=10,
+            gh_name="testuser",
+            name="Test User",
+            orcid="https://orcid.org/0000-0001-2345-6789",
+        )
+        result = format_contributor_string(idr)
+        assert result == "Test User https://orcid.org/0000-0001-2345-6789"
+
+    def test_with_orcid_no_name(self, temp_config):
+        """Test formatting with ORCID but no name."""
+        config = temp_config
+        idr = config.IdrangeItem(
+            first_id=1,
+            last_id=10,
+            gh_name="",
+            orcid="0000-0001-2345-6789",
+        )
+        result = format_contributor_string(idr)
+        assert result == "https://orcid.org/0000-0001-2345-6789"
+
+    def test_with_gh_name_and_name(self, temp_config):
+        """Test formatting with gh_name and name (no ORCID)."""
+        config = temp_config
+        idr = config.IdrangeItem(
+            first_id=1,
+            last_id=10,
+            gh_name="testuser",
+            name="Test User",
+        )
+        result = format_contributor_string(idr)
+        assert result == "Test User https://github.com/testuser"
+
+    def test_with_gh_name_only(self, temp_config):
+        """Test formatting with only gh_name (no name, no ORCID)."""
+        config = temp_config
+        idr = config.IdrangeItem(
+            first_id=1,
+            last_id=10,
+            gh_name="testuser",
+        )
+        result = format_contributor_string(idr)
+        assert result == "testuser https://github.com/testuser"
+
+    def test_orcid_takes_priority_over_gh_name(self, temp_config):
+        """Test that ORCID URL is used when both ORCID and gh_name are present."""
+        config = temp_config
+        idr = config.IdrangeItem(
+            first_id=1,
+            last_id=10,
+            gh_name="testuser",
+            name="Test User",
+            orcid="0000-0001-2345-6789",
+        )
+        result = format_contributor_string(idr)
+        # Should use ORCID, not GitHub URL
+        assert "orcid.org" in result
+        assert "github.com" not in result
+
+
+class TestDeriveContributors:
+    """Tests for derive_contributors function."""
+
+    def test_derives_contributor_from_used_range(self, temp_config):
+        """Test that contributor is derived when IDs from their range are used."""
+        config = temp_config
+        vocab = config.Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="https://example.org/vocab/",
+            title="Test",
+            description="Test",
+            created_date="2025-01-01",
+            creator="Creator https://orcid.org/0000-0000-0000-0001",
+            repository="https://github.com/test/vocab",
+            id_range=[
+                {
+                    "first_id": 1,
+                    "last_id": 10,
+                    "gh_name": "user1",
+                    "name": "User One",
+                    "orcid": "0000-0001-2345-6789",
+                },
+                {"first_id": 11, "last_id": 20, "gh_name": "user2"},
+            ],
+        )
+
+        # Only user1's range has used IDs
+        used_ids = {1, 2, 3}
+
+        result = derive_contributors(vocab, used_ids)
+        assert "User One" in result
+        assert "0000-0001-2345-6789" in result
+        assert "user2" not in result
+
+    def test_excludes_creators_by_orcid(self, temp_config):
+        """Test that creators are excluded from contributors (matching by ORCID)."""
+        config = temp_config
+        vocab = config.Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="https://example.org/vocab/",
+            title="Test",
+            description="Test",
+            created_date="2025-01-01",
+            creator="User One https://orcid.org/0000-0001-2345-6789",
+            repository="https://github.com/test/vocab",
+            id_range=[
+                {
+                    "first_id": 1,
+                    "last_id": 10,
+                    "gh_name": "user1",
+                    "name": "User One",
+                    "orcid": "0000-0001-2345-6789",
+                },
+            ],
+        )
+
+        used_ids = {1, 2, 3}
+
+        result = derive_contributors(vocab, used_ids)
+        # User One is excluded because they're the creator
+        assert result == ""
+
+    def test_excludes_creators_by_gh_name(self, temp_config):
+        """Test that creators are excluded from contributors (matching by gh_name)."""
+        config = temp_config
+        vocab = config.Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="https://example.org/vocab/",
+            title="Test",
+            description="Test",
+            created_date="2025-01-01",
+            creator="User One https://github.com/user1",
+            repository="https://github.com/test/vocab",
+            id_range=[
+                {"first_id": 1, "last_id": 10, "gh_name": "user1", "name": "User One"},
+            ],
+        )
+
+        used_ids = {1, 2, 3}
+
+        result = derive_contributors(vocab, used_ids)
+        # user1 is excluded because they're the creator
+        assert result == ""
+
+    def test_no_duplicates_multiple_ranges(self, temp_config):
+        """Test that same contributor from multiple ranges appears only once."""
+        config = temp_config
+        vocab = config.Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="https://example.org/vocab/",
+            title="Test",
+            description="Test",
+            created_date="2025-01-01",
+            creator="Creator https://orcid.org/0000-0000-0000-0001",
+            repository="https://github.com/test/vocab",
+            id_range=[
+                {
+                    "first_id": 1,
+                    "last_id": 10,
+                    "gh_name": "user1",
+                    "orcid": "0000-0001-2345-6789",
+                },
+                {
+                    "first_id": 11,
+                    "last_id": 20,
+                    "gh_name": "user1",
+                    "orcid": "0000-0001-2345-6789",
+                },
+            ],
+        )
+
+        # IDs used from both ranges
+        used_ids = {5, 15}
+
+        result = derive_contributors(vocab, used_ids)
+        # Should only have one entry for user1
+        assert result.count("0000-0001-2345-6789") == 1
+
+    def test_returns_empty_when_no_ids_used(self, temp_config):
+        """Test that empty string is returned when no IDs are used."""
+        config = temp_config
+        vocab = config.Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="https://example.org/vocab/",
+            title="Test",
+            description="Test",
+            created_date="2025-01-01",
+            creator="Creator https://orcid.org/0000-0000-0000-0001",
+            repository="https://github.com/test/vocab",
+            id_range=[
+                {"first_id": 1, "last_id": 10, "gh_name": "user1"},
+            ],
+        )
+
+        # No IDs used
+        used_ids = set()
+
+        result = derive_contributors(vocab, used_ids)
+        assert result == ""
+
+    def test_multiple_contributors(self, temp_config):
+        """Test deriving multiple contributors from different ranges."""
+        config = temp_config
+        vocab = config.Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="https://example.org/vocab/",
+            title="Test",
+            description="Test",
+            created_date="2025-01-01",
+            creator="Creator https://orcid.org/0000-0000-0000-0001",
+            repository="https://github.com/test/vocab",
+            id_range=[
+                {
+                    "first_id": 1,
+                    "last_id": 10,
+                    "gh_name": "alice",
+                    "name": "Alice Smith",
+                    "orcid": "0000-0001-2345-6789",  # Valid ORCID
+                },
+                {
+                    "first_id": 11,
+                    "last_id": 20,
+                    "gh_name": "bob",
+                    "name": "Bob Jones",
+                    "orcid": "0000-0002-1825-0097",  # Valid ORCID
+                },
+                {
+                    "first_id": 21,
+                    "last_id": 30,
+                    "gh_name": "charlie",
+                },
+            ],
+        )
+
+        # IDs used from alice's and charlie's ranges only
+        used_ids = {5, 25}
+
+        result = derive_contributors(vocab, used_ids)
+        # Should have Alice and Charlie, but not Bob
+        assert "Alice Smith" in result
+        assert "0000-0001-2345-6789" in result
+        assert "charlie" in result
+        assert "github.com/charlie" in result
+        assert "Bob Jones" not in result
+        assert "0000-0002-1825-0097" not in result
+
+        # Should be two lines
+        lines = [line for line in result.split("\n") if line.strip()]
+        assert len(lines) == 2

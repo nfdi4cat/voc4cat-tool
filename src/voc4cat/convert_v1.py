@@ -553,6 +553,7 @@ def rdf_concept_scheme_to_v1(data: dict) -> ConceptSchemeV1:
 def config_to_concept_scheme_v1(
     vocab_config: "config.Vocab",
     rdf_scheme: ConceptSchemeV1 | None = None,
+    derived_contributors: str = "",
 ) -> ConceptSchemeV1:
     """Build ConceptSchemeV1 from idranges.toml config with optional RDF fallback.
 
@@ -563,6 +564,7 @@ def config_to_concept_scheme_v1(
     Args:
         vocab_config: Vocab configuration from idranges.toml.
         rdf_scheme: Optional ConceptSchemeV1 extracted from RDF (for fallback).
+        derived_contributors: Auto-derived contributors from ID range usage.
 
     Returns:
         ConceptSchemeV1 model instance with merged data.
@@ -601,7 +603,8 @@ def config_to_concept_scheme_v1(
         # Auto-generated fields come from RDF only (not in config)
         modified_date=rdf.modified_date,
         version=rdf.version,
-        contributor=rdf.contributor,
+        # Contributor: derived from ID range usage if provided, else from RDF
+        contributor=derived_contributors if derived_contributors else rdf.contributor,
         # Multi-line fields from config
         creator=get_field(vocab_config.creator, rdf.creator, "creator"),
         publisher=get_field(vocab_config.publisher, rdf.publisher, "publisher"),
@@ -1095,6 +1098,111 @@ def build_id_range_info(
     return rows
 
 
+def format_contributor_string(idr: "config.IdrangeItem") -> str:
+    """Format a single IdrangeItem as a contributor string.
+
+    Format priority:
+    - If ORCID: "<name> <orcid-URL>" or just "<orcid-URL>" if no name
+    - If only gh_name: "<name> https://github.com/<gh_name>" or
+      "<gh_name> https://github.com/<gh_name>" if no name
+
+    Args:
+        idr: IdrangeItem from config.
+
+    Returns:
+        Formatted contributor string.
+    """
+    name_part = idr.name.strip() if idr.name else ""
+
+    if idr.orcid:
+        # ORCID takes priority as the URL
+        orcid_url = str(idr.orcid)
+        if not orcid_url.startswith("http"):
+            orcid_url = f"https://orcid.org/{orcid_url}"
+        if name_part:
+            return f"{name_part} {orcid_url}"
+        return orcid_url
+    if idr.gh_name:
+        # Use GitHub profile URL
+        gh_url = f"https://github.com/{idr.gh_name}"
+        if name_part:
+            return f"{name_part} {gh_url}"
+        return f"{idr.gh_name} {gh_url}"
+
+    return ""  # Should not happen due to validation
+
+
+def derive_contributors(
+    vocab_config: "config.Vocab",
+    used_ids: set[int],
+) -> str:
+    """Derive contributors from ID range usage.
+
+    Creates contributor strings for each person who has used IDs from their
+    reserved range. Excludes creators (from vocab_config.creator).
+
+    Args:
+        vocab_config: Vocab configuration from idranges.toml.
+        used_ids: Set of integer IDs that are in use.
+
+    Returns:
+        Multi-line string of contributors, one per line, format:
+        "<name> <orcid-URL or github-URL>"
+    """
+    contributors: list[str] = []
+
+    # Parse creator field to extract identifiers for exclusion
+    creator_identifiers: set[str] = set()
+    if vocab_config.creator:
+        for line in vocab_config.creator.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            # Extract ORCID from creator line
+            if "orcid.org/" in line:
+                parts = line.split()
+                for part in parts:
+                    if "orcid.org/" in part:
+                        orcid_id = part.split("orcid.org/")[-1].rstrip("/")
+                        creator_identifiers.add(orcid_id.lower())
+                        creator_identifiers.add(f"https://orcid.org/{orcid_id}".lower())
+            # Extract GitHub username if present (via github.com URL)
+            if "github.com/" in line:
+                parts = line.split()
+                for part in parts:
+                    if "github.com/" in part:
+                        gh = part.split("github.com/")[-1].rstrip("/")
+                        creator_identifiers.add(gh.lower())
+
+    for idr in vocab_config.id_range:
+        # Check if any IDs from this range are used
+        range_ids = set(range(idr.first_id, idr.last_id + 1))
+        if not (range_ids & used_ids):
+            continue  # No IDs used from this range
+
+        # Skip if this contributor is in the creator list
+        skip = False
+        if idr.orcid:
+            orcid_str = str(idr.orcid).lower()
+            if orcid_str in creator_identifiers:
+                skip = True
+            # Also check ORCID ID without URL prefix
+            orcid_id = orcid_str.split("orcid.org/")[-1]
+            if orcid_id in creator_identifiers:
+                skip = True
+        if idr.gh_name and idr.gh_name.lower() in creator_identifiers:
+            skip = True
+        if skip:
+            continue
+
+        # Build contributor string
+        contributor_str = format_contributor_string(idr)
+        if contributor_str and contributor_str not in contributors:
+            contributors.append(contributor_str)
+
+    return "\n".join(contributors)
+
+
 # =============================================================================
 # Excel Export Function
 # =============================================================================
@@ -1365,12 +1473,19 @@ def rdf_to_excel_v1(
     mappings_v1 = rdf_mappings_to_v1(mappings_data)
     prefixes_v1 = build_prefixes_v1()
 
-    # Build ID range info if vocab_config is provided
+    # Build ID range info and derive contributors if vocab_config is provided
     id_ranges_v1: list[IDRangeInfoV1] | None = None
     if vocab_config is not None and vocab_config.id_range:
         logger.debug("Building ID range info...")
         used_ids = extract_used_ids(concepts_v1, collections_v1, vocab_config)
         id_ranges_v1 = build_id_range_info(vocab_config, used_ids)
+        # Derive contributors from ID range usage
+        logger.debug("Deriving contributors from ID range usage...")
+        derived_contributors = derive_contributors(vocab_config, used_ids)
+        if derived_contributors:
+            concept_scheme_v1 = concept_scheme_v1.model_copy(
+                update={"contributor": derived_contributors}
+            )
 
     # Determine output path
     if output_file_path is None:
@@ -2424,9 +2539,6 @@ def excel_to_rdf_v1(
     # Get vocabulary name from filename (used for provenance URLs)
     vocab_name = file_to_convert_path.stem.lower()
 
-    # Build ConceptScheme from config (Excel sheet is read-only, never read)
-    concept_scheme = config_to_concept_scheme_v1(vocab_config)
-
     logger.debug("Reading Prefixes...")
     prefixes = read_prefixes_v1(file_to_convert_path)
 
@@ -2448,6 +2560,18 @@ def excel_to_rdf_v1(
 
     logger.debug("Aggregating collections...")
     collections = aggregate_collections(collection_rows, converter)
+
+    # Derive contributors from ID range usage
+    derived_contributors = ""
+    if vocab_config.id_range:
+        logger.debug("Deriving contributors from ID range usage...")
+        used_ids = extract_used_ids(concept_rows, collection_rows, vocab_config)
+        derived_contributors = derive_contributors(vocab_config, used_ids)
+
+    # Build ConceptScheme from config (Excel sheet is read-only, never read)
+    concept_scheme = config_to_concept_scheme_v1(
+        vocab_config, derived_contributors=derived_contributors
+    )
 
     # Build inverse relationships
     logger.debug("Building inverse relationships...")

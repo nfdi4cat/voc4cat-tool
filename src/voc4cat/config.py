@@ -60,6 +60,7 @@ class IdrangeItem(BaseModel):
     ] = ""
     orcid: ORCIDIdentifier | None = None
     ror_id: RORIdentifier | None = None
+    name: str = ""  # Optional human-readable name (from ORCID profile)
 
     @model_validator(mode="after")
     def order_of_ids(self) -> Self:
