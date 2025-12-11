@@ -23,6 +23,7 @@ photo = "https://example.org/nfdi4cat/photo/"
 first_id = 1
 last_id = 10
 gh_name = "sofia-garcia"
+name = "Sofia Garcia"
 orcid = "0000-0001-2345-6789"
 ror_id = "https://ror.org/04fa4r544"
 
@@ -37,5 +38,6 @@ ror_id = ""
 first_id = 21
 last_id = 30
 gh_name = ""
+name = "Anonymous Contributor"
 orcid = "0000-0002-1825-0097"
 ror_id = ""

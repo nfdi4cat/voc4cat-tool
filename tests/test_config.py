@@ -333,3 +333,41 @@ def test_optional_fields_can_be_empty(temp_config):
     assert vocab.helpdesk == ""
     assert vocab.homepage == ""
     assert vocab.conforms_to == ""
+
+
+# === Tests for IdrangeItem name field ===
+
+
+def test_idrange_item_with_name(temp_config):
+    """Test IdrangeItem accepts optional name field."""
+    config = temp_config
+    ri = config.IdrangeItem(
+        first_id=1,
+        last_id=10,
+        gh_name="testuser",
+        name="Test User",
+        orcid="0000-0001-2345-6789",
+    )
+    assert ri.name == "Test User"
+    assert ri.gh_name == "testuser"
+
+
+def test_idrange_item_name_empty_default(temp_config):
+    """Test IdrangeItem name defaults to empty string."""
+    config = temp_config
+    ri = config.IdrangeItem(first_id=1, last_id=10, gh_name="testuser")
+    assert ri.name == ""
+
+
+def test_idrange_item_name_from_config_file(datadir, temp_config):
+    """Test name field is read from config file."""
+    config = temp_config
+    config.load_config(datadir / VALID_CONFIG)
+
+    vocab = config.IDRANGES.vocabs["myvocab"]
+    # First id_range has name field
+    assert vocab.id_range[0].name == "Sofia Garcia"
+    # Second id_range does not have name field
+    assert vocab.id_range[1].name == ""
+    # Third id_range has name field
+    assert vocab.id_range[2].name == "Anonymous Contributor"

@@ -93,11 +93,16 @@ exp = "https://example.org/plus/"
 # gh_name = "<string>"        - user or organisation name on github
 # orcid = "<string> or <url>" - contributor's ORCID, e.g. "0000-0002-1825-0097" or "https://orcid.org/0000-0002-1825-0097"
 # ror_id = "<url>"            - ROR identifier of home organisation, e.g. "https://ror.org/04fa4r544"
+# name = "<string>"           - (optional) human-readable name for contributor display (e.g. from ORCID profile)
+#
+# Note: Contributors are auto-derived from ID range usage. Anyone who used IDs
+# from their reserved range will be listed as dct:contributor in the output.
 
 [[vocabs.myvocab.id_range]]
 first_id = 1
 last_id = 10
 gh_name = "sofia-garcia"
+name = "Sofia Garcia"
 orcid = "0000-0001-2345-6789"
 ror_id = "https://ror.org/04fa4r544"
 
