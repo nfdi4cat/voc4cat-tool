@@ -521,12 +521,17 @@ def convert(args):
             logger.debug('Converting 043 RDF to v1.0: "%s"', file)
             outfile = file if args.outdir is None else args.outdir / file.name
             suffix = "ttl" if args.outputformat == "turtle" else args.outputformat
-            # Add _v1 suffix to distinguish from input
-            output_file_path = outfile.with_stem(f"{outfile.stem}_v1").with_suffix(
-                f".{suffix}"
-            )
+            output_file_path = outfile.with_suffix(f".{suffix}")
+
+            # Get vocab config for metadata enrichment
+            vocab_name = file.stem.lower()
+            vocab_config = _get_vocab_config(vocab_name)
+
             convert_rdf_043_to_v1(
-                file, output_file_path, output_format=args.outputformat
+                file,
+                output_file_path,
+                output_format=args.outputformat,
+                vocab_config=vocab_config,
             )
             logger.info("-> successfully converted to %s", output_file_path)
         return
