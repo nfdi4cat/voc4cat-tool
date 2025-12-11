@@ -74,6 +74,7 @@ class ConceptSchemeV1(BaseModel):
         XLSXMetadata(
             display_name="Title",
             description="Title of the vocabulary",
+            meaning="skos:prefLabel",
         ),
     ] = ""
 
@@ -82,6 +83,7 @@ class ConceptSchemeV1(BaseModel):
         XLSXMetadata(
             display_name="Description",
             description="General description of the vocabulary",
+            meaning="skos:definition",
         ),
     ] = ""
 
@@ -144,6 +146,7 @@ class ConceptSchemeV1(BaseModel):
         XLSXMetadata(
             display_name="Change Note",
             description="A note on the Vocabulary source",
+            meaning="skos:changeNote",
         ),
     ] = ""
 
@@ -160,6 +163,7 @@ class ConceptSchemeV1(BaseModel):
         XLSXMetadata(
             display_name="Catalogue PID",
             description="DOI or other catalogue PID",
+            meaning="dct:identifier",
         ),
     ] = ""
 
@@ -200,6 +204,7 @@ class ConceptSchemeV1(BaseModel):
         XLSXMetadata(
             display_name="Homepage",
             description="URL of homepage",
+            meaning="foaf:homepage",
         ),
     ] = ""
 
@@ -208,6 +213,7 @@ class ConceptSchemeV1(BaseModel):
         XLSXMetadata(
             display_name="Conforms to",
             description="URL of SHACL profile",
+            meaning="dct:conformsTo",
         ),
     ] = ""
 

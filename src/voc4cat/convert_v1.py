@@ -19,6 +19,7 @@ import curies
 from rdflib import (
     DCAT,
     DCTERMS,
+    FOAF,
     OWL,
     PROV,
     RDF,
@@ -1079,7 +1080,7 @@ def build_id_range_info(
         unused_in_range = range_ids - used_ids
 
         if not unused_in_range:
-            unused_str = "all used"
+            unused_str = "all IDs used. Request a new range!"
         else:
             first_unused = min(unused_in_range)
             unused_str = (
@@ -1232,7 +1233,10 @@ def export_vocabulary_v1(
                   an "ID Ranges" sheet is added showing contributor allocations.
     """
     # 1. Concept Scheme (key-value format, read-only)
-    kv_config = XLSXKeyValueConfig(title=CONCEPT_SCHEME_SHEET_TITLE)
+    kv_config = XLSXKeyValueConfig(
+        title=CONCEPT_SCHEME_SHEET_TITLE,
+        table_style="TableStyleMedium16",
+    )
     export_to_xlsx(
         concept_scheme,
         output_path,
@@ -1242,93 +1246,77 @@ def export_vocabulary_v1(
     )
 
     # 2. Concepts (table format)
-    if concepts:
-        table_config = XLSXTableConfig(title="Concepts", freeze_panes=True)
-        export_to_xlsx(
-            concepts,
-            output_path,
-            format_type="table",
-            config=table_config,
-            sheet_name="Concepts",
-        )
-    else:
+    if not concepts:
         # Export empty concepts sheet with just headers
-        empty_concept = [ConceptV1()]
-        table_config = XLSXTableConfig(title="Concepts", freeze_panes=True)
-        export_to_xlsx(
-            empty_concept,
-            output_path,
-            format_type="table",
-            config=table_config,
-            sheet_name="Concepts",
-        )
+        concepts = [ConceptV1()]
+
+    table_config = XLSXTableConfig(
+        title="Concepts",
+        table_style="TableStyleMedium2",
+        freeze_panes=True,
+        bold_fields={"preferred_label"},
+    )
+    export_to_xlsx(
+        concepts,
+        output_path,
+        format_type="table",
+        config=table_config,
+        sheet_name="Concepts",
+    )
 
     # 3. Collections (table format)
-    if collections:
-        table_config = XLSXTableConfig(title="Collections")
-        export_to_xlsx(
-            collections,
-            output_path,
-            format_type="table",
-            config=table_config,
-            sheet_name="Collections",
-        )
-    else:
-        empty_collection = [CollectionV1()]
-        table_config = XLSXTableConfig(title="Collections")
-        export_to_xlsx(
-            empty_collection,
-            output_path,
-            format_type="table",
-            config=table_config,
-            sheet_name="Collections",
-        )
+    if not collections:
+        collections = [CollectionV1()]
+
+    table_config = XLSXTableConfig(
+        title="Collections",
+        table_style="TableStyleMedium7",
+        bold_fields={"preferred_label"},
+    )
+    export_to_xlsx(
+        collections,
+        output_path,
+        format_type="table",
+        config=table_config,
+        sheet_name="Collections",
+    )
 
     # 4. Mappings (table format)
-    if mappings:
-        table_config = XLSXTableConfig(title="Mappings")
-        export_to_xlsx(
-            mappings,
-            output_path,
-            format_type="table",
-            config=table_config,
-            sheet_name="Mappings",
-        )
-    else:
-        empty_mapping = [MappingV1()]
-        table_config = XLSXTableConfig(title="Mappings")
-        export_to_xlsx(
-            empty_mapping,
-            output_path,
-            format_type="table",
-            config=table_config,
-            sheet_name="Mappings",
-        )
+    if not mappings:
+        mappings = [MappingV1()]
 
+    table_config = XLSXTableConfig(
+        title="Mappings",
+        table_style="TableStyleMedium3",
+    )
+    export_to_xlsx(
+        mappings,
+        output_path,
+        format_type="table",
+        config=table_config,
+        sheet_name="Mappings",
+    )
     # 5. ID Ranges (table format, read-only)
-    if id_ranges:
-        table_config = XLSXTableConfig(title=ID_RANGES_SHEET_TITLE)
-        export_to_xlsx(
-            id_ranges,
-            output_path,
-            format_type="table",
-            config=table_config,
-            sheet_name=ID_RANGES_SHEET_NAME,
-        )
-    else:
-        # Export empty ID Ranges sheet with just headers
-        empty_id_range = [IDRangeInfoV1()]
-        table_config = XLSXTableConfig(title=ID_RANGES_SHEET_TITLE)
-        export_to_xlsx(
-            empty_id_range,
-            output_path,
-            format_type="table",
-            config=table_config,
-            sheet_name=ID_RANGES_SHEET_NAME,
-        )
+    if not id_ranges:
+        id_ranges = [IDRangeInfoV1()]
 
-    # 6. Prefixes (table format)
-    table_config = XLSXTableConfig(title=PREFIXES_SHEET_TITLE)
+    table_config = XLSXTableConfig(
+        title=ID_RANGES_SHEET_TITLE,
+        table_style="TableStyleMedium16",
+    )
+    export_to_xlsx(
+        id_ranges,
+        output_path,
+        format_type="table",
+        config=table_config,
+        sheet_name=ID_RANGES_SHEET_NAME,
+    )
+
+    # 6. Prefixes (table format, read-only)
+    table_config = XLSXTableConfig(
+        title=PREFIXES_SHEET_TITLE,
+        table_style="TableStyleMedium16",
+    )
     export_to_xlsx(
         prefixes,
         output_path,
@@ -2216,17 +2204,32 @@ def build_concept_scheme_graph(
         )
 
     # Creator and Publisher (with Organization triples)
+    # Format is multi-line "<name> <URL>" - extract URLs and add as URIRefs
+    creator_urls: list[str] = []
     if cs.creator:
-        creator_ref = URIRef(cs.creator)
-        g.add((scheme_iri, DCTERMS.creator, creator_ref))
-        g += build_organization_graph(cs.creator)
+        for line in cs.creator.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            for part in line.split():
+                if part.startswith("http"):
+                    creator_urls.append(part)
+                    g.add((scheme_iri, DCTERMS.creator, URIRef(part)))
+                    g += build_organization_graph(part)
+                    break
 
     if cs.publisher:
-        publisher_ref = URIRef(cs.publisher)
-        g.add((scheme_iri, DCTERMS.publisher, publisher_ref))
-        # Only add org graph if different from creator
-        if cs.publisher != cs.creator:
-            g += build_organization_graph(cs.publisher)
+        for line in cs.publisher.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            for part in line.split():
+                if part.startswith("http"):
+                    g.add((scheme_iri, DCTERMS.publisher, URIRef(part)))
+                    # Only add org graph if not already added as creator
+                    if part not in creator_urls:
+                        g += build_organization_graph(part)
+                    break
 
     # Contributors (multiple, stored as literals in format "<name> <orcid-URL or ror-URL>")
     if cs.contributor:
@@ -2239,20 +2242,39 @@ def build_concept_scheme_graph(
     if cs.version:
         g.add((scheme_iri, OWL.versionInfo, Literal(cs.version)))
 
-    # Change note / history note
+    # Change note
     if cs.change_note:
-        g.add((scheme_iri, SKOS.historyNote, Literal(cs.change_note, lang="en")))
+        g.add((scheme_iri, SKOS.changeNote, Literal(cs.change_note, lang="en")))
 
     # Custodian
     if cs.custodian:
         g.add((scheme_iri, DCAT.contactPoint, Literal(cs.custodian)))
 
-    # Catalogue PID
+    # Catalogue PID - both dct:identifier and rdfs:seeAlso
     if cs.catalogue_pid:
+        g.add((scheme_iri, DCTERMS.identifier, Literal(cs.catalogue_pid)))
         if cs.catalogue_pid.startswith("http"):
             g.add((scheme_iri, RDFS.seeAlso, URIRef(cs.catalogue_pid)))
         else:
             g.add((scheme_iri, RDFS.seeAlso, Literal(cs.catalogue_pid)))
+
+    # Homepage
+    if cs.homepage:
+        if cs.homepage.startswith("http"):
+            g.add((scheme_iri, FOAF.homepage, URIRef(cs.homepage)))
+        else:
+            g.add((scheme_iri, FOAF.homepage, Literal(cs.homepage)))
+
+    # Conforms to (SHACL profile)
+    if cs.conforms_to:
+        for line in cs.conforms_to.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("http"):
+                g.add((scheme_iri, DCTERMS.conformsTo, URIRef(line)))
+            else:
+                g.add((scheme_iri, DCTERMS.conformsTo, Literal(line)))
 
     # hasTopConcept - concepts with no broader
     for concept_iri, concept in concepts.items():
@@ -2841,6 +2863,7 @@ def convert_rdf_043_to_v1(
     - skos:historyNote (non-obsolete) -> skos:changeNote
     - dcterms:provenance -> skos:changeNote
     - prov:wasDerivedFrom -> skos:changeNote
+    - dcterms:hasPart (on ConceptScheme) -> dropped (not used in v1.0)
 
     If vocab_config is provided, ConceptScheme metadata is enriched from
     the config (config values override RDF values).
@@ -2884,12 +2907,17 @@ def convert_rdf_043_to_v1(
     # Get all concepts for special handling of rdfs:isDefinedBy
     concepts = set(input_graph.subjects(RDF.type, SKOS.Concept))
 
+    # Get ConceptScheme(s) for special handling of dcterms:hasPart
+    concept_schemes = set(input_graph.subjects(RDF.type, SKOS.ConceptScheme))
+
     # Track unknown predicates for warning
     unknown_predicates: set[URIRef] = set()
 
     # Process each triple
     for s, p, o in input_graph:
-        new_triple = _transform_triple_043_to_v1(s, p, o, concepts, unknown_predicates)
+        new_triple = _transform_triple_043_to_v1(
+            s, p, o, concepts, concept_schemes, unknown_predicates
+        )
         if new_triple:
             output_graph.add(new_triple)
 
@@ -2936,6 +2964,7 @@ def _transform_triple_043_to_v1(
     p: URIRef,
     o,
     concepts: set[URIRef],
+    concept_schemes: set[URIRef],
     unknown_predicates: set[URIRef],
 ) -> tuple | None:
     """Transform a single triple from 043 to v1.0 format.
@@ -2945,11 +2974,16 @@ def _transform_triple_043_to_v1(
         p: Predicate
         o: Object
         concepts: Set of concept IRIs (for rdfs:isDefinedBy handling)
+        concept_schemes: Set of ConceptScheme IRIs (for dcterms:hasPart handling)
         unknown_predicates: Set to collect unknown predicates
 
     Returns:
         Transformed triple (s, p, o) or None if dropped.
     """
+    # Drop dcterms:hasPart on ConceptScheme (links to collections not used in v1.0)
+    if p == DCTERMS.hasPart and s in concept_schemes:
+        return None
+
     # Special case: rdfs:isDefinedBy on concepts -> prov:hadPrimarySource
     # For non-concepts (collections, scheme), preserve rdfs:isDefinedBy as-is
     if p == RDFS.isDefinedBy:

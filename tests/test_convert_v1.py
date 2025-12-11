@@ -1222,6 +1222,46 @@ class TestConvert043ToV1:
         assert len(is_defined_by) == 1
         assert str(is_defined_by[0]) == str(EX.scheme)
 
+    def test_has_part_on_concept_scheme_dropped(self, tmp_path):
+        """Test that dcterms:hasPart on ConceptScheme is dropped."""
+        from rdflib import XSD
+
+        # Create test RDF with dcterms:hasPart on ConceptScheme (linking to collection)
+        EX = Namespace("http://example.org/")
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+
+        # Add concept scheme with hasPart
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test Scheme", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+        g.add((EX.scheme, DCTERMS.hasPart, EX.collection1))
+
+        # Add collection
+        g.add((EX.collection1, RDF.type, SKOS.Collection))
+        g.add((EX.collection1, SKOS.prefLabel, Literal("Test Collection", lang="en")))
+        g.add((EX.collection1, SKOS.inScheme, EX.scheme))
+
+        # Save test file
+        input_path = tmp_path / "test_043.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+
+        # Convert
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(input_path, output_path)
+
+        # Verify
+        converted = Graph().parse(output_path, format="turtle")
+
+        # dcterms:hasPart should be dropped from ConceptScheme
+        has_part = list(converted.objects(EX.scheme, DCTERMS.hasPart))
+        assert len(has_part) == 0
+
+        # But collection should still exist
+        collections = list(converted.subjects(RDF.type, SKOS.Collection))
+        assert len(collections) == 1
+
     def test_unknown_predicates_dropped_with_warning(self, tmp_path, caplog):
         """Test that unknown predicates are dropped and logged."""
         import logging
@@ -2350,7 +2390,7 @@ class TestBuildIdRangeInfo:
         rows = build_id_range_info(vocab_config, used_ids)
 
         assert len(rows) == 1
-        assert rows[0].unused_ids == "all used"
+        assert rows[0].unused_ids == "all IDs used. Request a new range!"
 
     def test_orcid_fallback(self, temp_config, mandatory_fields):
         """Test that ORCID is used when gh_name is empty."""
