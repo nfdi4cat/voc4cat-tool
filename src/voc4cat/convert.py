@@ -20,8 +20,10 @@ from voc4cat.convert_043 import (
 )
 from voc4cat.convert_043 import write_prefix_sheet
 from voc4cat.convert_v1 import (
+    build_config_file_from_suggestions,
     convert_rdf_043_to_v1,
     excel_to_rdf_v1,
+    format_config_suggestion_from_043,
     rdf_to_excel_v1,
 )
 from voc4cat.utils import (
@@ -498,6 +500,50 @@ def convert(args):
             logger.warning(
                 "XLSX files ignored when using --from 043 (RDF-to-RDF conversion only)"
             )
+
+        # Require config for --from 043
+        if config.IDRANGES.default_config:
+            msg = (
+                "--from 043 requires an idranges.toml config file. "
+                "Use --config option to specify the config file."
+            )
+            raise Voc4catError(msg)
+
+        # Check config version - if pre-v1.0, output suggestion instead of converting
+        if not config.IDRANGES.config_version:
+            logger.info(
+                "Pre-v1.0 config detected (no config_version field). "
+                "Generating v1.0 config suggestion..."
+            )
+
+            suggestions = []
+            for file in rdf_files:
+                vocab_name = file.stem.lower()
+                existing_vocab = config.IDRANGES.vocabs.get(vocab_name)
+                suggestion = format_config_suggestion_from_043(
+                    file,
+                    existing_config=existing_vocab,
+                    vocab_name=vocab_name,
+                )
+                suggestions.append(suggestion)
+
+            # Build and write combined config file
+            output_content = build_config_file_from_suggestions(
+                suggestions,
+                single_vocab=config.IDRANGES.single_vocab,
+            )
+            output_dir = args.outdir if args.outdir else Path.cwd()
+            output_path = output_dir / "idranges_v1.0_suggested.toml"
+            output_path.write_text(output_content, encoding="utf-8")
+
+            logger.info("Config suggestion written to: %s", output_path)
+            logger.info(
+                "Please review, fill in MANDATORY fields (especially 'repository'), "
+                "then re-run conversion with the updated config."
+            )
+            return
+
+        # v1.0 config: proceed with normal RDF conversion
         for file in rdf_files:
             logger.debug('Converting 043 RDF to v1.0: "%s"', file)
             outfile = file if args.outdir is None else args.outdir / file.name

@@ -18,7 +18,7 @@ Ideas are marked as done here if they have been implemented in dev-1.0.0 branch 
   - Output the link also as rdfs:seeAlso (for Skosmos)
 - [done] Step 6: Make concept scheme table read only. Instead integrate the metadata into IDranges file and read from it. The idranges file probably should also have a version for its structure.
 - [done] Step 7 (minor & optional): Output IDrange contributor info to a "ID ranges" sheet in xlsx (read-only). Make a table with 3 columns gh-name, id-ranges, unused IDs in range. Give ID ranges as string like "0001040 - 0001050", in unused IDs give the number of unused ID and the first unused, e.g. "next unused: 0001040, unused: 10"
-- Step 8: The concepScheme metadata are almost all optional after step 7. But we need to distinguish: First, we want to import as much as possible from 043. Second, we need a specification which metadata are optional in v1.0 to apply in code and document in IDranges.toml template:
+- [done] Step 8: The concepScheme metadata are almost all optional after step 7. But we need to distinguish: First, we want to import as much as possible from 043. Second, we need a specification which metadata are optional in v1.0 to apply in code and document in IDranges.toml template:
   - vocabulary_iri - present in 0.43 - mandatory
   - prefix - new in v1.0 - optional
   - title - present in 0.43 - mandatory
@@ -34,7 +34,8 @@ Ideas are marked as done here if they have been implemented in dev-1.0.0 branch 
   - repository - new in v1.0 - mandatory
   - homepage - new in v1.0 - optional
   - conform_to - new in v1.0 - optional
-- Step 9: Add support to optionally declare skos:broaderTransitive (and its inverse skos:narrowTransitive). Specify transitivity in xlsx like this: "voc4cat:0000184 T (actions)". The idea is to use the ParentIRI column for transitive and non-tranisitve (normal) relations. Note that 043 did not have transitivity at all.
+
+- Deferred idea (not important to expose to user): Add support to optionally declare skos:broaderTransitive (and its inverse skos:narrowTransitive). Specify transitivity in xlsx like this: "voc4cat:0000184 T (actions)". The idea is to use the ParentIRI column for transitive and non-tranisitve (normal) relations. Note that 043 did not have transitivity at all.
 
 Each step should be done in a separate PR and each step should be well tested.
 

@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
-from rdflib import SKOS, Graph, Literal, Namespace
+from rdflib import DCTERMS, RDF, SKOS, Graph, Literal, Namespace, URIRef
 
 from tests.conftest import make_vocab_config_from_rdf
 from voc4cat.convert_v1 import (
@@ -2600,3 +2600,157 @@ class TestIdRangesSheetExport:
         unused_value = ws["C4"].value
         assert "next unused: 0000003" in unused_value
         assert "unused: 7" in unused_value
+
+
+# === Tests for config suggestion from 043 RDF ===
+
+
+class TestFormatConfigSuggestion:
+    """Tests for format_config_suggestion_from_043 function."""
+
+    def test_extracts_scheme_metadata_from_rdf(self, tmp_path):
+        """Test that scheme metadata is extracted from 043 RDF."""
+        from voc4cat.convert_v1 import format_config_suggestion_from_043
+
+        # Create a simple 043-style RDF file
+        graph = Graph()
+        scheme = URIRef("https://example.org/vocab/")
+        graph.add((scheme, RDF.type, SKOS.ConceptScheme))
+        graph.add((scheme, SKOS.prefLabel, Literal("Test Vocabulary", lang="en")))
+        graph.add((scheme, SKOS.definition, Literal("Test description", lang="en")))
+        graph.add((scheme, DCTERMS.created, Literal("2025-01-15")))
+        graph.add(
+            (scheme, DCTERMS.creator, URIRef("https://orcid.org/0000-0001-2345-6789"))
+        )
+
+        ttl_path = tmp_path / "test.ttl"
+        graph.serialize(ttl_path, format="turtle")
+
+        result = format_config_suggestion_from_043(ttl_path, vocab_name="test")
+
+        assert "[vocabs.test]" in result
+        assert 'vocabulary_iri = "https://example.org/vocab/"' in result
+        assert 'title = "Test Vocabulary"' in result
+        assert 'description = "Test description"' in result
+        assert 'created_date = "2025-01-15"' in result
+        assert "https://orcid.org/0000-0001-2345-6789" in result
+
+    def test_merges_with_existing_config(self, tmp_path):
+        """Test that existing config data is preserved and merged."""
+        from voc4cat.config import Checks, Vocab
+        from voc4cat.convert_v1 import format_config_suggestion_from_043
+
+        # Create minimal RDF
+        graph = Graph()
+        scheme = URIRef("https://example.org/vocab/")
+        graph.add((scheme, RDF.type, SKOS.ConceptScheme))
+        graph.add((scheme, SKOS.prefLabel, Literal("RDF Title", lang="en")))
+
+        ttl_path = tmp_path / "test.ttl"
+        graph.serialize(ttl_path, format="turtle")
+
+        # Create existing config with structural data
+        existing = Vocab(
+            id_length=8,
+            permanent_iri_part="https://existing.org/",
+            checks=Checks(allow_delete=True),
+            prefix_map={"ex": "https://example.org/"},
+            vocabulary_iri="https://example.org/vocab/",
+            title="Existing Title",
+            description="Existing description",
+            created_date="2024-01-01",
+            creator="https://orcid.org/0000-0001-1111-2222",
+            repository="https://github.com/test/repo",
+            id_range=[
+                {"first_id": 1, "last_id": 50, "gh_name": "alice", "orcid": ""},
+            ],
+        )
+
+        result = format_config_suggestion_from_043(
+            ttl_path, existing_config=existing, vocab_name="test"
+        )
+
+        # Structural fields from existing config
+        assert "id_length = 8" in result
+        assert 'permanent_iri_part = "https://existing.org/"' in result
+        assert "allow_delete = true" in result
+        assert 'ex = "https://example.org/"' in result
+        assert "first_id = 1" in result
+        assert "last_id = 50" in result
+
+        # RDF title should override existing (RDF data preferred)
+        assert 'title = "RDF Title"' in result
+
+    def test_repository_placeholder_when_missing(self, tmp_path):
+        """Test that repository field has placeholder warning."""
+        from voc4cat.convert_v1 import format_config_suggestion_from_043
+
+        # Create minimal RDF without repository
+        graph = Graph()
+        scheme = URIRef("https://example.org/vocab/")
+        graph.add((scheme, RDF.type, SKOS.ConceptScheme))
+
+        ttl_path = tmp_path / "test.ttl"
+        graph.serialize(ttl_path, format="turtle")
+
+        result = format_config_suggestion_from_043(ttl_path, vocab_name="test")
+
+        # Repository should be commented out with placeholder
+        assert "# MANDATORY: URL of repository" in result
+        assert "# NOTE: This field is mandatory in v1.0" in result
+        assert '# repository = "https://github.com/YOUR-ORG/YOUR-REPO"' in result
+
+    def test_derives_vocab_name_from_file(self, tmp_path):
+        """Test that vocab name is derived from file stem if not provided."""
+        from voc4cat.convert_v1 import format_config_suggestion_from_043
+
+        # Create minimal RDF
+        graph = Graph()
+        scheme = URIRef("https://example.org/vocab/")
+        graph.add((scheme, RDF.type, SKOS.ConceptScheme))
+
+        ttl_path = tmp_path / "MyVocabulary.ttl"
+        graph.serialize(ttl_path, format="turtle")
+
+        result = format_config_suggestion_from_043(ttl_path)
+
+        # Vocab name should be lowercase file stem
+        assert "[vocabs.myvocabulary]" in result
+
+
+class TestBuildConfigFile:
+    """Tests for build_config_file_from_suggestions function."""
+
+    def test_builds_complete_config_file(self):
+        """Test that a complete config file is built from suggestions."""
+        from voc4cat.convert_v1 import build_config_file_from_suggestions
+
+        suggestion1 = "[vocabs.vocab1]\nid_length = 7"
+        suggestion2 = "[vocabs.vocab2]\nid_length = 8"
+
+        result = build_config_file_from_suggestions([suggestion1, suggestion2])
+
+        assert 'config_version = "1.0"' in result
+        assert "single_vocab = false" in result  # Multiple vocabs
+        assert "[vocabs.vocab1]" in result
+        assert "[vocabs.vocab2]" in result
+
+    def test_single_vocab_true_for_one_suggestion(self):
+        """Test that single_vocab is true when only one vocab."""
+        from voc4cat.convert_v1 import build_config_file_from_suggestions
+
+        suggestion = "[vocabs.myvocab]\nid_length = 7"
+
+        result = build_config_file_from_suggestions([suggestion])
+
+        assert "single_vocab = true" in result
+
+    def test_single_vocab_override(self):
+        """Test that single_vocab can be overridden."""
+        from voc4cat.convert_v1 import build_config_file_from_suggestions
+
+        suggestion = "[vocabs.myvocab]\nid_length = 7"
+
+        result = build_config_file_from_suggestions([suggestion], single_vocab=False)
+
+        assert "single_vocab = false" in result

@@ -151,7 +151,7 @@ class Vocab(BaseModel):
 
 
 class IDrangeConfig(BaseModel):
-    config_version: str = "1.0"
+    config_version: str = ""
     single_vocab: bool = False
     vocabs: dict[Annotated[str, StringConstraints(to_lower=True)], Vocab] = {}
     default_config: bool = False
