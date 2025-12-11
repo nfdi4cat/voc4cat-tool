@@ -17,58 +17,59 @@ id_length = 7
 # permanent part of IRIs defined in the vocabulary (used to construct concept IRIs)
 permanent_iri_part = "https://example.org/"
 
-# The fields below are metadata for the Concept Scheme
+# ==== ConceptScheme Metadata ====
+# Fields marked MANDATORY must be filled before use.
 
-# IRI for the vocabulary (skos:ConceptScheme)
+# MANDATORY: IRI for the vocabulary (skos:ConceptScheme)
 vocabulary_iri = "https://example.org/vocab/"
 
-# Registered (or preferred) prefix for this vocabulary
+# Optional: Registered (or preferred) prefix for this vocabulary
 prefix = "ex"
 
-# Title of the vocabulary
+# MANDATORY: Title of the vocabulary
 title = "My Vocabulary"
 
-# General description of the vocabulary
+# MANDATORY: General description of the vocabulary
 description = "Description of the vocabulary"
 
-# Date of creation (ISO-8601 format: YYYY-MM-DD)
+# MANDATORY: Date of creation (ISO-8601 format: YYYY-MM-DD)
 created_date = "2025-01-01"
 
-# Creator(s) - multi-line text, each line: "<orcid-URL or ror-URL> <name>"
+# MANDATORY: Creator(s) - multi-line text, each line: "<orcid-URL or ror-URL> <name>"
 # creator = """
 # https://orcid.org/0000-0001-2345-6788 Alice Smith
 # https://orcid.org/0000-0001-2345-6789 Sofia Garcia
 # """
 
-# Publisher(s) - multi-line text, each line: "<orcid-URL or ror-URL> <name>"
+# Optional: Publisher(s) - multi-line text, each line: "<orcid-URL or ror-URL> <name>"
 # publisher = """
 # https://ror.org/04fa4r544 Example Organization
 # """
 
-# Custodian(s) - multi-line text, each line: "<name> <gh-profile-URL> <orcid-URL>"
+# Optional: Custodian(s) - multi-line text, each line: "<name> <gh-profile-URL> <orcid-URL>"
 # custodian = """
 # Alice Smith https://github.com/asmith https://orcid.org/0000-0001-2345-6789
 # """
 
-# DOI or other catalogue persistent identifier
+# Optional: DOI or other catalogue persistent identifier
 # catalogue_pid = ""
 
-# URL of documentation or guidelines
+# Optional: URL of documentation or guidelines
 # documentation = ""
 
-# URL of issue tracker
+# Optional: URL of issue tracker
 # issue_tracker = ""
 
-# URL of helpdesk
+# Optional: URL of helpdesk
 # helpdesk = ""
 
-# URL of repository or online vocabulary editor
-# repository = ""
+# MANDATORY: URL of repository or online vocabulary editor
+# repository = "https://github.com/YOUR-ORG/YOUR-REPO"
 
-# URL of homepage
+# Optional: URL of homepage
 # homepage = ""
 
-# URL of SHACL profile the vocabulary conforms to
+# Optional: URL of SHACL profile the vocabulary conforms to
 # conforms_to = ""
 
 # ==== Checks Configuration ====

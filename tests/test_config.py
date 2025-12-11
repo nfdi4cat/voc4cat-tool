@@ -125,9 +125,9 @@ def test_gh_name_invalid(temp_config, gh_name):
 
 
 def test_config_version_default(temp_config):
-    """Test that config_version defaults to '1.0'."""
+    """Test that config_version defaults to empty string (for pre-v1.0 detection)."""
     config = temp_config
-    assert config.IDRANGES.config_version == "1.0"
+    assert config.IDRANGES.config_version == ""
 
 
 def test_config_version_from_file(datadir, temp_config):
@@ -205,13 +205,17 @@ def test_multiline_creator_field(datadir, temp_config):
 
 
 def test_backward_compatibility_no_config_version(datadir, temp_config):
-    """Test that old config files without config_version still work."""
+    """Test that old config files without config_version still work.
+
+    Pre-v1.0 configs lack config_version field, so it defaults to empty string.
+    This allows detection of pre-v1.0 configs for upgrade workflows.
+    """
     config = temp_config
     # valid_idranges.toml doesn't have config_version
     config.load_config(datadir / VALID_CONFIG)
 
-    # Should default to "1.0"
-    assert config.IDRANGES.config_version == "1.0"
+    # Should default to "" (empty) for pre-v1.0 detection
+    assert config.IDRANGES.config_version == ""
     # Rest should work normally
     assert config.IDRANGES.single_vocab is True
     assert "myvocab" in config.IDRANGES.vocabs
