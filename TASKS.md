@@ -35,6 +35,15 @@ Ideas are marked as done here if they have been implemented in dev-1.0.0 branch 
   - homepage - new in v1.0 - optional
   - conform_to - new in v1.0 - optional
 
+- Extra step I:
+  - (a) Add name to idranges (it should be manually taken from the given ORCID profile).
+    Having the name allows to create a proper list of all contributors and add that to the concept scheme in RDF & xlsx.
+    The name in idranges should be optional.
+    So a contributor may just show up with only the gh-name if ORCID or name is not given.
+  - (b) Derive who contributed from the ID ranges used (we compute this for idranges sheet).
+    Everyone who used any ID from their reserved range is a contributor.
+
+
 - Deferred idea (not important to expose to user): Add support to optionally declare skos:broaderTransitive (and its inverse skos:narrowTransitive). Specify transitivity in xlsx like this: "voc4cat:0000184 T (actions)". The idea is to use the ParentIRI column for transitive and non-tranisitve (normal) relations. Note that 043 did not have transitivity at all.
 
 Each step should be done in a separate PR and each step should be well tested.

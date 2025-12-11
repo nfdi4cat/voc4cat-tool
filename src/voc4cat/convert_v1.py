@@ -127,12 +127,16 @@ def extract_concept_scheme_from_rdf(graph: Graph) -> dict:
         "created_date": "",
         "modified_date": "",
         "creator": "",
+        "contributor": "",
         "publisher": "",
         "version": "",
         "change_note": "",
         "custodian": "",
         "catalogue_pid": "",
     }
+
+    # Collect multiple contributors
+    contributors = []
 
     for s in graph.subjects(RDF.type, SKOS.ConceptScheme):
         holder["vocabulary_iri"] = str(s)
@@ -148,6 +152,8 @@ def extract_concept_scheme_from_rdf(graph: Graph) -> dict:
                 holder["modified_date"] = str(o)
             elif p == DCTERMS.creator:
                 holder["creator"] = str(o)
+            elif p == DCTERMS.contributor:
+                contributors.append(str(o))
             elif p == DCTERMS.publisher:
                 holder["publisher"] = str(o)
             elif p == OWL.versionInfo:
@@ -158,6 +164,9 @@ def extract_concept_scheme_from_rdf(graph: Graph) -> dict:
                 holder["custodian"] = str(o)
             elif p == RDFS.seeAlso:
                 holder["catalogue_pid"] = str(o)
+
+        # Join multiple contributors with newlines
+        holder["contributor"] = "\n".join(contributors)
 
         # Only process the first ConceptScheme found
         # TODO: log warning or error if multiple found
@@ -532,6 +541,7 @@ def rdf_concept_scheme_to_v1(data: dict) -> ConceptSchemeV1:
         created_date=data.get("created_date", ""),
         modified_date=data.get("modified_date", ""),
         creator=data.get("creator", ""),
+        contributor=data.get("contributor", ""),
         publisher=data.get("publisher", ""),
         version=data.get("version", ""),
         change_note=data.get("change_note", ""),
@@ -2103,6 +2113,13 @@ def build_concept_scheme_graph(
         if cs.publisher != cs.creator:
             g += build_organization_graph(cs.publisher)
 
+    # Contributors (multiple, stored as literals in format "<name> <orcid-URL or ror-URL>")
+    if cs.contributor:
+        for line in cs.contributor.strip().split("\n"):
+            line = line.strip()
+            if line:
+                g.add((scheme_iri, DCTERMS.contributor, Literal(line)))
+
     # Version
     if cs.version:
         g.add((scheme_iri, OWL.versionInfo, Literal(cs.version)))
@@ -2647,7 +2664,7 @@ def _enrich_concept_scheme_from_config(
             graph.add((scheme_iri, predicate, obj))
 
     # Handle URI-valued predicates separately (creator, publisher)
-    # These fields may contain multi-line text with format "<URL> <name>" per line
+    # These fields may contain multi-line text with format "<name> <URL>" per line
     for predicate, field_name in [
         (DCTERMS.creator, "creator"),
         (DCTERMS.publisher, "publisher"),
@@ -2659,20 +2676,18 @@ def _enrich_concept_scheme_from_config(
         # Remove existing
         graph.remove((scheme_iri, predicate, None))
 
-        # Extract URL(s) from value - may be single URL or multi-line "<URL> <name>"
+        # Extract URL(s) from value - format is "<name> <URL>" or just "<URL>"
         urls_found = []
         for line in value.strip().split("\n"):
             line = line.strip()
             if not line:
                 continue
-            # Check if line starts with URL
-            if line.startswith("http"):
-                # Extract just the URL (first space-separated token)
-                url = line.split(None, 1)[0]
-                urls_found.append(url)
-            elif " " not in line and "/" in line:
-                # Might be a bare URL without space
-                urls_found.append(line)
+            # Find URL in line (could be at start or end)
+            parts = line.split()
+            for part in parts:
+                if part.startswith("http"):
+                    urls_found.append(part)
+                    break
 
         # Add first URL found (RDF typically has single creator/publisher)
         if urls_found:
