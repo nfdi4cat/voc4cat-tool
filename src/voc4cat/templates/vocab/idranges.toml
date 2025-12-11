@@ -35,20 +35,20 @@ description = "Description of the vocabulary"
 # MANDATORY: Date of creation (ISO-8601 format: YYYY-MM-DD)
 created_date = "2025-01-01"
 
-# MANDATORY: Creator(s) - multi-line text, each line: "<orcid-URL or ror-URL> <name>"
+# MANDATORY: Creator(s) - multi-line text, each line: "<name> <orcid-URL or ror-URL>"
 # creator = """
-# https://orcid.org/0000-0001-2345-6788 Alice Smith
-# https://orcid.org/0000-0001-2345-6789 Sofia Garcia
+# Alice Smith https://orcid.org/0000-0001-2345-6788
+# Sofia Garcia https://orcid.org/0000-0001-2345-6789
 # """
 
-# Optional: Publisher(s) - multi-line text, each line: "<orcid-URL or ror-URL> <name>"
+# Optional: Publisher(s) - multi-line text, each line: "<name> <orcid-URL or ror-URL>"
 # publisher = """
-# https://ror.org/04fa4r544 Example Organization
+# Example Organization https://ror.org/04fa4r544
 # """
 
-# Optional: Custodian(s) - multi-line text, each line: "<name> <gh-profile-URL> <orcid-URL>"
+# Optional: Custodian(s) - multi-line text, each line: "<name> <orcid-URL or ror-URL>"
 # custodian = """
-# Alice Smith https://github.com/asmith https://orcid.org/0000-0001-2345-6789
+# Alice Smith https://orcid.org/0000-0001-2345-6789
 # """
 
 # Optional: DOI or other catalogue persistent identifier
@@ -69,7 +69,7 @@ created_date = "2025-01-01"
 # Optional: URL of homepage
 # homepage = ""
 
-# Optional: URL of SHACL profile the vocabulary conforms to
+# Optional: URL of SHACL profile(s) the vocabulary conforms to
 # conforms_to = ""
 
 # ==== Checks Configuration ====

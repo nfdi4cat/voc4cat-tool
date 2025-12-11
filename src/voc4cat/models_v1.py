@@ -116,7 +116,7 @@ class ConceptSchemeV1(BaseModel):
         str,
         XLSXMetadata(
             display_name="Creator",
-            description='Multi line text; each line must contain: "<orcid-URL or ror> <name>"',
+            description='Multi line text; each line contains: "<name> <orcid-URL or ror-URL>"',
             meaning="dct:creator",
         ),
     ] = ""
@@ -125,7 +125,8 @@ class ConceptSchemeV1(BaseModel):
         str,
         XLSXMetadata(
             display_name="Contributor",
-            description="Automatically generated list of contributors",
+            description='Automatically generated; each line contains: "<name> <orcid-URL or ror-URL>"',
+            meaning="dct:contributor",
         ),
     ] = ""
 
@@ -133,7 +134,7 @@ class ConceptSchemeV1(BaseModel):
         str,
         XLSXMetadata(
             display_name="Publisher",
-            description='Multi line text; each line must contain: "<orcid-URL or ror> <name>"',
+            description='Multi line text; each line contains: "<name> <orcid-URL or ror-URL>"',
             meaning="dct:publisher",
         ),
     ] = ""
@@ -150,7 +151,7 @@ class ConceptSchemeV1(BaseModel):
         str,
         XLSXMetadata(
             display_name="Custodian",
-            description='Multi line text; each line contains: "<name> <gh-profile-URL> <orcid-URL>"',
+            description='Multi line text; each line contains: "<name> <orcid-URL or ror-URL>"',
         ),
     ] = ""
 
