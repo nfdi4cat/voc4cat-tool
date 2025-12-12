@@ -110,6 +110,7 @@ class Vocab(BaseModel):
     issue_tracker: str = ""
     helpdesk: str = ""
     repository: str = ""
+    provenance_url_template: str = ""  # Jinja template for provenance (git blame) URLs
     homepage: str = ""
     conforms_to: str = ""
 
@@ -147,6 +148,12 @@ class Vocab(BaseModel):
         if missing:
             msg = f"Mandatory ConceptScheme fields are empty: {', '.join(missing)}"
             raise ValueError(msg)
+
+        # Validate provenance_url_template if provided
+        if self.provenance_url_template:
+            if "{{ entity_id }}" not in self.provenance_url_template:
+                msg = "provenance_url_template must contain '{{ entity_id }}'"
+                raise ValueError(msg)
 
         return self
 

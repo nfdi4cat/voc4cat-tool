@@ -28,6 +28,7 @@ from voc4cat.convert_v1 import (
     extract_concept_scheme_from_rdf,
     extract_concepts_from_rdf,
     extract_entity_id_from_iri,
+    extract_github_repo_from_url,
     extract_mappings_from_rdf,
     format_change_note_with_replaced_by,
     format_contributor_string,
@@ -689,7 +690,12 @@ class TestRoundTrip:
         Note: ConceptScheme predicates may differ since scheme metadata now comes
         from config, not RDF. This test focuses on concept/collection predicates.
         Uses v1.0 format test data (not 043 format which cannot be roundtripped).
+
+        Note: Provenance predicates (dct:provenance, rdfs:seeAlso) are auto-generated
+        based on repository config, not roundtripped from original data.
         """
+        from rdflib import RDFS
+
         # Load original v1.0 format data
         original = Graph().parse(V1_COMPREHENSIVE_TTL, format="turtle")
 
@@ -708,6 +714,10 @@ class TestRoundTrip:
         original_concepts = set(original.subjects(RDF.type, SKOS.Concept))
         roundtrip_concepts = set(roundtrip.subjects(RDF.type, SKOS.Concept))
 
+        # Predicates that are auto-generated (not roundtripped from original)
+        # These depend on config/environment, not on the original RDF data
+        auto_generated_predicates = {DCTERMS.provenance, RDFS.seeAlso}
+
         # Get predicates on concepts
         original_concept_predicates = set()
         for concept in original_concepts:
@@ -718,6 +728,10 @@ class TestRoundTrip:
         for concept in roundtrip_concepts:
             for _, p, _ in roundtrip.triples((concept, None, None)):
                 roundtrip_concept_predicates.add(p)
+
+        # Exclude auto-generated predicates from comparison
+        original_concept_predicates -= auto_generated_predicates
+        roundtrip_concept_predicates -= auto_generated_predicates
 
         # Concept predicates should be the same
         assert original_concept_predicates == roundtrip_concept_predicates, (
@@ -1790,22 +1804,37 @@ class TestExtractEntityIdFromIri:
     def test_slash_iri(self):
         """Test extracting ID from slash-based IRI."""
         iri = "https://w3id.org/nfdi4cat/voc4cat/0000004"
-        assert extract_entity_id_from_iri(iri) == "0000004"
+        assert extract_entity_id_from_iri(iri, "voc4cat") == "0000004"
 
     def test_hash_iri(self):
         """Test extracting ID from hash-based IRI."""
         iri = "https://example.org/vocab#concept123"
-        assert extract_entity_id_from_iri(iri) == "concept123"
+        assert extract_entity_id_from_iri(iri, "vocab") == "concept123"
 
     def test_trailing_slash(self):
         """Test extracting ID from IRI with trailing slash."""
         iri = "https://example.org/vocab/term001/"
-        assert extract_entity_id_from_iri(iri) == "term001"
+        assert extract_entity_id_from_iri(iri, "vocab") == "term001"
 
     def test_simple_iri(self):
         """Test extracting ID from simple IRI."""
         iri = "http://example.org/test01"
-        assert extract_entity_id_from_iri(iri) == "test01"
+        assert extract_entity_id_from_iri(iri, "example") == "test01"
+
+    def test_vocab_name_prefix_stripping(self):
+        """Test stripping vocab prefix from IRI with underscore pattern."""
+        iri = "https://w3id.org/nfdi4cat/voc4cat_0000016"
+        assert extract_entity_id_from_iri(iri, "voc4cat") == "0000016"
+
+    def test_vocab_name_no_prefix_in_iri(self):
+        """Test that non-prefixed IRI is unchanged when vocab_name provided."""
+        iri = "https://w3id.org/nfdi4cat/voc4cat/0000004"
+        assert extract_entity_id_from_iri(iri, "voc4cat") == "0000004"
+
+    def test_vocab_name_hash_iri(self):
+        """Test hash-based IRI with vocab prefix stripping."""
+        iri = "https://example.org/ns#myvocab_concept123"
+        assert extract_entity_id_from_iri(iri, "myvocab") == "concept123"
 
 
 class TestBuildProvenanceUrl:
@@ -1858,6 +1887,169 @@ class TestBuildProvenanceUrl:
 
         expected = "https://github.com/nfdi4cat/test-vocab/blame/v1.0.0/vocabularies/myvocab/test123.ttl"
         assert url == expected
+
+    def test_repository_url_fallback_when_env_not_set(self, monkeypatch):
+        """Test URL generation uses repository_url when env var not set."""
+        monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.delenv("VOC4CAT_VERSION", raising=False)
+
+        url = build_provenance_url(
+            "0000004",
+            "voc4cat",
+            repository_url="https://github.com/nfdi4cat/voc4cat",
+        )
+
+        expected = "https://github.com/nfdi4cat/voc4cat/blame/main/vocabularies/voc4cat/0000004.ttl"
+        assert url == expected
+
+    def test_env_var_takes_precedence_over_repository_url(self, monkeypatch):
+        """Test that GITHUB_REPOSITORY env var takes precedence over repository_url."""
+        monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/from-env")
+        monkeypatch.setenv("VOC4CAT_VERSION", "v1.0.0")
+
+        url = build_provenance_url(
+            "0000004",
+            "voc4cat",
+            repository_url="https://github.com/nfdi4cat/from-config",
+        )
+
+        assert "nfdi4cat/from-env" in url
+        assert "nfdi4cat/from-config" not in url
+
+    def test_repository_url_with_git_suffix(self, monkeypatch):
+        """Test URL generation handles repository URLs with .git suffix."""
+        monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.delenv("VOC4CAT_VERSION", raising=False)
+
+        url = build_provenance_url(
+            "0000004",
+            "voc4cat",
+            repository_url="https://github.com/nfdi4cat/voc4cat.git",
+        )
+
+        expected = "https://github.com/nfdi4cat/voc4cat/blame/main/vocabularies/voc4cat/0000004.ttl"
+        assert url == expected
+
+    def test_repository_url_with_trailing_slash(self, monkeypatch):
+        """Test URL generation handles repository URLs with trailing slash."""
+        monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.delenv("VOC4CAT_VERSION", raising=False)
+
+        url = build_provenance_url(
+            "0000004",
+            "voc4cat",
+            repository_url="https://github.com/nfdi4cat/voc4cat/",
+        )
+
+        expected = "https://github.com/nfdi4cat/voc4cat/blame/main/vocabularies/voc4cat/0000004.ttl"
+        assert url == expected
+
+    def test_non_github_repository_url_returns_empty(self, monkeypatch):
+        """Test URL generation returns empty for non-GitHub repository URLs."""
+        monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.delenv("VOC4CAT_VERSION", raising=False)
+
+        url = build_provenance_url(
+            "0000004",
+            "voc4cat",
+            repository_url="https://gitlab.com/nfdi4cat/voc4cat",
+        )
+
+        assert url == ""
+
+    def test_custom_template_gitlab(self, monkeypatch):
+        """Test URL generation with custom GitLab template."""
+        monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.setenv("VOC4CAT_VERSION", "v1.0.0")
+
+        template = (
+            "https://gitlab.com/myorg/myrepo/-/blame/{{ version }}"
+            "/vocabularies/{{ vocab_name }}/{{ entity_id }}.ttl"
+        )
+        url = build_provenance_url("0000004", "voc4cat", provenance_template=template)
+
+        expected = "https://gitlab.com/myorg/myrepo/-/blame/v1.0.0/vocabularies/voc4cat/0000004.ttl"
+        assert url == expected
+
+    def test_custom_template_gitea(self, monkeypatch):
+        """Test URL generation with custom Gitea template."""
+        monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.delenv("VOC4CAT_VERSION", raising=False)
+
+        template = (
+            "https://gitea.example.com/org/repo/blame/{{ version }}"
+            "/vocabularies/{{ vocab_name }}/{{ entity_id }}.ttl"
+        )
+        url = build_provenance_url("test123", "myvocab", provenance_template=template)
+
+        expected = "https://gitea.example.com/org/repo/blame/main/vocabularies/myvocab/test123.ttl"
+        assert url == expected
+
+    def test_custom_template_with_github_repo_variable(self, monkeypatch):
+        """Test custom template can use github_repo variable."""
+        monkeypatch.setenv("GITHUB_REPOSITORY", "custom/repo")
+        monkeypatch.setenv("VOC4CAT_VERSION", "v2.0.0")
+
+        template = "https://example.com/{{ github_repo }}/{{ entity_id }}"
+        url = build_provenance_url("0001", "vocab", provenance_template=template)
+
+        assert url == "https://example.com/custom/repo/0001"
+
+    def test_custom_template_takes_precedence_over_github_default(self, monkeypatch):
+        """Test that custom template is used even when GitHub repo is available."""
+        monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/voc4cat")
+        monkeypatch.setenv("VOC4CAT_VERSION", "v1.0.0")
+
+        template = "https://custom.example.com/{{ entity_id }}"
+        url = build_provenance_url("0000004", "voc4cat", provenance_template=template)
+
+        assert url == "https://custom.example.com/0000004"
+        assert "github.com" not in url
+
+
+class TestExtractGithubRepoFromUrl:
+    """Tests for extract_github_repo_from_url function."""
+
+    def test_standard_github_url(self):
+        """Test extraction from standard GitHub URL."""
+        result = extract_github_repo_from_url("https://github.com/nfdi4cat/voc4cat")
+        assert result == "nfdi4cat/voc4cat"
+
+    def test_github_url_with_git_suffix(self):
+        """Test extraction from GitHub URL with .git suffix."""
+        result = extract_github_repo_from_url("https://github.com/owner/repo.git")
+        assert result == "owner/repo"
+
+    def test_github_url_with_trailing_slash(self):
+        """Test extraction from GitHub URL with trailing slash."""
+        result = extract_github_repo_from_url("https://github.com/owner/repo/")
+        assert result == "owner/repo"
+
+    def test_http_url(self):
+        """Test extraction from HTTP URL (not HTTPS)."""
+        result = extract_github_repo_from_url("http://github.com/owner/repo")
+        assert result == "owner/repo"
+
+    def test_non_github_url_returns_empty(self):
+        """Test extraction returns empty for non-GitHub URLs."""
+        result = extract_github_repo_from_url("https://gitlab.com/owner/repo")
+        assert result == ""
+
+    def test_empty_string_returns_empty(self):
+        """Test extraction returns empty for empty string."""
+        result = extract_github_repo_from_url("")
+        assert result == ""
+
+    def test_none_like_values(self):
+        """Test extraction handles None-like values."""
+        result = extract_github_repo_from_url("")
+        assert result == ""
+
+    def test_github_url_with_extra_paths_returns_empty(self):
+        """Test extraction returns empty for URLs with extra path components."""
+        # URLs with subpaths beyond owner/repo shouldn't match
+        result = extract_github_repo_from_url("https://github.com/owner/repo/tree/main")
+        assert result == ""
 
 
 class TestProvenanceInXlsx:
@@ -1938,10 +2130,50 @@ class TestProvenanceInRdf:
         # Should contain the same provenance URL
         assert str(provenance_urls[0]) in [str(u) for u in see_also_urls]
 
-    def test_no_provenance_when_env_not_set(
+    def test_no_provenance_when_no_github_source_available(
+        self, tmp_path, temp_config, monkeypatch
+    ):
+        """Test that no provenance triples when no GitHub source is available.
+
+        Uses a non-GitHub repository URL (GitLab) which cannot be used for
+        provenance URL generation since we only support GitHub blame URLs.
+        """
+        from voc4cat.config import Checks, Vocab
+
+        monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+        monkeypatch.delenv("VOC4CAT_VERSION", raising=False)
+
+        # Create a config with non-GitHub repository URL
+        vocab_config_non_github = Vocab(
+            id_length=7,
+            permanent_iri_part="http://example.org/test/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "http://example.org/"},
+            vocabulary_iri="http://example.org/test/",
+            title="Test Vocabulary",
+            description="Test vocabulary for unit tests",
+            created_date="2025-01-01",
+            creator="https://orcid.org/0000-0001-2345-6789",
+            repository="https://gitlab.com/test/vocab",  # Non-GitHub URL
+        )
+
+        xlsx_path = tmp_path / "test.xlsx"
+        rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path, vocab_config=vocab_config_non_github)
+
+        graph = excel_to_rdf_v1(
+            xlsx_path, output_type="graph", vocab_config=vocab_config_non_github
+        )
+
+        concept_iri = URIRef("http://example.org/test01")
+
+        # Should have no dct:provenance triples (no GitHub repo available)
+        provenance_urls = list(graph.objects(concept_iri, DCTERMS.provenance))
+        assert len(provenance_urls) == 0
+
+    def test_provenance_from_config_repo_when_env_not_set(
         self, tmp_path, temp_config, test_vocab_config, monkeypatch
     ):
-        """Test that no provenance triples when GITHUB_REPOSITORY not set."""
+        """Test provenance generated from config repository when env var not set."""
 
         monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
         monkeypatch.delenv("VOC4CAT_VERSION", raising=False)
@@ -1955,9 +2187,13 @@ class TestProvenanceInRdf:
 
         concept_iri = URIRef("http://example.org/test01")
 
-        # Should have no dct:provenance triples
+        # Should have provenance from config repository
         provenance_urls = list(graph.objects(concept_iri, DCTERMS.provenance))
-        assert len(provenance_urls) == 0
+        assert len(provenance_urls) == 1
+        # Uses 'main' as default version when VOC4CAT_VERSION not set
+        assert "/blame/main/" in str(provenance_urls[0])
+        # Repository is test/vocab from test_vocab_config
+        assert "test/vocab" in str(provenance_urls[0])
 
     def test_collection_has_provenance(
         self, tmp_path, temp_config, test_vocab_config, monkeypatch

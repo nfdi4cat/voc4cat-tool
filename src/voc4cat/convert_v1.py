@@ -66,45 +66,122 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-def build_provenance_url(entity_id: str, vocab_name: str) -> str:
-    """Build a git blame URL for an entity.
+def extract_github_repo_from_url(repository_url: str) -> str:
+    """Extract owner/repo from a GitHub repository URL.
 
-    The URL points to the version-specific TTL file on GitHub.
-    Format: https://github.com/{owner}/{repo}/blame/{version}/vocabularies/{vocab_name}/{entity_id}.ttl
+    Args:
+        repository_url: GitHub URL like "https://github.com/owner/repo"
+            or "https://github.com/owner/repo.git".
+
+    Returns:
+        The owner/repo string (e.g., "owner/repo"), or empty string if not
+        a valid GitHub URL.
+    """
+    import re
+
+    if not repository_url:
+        return ""
+
+    # Match GitHub URLs: https://github.com/owner/repo or https://github.com/owner/repo.git
+    pattern = r"https?://github\.com/([^/]+/[^/]+?)(?:\.git)?/?$"
+    match = re.match(pattern, repository_url.strip())
+    if match:
+        return match.group(1)
+    return ""
+
+
+# Default Jinja template for GitHub blame URLs
+DEFAULT_PROVENANCE_TEMPLATE = (
+    "https://github.com/{{ github_repo }}/blame/{{ version }}"
+    "/vocabularies/{{ vocab_name }}/{{ entity_id }}.ttl"
+)
+
+
+def build_provenance_url(
+    entity_id: str,
+    vocab_name: str,
+    provenance_template: str = "",
+    repository_url: str = "",
+) -> str:
+    """Build a provenance URL using Jinja template.
+
+    Uses the provided template or falls back to the default GitHub blame URL
+    format when a GitHub repository can be detected.
 
     Args:
         entity_id: The concept or collection ID (e.g., "0000004").
         vocab_name: The vocabulary name from idranges.toml (e.g., "voc4cat").
+        provenance_template: Optional Jinja template for the URL. If provided,
+            this template is used instead of the default GitHub format.
+        repository_url: Optional repository URL from idranges.toml. Used for
+            GitHub auto-detection when GITHUB_REPOSITORY env var is not set.
+
+    Template variables available:
+        entity_id: The concept/collection ID
+        vocab_name: The vocabulary name
+        version: Git version/tag (from VOC4CAT_VERSION env var, or "main")
+        github_repo: The GitHub owner/repo (if detected from env var or URL)
 
     Returns:
-        The provenance URL, or empty string if GITHUB_REPOSITORY is not set.
+        The provenance URL, or empty string if no template is provided and
+        no GitHub repository can be detected.
     """
-    github_repo = os.getenv("GITHUB_REPOSITORY", "")
-    if not github_repo:
-        return ""
+    from jinja2 import Template
 
     version = os.getenv("VOC4CAT_VERSION", "") or "main"
-    return f"https://github.com/{github_repo}/blame/{version}/vocabularies/{vocab_name}/{entity_id}.ttl"
+
+    # Determine github_repo (for default template and as template variable)
+    github_repo = os.getenv("GITHUB_REPOSITORY", "")
+    if not github_repo and repository_url:
+        github_repo = extract_github_repo_from_url(repository_url)
+
+    # Select template
+    if provenance_template:
+        template_str = provenance_template
+    elif github_repo:
+        template_str = DEFAULT_PROVENANCE_TEMPLATE
+    else:
+        return ""  # No template and no GitHub repo detected
+
+    # Render template
+    template = Template(template_str)
+    return template.render(
+        entity_id=entity_id,
+        vocab_name=vocab_name,
+        version=version,
+        github_repo=github_repo,
+    )
 
 
-def extract_entity_id_from_iri(iri: str) -> str:
+def extract_entity_id_from_iri(iri: str, vocab_name: str) -> str:
     """Extract the entity ID from a full IRI.
 
-    Handles both slash-based and hash-based IRIs.
+    Handles both slash-based and hash-based IRIs. Strips the vocabulary
+    prefix (e.g., 'voc4cat_') from the extracted ID when present.
 
     Examples:
-        'https://w3id.org/nfdi4cat/voc4cat/0000004' -> '0000004'
-        'https://example.org/vocab#concept123' -> 'concept123'
+        'https://w3id.org/nfdi4cat/voc4cat/0000004', 'voc4cat' -> '0000004'
+        'https://w3id.org/nfdi4cat/voc4cat_0000004', 'voc4cat' -> '0000004'
+        'https://example.org/vocab#concept123', 'vocab' -> 'concept123'
 
     Args:
         iri: Full IRI string.
+        vocab_name: Vocabulary name used to strip prefix from the ID.
 
     Returns:
-        The entity ID portion.
+        The entity ID portion (with vocab prefix stripped if applicable).
     """
     if "#" in iri:
-        return iri.split("#")[-1]
-    return iri.rstrip("/").split("/")[-1]
+        entity_id = iri.split("#")[-1]
+    else:
+        entity_id = iri.rstrip("/").split("/")[-1]
+
+    # Strip vocabulary prefix if present (e.g., 'voc4cat_0000004' -> '0000004')
+    prefix = f"{vocab_name}_"
+    if entity_id.startswith(prefix):
+        entity_id = entity_id[len(prefix) :]
+
+    return entity_id
 
 
 # =============================================================================
@@ -634,6 +711,8 @@ def rdf_concepts_to_v1(
     concept_to_collections: dict[str, list[str]],
     concept_to_ordered_collections: dict[str, dict[str, int]] | None = None,
     vocab_name: str = "",
+    provenance_template: str = "",
+    repository_url: str = "",
 ) -> list[ConceptV1]:
     """Convert extracted concepts to ConceptV1 models.
 
@@ -650,6 +729,8 @@ def rdf_concepts_to_v1(
         concept_to_ordered_collections: Mapping from concept IRI to
             {ordered_collection_iri: position}.
         vocab_name: Vocabulary name for provenance URL generation.
+        provenance_template: Jinja template for provenance URLs.
+        repository_url: Repository URL from config for GitHub auto-detection.
 
     Returns:
         List of ConceptV1 model instances.
@@ -664,8 +745,10 @@ def rdf_concepts_to_v1(
         is_first_row = True
 
         # Generate provenance URL (same for all language rows)
-        entity_id = extract_entity_id_from_iri(concept_iri)
-        provenance_url = build_provenance_url(entity_id, vocab_name)
+        entity_id = extract_entity_id_from_iri(concept_iri, vocab_name)
+        provenance_url = build_provenance_url(
+            entity_id, vocab_name, provenance_template, repository_url
+        )
 
         # Get deprecation info from any language (it's the same for all)
         first_lang_data = next(iter(lang_data.values()), {})
@@ -791,6 +874,8 @@ def rdf_collections_to_v1(
     collections_data: dict[str, dict[str, dict]],
     collection_to_parents: dict[str, list[str]],
     vocab_name: str = "",
+    provenance_template: str = "",
+    repository_url: str = "",
 ) -> list[CollectionV1]:
     """Convert extracted collections to CollectionV1 models.
 
@@ -804,6 +889,8 @@ def rdf_collections_to_v1(
         collections_data: Nested dict from extract_collections_from_rdf.
         collection_to_parents: Mapping from collection IRI to parent collection IRIs.
         vocab_name: Vocabulary name for provenance URL generation.
+        provenance_template: Jinja template for provenance URLs.
+        repository_url: Repository URL from config for GitHub auto-detection.
 
     Returns:
         List of CollectionV1 model instances.
@@ -816,8 +903,10 @@ def rdf_collections_to_v1(
         is_first_row = True
 
         # Generate provenance URL (same for all language rows)
-        entity_id = extract_entity_id_from_iri(collection_iri)
-        provenance_url = build_provenance_url(entity_id, vocab_name)
+        entity_id = extract_entity_id_from_iri(collection_iri, vocab_name)
+        provenance_url = build_provenance_url(
+            entity_id, vocab_name, provenance_template, repository_url
+        )
 
         # Get deprecation info from any language (it's the same for all)
         first_lang_data = next(iter(lang_data.values()), {})
@@ -1449,14 +1538,24 @@ def rdf_to_excel_v1(
     else:
         concept_scheme_v1 = rdf_concept_scheme_to_v1(cs_data)
 
+    # Get provenance URL config
+    provenance_template = vocab_config.provenance_url_template if vocab_config else ""
+    repository_url = vocab_config.repository if vocab_config else ""
+
     concepts_v1 = rdf_concepts_to_v1(
         concepts_data,
         concept_to_collections,
         concept_to_ordered_collections,
         vocab_name,
+        provenance_template,
+        repository_url,
     )
     collections_v1 = rdf_collections_to_v1(
-        collections_data, collection_to_parents, vocab_name
+        collections_data,
+        collection_to_parents,
+        vocab_name,
+        provenance_template,
+        repository_url,
     )
     mappings_v1 = rdf_mappings_to_v1(mappings_data)
     prefixes_v1 = build_prefixes_v1()
@@ -2290,6 +2389,8 @@ def build_concept_graph(
     scheme_iri: URIRef,
     narrower_map: dict[str, list[str]],
     vocab_name: str = "",
+    provenance_template: str = "",
+    repository_url: str = "",
 ) -> Graph:
     """Build RDF graph for a single Concept.
 
@@ -2298,6 +2399,8 @@ def build_concept_graph(
         scheme_iri: URIRef of the ConceptScheme.
         narrower_map: Map of parent -> children for narrower relationships.
         vocab_name: Vocabulary name for provenance URL generation.
+        provenance_template: Jinja template for provenance URLs.
+        repository_url: Repository URL from config for GitHub auto-detection.
 
     Returns:
         Graph with Concept triples.
@@ -2368,8 +2471,10 @@ def build_concept_graph(
         g.add((c, DCTERMS.isReplacedBy, URIRef(concept.replaced_by_iri)))
 
     # Provenance (git blame URL)
-    entity_id = extract_entity_id_from_iri(concept.iri)
-    provenance_url = build_provenance_url(entity_id, vocab_name)
+    entity_id = extract_entity_id_from_iri(concept.iri, vocab_name)
+    provenance_url = build_provenance_url(
+        entity_id, vocab_name, provenance_template, repository_url
+    )
     if provenance_url:
         provenance_uri = URIRef(provenance_url)
         g.add((c, DCTERMS.provenance, provenance_uri))
@@ -2384,6 +2489,8 @@ def build_collection_graph(
     collection_members: dict[str, list[str]],
     ordered_collection_members: dict[str, list[str]] | None = None,
     vocab_name: str = "",
+    provenance_template: str = "",
+    repository_url: str = "",
 ) -> Graph:
     """Build RDF graph for a single Collection.
 
@@ -2394,6 +2501,8 @@ def build_collection_graph(
         ordered_collection_members: Map of ordered collection -> member IRIs
             in order. Used for building skos:memberList.
         vocab_name: Vocabulary name for provenance URL generation.
+        provenance_template: Jinja template for provenance URLs.
+        repository_url: Repository URL from config for GitHub auto-detection.
 
     Returns:
         Graph with Collection triples.
@@ -2460,8 +2569,10 @@ def build_collection_graph(
         g.add((c, DCTERMS.isReplacedBy, URIRef(collection.replaced_by_iri)))
 
     # Provenance (git blame URL)
-    entity_id = extract_entity_id_from_iri(collection.iri)
-    provenance_url = build_provenance_url(entity_id, vocab_name)
+    entity_id = extract_entity_id_from_iri(collection.iri, vocab_name)
+    provenance_url = build_provenance_url(
+        entity_id, vocab_name, provenance_template, repository_url
+    )
     if provenance_url:
         provenance_uri = URIRef(provenance_url)
         g.add((c, DCTERMS.provenance, provenance_uri))
@@ -2610,6 +2721,10 @@ def excel_to_rdf_v1(
     ordered_collection_members = build_ordered_collection_members(concepts)
     narrower_map = build_narrower_map(concepts)
 
+    # Get provenance URL config
+    provenance_template = vocab_config.provenance_url_template if vocab_config else ""
+    repository_url = vocab_config.repository if vocab_config else ""
+
     # Build the complete graph
     logger.debug("Building RDF graph...")
     scheme_iri = URIRef(concept_scheme.vocabulary_iri)
@@ -2617,7 +2732,14 @@ def excel_to_rdf_v1(
     graph = build_concept_scheme_graph(concept_scheme, concepts)
 
     for concept in concepts.values():
-        graph += build_concept_graph(concept, scheme_iri, narrower_map, vocab_name)
+        graph += build_concept_graph(
+            concept,
+            scheme_iri,
+            narrower_map,
+            vocab_name,
+            provenance_template,
+            repository_url,
+        )
 
     for collection in collections.values():
         graph += build_collection_graph(
@@ -2626,6 +2748,8 @@ def excel_to_rdf_v1(
             collection_members,
             ordered_collection_members,
             vocab_name,
+            provenance_template,
+            repository_url,
         )
 
     graph += build_mappings_graph(mapping_rows, converter)
