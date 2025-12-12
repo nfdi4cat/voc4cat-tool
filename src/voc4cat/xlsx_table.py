@@ -388,7 +388,7 @@ class XLSXTableFormatter(XLSXFormatter):
                 color=getattr(self.config, "description_color", "666666"),
             )
             worksheet[description_cell].alignment = Alignment(
-                horizontal="center", vertical="center"
+                horizontal="center", vertical="center", wrap_text=True
             )
 
     def _has_any_units(self, fields: list[FieldAnalysis]) -> bool:
@@ -448,7 +448,7 @@ class XLSXTableFormatter(XLSXFormatter):
                     color=getattr(self.config, "meaning_color", "666666"),
                 )
                 worksheet[meaning_cell].alignment = Alignment(
-                    horizontal="center", vertical="center"
+                    horizontal="center", vertical="center", wrap_text=True
                 )
 
     def _add_field_units(
@@ -487,7 +487,7 @@ class XLSXTableFormatter(XLSXFormatter):
                     color=getattr(self.config, "unit_color", "666666"),
                 )
                 worksheet[unit_cell].alignment = Alignment(
-                    horizontal="center", vertical="center"
+                    horizontal="center", vertical="center", wrap_text=True
                 )
 
     def _add_headers(self, worksheet: Worksheet, fields: list[FieldAnalysis]) -> None:
@@ -503,6 +503,9 @@ class XLSXTableFormatter(XLSXFormatter):
 
             header_text = self._format_header_text(field_analysis)
             worksheet[header_cell] = header_text
+            worksheet[header_cell].alignment = Alignment(
+                wrap_text=True, vertical="center"
+            )
 
             # Only apply explicit header styling if configured
             # Otherwise, let the table style control header appearance (font, color, fill)
