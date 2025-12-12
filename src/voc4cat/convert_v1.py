@@ -184,6 +184,48 @@ def extract_entity_id_from_iri(iri: str, vocab_name: str) -> str:
     return entity_id
 
 
+def format_iri_with_label(
+    iri: str,
+    concepts_data: dict[str, dict[str, dict]],
+    collections_data: dict[str, dict[str, dict]] | None = None,
+) -> str:
+    """Format IRI as 'curie (english_label)' if label is available.
+
+    Looks up the English preferred label for the given IRI in concepts_data
+    and optionally collections_data. If found, returns the format
+    "curie (label)", otherwise returns just the compressed curie.
+
+    Args:
+        iri: Full IRI string to format.
+        concepts_data: Nested dict from extract_concepts_from_rdf,
+            mapping concept_iri -> lang -> data dict.
+        collections_data: Optional nested dict from extract_collections_from_rdf,
+            mapping collection_iri -> lang -> data dict.
+
+    Returns:
+        Formatted string like "voc4cat:0000016 (catalyst form)" or just
+        "voc4cat:0000016" if no English label is available.
+    """
+    converter = config.curies_converter
+    curie = converter.compress(iri, passthrough=True)
+
+    # Try to find English label in concepts
+    if iri in concepts_data:
+        en_data = concepts_data[iri].get("en", {})
+        label = en_data.get("preferred_label", "")
+        if label:
+            return f"{curie} ({label})"
+
+    # Try to find English label in collections
+    if collections_data and iri in collections_data:
+        en_data = collections_data[iri].get("en", {})
+        label = en_data.get("preferred_label", "")
+        if label:
+            return f"{curie} ({label})"
+
+    return curie
+
+
 # =============================================================================
 # RDF Extraction Functions
 # =============================================================================
@@ -710,6 +752,7 @@ def rdf_concepts_to_v1(
     concepts_data: dict[str, dict[str, dict]],
     concept_to_collections: dict[str, list[str]],
     concept_to_ordered_collections: dict[str, dict[str, int]] | None = None,
+    collections_data: dict[str, dict[str, dict]] | None = None,
     vocab_name: str = "",
     provenance_template: str = "",
     repository_url: str = "",
@@ -723,11 +766,16 @@ def rdf_concepts_to_v1(
     Subsequent rows (other languages) have structural fields empty but include
     editorial_note per language.
 
+    IRI columns (parent_iris, member_of_collections, etc.) are formatted with
+    English preferred labels when available: "curie (label)".
+
     Args:
         concepts_data: Nested dict from extract_concepts_from_rdf.
         concept_to_collections: Mapping from concept IRI to collection IRIs.
         concept_to_ordered_collections: Mapping from concept IRI to
             {ordered_collection_iri: position}.
+        collections_data: Optional nested dict from extract_collections_from_rdf,
+            used for looking up collection labels.
         vocab_name: Vocabulary name for provenance URL generation.
         provenance_template: Jinja template for provenance URLs.
         repository_url: Repository URL from config for GitHub auto-detection.
@@ -737,6 +785,7 @@ def rdf_concepts_to_v1(
     """
     concepts_v1 = []
     concept_to_ordered_collections = concept_to_ordered_collections or {}
+    collections_data = collections_data or {}
 
     # Use curies converter to compress IRIs
     converter = config.curies_converter
@@ -786,27 +835,30 @@ def rdf_concepts_to_v1(
 
             # Only include structural data in first row
             if is_first_row:
-                # Format parent IRIs
+                # Format parent IRIs with labels
                 parent_iris = data.get("parent_iris", [])
                 parent_iris_strs = [
-                    converter.compress(p, passthrough=True) for p in parent_iris
+                    format_iri_with_label(p, concepts_data) for p in parent_iris
                 ]
-                parent_iris_str = " ".join(parent_iris_strs)
+                parent_iris_str = "\n".join(parent_iris_strs)
 
-                # Format member_of_collections (regular collections only)
+                # Format member_of_collections with labels (regular collections only)
                 collections = concept_to_collections.get(concept_iri, [])
                 collections_strs = [
-                    converter.compress(c, passthrough=True) for c in collections
+                    format_iri_with_label(c, concepts_data, collections_data)
+                    for c in collections
                 ]
-                member_of_collections_str = " ".join(collections_strs)
+                member_of_collections_str = "\n".join(collections_strs)
 
-                # Format member_of_ordered_collection (format: collIRI # pos)
+                # Format member_of_ordered_collection with labels (format: collIRI (label) # pos)
                 ordered_colls = concept_to_ordered_collections.get(concept_iri, {})
                 ordered_parts = []
                 for coll_iri, position in ordered_colls.items():
-                    coll_display = converter.compress(coll_iri, passthrough=True)
+                    coll_display = format_iri_with_label(
+                        coll_iri, concepts_data, collections_data
+                    )
                     ordered_parts.append(f"{coll_display} # {position}")
-                member_of_ordered_collection_str = " ".join(ordered_parts)
+                member_of_ordered_collection_str = "\n".join(ordered_parts)
 
                 # Source vocab attribution
                 source_vocab_iri = data.get("source_vocab_iri", "")
@@ -825,12 +877,12 @@ def rdf_concepts_to_v1(
                     )
                 obsolete_reason = data.get("obsolete_reason", "")
 
-                # Influenced by IRIs
+                # Influenced by IRIs with labels
                 influenced_iris = data.get("influenced_by_iris", [])
                 influenced_iris_strs = [
-                    converter.compress(i, passthrough=True) for i in influenced_iris
+                    format_iri_with_label(i, concepts_data) for i in influenced_iris
                 ]
-                influenced_by_iris_str = " ".join(influenced_iris_strs)
+                influenced_by_iris_str = "\n".join(influenced_iris_strs)
 
                 provenance = provenance_url
                 is_first_row = False
@@ -873,6 +925,7 @@ def rdf_concepts_to_v1(
 def rdf_collections_to_v1(
     collections_data: dict[str, dict[str, dict]],
     collection_to_parents: dict[str, list[str]],
+    concepts_data: dict[str, dict[str, dict]] | None = None,
     vocab_name: str = "",
     provenance_template: str = "",
     repository_url: str = "",
@@ -885,9 +938,13 @@ def rdf_collections_to_v1(
     Subsequent rows (other languages) have structural fields empty but include
     editorial_note per language.
 
+    Parent collection IRIs are formatted with English preferred labels when
+    available: "curie (label)".
+
     Args:
         collections_data: Nested dict from extract_collections_from_rdf.
         collection_to_parents: Mapping from collection IRI to parent collection IRIs.
+        concepts_data: Optional nested dict for label lookups (unused, for consistency).
         vocab_name: Vocabulary name for provenance URL generation.
         provenance_template: Jinja template for provenance URLs.
         repository_url: Repository URL from config for GitHub auto-detection.
@@ -940,12 +997,13 @@ def rdf_collections_to_v1(
             editorial_note = data.get("editorial_note", "")
 
             if is_first_row:
-                # Format parent collection IRIs
+                # Format parent collection IRIs with labels
+                # Parent collections are looked up in collections_data itself
                 parents = collection_to_parents.get(collection_iri, [])
                 parents_strs = [
-                    converter.compress(p, passthrough=True) for p in parents
+                    format_iri_with_label(p, {}, collections_data) for p in parents
                 ]
-                parent_iris_str = " ".join(parents_strs)
+                parent_iris_str = "\n".join(parents_strs)
 
                 # Ordered flag
                 ordered = "Yes" if data.get("ordered", False) else ""
@@ -989,21 +1047,29 @@ def rdf_collections_to_v1(
     return collections_v1
 
 
-def rdf_mappings_to_v1(mappings_data: dict[str, dict]) -> list[MappingV1]:
+def rdf_mappings_to_v1(
+    mappings_data: dict[str, dict],
+    concepts_data: dict[str, dict[str, dict]] | None = None,
+) -> list[MappingV1]:
     """Convert extracted mappings to MappingV1 models.
+
+    The concept_iri column is formatted with the English preferred label
+    when available: "curie (label)".
 
     Args:
         mappings_data: Dict from extract_mappings_from_rdf.
+        concepts_data: Optional nested dict for looking up concept labels.
 
     Returns:
         List of MappingV1 model instances.
     """
     mappings_v1 = []
+    concepts_data = concepts_data or {}
 
     converter = config.curies_converter
 
     for concept_iri, data in mappings_data.items():
-        concept_iri_display = converter.compress(concept_iri, passthrough=True)
+        concept_iri_display = format_iri_with_label(concept_iri, concepts_data)
 
         # Format each mapping type as space-separated IRIs
         related = " ".join(
@@ -1298,6 +1364,205 @@ def derive_contributors(
 # =============================================================================
 
 
+def _find_column_by_header(
+    worksheet, header_name: str, header_row: int = 4
+) -> int | None:
+    """Find column index by header name in a worksheet.
+
+    Args:
+        worksheet: openpyxl worksheet object.
+        header_name: The header text to search for.
+        header_row: Row number where headers are located (default 4 for v1.0 template).
+
+    Returns:
+        Column index (1-based) if found, None otherwise.
+    """
+    for col_idx in range(1, worksheet.max_column + 1):
+        cell_value = worksheet.cell(row=header_row, column=col_idx).value
+        if cell_value == header_name:
+            return col_idx
+    return None
+
+
+def _extract_entity_id_from_provenance_url(url: str) -> str:
+    """Extract entity ID from a provenance URL.
+
+    The URL typically ends with "<entity_id>.ttl" or similar.
+
+    Args:
+        url: Provenance URL like "https://github.com/.../blame/.../0000001.ttl"
+
+    Returns:
+        The entity ID (e.g., "0000001") or empty string if not found.
+    """
+    # Remove trailing slashes and get the last path segment
+    path = url.rstrip("/").split("/")[-1]
+    # Remove file extension if present
+    if "." in path:
+        path = path.rsplit(".", 1)[0]
+    return path
+
+
+def _add_provenance_hyperlinks(workbook, sheet_name: str, header_row: int = 4) -> None:
+    """Add hyperlinks to provenance cells in a sheet.
+
+    Finds the "Provenance (read-only)" column and sets cell.hyperlink for any
+    cell value that looks like a URL (starts with "http"). The cell value is
+    replaced with a friendly display text "git blame for <entity_id>".
+
+    Args:
+        workbook: openpyxl Workbook object.
+        sheet_name: Name of the sheet to process.
+        header_row: Row number where headers are located.
+    """
+    if sheet_name not in workbook.sheetnames:
+        return
+
+    ws = workbook[sheet_name]
+    prov_col = _find_column_by_header(ws, "Provenance (read-only)", header_row)
+
+    if prov_col is None:
+        return
+
+    # Data starts after header row
+    data_start_row = header_row + 1
+
+    for row_idx in range(data_start_row, ws.max_row + 1):
+        cell = ws.cell(row=row_idx, column=prov_col)
+        value = cell.value
+        if value and isinstance(value, str) and value.startswith("http"):
+            entity_id = _extract_entity_id_from_provenance_url(value)
+            cell.hyperlink = value
+            cell.value = f"git blame for {entity_id}" if entity_id else "git blame"
+            _apply_hyperlink_style(cell)
+
+
+def _add_concept_iri_hyperlinks(workbook, sheet_name: str, header_row: int = 4) -> None:
+    """Add hyperlinks to concept IRI cells in a sheet.
+
+    Finds the "Concept IRI*" column and sets cell.hyperlink by expanding
+    the CURIE to a full IRI.
+
+    Args:
+        workbook: openpyxl Workbook object.
+        sheet_name: Name of the sheet to process.
+        header_row: Row number where headers are located.
+    """
+    if sheet_name not in workbook.sheetnames:
+        return
+
+    ws = workbook[sheet_name]
+    iri_col = _find_column_by_header(ws, "Concept IRI*", header_row)
+
+    if iri_col is None:
+        return
+
+    # Data starts after header row
+    data_start_row = header_row + 1
+    converter = config.curies_converter
+
+    for row_idx in range(data_start_row, ws.max_row + 1):
+        cell = ws.cell(row=row_idx, column=iri_col)
+        value = cell.value
+        if value and isinstance(value, str):
+            # Value might be "curie (label)" format - extract just the curie
+            curie = value.split(" (")[0].strip()
+            # Try to expand the CURIE to full IRI
+            full_iri = converter.expand(curie)
+            if full_iri and full_iri != curie:  # expand returns original if no match
+                cell.hyperlink = full_iri
+                _apply_hyperlink_style(cell)
+
+
+def _apply_hyperlink_style(cell) -> None:
+    """Apply standard hyperlink styling to a cell (blue, underlined).
+
+    Args:
+        cell: openpyxl cell object.
+    """
+    from openpyxl.styles import Font
+
+    cell.font = Font(
+        name=cell.font.name,
+        size=cell.font.size,
+        bold=cell.font.bold,
+        italic=cell.font.italic,
+        color="0563C1",
+        underline="single",
+    )
+
+
+def _add_entity_iri_hyperlinks(
+    workbook, sheet_name: str, column_header: str, header_row: int = 4
+) -> None:
+    """Add hyperlinks to entity IRI cells (Concepts or Collections).
+
+    Finds the specified column and sets cell.hyperlink by expanding
+    the CURIE to a full IRI. The display text (CURIE) is preserved.
+
+    Args:
+        workbook: openpyxl Workbook object.
+        sheet_name: Name of the sheet to process.
+        column_header: Header text of the IRI column (e.g., "Concept IRI*").
+        header_row: Row number where headers are located.
+    """
+    if sheet_name not in workbook.sheetnames:
+        return
+
+    ws = workbook[sheet_name]
+    iri_col = _find_column_by_header(ws, column_header, header_row)
+
+    if iri_col is None:
+        return
+
+    # Data starts after header row
+    data_start_row = header_row + 1
+    converter = config.curies_converter
+
+    for row_idx in range(data_start_row, ws.max_row + 1):
+        cell = ws.cell(row=row_idx, column=iri_col)
+        value = cell.value
+        if value and isinstance(value, str):
+            curie = value.strip()
+            # Try to expand the CURIE to full IRI
+            full_iri = converter.expand(curie)
+            if full_iri and full_iri != curie:
+                cell.hyperlink = full_iri
+                _apply_hyperlink_style(cell)
+
+
+def _add_vocabulary_iri_hyperlink(workbook, sheet_name: str = "Concept Scheme") -> None:
+    """Add hyperlink to the Vocabulary IRI field in Concept Scheme sheet.
+
+    The Concept Scheme sheet uses key-value format where the Vocabulary IRI
+    is in a specific cell. This function finds and hyperlinks it.
+
+    Args:
+        workbook: openpyxl Workbook object.
+        sheet_name: Name of the Concept Scheme sheet.
+    """
+    if sheet_name not in workbook.sheetnames:
+        return
+
+    ws = workbook[sheet_name]
+
+    # Find the row with "Vocabulary IRI" key (column A) and get value from column B
+    for row_idx in range(1, ws.max_row + 1):
+        key_cell = ws.cell(row=row_idx, column=1)
+        if key_cell.value == "Vocabulary IRI":
+            value_cell = ws.cell(row=row_idx, column=2)
+            iri_value = value_cell.value
+            if (
+                iri_value
+                and isinstance(iri_value, str)
+                and iri_value.startswith("http")
+            ):
+                # Make the IRI clickable
+                value_cell.hyperlink = iri_value.strip()
+                _apply_hyperlink_style(value_cell)
+            break
+
+
 def export_vocabulary_v1(
     concept_scheme: ConceptSchemeV1,
     concepts: list[ConceptV1],
@@ -1414,15 +1679,29 @@ def export_vocabulary_v1(
         sheet_name=PREFIXES_SHEET_NAME,
     )
 
-    # Reorder sheets and set freeze panes
+    # Post-processing: reorder sheets, add hyperlinks, set freeze panes
     from openpyxl import load_workbook
 
     wb = load_workbook(output_path)
     _reorder_sheets(wb)
 
+    # Add hyperlinks to entity IRI columns (Concepts and Collections sheets)
+    _add_entity_iri_hyperlinks(wb, "Concepts", "Concept IRI*")
+    _add_entity_iri_hyperlinks(wb, "Collections", "Collection IRI")
+
+    # Add hyperlinks to provenance columns (Concepts and Collections sheets)
+    _add_provenance_hyperlinks(wb, "Concepts")
+    _add_provenance_hyperlinks(wb, "Collections")
+
+    # Add hyperlinks to concept IRI column in Mappings sheet (with labels)
+    _add_concept_iri_hyperlinks(wb, "Mappings")
+
     # Set freeze panes for Concepts sheet
     if "Concepts" in wb.sheetnames:
         wb["Concepts"].freeze_panes = "A5"
+
+    # Add hyperlink to Vocabulary IRI in Concept Scheme
+    _add_vocabulary_iri_hyperlink(wb, CONCEPT_SCHEME_SHEET_NAME)
 
     wb.save(output_path)
     wb.close()
@@ -1546,6 +1825,7 @@ def rdf_to_excel_v1(
         concepts_data,
         concept_to_collections,
         concept_to_ordered_collections,
+        collections_data,  # For looking up collection labels
         vocab_name,
         provenance_template,
         repository_url,
@@ -1553,11 +1833,12 @@ def rdf_to_excel_v1(
     collections_v1 = rdf_collections_to_v1(
         collections_data,
         collection_to_parents,
+        concepts_data,  # For consistency (unused, collections reference other collections)
         vocab_name,
         provenance_template,
         repository_url,
     )
-    mappings_v1 = rdf_mappings_to_v1(mappings_data)
+    mappings_v1 = rdf_mappings_to_v1(mappings_data, concepts_data)
     prefixes_v1 = build_prefixes_v1()
 
     # Build ID range info and derive contributors if vocab_config is provided
@@ -1777,11 +2058,34 @@ def expand_curie(curie_or_iri: str, converter: curies.Converter) -> str:
     return expanded if expanded else curie_or_iri
 
 
-def expand_iri_list(iri_string: str, converter: curies.Converter) -> list[str]:
-    """Expand a space-separated string of CURIEs/IRIs to list of full IRIs.
+def strip_label_from_iri(iri_with_label: str) -> str:
+    """Strip the optional label suffix from an IRI string.
+
+    The label format is "curie (label)" or "iri (label)".
+    Returns just the curie/iri portion.
 
     Args:
-        iri_string: Space-separated CURIEs or IRIs.
+        iri_with_label: String like "voc4cat:0000016 (catalyst form)" or just "voc4cat:0000016".
+
+    Returns:
+        The IRI/CURIE portion without the label.
+    """
+    # Strip whitespace first
+    iri_with_label = iri_with_label.strip()
+    # Check if there's a label suffix " (something)"
+    if " (" in iri_with_label and iri_with_label.endswith(")"):
+        return iri_with_label.split(" (")[0].strip()
+    return iri_with_label
+
+
+def expand_iri_list(iri_string: str, converter: curies.Converter) -> list[str]:
+    """Expand a newline-separated string of CURIEs/IRIs to list of full IRIs.
+
+    IRIs may include optional labels in format "curie (label)" which are
+    stripped before expansion.
+
+    Args:
+        iri_string: Newline-separated CURIEs or IRIs, possibly with labels.
         converter: Curies converter to use.
 
     Returns:
@@ -1789,7 +2093,15 @@ def expand_iri_list(iri_string: str, converter: curies.Converter) -> list[str]:
     """
     if not iri_string or not iri_string.strip():
         return []
-    return [expand_curie(part.strip(), converter) for part in iri_string.split()]
+    results = []
+    for part in iri_string.split("\n"):
+        part = part.strip()
+        if not part:
+            continue
+        # Strip label if present
+        iri_only = strip_label_from_iri(part)
+        results.append(expand_curie(iri_only, converter))
+    return results
 
 
 # --- Deprecation Handling Functions ---
@@ -1894,11 +2206,11 @@ def parse_ordered_collection_positions(
 ) -> dict[str, int]:
     """Parse ordered collection position string to dict.
 
-    Format: "collIRI # pos" or "collIRI#pos" with optional whitespace.
-    Multiple entries are space-separated (outside the # separator).
+    Format: "collIRI (label) # pos" or "collIRI # pos", newline-separated.
+    Labels are optional and stripped before IRI expansion.
 
     Args:
-        position_string: String like "ex:coll1 # 1 ex:coll2 # 2"
+        position_string: String like "ex:coll1 (Label 1) # 1\\nex:coll2 (Label 2) # 2"
         converter: Curies converter for IRI expansion.
 
     Returns:
@@ -1909,25 +2221,24 @@ def parse_ordered_collection_positions(
 
     result: dict[str, int] = {}
 
-    # Split by whitespace, but we need to handle "collIRI # pos" as a unit
-    # Strategy: first split by "#" to find each entry
-    parts = position_string.split("#")
-
-    # Each part except first has: "pos [collIRI...]"
-    # Each part except last has: "[...collIRI]"
-    for i in range(len(parts) - 1):
-        # Get the collection IRI (last token before #)
-        left_tokens = parts[i].strip().split()
-        if not left_tokens:
+    # Split by newline - each entry is one line
+    for line in position_string.split("\n"):
+        line = line.strip()
+        if not line or "#" not in line:
             continue
-        coll_curie = left_tokens[-1]
 
-        # Get the position (first token after #)
-        right_tokens = parts[i + 1].strip().split()
-        if not right_tokens:
+        # Split by "#" to separate IRI (with optional label) from position
+        parts = line.split("#")
+        if len(parts) < 2:
             continue
+
+        # Left part is "collIRI (label)" or just "collIRI"
+        coll_with_label = parts[0].strip()
+        coll_curie = strip_label_from_iri(coll_with_label)
+
+        # Right part is the position
         try:
-            position = int(right_tokens[0])
+            position = int(parts[1].strip())
         except ValueError:
             continue
 
@@ -1965,7 +2276,9 @@ def aggregate_concepts(
         if not row.concept_iri:
             continue
 
-        iri = expand_curie(row.concept_iri, converter)
+        # Strip label if present (format: "curie (label)")
+        concept_iri_only = strip_label_from_iri(row.concept_iri)
+        iri = expand_curie(concept_iri_only, converter)
 
         if iri not in concepts:
             # First row for this concept - create new entry with structural data
@@ -2599,7 +2912,9 @@ def build_mappings_graph(
         if not mapping.concept_iri:
             continue
 
-        concept_iri = URIRef(expand_curie(mapping.concept_iri, converter))
+        # Strip label if present (format: "curie (label)")
+        concept_iri_only = strip_label_from_iri(mapping.concept_iri)
+        concept_iri = URIRef(expand_curie(concept_iri_only, converter))
 
         # Related matches
         for match_iri in expand_iri_list(mapping.related_matches, converter):

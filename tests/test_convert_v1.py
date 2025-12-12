@@ -855,12 +855,13 @@ class TestOrderedCollectionPositions:
         assert result == {"http://example.org/coll1": 1}
 
     def test_parse_multiple_positions(self):
-        """Test parsing multiple positions."""
+        """Test parsing multiple positions (newline-separated with optional labels)."""
         prefixes = [PrefixV1(prefix="ex", namespace="http://example.org/")]
         converter = build_curies_converter_from_prefixes(prefixes)
 
         result = parse_ordered_collection_positions(
-            "ex:coll1 # 1 ex:coll2 # 3", converter
+            "ex:coll1 (First Collection) # 1\nex:coll2 (Second Collection) # 3",
+            converter,
         )
 
         assert result == {
@@ -2070,12 +2071,19 @@ class TestProvenanceInXlsx:
 
         # Find Provenance column (column I based on our header order)
         # Row 5 is first data row (row 4 is header)
-        provenance_value = ws["I5"].value
+        cell = ws["I5"]
+        provenance_display = cell.value
+        provenance_hyperlink = cell.hyperlink
 
-        assert provenance_value is not None
-        assert "github.com" in provenance_value
-        assert "/blame/" in provenance_value
-        assert "v2025-01-01" in provenance_value
+        # Display text should be friendly format
+        assert provenance_display is not None
+        assert provenance_display.startswith("git blame for ")
+
+        # Hyperlink should contain the full URL
+        assert provenance_hyperlink is not None
+        assert "github.com" in provenance_hyperlink.target
+        assert "/blame/" in provenance_hyperlink.target
+        assert "v2025-01-01" in provenance_hyperlink.target
 
     def test_provenance_column_empty_when_env_not_set(
         self, tmp_path, temp_config, monkeypatch
