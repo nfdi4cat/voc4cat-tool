@@ -1,0 +1,42 @@
+config_version = "1.0"
+single_vocab = true
+
+[vocabs.myvocab]
+id_length = 7
+permanent_iri_part = "https://example.org/"
+
+# Scheme metadata fields
+vocabulary_iri = "https://example.org/vocab/"
+prefix = "ex"
+title = "Test Vocabulary"
+description = "A test vocabulary for unit tests."
+created_date = "2025-01-15"
+creator = """
+https://orcid.org/0000-0001-2345-6789 Alice Smith
+https://ror.org/04fa4r544 Example Org
+"""
+publisher = """
+https://ror.org/04fa4r544 Example Organization
+"""
+custodian = """
+Bob Jones https://github.com/bjones https://orcid.org/0000-0002-1825-0097
+"""
+catalogue_pid = "https://doi.org/10.1234/example"
+documentation = "https://example.org/docs"
+issue_tracker = "https://github.com/example/vocab/issues"
+helpdesk = "https://example.org/helpdesk"
+repository = "https://github.com/example/vocab"
+homepage = "https://example.org"
+conforms_to = "https://w3id.org/profile/vocpub"
+
+[vocabs.myvocab.checks]
+allow_delete = false
+
+[vocabs.myvocab.prefix_map]
+ex = "https://example.org/"
+
+[[vocabs.myvocab.id_range]]
+first_id = 1
+last_id = 100
+gh_name = "test-user"
+orcid = "0000-0001-2345-6789"

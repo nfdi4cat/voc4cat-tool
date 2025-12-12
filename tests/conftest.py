@@ -93,6 +93,10 @@ def temp_config():
 
     After the test the config will be reset to default.
     """
+    from curies import Converter
+    from rdflib import Graph
+    from rdflib.namespace import NamespaceManager
+
     from voc4cat import config
 
     config.curies_converter.add_prefix("ex", "http://example.org/", merge=True)
@@ -100,6 +104,119 @@ def temp_config():
 
     # Reset the globally changed config to default.
     config.load_config()
+    # Also reset curies_converter to default state
+    config.curies_converter = Converter.from_prefix_map(
+        {prefix: str(url) for prefix, url in NamespaceManager(Graph()).namespaces()}
+    )
+    config.curies_converter.add_prefix("ex", "http://example.org/", merge=True)
+
+
+# Vocab Config Fixtures for v1.0 conversion tests
+@pytest.fixture
+def test_vocab_config():
+    """Minimal vocab config for testing excel_to_rdf_v1."""
+    from voc4cat.config import Checks, Vocab
+
+    return Vocab(
+        id_length=7,
+        permanent_iri_part="http://example.org/test/",
+        checks=Checks(allow_delete=False),
+        prefix_map={"ex": "http://example.org/"},
+        vocabulary_iri="http://example.org/test/",
+        title="Test Vocabulary",
+        description="Test vocabulary for unit tests",
+        created_date="2025-01-01",
+        creator="https://orcid.org/0000-0001-2345-6789",
+        repository="https://github.com/test/vocab",
+    )
+
+
+@pytest.fixture
+def mandatory_fields():
+    """Default mandatory fields for testing - can be merged into test Vocab configs."""
+    return {
+        "vocabulary_iri": "https://example.org/vocab/",
+        "title": "Test Vocabulary",
+        "description": "Test vocabulary for unit tests",
+        "created_date": "2025-01-01",
+        "creator": "https://orcid.org/0000-0001-2345-6789",
+        "repository": "https://github.com/test/vocab",
+    }
+
+
+def make_vocab_config_from_rdf(graph, vocab_iri: str | None = None):
+    """Create a Vocab config from RDF graph for testing roundtrips.
+
+    This extracts ConceptScheme metadata from the RDF and creates a Vocab config
+    that can be used with excel_to_rdf_v1.
+    """
+    from rdflib import DCTERMS, RDF, SKOS, URIRef
+
+    from voc4cat.config import Checks, Vocab
+
+    # Find concept scheme
+    if vocab_iri is None:
+        schemes = list(graph.subjects(RDF.type, SKOS.ConceptScheme))
+        if not schemes:
+            # Try to find via hasTopConcept
+            for s in graph.subjects(SKOS.hasTopConcept, None):
+                schemes.append(s)
+                break
+        vocab_iri = str(schemes[0]) if schemes else "http://example.org/"
+
+    scheme_uri = URIRef(vocab_iri)
+
+    # Extract metadata from the concept scheme
+    title = ""
+    description = ""
+    created_date = ""
+    creator = ""
+
+    # Get title from concept scheme's prefLabel
+    for obj in graph.objects(scheme_uri, SKOS.prefLabel):
+        title = str(obj)
+        break
+
+    # Get description from concept scheme's definition
+    for obj in graph.objects(scheme_uri, SKOS.definition):
+        description = str(obj)
+        break
+
+    # Get created date
+    for obj in graph.objects(scheme_uri, DCTERMS.created):
+        created_date = str(obj)
+        break
+
+    # Get creator
+    for obj in graph.objects(scheme_uri, DCTERMS.creator):
+        creator = str(obj)
+        break
+
+    # Derive permanent_iri_part from vocab_iri
+    permanent_iri_part = vocab_iri.rstrip("/") + "/"
+
+    # Provide defaults for mandatory fields if not found in RDF
+    if not title:
+        title = "Test Vocabulary"
+    if not description:
+        description = "Test vocabulary for unit tests"
+    if not created_date:
+        created_date = "2025-01-01"
+    if not creator:
+        creator = "https://orcid.org/0000-0001-2345-6789"
+
+    return Vocab(
+        id_length=7,
+        permanent_iri_part=permanent_iri_part,
+        checks=Checks(allow_delete=False),
+        prefix_map={"ex": permanent_iri_part},
+        vocabulary_iri=vocab_iri,
+        title=title,
+        description=description,
+        created_date=created_date,
+        creator=creator,
+        repository="https://github.com/test/vocab",  # Always provide default
+    )
 
 
 # XLSX Testing Fixtures

@@ -1,0 +1,7 @@
+# RDF files should always use LF line endings
+*.ttl text eol=lf
+*.rdf text eol=lf
+*.nt text eol=lf
+*.nq text eol=lf
+*.jsonld text eol=lf
+*.trig text eol=lf

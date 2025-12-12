@@ -21,6 +21,18 @@ The identical template `voc4cat_template_043.xlsx` is included in [voc4cat-templ
 
 The 0.4.3-templates here still match structure-wise with the templates in [VocExcel](https://github.com/rdflib/VocExcel) of the same version number.
 
+#### Revision 2025-07a
+
+- Switch from ChildrenIRIs to ParentIRIs for concept hierarchy representation.
+- Move template version from sheet "Introduction" to "Concept Scheme".
+  The sheet "Introduction" sheet is no longer required but still present.
+
+#### Revision 2025-02a
+
+- Update help to reflect the prefix sheet is read-only.
+- Update introduction to reflect progress of tooling.
+- Adjust column widths for better compatibility with new IRI notation with qualifier.
+
 #### Revision 2023-08b
 
 - Cells version and modified date in concept scheme sheet are now optional. Updated notes accordingly.

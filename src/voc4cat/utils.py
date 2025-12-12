@@ -153,7 +153,8 @@ def adjust_length_of_tables(
                     old_range,
                     adjusted,
                 )
-            if copy_style:
+            # Skip copy_style for key-value tables (they have heterogeneous rows)
+            if copy_style and not t_name.startswith("KeyValue_"):
                 # Read styles from first row
                 styles_in_row = []
                 for col in range(start_col, end_col + 1):

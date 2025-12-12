@@ -191,7 +191,18 @@ def check(args):
     # validate rdf files with profile/pyshacl
     for file in rdf_files:
         logger.debug("Running SHACL validation for file %s", file)
+        # Resolve profile_local_path from vocab config if available
+        profile_path = None
+        vocab_name = file.stem.lower()
+        vocab_config = config.IDRANGES.vocabs.get(vocab_name)
+        if vocab_config and vocab_config.profile_local_path and config.IDRANGES_PATH:
+            profile_path = (
+                config.IDRANGES_PATH.parent / vocab_config.profile_local_path
+            ).resolve()
         validate_with_profile(
-            str(file), profile=args.profile, error_level=args.fail_at_level
+            str(file),
+            profile=args.profile,
+            error_level=args.fail_at_level,
+            profile_path=profile_path,
         )
         logger.info("-> The file is valid according to the %s profile.", args.profile)

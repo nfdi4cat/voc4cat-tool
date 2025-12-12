@@ -60,6 +60,7 @@ class IdrangeItem(BaseModel):
     ] = ""
     orcid: ORCIDIdentifier | None = None
     ror_id: RORIdentifier | None = None
+    name: str = ""  # Optional human-readable name (from ORCID profile)
 
     @model_validator(mode="after")
     def order_of_ids(self) -> Self:
@@ -88,11 +89,33 @@ class IdrangeItem(BaseModel):
 
 
 class Vocab(BaseModel):
+    # Required fields
     id_length: Annotated[int, Field(ge=1, lt=19)]
     permanent_iri_part: AnyHttpUrl
     checks: Checks
     prefix_map: dict[str, AnyHttpUrl]
     id_range: list[IdrangeItem] = []
+
+    # Scheme metadata fields (all optional, used for ConceptScheme in Excel)
+    vocabulary_iri: str = ""
+    prefix: str = ""
+    title: str = ""
+    description: str = ""
+    created_date: str = ""
+    creator: str = ""  # Multi-line: "<orcid-URL or ror> <name>" per line
+    publisher: str = ""  # Multi-line: "<orcid-URL or ror> <name>" per line
+    custodian: str = ""  # Multi-line: "<name> <gh-profile-URL> <orcid-URL>" per line
+    catalogue_pid: str = ""
+    documentation: str = ""
+    issue_tracker: str = ""
+    helpdesk: str = ""
+    repository: str = ""
+    provenance_url_template: str = ""  # Jinja template for provenance (git blame) URLs
+    homepage: str = ""
+    conforms_to: str = ""
+    profile_local_path: str = (
+        ""  # Path to SHACL profile file, relative to idranges.toml
+    )
 
     @field_validator("id_range", mode="before")
     @classmethod
@@ -107,8 +130,39 @@ class Vocab(BaseModel):
             ids_defined = ids_defined | new_ids
         return value
 
+    @model_validator(mode="after")
+    def validate_required_scheme_fields(self) -> Self:
+        """Validate that mandatory ConceptScheme metadata fields are not empty."""
+        required_fields = [
+            "vocabulary_iri",
+            "title",
+            "description",
+            "created_date",
+            "creator",
+            "repository",
+        ]
+
+        missing = []
+        for field_name in required_fields:
+            value = getattr(self, field_name)
+            if not value or not value.strip():
+                missing.append(field_name)
+
+        if missing:
+            msg = f"Mandatory ConceptScheme fields are empty: {', '.join(missing)}"
+            raise ValueError(msg)
+
+        # Validate provenance_url_template if provided
+        if self.provenance_url_template:
+            if "{{ entity_id }}" not in self.provenance_url_template:
+                msg = "provenance_url_template must contain '{{ entity_id }}'"
+                raise ValueError(msg)
+
+        return self
+
 
 class IDrangeConfig(BaseModel):
+    config_version: str = ""
     single_vocab: bool = False
     vocabs: dict[Annotated[str, StringConstraints(to_lower=True)], Vocab] = {}
     default_config: bool = False
@@ -123,6 +177,9 @@ class IDrangeConfig(BaseModel):
 
 # These parameters will be updated/set by load_config.
 IDRANGES = IDrangeConfig(default_config=True)
+IDRANGES_PATH: Path | None = (
+    None  # Path to idranges.toml (for resolving relative paths)
+)
 ID_PATTERNS = {}
 ID_RANGES_BY_ACTOR = defaultdict(list)
 CURIES_CONVERTER_MAP = {}
@@ -150,6 +207,7 @@ def load_config(config_file: Path | None = None, config: IDrangeConfig | None = 
     new_conf = {}
     new_conf["ID_PATTERNS"] = {}
     new_conf["ID_RANGES_BY_ACTOR"] = defaultdict(list)
+    new_conf["IDRANGES_PATH"] = None
     if config_file is not None and not config_file.exists():
         logger.warning('Configuration file "%s" not found.', config_file)
     if (True if config_file is None else not config_file.exists()) and config is None:
@@ -160,6 +218,7 @@ def load_config(config_file: Path | None = None, config: IDrangeConfig | None = 
             conf = tomllib.load(fp)
         logger.debug("Config loaded from: %s", config_file)
         new_conf["IDRANGES"] = IDrangeConfig(**conf)
+        new_conf["IDRANGES_PATH"] = config_file.resolve()
     else:
         new_conf["IDRANGES"] = IDrangeConfig().model_validate_json(
             config.model_dump_json()

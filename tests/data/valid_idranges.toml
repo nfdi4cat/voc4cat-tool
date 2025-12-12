@@ -4,6 +4,14 @@ single_vocab = true
 id_length = 7
 permanent_iri_part = "https://example.org/"
 
+# Mandatory scheme metadata fields
+vocabulary_iri = "https://example.org/vocab/"
+title = "Test Vocabulary"
+description = "A test vocabulary for unit tests"
+created_date = "2025-01-01"
+creator = "https://orcid.org/0000-0001-2345-6789 Test Creator"
+repository = "https://github.com/test/vocab"
+
 [vocabs.myvocab.checks]
 allow_delete = false
 
@@ -15,6 +23,7 @@ photo = "https://example.org/nfdi4cat/photo/"
 first_id = 1
 last_id = 10
 gh_name = "sofia-garcia"
+name = "Sofia Garcia"
 orcid = "0000-0001-2345-6789"
 ror_id = "https://ror.org/04fa4r544"
 
@@ -29,5 +38,6 @@ ror_id = ""
 first_id = 21
 last_id = 30
 gh_name = ""
+name = "Anonymous Contributor"
 orcid = "0000-0002-1825-0097"
 ror_id = ""

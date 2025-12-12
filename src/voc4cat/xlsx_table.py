@@ -21,6 +21,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import BaseModel, ValidationError
+from pydantic_core import PydanticUndefined
 
 from .xlsx_common import (
     MAX_SHEETNAME_LENGTH,
@@ -43,6 +44,7 @@ class XLSXTableConfig(XLSXConfig):
     table_style: str = "TableStyleMedium9"
     header_row_color: str | None = None
     freeze_panes: bool = True
+    bold_fields: set[str] = field(default_factory=set)
 
 
 # Join configuration for complex relationships
@@ -362,8 +364,6 @@ class XLSXTableFormatter(XLSXFormatter):
         if not self._has_any_descriptions(fields):
             return
 
-        # Get model class from first data item to extract field descriptions
-        model_class = data[0].__class__
         description_row = self.row_calculator.get_description_row(fields)
         start_col_idx = self.config.start_column
 
@@ -388,7 +388,7 @@ class XLSXTableFormatter(XLSXFormatter):
                 color=getattr(self.config, "description_color", "666666"),
             )
             worksheet[description_cell].alignment = Alignment(
-                horizontal="center", vertical="center"
+                horizontal="center", vertical="center", wrap_text=True
             )
 
     def _has_any_units(self, fields: list[FieldAnalysis]) -> bool:
@@ -448,7 +448,7 @@ class XLSXTableFormatter(XLSXFormatter):
                     color=getattr(self.config, "meaning_color", "666666"),
                 )
                 worksheet[meaning_cell].alignment = Alignment(
-                    horizontal="center", vertical="center"
+                    horizontal="center", vertical="center", wrap_text=True
                 )
 
     def _add_field_units(
@@ -487,7 +487,7 @@ class XLSXTableFormatter(XLSXFormatter):
                     color=getattr(self.config, "unit_color", "666666"),
                 )
                 worksheet[unit_cell].alignment = Alignment(
-                    horizontal="center", vertical="center"
+                    horizontal="center", vertical="center", wrap_text=True
                 )
 
     def _add_headers(self, worksheet: Worksheet, fields: list[FieldAnalysis]) -> None:
@@ -503,25 +503,23 @@ class XLSXTableFormatter(XLSXFormatter):
 
             header_text = self._format_header_text(field_analysis)
             worksheet[header_cell] = header_text
-            worksheet[header_cell].font = Font(bold=True)
+            worksheet[header_cell].alignment = Alignment(
+                wrap_text=True, vertical="center"
+            )
 
-            # Add header styling
+            # Only apply explicit header styling if configured
+            # Otherwise, let the table style control header appearance (font, color, fill)
             if (
                 hasattr(self.config, "header_row_color")
                 and self.config.header_row_color
             ):
+                worksheet[header_cell].font = Font(bold=True)
                 header_fill = PatternFill(
                     start_color=self.config.header_row_color,
                     end_color=self.config.header_row_color,
                     fill_type="solid",
                 )
-            else:
-                header_fill = PatternFill(
-                    start_color="CCCCCC",
-                    end_color="CCCCCC",
-                    fill_type="solid",
-                )
-            worksheet[header_cell].fill = header_fill
+                worksheet[header_cell].fill = header_fill
 
     def _write_data_rows(
         self,
@@ -550,6 +548,9 @@ class XLSXTableFormatter(XLSXFormatter):
                     data_cell.value = formatted_value
                     # Apply data cell formatting (vertical center, left align, text wrap for strings)
                     self._apply_data_cell_formatting(data_cell, field_analysis)
+                    # Apply bold formatting for specified fields
+                    if field_analysis.name in self.config.bold_fields:
+                        data_cell.font = Font(bold=True)
                 except Exception as e:
                     raise XLSXSerializationError(field_analysis.name, value, e) from e
 
@@ -712,6 +713,7 @@ class XLSXTableFormatter(XLSXFormatter):
         model_class: type[BaseModel],
     ) -> dict[str, Any]:
         """Convert row data to model-compatible format."""
+
         model_data: dict[str, Any] = {}
 
         for field_analysis in fields:
@@ -724,21 +726,25 @@ class XLSXTableFormatter(XLSXFormatter):
                 if field_def:
                     # Check if field is optional (has None in Union) or has a default value
                     field_type = field_def.annotation
-                    is_optional = (
+                    has_default = (
+                        hasattr(field_def, "default")
+                        and field_def.default is not PydanticUndefined
+                    )
+                    is_optional_type = (
                         field_analysis.is_optional
                         or XLSXFieldAnalyzer.is_optional_type(field_type)
-                        or (
-                            hasattr(field_def, "default")
-                            and field_def.default is not None
-                        )
                     )
 
-                    if not is_optional:
+                    if not is_optional_type and not has_default:
                         msg = f"Required field '{field_analysis.name}' is empty"
                         raise ValueError(msg)
 
-                model_data[field_analysis.name] = None
-                continue
+                    # If field accepts None (is_optional_type), include None in data
+                    # If field has non-None default, skip it so Pydantic uses default
+                    if is_optional_type:
+                        model_data[field_analysis.name] = None
+                    # else: skip - let Pydantic use the model's default
+                    continue
 
             try:
                 model_data[field_analysis.name] = (
@@ -805,9 +811,6 @@ class XLSXJoinedTableFormatter(XLSXTableFormatter):
     ) -> list[FieldAnalysis]:
         """Create field analyses for the flattened structure."""
         flattened_fields = []
-
-        # Create a mapping from field name to original field analysis
-        field_map = {field.name: field for field in original_fields}
 
         for field_name in self.join_config.flattened_fields:
             field_analysis = None
@@ -912,11 +915,18 @@ class XLSXJoinedTableFormatter(XLSXTableFormatter):
                         converted_value = self.serialization_engine.deserialize_value(
                             raw_value, field_analysis, model_class
                         )
-                        flattened_row[field_name] = converted_value
+                        # If value is None, only add it if the field accepts None
+                        # Otherwise, skip it so Pydantic uses the model's default
+                        if converted_value is not None:
+                            flattened_row[field_name] = converted_value
+                        elif field_analysis.is_optional:
+                            flattened_row[field_name] = None
                     except Exception as e:
                         raise XLSXDeserializationError(field_name, raw_value, e) from e
                 else:
-                    flattened_row[field_name] = row_data.get(field_name)
+                    value = row_data.get(field_name)
+                    if value is not None:
+                        flattened_row[field_name] = value
             flattened_data.append(flattened_row)
 
         # Use JoinedModelProcessor to reconstruct the models
