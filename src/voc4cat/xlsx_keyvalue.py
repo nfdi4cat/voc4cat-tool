@@ -83,9 +83,55 @@ class XLSXKeyValueFormatter(XLSXFormatter):
         # Add validation (always enabled)
         self._add_data_validation(worksheet, fields, config)
 
-        # Auto-adjust columns - all columns always shown
-        num_columns = 5  # Field + Value + Unit + Description + Meaning
-        self._auto_adjust_columns(worksheet, num_columns)
+        # Auto-adjust columns - dynamic based on which optional columns are shown
+        col_layout = self._get_column_layout(fields)
+        self._auto_adjust_columns(worksheet, len(col_layout))
+
+    def _has_any_units(self, fields: list[FieldAnalysis]) -> bool:
+        """Check if any field has units defined."""
+        return any(
+            field_analysis.xlsx_metadata and field_analysis.xlsx_metadata.unit
+            for field_analysis in fields
+        )
+
+    def _has_any_descriptions(self, fields: list[FieldAnalysis]) -> bool:
+        """Check if any field has descriptions defined."""
+        return any(
+            field_analysis.xlsx_metadata and field_analysis.xlsx_metadata.description
+            for field_analysis in fields
+        )
+
+    def _has_any_meanings(self, fields: list[FieldAnalysis]) -> bool:
+        """Check if any field has meanings defined."""
+        return any(
+            field_analysis.xlsx_metadata and field_analysis.xlsx_metadata.meaning
+            for field_analysis in fields
+        )
+
+    def _get_column_layout(self, fields: list[FieldAnalysis]) -> dict[str, str]:
+        """Get column layout based on which optional columns are present."""
+        has_units = self._has_any_units(fields)
+        has_descriptions = self._has_any_descriptions(fields)
+        has_meanings = self._has_any_meanings(fields)
+
+        # Build column mapping dynamically
+        # Required: Field (A), Value (B)
+        # Optional: Unit, Description, Meaning (only shown if any field has them)
+        columns = {"field": "A", "value": "B"}
+        next_col = "C"
+
+        if has_units:
+            columns["unit"] = next_col
+            next_col = chr(ord(next_col) + 1)
+
+        if has_descriptions:
+            columns["description"] = next_col
+            next_col = chr(ord(next_col) + 1)
+
+        if has_meanings:
+            columns["meaning"] = next_col
+
+        return columns
 
     def _add_kv_title(
         self, worksheet: Worksheet, title: str, config: XLSXKeyValueConfig
@@ -104,16 +150,25 @@ class XLSXKeyValueFormatter(XLSXFormatter):
         config: XLSXKeyValueConfig,
         fields: list[FieldAnalysis],
     ) -> None:
-        """Add field/value/description/meaning/unit headers with dynamic positioning."""
+        """Add field/value headers with optional unit/description/meaning columns."""
         header_row = self.row_calculator.get_first_content_row()
-        worksheet[f"A{header_row}"] = config.field_column_header
-        worksheet[f"B{header_row}"] = config.value_column_header
+        col_layout = self._get_column_layout(fields)
 
-        # Build headers - all columns always shown
-        # Order: Field | Value | Unit | Description | Meaning
-        worksheet[f"C{header_row}"] = config.unit_column_header
-        worksheet[f"D{header_row}"] = config.description_column_header
-        worksheet[f"E{header_row}"] = config.meaning_column_header
+        # Required columns
+        worksheet[f"{col_layout['field']}{header_row}"] = config.field_column_header
+        worksheet[f"{col_layout['value']}{header_row}"] = config.value_column_header
+
+        # Optional columns - only write if present in layout
+        if "unit" in col_layout:
+            worksheet[f"{col_layout['unit']}{header_row}"] = config.unit_column_header
+        if "description" in col_layout:
+            worksheet[f"{col_layout['description']}{header_row}"] = (
+                config.description_column_header
+            )
+        if "meaning" in col_layout:
+            worksheet[f"{col_layout['meaning']}{header_row}"] = (
+                config.meaning_column_header
+            )
 
     def _write_field_data(
         self,
@@ -124,13 +179,14 @@ class XLSXKeyValueFormatter(XLSXFormatter):
     ) -> None:
         """Write field data in key-value format."""
         row = self.row_calculator.get_first_content_row() + 1
+        col_layout = self._get_column_layout(fields)
 
         for field_analysis in fields:
             value = getattr(data, field_analysis.name, None)
 
             # Write field name
             display_name = self._get_field_display_name(field_analysis)
-            field_name_cell = worksheet[f"A{row}"]
+            field_name_cell = worksheet[f"{col_layout['field']}{row}"]
             field_name_cell.value = display_name
             # Apply formatting to field name cell (treat as text field)
             text_field_analysis = FieldAnalysis(name="field_name", field_type=str)
@@ -141,7 +197,7 @@ class XLSXKeyValueFormatter(XLSXFormatter):
                 formatted_value = self.serialization_engine.serialize_value(
                     value, field_analysis
                 )
-                value_cell = worksheet[f"B{row}"]
+                value_cell = worksheet[f"{col_layout['value']}{row}"]
                 value_cell.value = formatted_value
                 # Apply special formatting for Value column (always left-aligned)
                 # Skip formatting if disabled in configuration
@@ -160,45 +216,49 @@ class XLSXKeyValueFormatter(XLSXFormatter):
             except Exception as e:
                 raise XLSXSerializationError(field_analysis.name, value, e) from e
 
-            # Write additional columns - all columns always shown
-            # Order: Field | Value | Unit | Description | Meaning
+            # Write optional columns - only if present in layout
 
-            # Unit column (C)
-            unit_value = (
-                field_analysis.xlsx_metadata.unit
-                if field_analysis.xlsx_metadata and field_analysis.xlsx_metadata.unit
-                else ""
-            )
-            unit_cell = worksheet[f"C{row}"]
-            unit_cell.value = unit_value
-            # Apply formatting to unit cell (treat as text field)
-            text_field_analysis = FieldAnalysis(name="unit", field_type=str)
-            self._apply_data_cell_formatting(unit_cell, text_field_analysis)
+            # Unit column (optional)
+            if "unit" in col_layout:
+                unit_value = (
+                    field_analysis.xlsx_metadata.unit
+                    if field_analysis.xlsx_metadata
+                    and field_analysis.xlsx_metadata.unit
+                    else ""
+                )
+                unit_cell = worksheet[f"{col_layout['unit']}{row}"]
+                unit_cell.value = unit_value
+                # Apply formatting to unit cell (treat as text field)
+                text_field_analysis = FieldAnalysis(name="unit", field_type=str)
+                self._apply_data_cell_formatting(unit_cell, text_field_analysis)
 
-            # Description column (D)
-            description = (
-                field_analysis.xlsx_metadata.description
-                if field_analysis.xlsx_metadata
-                and field_analysis.xlsx_metadata.description
-                else ""
-            )
-            description_cell = worksheet[f"D{row}"]
-            description_cell.value = description
-            # Apply formatting to description cell (treat as text field)
-            text_field_analysis = FieldAnalysis(name="description", field_type=str)
-            self._apply_data_cell_formatting(description_cell, text_field_analysis)
+            # Description column (optional)
+            if "description" in col_layout:
+                description = (
+                    field_analysis.xlsx_metadata.description
+                    if field_analysis.xlsx_metadata
+                    and field_analysis.xlsx_metadata.description
+                    else ""
+                )
+                description_cell = worksheet[f"{col_layout['description']}{row}"]
+                description_cell.value = description
+                # Apply formatting to description cell (treat as text field)
+                text_field_analysis = FieldAnalysis(name="description", field_type=str)
+                self._apply_data_cell_formatting(description_cell, text_field_analysis)
 
-            # Meaning column (E)
-            meaning_value = (
-                field_analysis.xlsx_metadata.meaning
-                if field_analysis.xlsx_metadata and field_analysis.xlsx_metadata.meaning
-                else ""
-            )
-            meaning_cell = worksheet[f"E{row}"]
-            meaning_cell.value = meaning_value
-            # Apply formatting to meaning cell (treat as text field)
-            text_field_analysis = FieldAnalysis(name="meaning", field_type=str)
-            self._apply_data_cell_formatting(meaning_cell, text_field_analysis)
+            # Meaning column (optional)
+            if "meaning" in col_layout:
+                meaning_value = (
+                    field_analysis.xlsx_metadata.meaning
+                    if field_analysis.xlsx_metadata
+                    and field_analysis.xlsx_metadata.meaning
+                    else ""
+                )
+                meaning_cell = worksheet[f"{col_layout['meaning']}{row}"]
+                meaning_cell.value = meaning_value
+                # Apply formatting to meaning cell (treat as text field)
+                text_field_analysis = FieldAnalysis(name="meaning", field_type=str)
+                self._apply_data_cell_formatting(meaning_cell, text_field_analysis)
 
             row += 1
 
@@ -210,8 +270,9 @@ class XLSXKeyValueFormatter(XLSXFormatter):
         fields: list[FieldAnalysis],
     ) -> Table:
         """Create Excel table for key-value data."""
-        # All columns always present
-        num_columns = 5  # Field + Value + Unit + Description + Meaning
+        # Calculate number of columns from layout
+        col_layout = self._get_column_layout(fields)
+        num_columns = len(col_layout)
 
         # Calculate table range - headers start at dynamic position
         start_row = self.row_calculator.get_first_content_row()
@@ -289,6 +350,34 @@ class XLSXKeyValueFormatter(XLSXFormatter):
             msg = f"Failed to create {model_class.__name__} instance: {e}"
             raise ValueError(msg) from e
 
+    def _detect_column_layout_from_headers(
+        self,
+        worksheet: Worksheet,
+        config: XLSXKeyValueConfig,
+    ) -> dict[str, str]:
+        """Detect column layout by reading the header row."""
+        header_row = self.row_calculator.get_first_content_row()
+        col_layout = {}
+
+        # Scan columns A through G to find headers
+        for col_idx in range(1, 8):  # A=1, B=2, ..., G=7
+            col_letter = get_column_letter(col_idx)
+            header_value = worksheet[f"{col_letter}{header_row}"].value
+            if header_value:
+                header_text = str(header_value).strip()
+                if header_text == config.field_column_header:
+                    col_layout["field"] = col_letter
+                elif header_text == config.value_column_header:
+                    col_layout["value"] = col_letter
+                elif header_text == config.unit_column_header:
+                    col_layout["unit"] = col_letter
+                elif header_text == config.description_column_header:
+                    col_layout["description"] = col_letter
+                elif header_text == config.meaning_column_header:
+                    col_layout["meaning"] = col_letter
+
+        return col_layout
+
     def _read_field_data(
         self,
         worksheet: Worksheet,
@@ -299,26 +388,35 @@ class XLSXKeyValueFormatter(XLSXFormatter):
         """Read field data from worksheet."""
         field_data = {}
 
-        # Note: For reading data, we need to pass the fields but we don't have direct access here
-        # The fields list needs to be passed through from the calling method
-        fields_list = list(field_dict.values()) if field_dict else []
+        # Detect column layout from headers (supports both old and new formats)
+        col_layout = self._detect_column_layout_from_headers(worksheet, config)
+
+        # Get column letters (with fallback for required columns)
+        field_col = col_layout.get("field", "A")
+        value_col = col_layout.get("value", "B")
+        unit_col = col_layout.get("unit")  # Optional
+        meaning_col = col_layout.get("meaning")  # Optional
+
         start_row = self.row_calculator.get_first_content_row() + 1
         for row in range(start_row, worksheet.max_row + 1):
-            field_name_cell = worksheet[f"A{row}"]
-            value_cell = worksheet[f"B{row}"]
+            field_name_cell = worksheet[f"{field_col}{row}"]
+            value_cell = worksheet[f"{value_col}{row}"]
 
-            # Read unit and meaning - all columns always present
-            # Order: Field | Value | Unit | Description | Meaning
+            # Read unit (if column exists)
+            worksheet_unit = ""
+            if unit_col:
+                unit_cell = worksheet[f"{unit_col}{row}"]
+                worksheet_unit = unit_cell.value
+                worksheet_unit = worksheet_unit.strip() if worksheet_unit else ""
 
-            # Read unit (column C)
-            unit_cell = worksheet[f"C{row}"]
-            worksheet_unit = unit_cell.value
-            worksheet_unit = worksheet_unit.strip() if worksheet_unit else ""
-
-            # Read meaning (column E)
-            meaning_cell = worksheet[f"E{row}"]
-            worksheet_meaning = meaning_cell.value
-            worksheet_meaning = worksheet_meaning.strip() if worksheet_meaning else ""
+            # Read meaning (if column exists)
+            worksheet_meaning = ""
+            if meaning_col:
+                meaning_cell = worksheet[f"{meaning_col}{row}"]
+                worksheet_meaning = meaning_cell.value
+                worksheet_meaning = (
+                    worksheet_meaning.strip() if worksheet_meaning else ""
+                )
 
             if not field_name_cell.value:
                 continue
@@ -333,33 +431,39 @@ class XLSXKeyValueFormatter(XLSXFormatter):
                 field_analysis = field_dict[field_name]
                 raw_value = value_cell.value
 
-                # Validate unit consistency (if field has unit defined)
-                expected_unit = (
-                    field_analysis.xlsx_metadata.unit
-                    if field_analysis.xlsx_metadata
-                    else None
-                )
-                if expected_unit and worksheet_unit and worksheet_unit != expected_unit:
-                    raise ValueError(
-                        f"Unit mismatch for field '{field_name}': "
-                        f"expected '{expected_unit}', found '{worksheet_unit}'"
+                # Validate unit consistency (if field has unit defined and column exists)
+                if unit_col:
+                    expected_unit = (
+                        field_analysis.xlsx_metadata.unit
+                        if field_analysis.xlsx_metadata
+                        else None
                     )
+                    if (
+                        expected_unit
+                        and worksheet_unit
+                        and worksheet_unit != expected_unit
+                    ):
+                        raise ValueError(
+                            f"Unit mismatch for field '{field_name}': "
+                            f"expected '{expected_unit}', found '{worksheet_unit}'"
+                        )
 
-                # Validate meaning consistency (if field has meaning defined)
-                expected_meaning = (
-                    field_analysis.xlsx_metadata.meaning
-                    if field_analysis.xlsx_metadata
-                    else None
-                )
-                if (
-                    expected_meaning
-                    and worksheet_meaning
-                    and worksheet_meaning != expected_meaning
-                ):
-                    raise ValueError(
-                        f"Meaning mismatch for field '{field_name}': "
-                        f"expected '{expected_meaning}', found '{worksheet_meaning}'"
+                # Validate meaning consistency (if field has meaning defined and column exists)
+                if meaning_col:
+                    expected_meaning = (
+                        field_analysis.xlsx_metadata.meaning
+                        if field_analysis.xlsx_metadata
+                        else None
                     )
+                    if (
+                        expected_meaning
+                        and worksheet_meaning
+                        and worksheet_meaning != expected_meaning
+                    ):
+                        raise ValueError(
+                            f"Meaning mismatch for field '{field_name}': "
+                            f"expected '{expected_meaning}', found '{worksheet_meaning}'"
+                        )
 
                 try:
                     converted_value = self.serialization_engine.deserialize_value(
