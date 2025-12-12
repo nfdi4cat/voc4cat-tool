@@ -113,6 +113,9 @@ class Vocab(BaseModel):
     provenance_url_template: str = ""  # Jinja template for provenance (git blame) URLs
     homepage: str = ""
     conforms_to: str = ""
+    profile_local_path: str = (
+        ""  # Path to SHACL profile file, relative to idranges.toml
+    )
 
     @field_validator("id_range", mode="before")
     @classmethod
@@ -174,6 +177,9 @@ class IDrangeConfig(BaseModel):
 
 # These parameters will be updated/set by load_config.
 IDRANGES = IDrangeConfig(default_config=True)
+IDRANGES_PATH: Path | None = (
+    None  # Path to idranges.toml (for resolving relative paths)
+)
 ID_PATTERNS = {}
 ID_RANGES_BY_ACTOR = defaultdict(list)
 CURIES_CONVERTER_MAP = {}
@@ -201,6 +207,7 @@ def load_config(config_file: Path | None = None, config: IDrangeConfig | None = 
     new_conf = {}
     new_conf["ID_PATTERNS"] = {}
     new_conf["ID_RANGES_BY_ACTOR"] = defaultdict(list)
+    new_conf["IDRANGES_PATH"] = None
     if config_file is not None and not config_file.exists():
         logger.warning('Configuration file "%s" not found.', config_file)
     if (True if config_file is None else not config_file.exists()) and config is None:
@@ -211,6 +218,7 @@ def load_config(config_file: Path | None = None, config: IDrangeConfig | None = 
             conf = tomllib.load(fp)
         logger.debug("Config loaded from: %s", config_file)
         new_conf["IDRANGES"] = IDrangeConfig(**conf)
+        new_conf["IDRANGES_PATH"] = config_file.resolve()
     else:
         new_conf["IDRANGES"] = IDrangeConfig().model_validate_json(
             config.model_dump_json()

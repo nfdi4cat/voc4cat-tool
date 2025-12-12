@@ -81,6 +81,10 @@ created_date = "2025-01-01"
 # Optional: URL of SHACL profile(s) the vocabulary conforms to
 # conforms_to = ""
 
+# Optional: Path to local SHACL profile file for validation
+# Path is relative to this idranges.toml file location
+# profile_local_path = "profiles/vocpub-5.2-validator.ttl"
+
 # ==== Checks Configuration ====
 # Section to configure checks (useful in CI pipeline)
 [vocabs.myvocab.checks]
