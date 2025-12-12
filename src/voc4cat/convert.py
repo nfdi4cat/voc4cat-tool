@@ -44,6 +44,7 @@ def validate_with_profile(
     data_graph: GraphLike | str | bytes,
     profile="vocpub",
     error_level=1,
+    profile_path: Path | None = None,
 ):
     if profile not in profiles.PROFILES:
         msg = "The profile chosen for conversion must be one of '{}'. 'vocpub' is default".format(
@@ -52,10 +53,21 @@ def validate_with_profile(
         raise Voc4catError(msg)
     allow_warnings = error_level > 1
 
+    # Determine SHACL profile file path
+    if profile_path is not None:
+        if not profile_path.exists():
+            msg = f"SHACL profile file not found: {profile_path}"
+            logger.error(msg)
+            raise Voc4catError(msg)
+        shacl_graph_path = str(profile_path)
+    else:
+        # Default to bundled vocpub-4.7.ttl
+        shacl_graph_path = str(Path(__file__).parent / "profile" / "vocpub-4.7.ttl")
+
     # validate the RDF file
     conforms, results_graph, results_text = pyshacl.validate(
         data_graph,
-        shacl_graph=str(Path(__file__).parent / "profile" / "vocpub-4.7.ttl"),
+        shacl_graph=shacl_graph_path,
         allow_warnings=allow_warnings,
     )
 
