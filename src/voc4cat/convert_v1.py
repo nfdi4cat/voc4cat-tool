@@ -2157,14 +2157,12 @@ def build_organization_graph(org_iri: str) -> Graph:
 def build_concept_scheme_graph(
     cs: ConceptSchemeV1,
     concepts: dict[str, AggregatedConcept],
-    collections: dict[str, AggregatedCollection],
 ) -> Graph:
     """Build RDF graph for ConceptScheme.
 
     Args:
         cs: ConceptSchemeV1 data.
         concepts: Aggregated concepts (to compute hasTopConcept).
-        collections: Aggregated collections (to compute hasPart).
 
     Returns:
         Graph with ConceptScheme triples.
@@ -2281,9 +2279,8 @@ def build_concept_scheme_graph(
         if not concept.parent_iris:
             g.add((scheme_iri, SKOS.hasTopConcept, URIRef(concept_iri)))
 
-    # hasPart - links to collections
-    for collection_iri in collections:
-        g.add((scheme_iri, DCTERMS.hasPart, URIRef(collection_iri)))
+    # Note: dcterms:hasPart (ConceptScheme -> Collection) is not used in v1.0
+    # Collections link to scheme via skos:inScheme instead
 
     return g
 
@@ -2449,9 +2446,6 @@ def build_collection_graph(
     # rdfs:isDefinedBy - points to ConceptScheme (convention)
     g.add((c, RDFS.isDefinedBy, scheme_iri))
 
-    # isPartOf
-    g.add((c, DCTERMS.isPartOf, scheme_iri))
-
     # Change note
     if collection.change_note:
         g.add((c, SKOS.changeNote, Literal(collection.change_note, lang="en")))
@@ -2595,6 +2589,21 @@ def excel_to_rdf_v1(
         vocab_config, derived_contributors=derived_contributors
     )
 
+    # Auto-generate version and modified_date from environment variables (if set)
+    version = os.getenv("VOC4CAT_VERSION", "")
+    if version:
+        if not version.startswith("v"):
+            msg = (
+                f'Invalid environment variable VOC4CAT_VERSION "{version}". '
+                'Version must start with letter "v".'
+            )
+            raise Voc4catError(msg)
+        concept_scheme.version = version
+
+    modified_date = os.getenv("VOC4CAT_MODIFIED", "")
+    if modified_date:
+        concept_scheme.modified_date = modified_date
+
     # Build inverse relationships
     logger.debug("Building inverse relationships...")
     collection_members = build_collection_members_from_concepts(concepts)
@@ -2605,7 +2614,7 @@ def excel_to_rdf_v1(
     logger.debug("Building RDF graph...")
     scheme_iri = URIRef(concept_scheme.vocabulary_iri)
 
-    graph = build_concept_scheme_graph(concept_scheme, concepts, collections)
+    graph = build_concept_scheme_graph(concept_scheme, concepts)
 
     for concept in concepts.values():
         graph += build_concept_graph(concept, scheme_iri, narrower_map, vocab_name)
@@ -2904,8 +2913,16 @@ def convert_rdf_043_to_v1(
     # Ensure prov namespace is bound (needed for new predicates)
     output_graph.bind("prov", PROV)
 
+    # Bind vocabulary prefixes from config if provided
+    if vocab_config is not None and vocab_config.prefix_map:
+        for prefix, namespace_uri in vocab_config.prefix_map.items():
+            output_graph.bind(prefix, Namespace(str(namespace_uri)))
+
     # Get all concepts for special handling of rdfs:isDefinedBy
     concepts = set(input_graph.subjects(RDF.type, SKOS.Concept))
+
+    # Get all collections for special handling of dcterms:isPartOf
+    collections = set(input_graph.subjects(RDF.type, SKOS.Collection))
 
     # Get ConceptScheme(s) for special handling of dcterms:hasPart
     concept_schemes = set(input_graph.subjects(RDF.type, SKOS.ConceptScheme))
@@ -2916,7 +2933,7 @@ def convert_rdf_043_to_v1(
     # Process each triple
     for s, p, o in input_graph:
         new_triple = _transform_triple_043_to_v1(
-            s, p, o, concepts, concept_schemes, unknown_predicates
+            s, p, o, concepts, collections, concept_schemes, unknown_predicates
         )
         if new_triple:
             output_graph.add(new_triple)
@@ -2964,6 +2981,7 @@ def _transform_triple_043_to_v1(
     p: URIRef,
     o,
     concepts: set[URIRef],
+    collections: set[URIRef],
     concept_schemes: set[URIRef],
     unknown_predicates: set[URIRef],
 ) -> tuple | None:
@@ -2974,6 +2992,7 @@ def _transform_triple_043_to_v1(
         p: Predicate
         o: Object
         concepts: Set of concept IRIs (for rdfs:isDefinedBy handling)
+        collections: Set of collection IRIs (for dcterms:isPartOf handling)
         concept_schemes: Set of ConceptScheme IRIs (for dcterms:hasPart handling)
         unknown_predicates: Set to collect unknown predicates
 
@@ -2982,6 +3001,10 @@ def _transform_triple_043_to_v1(
     """
     # Drop dcterms:hasPart on ConceptScheme (links to collections not used in v1.0)
     if p == DCTERMS.hasPart and s in concept_schemes:
+        return None
+
+    # Drop dcterms:isPartOf on Collections (redundant with skos:inScheme)
+    if p == DCTERMS.isPartOf and s in collections:
         return None
 
     # Special case: rdfs:isDefinedBy on concepts -> prov:hadPrimarySource
