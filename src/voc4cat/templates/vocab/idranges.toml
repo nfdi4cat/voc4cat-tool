@@ -2,7 +2,7 @@
 # Documentation of the TOML format: https://toml.io/en/latest
 
 # Configuration format version (for future compatibility)
-config_version = "1.0"
+config_version = "v1.0"
 
 # Allow only a single vocabulary (default) or multiple vocabularies in the repository.
 single_vocab = true
