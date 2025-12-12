@@ -371,3 +371,71 @@ def test_idrange_item_name_from_config_file(datadir, temp_config):
     assert vocab.id_range[1].name == ""
     # Third id_range has name field
     assert vocab.id_range[2].name == "Anonymous Contributor"
+
+
+# === Tests for provenance_url_template validation ===
+
+
+def test_provenance_url_template_valid(temp_config):
+    """Test that valid provenance_url_template is accepted."""
+    config = temp_config
+
+    vocab = config.Vocab(
+        id_length=7,
+        permanent_iri_part="https://example.org/",
+        checks={},
+        prefix_map={},
+        vocabulary_iri="https://example.org/vocab/",
+        title="Test Vocabulary",
+        description="A test vocabulary",
+        created_date="2025-01-01",
+        creator="Test Author",
+        repository="https://github.com/test/vocab",
+        provenance_url_template="https://gitlab.com/org/repo/-/blame/{{ version }}/vocabularies/{{ vocab_name }}/{{ entity_id }}.ttl",
+    )
+
+    assert "{{ entity_id }}" in vocab.provenance_url_template
+
+
+def test_provenance_url_template_invalid_missing_entity_id(temp_config):
+    """Test that provenance_url_template without entity_id is rejected."""
+    config = temp_config
+
+    with pytest.raises(ValidationError) as excinfo:
+        config.Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="https://example.org/vocab/",
+            title="Test Vocabulary",
+            description="A test vocabulary",
+            created_date="2025-01-01",
+            creator="Test Author",
+            repository="https://github.com/test/vocab",
+            provenance_url_template="https://example.com/{{ vocab_name }}.ttl",  # Missing entity_id
+        )
+
+    error_msg = str(excinfo.value)
+    assert "provenance_url_template must contain '{{ entity_id }}'" in error_msg
+
+
+def test_provenance_url_template_empty_allowed(temp_config):
+    """Test that empty provenance_url_template is allowed."""
+    config = temp_config
+
+    vocab = config.Vocab(
+        id_length=7,
+        permanent_iri_part="https://example.org/",
+        checks={},
+        prefix_map={},
+        vocabulary_iri="https://example.org/vocab/",
+        title="Test Vocabulary",
+        description="A test vocabulary",
+        created_date="2025-01-01",
+        creator="Test Author",
+        repository="https://github.com/test/vocab",
+        provenance_url_template="",  # Empty is OK
+    )
+
+    assert vocab.provenance_url_template == ""
