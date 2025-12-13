@@ -201,23 +201,6 @@ def add_transform_subparser(subparsers, options):
         ),
         action="store_true",
     )
-    xlsxopt = parser.add_argument_group("Excel/xlsx options")
-    xlsxopt_meg = xlsxopt.add_mutually_exclusive_group()
-    xlsxopt_meg.add_argument(
-        "--make-ids",
-        help=(
-            "Acts on xlsx files. Specify the prefix or mapping as prefix:base-IRI and first ID to use. "
-            "All IRIs starting with prefix are replaced by a concatenation of "
-            'base_IRI and ID. An example for a prefix-mapping is "ex:https://example.org/". '
-            "If only the prefix is given without a base-URI part the "
-            "concept-scheme IRI is used as base-IRI to append the IDs to.\n"
-            "The default length of the ID is 7 digits. It can be changed "
-            "via a config-file."
-        ),
-        nargs=2,
-        metavar=("PREFIX-MAPPING", "START-ID"),
-        type=str,
-    )
     parser.add_argument(
         "--inplace",  # was "--no-warn"
         help=(
