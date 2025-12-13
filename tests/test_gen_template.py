@@ -1,4 +1,4 @@
-"""Tests for the template_v1 module.
+"""Tests for the gen_template module.
 
 These tests verify that the v1.0 template generator creates Excel templates
 with the correct structure matching the reference template.
@@ -20,7 +20,7 @@ from voc4cat.models_v1 import (
     MappingV1,
     PrefixV1,
 )
-from voc4cat.template_v1 import generate_template_v1
+from voc4cat.gen_template import generate_template_v1
 
 # Path to reference template for comparison
 REFERENCE_TEMPLATE = (
