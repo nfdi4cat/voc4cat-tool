@@ -83,13 +83,13 @@ def test_vocabulary_valid():
         modified="2020-04-04",
         creator="GSQ",
         publisher="GSQ",
-        version="1.0",
+        version="v1.0",
         provenance="Derived from the 2011-09 version of CGI Borehole start point list",
         custodian="Vance Kelly",
         pid="http://pid.geoscience.gov.au/dataset/ga/114541",
     )
     assert cs.modified == datetime.date(2020, 4, 4)
-    assert cs.version == "1.0"
+    assert cs.version == "v1.0"
 
 
 @mock.patch.dict(os.environ, {"CI": ""})
@@ -102,7 +102,7 @@ def test_vocabulary_valid_in_ci():
         modified="2020-04-04",
         creator="GSQ",
         publisher="GSQ",
-        version="1.0",
+        version="v1.0",
         provenance="Derived from the 2011-09 version of CGI Borehole start point list",
         custodian="Vance Kelly",
         pid="http://pid.geoscience.gov.au/dataset/ga/114541",
@@ -123,7 +123,7 @@ def test_vocabulary_valid_modified_via_envvar():
         modified="2020-04-04",
         creator="GSQ",
         publisher="GSQ",
-        version="1.0",
+        version="v1.0",
         provenance="Derived from the 2011-09 version of CGI Borehole start point list",
         custodian="Vance Kelly",
         pid="http://pid.geoscience.gov.au/dataset/ga/114541",
@@ -142,7 +142,7 @@ def test_vocabulary_valid_version_via_envvar():
         modified="2020-04-04",
         creator="GSQ",
         publisher="GSQ",
-        version="1.0",
+        version="v1.0",
         provenance="Derived from the 2011-09 version of CGI Borehole start point list",
         custodian="Vance Kelly",
         pid="http://pid.geoscience.gov.au/dataset/ga/114541",
@@ -160,7 +160,7 @@ def test_vocabulary_creator_orcid():
         modified="2020-04-04",
         creator="0000-0002-1825-0097",  # a valid ORCID
         publisher="GSQ",
-        version="1.0",
+        version="v1.0",
         provenance="Derived from the 2011-09 version of CGI Borehole start point list",
         custodian="Vance Kelly",
         pid="http://pid.geoscience.gov.au/dataset/ga/114541",
@@ -182,7 +182,7 @@ def test_vocabulary_creator_invalid():
             modified="2020-04-04",
             creator="abc",
             publisher="https://ror.org/04fa4r544",
-            version="1.0",
+            version="v1.0",
             provenance="Derived from the 2011-09 version of CGI Borehole start point list",
             custodian="Vance Kelly",
             pid="http://pid.geoscience.gov.au/dataset/ga/114541",
@@ -202,7 +202,7 @@ def test_vocabulary_invalid_version_via_envvar():
             modified="2020-04-04",
             creator="GSQ",
             publisher="GSQ",
-            version="1.0",
+            version="v1.0",
             provenance="Derived from the 2011-09 version of CGI Borehole start point list",
             custodian="Vance Kelly",
             pid="http://pid.geoscience.gov.au/dataset/ga/114541",
@@ -303,7 +303,7 @@ def test_concept_iri(parents_str):
     # this is testing that parents list elements are IRIs, not just ordinary strings
     parents = parents_str.split(", ")
     with pytest.raises(ValidationError):
-        con = Concept(
+        _con = Concept(
             uri="https://example.com/thing/x",
             pref_label="Thing X",
             definition="Fake def for Thing X",

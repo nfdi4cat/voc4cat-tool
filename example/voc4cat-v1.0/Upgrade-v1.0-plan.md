@@ -20,7 +20,7 @@ The source vocabulary was created with voc4cat v0.10.0 and has the "043" version
 Create `example/voc4cat-v1.0/idranges.toml` by:
 
 1. Start with the v1.0 template: `src/voc4cat/templates/vocab/idranges.toml`
-2. Set `config_version = "1.0"`
+2. Set `config_version = "v1.0"`
 3. Copy structural data from source `idranges.toml`:
    - `id_length = 7`
    - `permanent_iri_part = "https://w3id.org/nfdi4cat/voc4cat_"`

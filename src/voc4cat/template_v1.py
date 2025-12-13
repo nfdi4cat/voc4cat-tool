@@ -4,9 +4,10 @@ This module generates Excel templates for v1.0 vocabularies using the
 xlsx infrastructure (xlsx_api, xlsx_table, xlsx_keyvalue).
 """
 
+import logging
 from pathlib import Path
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 
 from voc4cat.models_v1 import (
     CONCEPT_SCHEME_SHEET_NAME,
@@ -26,6 +27,8 @@ from voc4cat.xlsx_api import export_to_xlsx
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
 from voc4cat.xlsx_table import XLSXTableConfig
 
+logger = logging.getLogger(__name__)
+
 
 def generate_template_v1(output_path: Path | None = None) -> Workbook:
     """Generate a complete v1.0 vocabulary template workbook.
@@ -44,7 +47,6 @@ def generate_template_v1(output_path: Path | None = None) -> Workbook:
     Returns:
         The generated Workbook object.
     """
-    from openpyxl import load_workbook
 
     # We need to build the workbook sheet by sheet
     # The xlsx_api functions work with files, so we use a temp approach
@@ -54,7 +56,7 @@ def generate_template_v1(output_path: Path | None = None) -> Workbook:
         import tempfile
 
         temp_dir = Path(tempfile.mkdtemp())
-        temp_path = temp_dir / "template_v1.xlsx"
+        temp_path = temp_dir / "template_v1.0.xlsx"
     else:
         temp_path = output_path
 
@@ -220,16 +222,12 @@ def template_cmd(args) -> None:
     Args:
         args: Parsed command-line arguments containing:
             - outdir: Output directory for the template (from common options)
-            - template_version: Template version to generate (currently only "1.0")
+            - template_version: Template version to generate
     """
-    import logging
-
-    logger = logging.getLogger(__name__)
-
-    version = getattr(args, "template_version", "1.0")
+    version = getattr(args, "template_version", "v1.0")
     outdir = getattr(args, "outdir", None)
 
-    if version != "1.0":
+    if version != "v1.0":
         msg = f"Unsupported template version: {version}"
         raise ValueError(msg)
 
@@ -240,7 +238,7 @@ def template_cmd(args) -> None:
         outdir = Path(outdir)
         outdir.mkdir(parents=True, exist_ok=True)
 
-    output_path = outdir / f"blank_{version.replace('.', '-')}.xlsx"
+    output_path = outdir / f"blank_{version}.xlsx"
 
     logger.info("Generating v%s template at: %s", version, output_path)
 
