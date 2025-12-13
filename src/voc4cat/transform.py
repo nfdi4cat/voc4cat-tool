@@ -1,24 +1,14 @@
 import logging
 import os
 import shutil
-from collections import defaultdict
-from itertools import count, zip_longest
 from pathlib import Path
 from urllib.parse import urlsplit
 
-import openpyxl
-from openpyxl.styles import Alignment
 from rdflib import DCTERMS, OWL, RDF, SDO, SKOS, XSD, Graph, Literal, URIRef
 
-from voc4cat import config
 from voc4cat.checks import Voc4catError
 from voc4cat.models import ORGANISATIONS
-from voc4cat.utils import (
-    EXCEL_FILE_ENDINGS,
-    RDF_FILE_ENDINGS,
-    adjust_length_of_tables,
-    is_supported_template,
-)
+from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS
 
 logger = logging.getLogger(__name__)
 
@@ -136,135 +126,7 @@ def join_split_turtle(vocab_dir: Path) -> Graph:
     return cs_graph
 
 
-def make_ids(
-    fpath: Path, outfile: Path, search_prefix: str, start_id: int, base_iri=None
-):
-    """
-    Replace all prefix:suffix CURIEs using IDs counting up from start_id
-
-    If base_iri is None the new IRI is a concatenation of VOC_BASE_IRI and ID.
-    If base_iri is given the new IRI is the concatenation of base_iri and ID.
-    """
-    logger.info("Replacing '%s' IRIs.", search_prefix)
-    # Load in data_only mode to get cell values not formulas.
-    wb = openpyxl.load_workbook(fpath, data_only=True)
-    is_supported_template(wb)
-    if base_iri is None:
-        base_iri = wb["Concept Scheme"].cell(row=2, column=2).value
-        if base_iri is None:
-            base_iri = "https://example.org/"
-            wb["Concept Scheme"].cell(row=2, column=2).value = base_iri
-            logger.warning("No concept scheme IRI found, using https://example.org/")
-
-    # TODO if config is set: Check that file name is in config
-    voc_config = config.IDRANGES.vocabs.get(fpath.stem, {})
-    id_length = voc_config.get("id_length", 7)
-
-    id_gen = count(start_id)
-    replaced_iris = {}
-    # process primary iri column in both worksheets
-    for sheet in ["Concepts", "Collections"]:
-        ws = wb[sheet]
-        # iterate over first two columns; skip header and start from row 3
-        for row in ws.iter_rows(min_row=3, max_col=2):  # pragma: no branch
-            if row[0].value:
-                iri = str(row[0].value)
-                if not iri.startswith(search_prefix):
-                    continue
-                if iri in replaced_iris:
-                    iri_new = replaced_iris[iri]
-                else:
-                    iri_new = base_iri + f"{next(id_gen):0{id_length}d}"
-                    msg = f"[{sheet}] Replaced CURIE {iri} by {iri_new}"
-                    logger.debug(msg)
-                    replaced_iris[iri] = iri_new
-                row[0].value = iri_new
-
-    # replace iri by new_iri in all columns where it might be referenced
-    cols_to_update = {
-        "Concepts": [6],
-        "Collections": [3],
-        "Additional Concept Features": [0, 1, 2, 3, 4, 5],
-    }
-    for sheet, cols in cols_to_update.items():
-        ws = wb[sheet]
-        # iterate over first two columns; skip header and start from row 3
-        for row in ws.iter_rows(min_row=3, max_col=1 + max(cols)):  # pragma: no branch
-            # stop processing a sheet after 3 empty rows
-            for col in cols:
-                if row[col].value:
-                    iris = [iri.strip() for iri in str(row[col].value).split(",")]
-                    count_new_iris = [1 for iri in iris if iri in replaced_iris].count(
-                        1
-                    )
-                    if count_new_iris:
-                        new_iris = [replaced_iris.get(iri, iri) for iri in iris]
-                        msg = (
-                            f"[{sheet}] Replaced {count_new_iris} CURIs "
-                            f"in cell {row[col].coordinate}"
-                        )
-                        logger.debug(msg)
-                        row[col].value = ", ".join(new_iris)
-                    # subsequent_empty_rows = 0
-
-    wb.save(outfile)
-    logger.info("Saved updated file as %s", outfile)
-
-
-
-
-
-
 # ===== transform command & helpers to validate cmd options =====
-
-
-def _check_make_ids_args(args):
-    """Validate make_ids arguments"""
-    try:
-        start_id = int(args.make_ids[1])
-        msg = "" if start_id > 0 else "Start ID must be greater than zero."
-    except ValueError:
-        msg = "Start ID must be an integer number."
-    if msg:
-        logger.error(msg)
-        raise Voc4catError(msg)
-    if ":" in args.make_ids[0]:
-        prefix, base_iri = args.make_ids[0].split(":", 1)
-        if not base_iri.strip().startswith("http"):
-            msg = 'The base_iri must be in IRI-form and start with "http".'
-            logging.error(msg)
-            raise Voc4catError(msg)
-        base_iri = base_iri.strip()
-    else:
-        prefix, base_iri = args.make_ids[0], None
-    return prefix.strip(), base_iri, start_id
-
-
-
-
-def _transform_xlsx(file, args):
-    if args.make_ids:
-        prefix, base_iri, start_id = _check_make_ids_args(args)
-
-    logger.debug('Processing "%s"', file)
-
-    outfile = file if args.outdir is None else args.outdir / file.name
-    any_action = args.make_ids
-    if outfile == file and not args.inplace and any_action:
-        logger.warning(
-            'This command will overwrite the existing file "%s".'
-            'Use the flag "--inplace" to enforce replacement or '
-            'supply an output directory with flag "--outdir".',
-            file,
-        )
-        return
-    if args.make_ids:
-        make_ids(file, outfile, prefix, start_id, base_iri)
-    else:
-        logger.debug("-> nothing to do for xlsx files!")
-
-    # Extend size (length) of tables in all sheets
-    adjust_length_of_tables(outfile, rows_pre_allocated=config.xlsx_rows_pre_allocated)
 
 
 def _transform_rdf(file, args):
@@ -301,9 +163,9 @@ def transform(args):
     else:
         rdf_dirs = []
 
-    # transform xlsx files (could be a separate function)
     for file in xlsx_files:
-        _transform_xlsx(file, args)
+        logger.debug('Processing "%s"', file)
+        logger.debug("-> nothing to do for xlsx files!")
 
     for file in rdf_files:
         logger.debug('Processing "%s"', file)
