@@ -390,9 +390,9 @@ def add_template_subparser(subparsers, options):
     )
     parser.add_argument(
         "--version",
-        help='Template version to generate (default: "1.0")',
-        choices=["1.0"],
-        default="1.0",
+        help='Template version to generate (default: "v1.0")',
+        choices=["v1.0"],
+        default="v1.0",
         dest="template_version",  # avoid conflict with root --version
     )
     # Note: VOCAB is not required for template generation

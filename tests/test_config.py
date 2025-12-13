@@ -134,7 +134,7 @@ def test_config_version_from_file(datadir, temp_config):
     """Test config_version is read from file."""
     config = temp_config
     config.load_config(datadir / "idranges_with_scheme.toml")
-    assert config.IDRANGES.config_version == "1.0"
+    assert config.IDRANGES.config_version == "v1.0"
 
 
 def test_scheme_metadata_fields_all_present(datadir, temp_config):

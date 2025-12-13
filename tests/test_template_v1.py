@@ -10,6 +10,7 @@ import pytest
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
+from voc4cat.cli import main_cli
 from voc4cat.models_v1 import (
     DEFAULT_PREFIXES,
     TEMPLATE_VERSION,
@@ -381,3 +382,41 @@ class TestModels:
         assert len(DEFAULT_PREFIXES) == 2, (
             f"Expected 2 prefixes, got {len(DEFAULT_PREFIXES)}"
         )
+
+
+class TestTemplateCLI:
+    """CLI integration tests for the template command."""
+
+    def test_template_cli_default_output(self, tmp_path, monkeypatch):
+        """Test template command generates file in current directory."""
+        monkeypatch.chdir(tmp_path)
+        main_cli(["template"])
+
+        expected_file = tmp_path / "blank_v1.0.xlsx"
+        assert expected_file.exists(), f"Template file not created: {expected_file}"
+
+        # Verify it's a valid xlsx with expected sheets
+        wb = load_workbook(expected_file)
+        assert "Concepts" in wb.sheetnames
+
+    def test_template_cli_with_outdir(self, tmp_path):
+        """Test template command with --outdir option."""
+        outdir = tmp_path / "output"
+        main_cli(["template", "--outdir", str(outdir)])
+
+        expected_file = outdir / "blank_v1.0.xlsx"
+        assert expected_file.exists(), (
+            f"Template file not created in outdir: {expected_file}"
+        )
+
+    def test_template_cli_with_version_option(self, tmp_path, monkeypatch):
+        """Test template command with --version option."""
+        monkeypatch.chdir(tmp_path)
+        main_cli(["template", "--version", "v1.0"])
+        assert (tmp_path / "blank_v1.0.xlsx").exists()
+
+    def test_template_cli_invalid_version(self):
+        """Test template command with invalid --version option."""
+        with pytest.raises(SystemExit) as exc_info:
+            main_cli(["template", "--version", "v0.5"])
+        assert exc_info.value.code == 2  # argparse error
