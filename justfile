@@ -14,7 +14,10 @@ test *ARGS:
 [group('testing')]
 cov *ARGS:
     @echo "Running all tests with coverage..."
-    uv run python -m pytest --cov=src tests/ --cov-report=html {{ARGS}}
+    uv run python -m coverage run -m pytest {{ARGS}}
+    uv run python -m coverage combine
+    uv run python -m coverage report
+    uv run python -m coverage html
 
 # Format and lint for code quality
 [group('development')]

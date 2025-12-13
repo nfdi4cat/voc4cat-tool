@@ -59,7 +59,6 @@ Changelog = "https://github.com/nfdi4cat/voc4cat-tool/blob/main/CHANGELOG.md"
 tests = [
   "pytest",
   "pytest-subprocess",
-  "pytest-cov",
   "coverage",
 ]
 lint = [
@@ -124,13 +123,8 @@ addopts = [
     "--strict-config",   # Raise an error instead of a warning for pytest config issues
     "--strict-markers",  # Treat typos in function markers as an error
     "--tb=short",
-    "--cov=src",
-    "--cov=tests",
-    "--cov-report=term:skip-covered",
-    "--cov-report=html:.htmlcov",
     "--durations=10",           # Show 10 slowest tests
     "--durations-min=1.0",      # Only show tests >1s
-    # "--cov-fail-under=80"
 ]
 
 # Filter warnings from third-party dependencies (show each type only once)
@@ -149,13 +143,14 @@ filterwarnings = [
 parallel = true
 branch = true
 source = ["voc4cat"]
+source_dirs = ["tests"]
 omit = [
     "**/voc4cat/_version.py",
     "**/voc4cat/assistant.py",  # no tests yet
 ]
 
 [tool.coverage.paths]
-# Specify where coverage schould look for source files.
+# Specify where coverage combine should look for source files.
 source = [
     "src",
     "**/site-packages", # for not using tox
@@ -166,6 +161,7 @@ source = [
 # Show in report which lines are not covered
 show_missing = false
 # Any line of the source code that matches one of these regexes is excluded
+skip_covered = true
 # from being reported as missing.
 exclude_lines = [
     # Have to re-enable the standard pragma
