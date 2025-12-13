@@ -59,6 +59,7 @@ Changelog = "https://github.com/nfdi4cat/voc4cat-tool/blob/main/CHANGELOG.md"
 tests = [
   "pytest",
   "pytest-subprocess",
+  "pytest-cov",
   "coverage",
 ]
 lint = [
@@ -116,13 +117,22 @@ testpaths = [
 # Directories that are not visited by pytest collector:
 norecursedirs = "dist build .tox .git .cache __pycache__ .venv"
 
-# Treat typos in function markers as an error (pytest)
-# --strict-markers
-# Raise an error instead of a warning for pytest related config issues (pytest)
-# --strict-config
 # Execute doctests in classes, functions, and test modules (pytest)
 # --doctest-modules
-addopts = "--strict-markers --strict-config"
+addopts = [
+    "-ra",
+    "--strict-config",   # Raise an error instead of a warning for pytest config issues
+    "--strict-markers",  # Treat typos in function markers as an error
+    "--tb=short",
+    "--cov=src",
+    "--cov=tests",
+    "--cov-report=term:skip-covered",
+    "--cov-report=html:.htmlcov",
+    "--durations=10",           # Show 10 slowest tests
+    "--durations-min=1.0",      # Only show tests >1s
+    # "--cov-fail-under=80"
+]
+
 
 [tool.coverage]
 [tool.coverage.run]

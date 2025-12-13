@@ -2508,6 +2508,29 @@ def build_ordered_collection_members(
     return result
 
 
+def build_collection_hierarchy_members(
+    collections: dict[str, "AggregatedCollection"],
+) -> dict[str, list[str]]:
+    """Build parent collection -> child collections map from hierarchy data.
+
+    Inverts the collection.parent_collection_iris relationship to get
+    which collections are members of other collections.
+
+    Args:
+        collections: Dict of aggregated collections.
+
+    Returns:
+        Dict: {parent_collection_iri: [child_collection_iris]}
+    """
+    hierarchy_members: dict[str, list[str]] = defaultdict(list)
+
+    for child_iri, collection in collections.items():
+        for parent_iri in collection.parent_collection_iris:
+            hierarchy_members[parent_iri].append(child_iri)
+
+    return dict(hierarchy_members)
+
+
 # --- Identifier Extraction ---
 
 
@@ -3033,6 +3056,12 @@ def excel_to_rdf_v1(
     # Build inverse relationships
     logger.debug("Building inverse relationships...")
     collection_members = build_collection_members_from_concepts(concepts)
+    # Add child collections as members of parent collections
+    collection_hierarchy_members = build_collection_hierarchy_members(collections)
+    for parent_iri, child_iris in collection_hierarchy_members.items():
+        if parent_iri not in collection_members:
+            collection_members[parent_iri] = []
+        collection_members[parent_iri].extend(child_iris)
     ordered_collection_members = build_ordered_collection_members(concepts)
     narrower_map = build_narrower_map(concepts)
 
