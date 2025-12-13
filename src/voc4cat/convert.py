@@ -9,8 +9,8 @@ from rdflib import RDF, SH
 
 from voc4cat import config, profiles
 from voc4cat.checks import Voc4catError
+from voc4cat.convert_043 import convert_rdf_043_to_v1
 from voc4cat.convert_v1 import (
-    convert_rdf_043_to_v1,
     excel_to_rdf_v1,
     rdf_to_excel_v1,
 )
