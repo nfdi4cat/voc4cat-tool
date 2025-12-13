@@ -91,13 +91,34 @@ def test_check_skos_badfile(monkeypatch, datadir, tmp_path, temp_config, caplog)
 def test_check_list_profiles(capsys):
     main_cli(["check", "--listprofiles"])
     captured = capsys.readouterr()
-    assert "Profiles" in captured.out
+    assert "Known profiles:" in captured.out
+    assert "builtin\tvocpub" in captured.out
 
 
-def test_check_missing_vocab(caplog):
-    with caplog.at_level(logging.ERROR):
+def test_check_list_profiles_with_config(datadir, capsys, temp_config):
+    """Test --listprofiles shows custom profiles when config is provided."""
+    main_cli(
+        [
+            "check",
+            "--config",
+            str(datadir / "idranges_with_scheme.toml"),
+            "--listprofiles",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert "Known profiles:" in captured.out
+    assert "builtin\tvocpub" in captured.out
+    assert "config\tmyvocab" in captured.out
+    assert "custom_profile.ttl" in captured.out
+
+
+def test_check_missing_vocab(capsys):
+    with pytest.raises(SystemExit) as exc_info:
         main_cli(["check"])
-    assert "Argument VOCAB is required for this sub-command" in caplog.text
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr()
+    assert "usage: voc4cat check" in captured.out
+    assert "--listprofiles" in captured.out
 
 
 @pytest.mark.skip(reason="043 xlsx import removed in v1.0")
