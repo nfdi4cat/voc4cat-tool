@@ -133,6 +133,15 @@ addopts = [
     # "--cov-fail-under=80"
 ]
 
+# Filter warnings from third-party dependencies (show each type only once)
+# Deprecations added in rdflib 7.5.0 get triggered pyshacl 0.30.1
+filterwarnings = [
+    "once:Dataset.default_context is deprecated:DeprecationWarning:pyshacl",
+    "once:Dataset.default_context is deprecated:DeprecationWarning:rdflib",
+    "once:Dataset.contexts is deprecated:DeprecationWarning:rdflib",
+    "once:Dataset.identifier is deprecated:DeprecationWarning:rdflib",
+]
+
 
 [tool.coverage]
 [tool.coverage.run]
