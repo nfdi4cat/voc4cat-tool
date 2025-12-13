@@ -7,7 +7,6 @@ from urllib.parse import urlsplit
 from rdflib import DCTERMS, OWL, RDF, SDO, SKOS, XSD, Graph, Literal, URIRef
 
 from voc4cat.checks import Voc4catError
-from voc4cat.models import ORGANISATIONS
 from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS
 
 logger = logging.getLogger(__name__)
@@ -99,26 +98,20 @@ def join_split_turtle(vocab_dir: Path) -> Graph:
     # Get the publisher from the first concept scheme
     publisher = next(cs_graph.triples((None, DCTERMS.publisher, None)))[2]
     tg = Graph()
-    org = ORGANISATIONS.get(publisher, URIRef(publisher))
+    org = URIRef(publisher) if not isinstance(publisher, URIRef) else publisher
     tg.add((org, RDF.type, SDO.Organization))
     tg.add(
         (
             org,
             SDO.name,
-            # should be name but there is no field in the template 0.43
-            Literal(
-                ORGANISATIONS.get(publisher, publisher),
-            ),
+            Literal(str(publisher)),
         )
     )
     tg.add(
         (
             org,
             SDO.url,
-            Literal(
-                ORGANISATIONS.get(publisher, publisher),
-                datatype=URIRef(XSD.anyURI),
-            ),
+            Literal(str(publisher), datatype=XSD.anyURI),
         )
     )
     cs_graph += tg

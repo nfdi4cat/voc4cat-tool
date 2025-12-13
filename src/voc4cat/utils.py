@@ -6,10 +6,7 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 from openpyxl.utils.cell import column_index_from_string, coordinate_from_string
-from openpyxl.workbook.workbook import Workbook
 from openpyxl.worksheet.table import Table
-
-from voc4cat.checks import Voc4catError
 
 logger = logging.getLogger(__name__)
 
@@ -24,42 +21,10 @@ RDF_FILE_ENDINGS = {
     ".n3": "n3",
 }
 KNOWN_FILE_ENDINGS = [str(x) for x in RDF_FILE_ENDINGS] + EXCEL_FILE_ENDINGS
-KNOWN_TEMPLATE_VERSIONS = ["0.4.3, rev. 2025-07a"]
-LATEST_TEMPLATE = KNOWN_TEMPLATE_VERSIONS[-1]
 
 
 class ConversionError(Exception):
     pass
-
-
-def load_template(file_path: Path) -> Workbook:
-    if file_path.suffix.lower() not in EXCEL_FILE_ENDINGS:
-        msg = "Template files for RDF-to-xlsx conversion must be xlsx files."
-        raise Voc4catError(msg)
-    if get_template_version(load_workbook(str(file_path))) != LATEST_TEMPLATE:
-        msg = f"Template files for RDF-to-xlsx conversion must be of latest version ({LATEST_TEMPLATE})"
-        raise Voc4catError(msg)
-    return load_workbook(filename=str(file_path), data_only=True)
-
-
-def get_template_version(wb: Workbook) -> str:
-    # try 0.4.3 location in Concept Scheme sheet
-    try:
-        concept_scheme_sheet = wb["Concept Scheme"]
-    except KeyError as exc:  # non-existing worksheet
-        msg = "The version of the Excel template cannot be determined."
-        logger.exception(msg)
-        raise Voc4catError(msg) from exc
-    return concept_scheme_sheet["B13"].value
-
-
-def is_supported_template(wb):
-    """Check if the template version is supported."""
-    template_version = get_template_version(wb)
-    if template_version not in KNOWN_TEMPLATE_VERSIONS:
-        msg = f"Unsupported template version. Supported are {', '.join(KNOWN_TEMPLATE_VERSIONS)}, you supplied {template_version}."
-        raise Voc4catError(msg)
-    return True
 
 
 def split_and_tidy(cell_value: str):

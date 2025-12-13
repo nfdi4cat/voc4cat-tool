@@ -19,7 +19,6 @@ from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
     RDF_FILE_ENDINGS,
     adjust_length_of_tables,
-    is_supported_template,
 )
 
 logger = logging.getLogger(__name__)
@@ -44,7 +43,6 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     """
     logger.debug("Running check of Concepts sheet for file %s", fpath)
     wb = openpyxl.load_workbook(fpath)
-    is_supported_template(wb)
     ws = wb["Concepts"]
     color = PatternFill("solid", start_color="00FFCC00")  # orange
 
