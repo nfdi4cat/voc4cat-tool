@@ -75,10 +75,9 @@ Finally, the vocabulary file can be converted from xlsx to SKOS/turtle format.
 
 A turtle file `photocatalysis_example.ttl` is created in the same directory where the xlsx-file is located.
 
-The reverse is also possible. You can create an xlsx file from a turtle vocabulary file.
-Optionally a custom XLSX-template-file can be specified for this conversion:
+The reverse is also possible. You can create an xlsx file from a turtle vocabulary file:
 
-`voc4cat convert -O outbox --template templates/voc4cat_template_043.xlsx example/photocatalysis_example.ttl`
+`voc4cat convert -O outbox example/photocatalysis_example.ttl`
 
 In addition to `transform` and `convert` voc4cat offers checking and validation under the sub-command `check` and documentation generation under `docs`.
 See the command line help for details.
