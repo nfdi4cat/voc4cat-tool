@@ -12,7 +12,7 @@ from voc4cat.check import check
 from voc4cat.checks import Voc4catError
 from voc4cat.convert import convert
 from voc4cat.docs import docs
-from voc4cat.template_v1 import template_cmd
+from voc4cat.gen_template import template_cmd
 from voc4cat.transform import transform
 from voc4cat.utils import ConversionError
 
