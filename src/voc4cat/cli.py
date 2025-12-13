@@ -347,7 +347,7 @@ def add_check_subparser(subparsers, options):
         type=Path,
         help="Either the file to process or a directory with files to process.",
     )
-    parser.set_defaults(func=check)
+    parser.set_defaults(func=check, _parser=parser)
 
 
 def add_docs_subparser(subparsers, options):

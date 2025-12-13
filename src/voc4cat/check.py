@@ -1,5 +1,6 @@
 import glob
 import logging
+import sys
 from pathlib import Path
 
 import openpyxl
@@ -146,17 +147,22 @@ def check(args):
     _check_ci_args(args)
 
     if not args.VOCAB and not args.listprofiles:
-        msg = (
-            "Argument VOCAB is required for this sub-command (except for "
-            "option --listprofiles)."
-        )
-        logger.error(msg)
-        return
+        args._parser.print_help()
+        sys.exit(2)
 
     if args.listprofiles:
-        s = "\nProfiles\nToken\tIRI\n-----\t-----\n"
+        s = "\nKnown profiles:\n\nSource\tToken\tIRI\n------\t-----\t---\n"
+        # Built-in profiles
         for k, v in profiles.PROFILES.items():
-            s += f"{k}\t{v.uri}\n"
+            s += f"builtin\t{k}\t{v.uri}\n"
+        # Custom profiles from config (if config is loaded)
+        if not config.IDRANGES.default_config and config.IDRANGES_PATH:
+            for vocab_name, vocab_config in config.IDRANGES.vocabs.items():
+                if vocab_config.profile_local_path:
+                    profile_path = (
+                        config.IDRANGES_PATH.parent / vocab_config.profile_local_path
+                    ).resolve()
+                    s += f"config\t{vocab_name}\t{profile_path}\n"
         print(s.rstrip())
         return
 

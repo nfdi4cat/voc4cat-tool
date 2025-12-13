@@ -4,6 +4,7 @@ single_vocab = true
 [vocabs.myvocab]
 id_length = 7
 permanent_iri_part = "https://example.org/"
+profile_local_path = "custom_profile.ttl"
 
 # Scheme metadata fields
 vocabulary_iri = "https://example.org/vocab/"
