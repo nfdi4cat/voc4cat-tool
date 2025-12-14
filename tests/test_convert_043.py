@@ -7,7 +7,6 @@ transforming predicates and enriching ConceptScheme metadata.
 import logging
 from pathlib import Path
 
-import pytest
 from rdflib import DCTERMS, PROV, RDF, RDFS, SKOS, XSD, Graph, Literal, Namespace
 
 from voc4cat.convert_043 import convert_rdf_043_to_v1
@@ -17,21 +16,16 @@ EX = Namespace("http://example.org/")
 
 # Test data paths
 TEST_DATA_DIR = Path(__file__).parent / "data"
-EXAMPLE_DIR = Path(__file__).parent.parent / "example"
-
-PHOTOCATALYSIS_TTL = EXAMPLE_DIR / "photocatalysis_example.ttl"
+VOCAB_043_TTL = TEST_DATA_DIR / "vocab-043-test.ttl"
 
 
 class TestConvert043ToV1:
     """Tests for 043 to v1.0 RDF conversion."""
 
-    def test_convert_photocatalysis(self, tmp_path):
-        """Test converting photocatalysis example from 043 to v1.0."""
-        if not PHOTOCATALYSIS_TTL.exists():
-            pytest.skip("Photocatalysis example not found")
-
-        output_path = tmp_path / "photocatalysis_v1.ttl"
-        result_path = convert_rdf_043_to_v1(PHOTOCATALYSIS_TTL, output_path)
+    def test_convert_043_vocab(self, tmp_path):
+        """Test converting 0.4.3 format vocabulary to v1.0."""
+        output_path = tmp_path / "vocab_043_v1.ttl"
+        result_path = convert_rdf_043_to_v1(VOCAB_043_TTL, output_path)
 
         assert result_path.exists()
         assert result_path == output_path
@@ -39,6 +33,10 @@ class TestConvert043ToV1:
         # Load and verify
         converted = Graph().parse(result_path, format="turtle")
         assert len(converted) > 0
+
+        # Verify concepts were preserved
+        concepts = list(converted.subjects(RDF.type, SKOS.Concept))
+        assert len(concepts) == 7  # 7 concepts in test fixture
 
     def test_history_note_transformed_to_change_note(self, tmp_path):
         """Test that skos:historyNote is transformed to skos:changeNote."""

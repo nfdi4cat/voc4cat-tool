@@ -1,0 +1,116 @@
+@prefix cs: <http://example.org/test-vocab/> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sdo: <https://schema.org/> .
+
+# Concept Scheme with 0.4.3 predicates
+cs: a skos:ConceptScheme ;
+    dcterms:identifier "test-vocab"^^xsd:token ;
+    dcterms:created "2023-06-29"^^xsd:date ;
+    dcterms:creator <https://example.org/creator> ;
+    dcterms:modified "2024-01-15"^^xsd:date ;
+    dcterms:publisher <https://example.org/publisher> ;
+    dcterms:hasPart <http://example.org/test-vocab/collection1> ;
+    skos:historyNote "Test vocabulary for 0.4.3 format conversion"@en ;
+    owl:versionInfo "1.0" ;
+    skos:definition "A test vocabulary using 0.4.3 format predicates"@en ;
+    skos:hasTopConcept <http://example.org/test-vocab/concept1>,
+        <http://example.org/test-vocab/concept2> ;
+    skos:prefLabel "Test Vocabulary 043"@en ;
+    dcat:contactPoint "Test Maintainer" .
+
+<https://example.org/creator> a sdo:Organization ;
+    sdo:name "Test Creator Organization" ;
+    sdo:url "https://example.org/creator"^^xsd:anyURI .
+
+<https://example.org/publisher> a sdo:Organization ;
+    sdo:name "Test Publisher Organization" ;
+    sdo:url "https://example.org/publisher"^^xsd:anyURI .
+
+# Collection using 0.4.3 predicates (dcterms:hasPart, dcterms:isPartOf)
+<http://example.org/test-vocab/collection1> a skos:Collection ;
+    rdfs:isDefinedBy cs: ;
+    skos:inScheme cs: ;
+    dcterms:identifier "collection1"^^xsd:token ;
+    dcterms:isPartOf cs: ;
+    skos:historyNote "Collection provenance note"@en ;
+    skos:definition "A collection of related concepts"@en ;
+    skos:member <http://example.org/test-vocab/concept1>,
+        <http://example.org/test-vocab/concept3>,
+        <http://example.org/test-vocab/concept4> ;
+    skos:prefLabel "Test Collection"@en .
+
+# Top concept 1 with children
+<http://example.org/test-vocab/concept1> a skos:Concept ;
+    dcterms:identifier "concept1"^^xsd:token ;
+    skos:historyNote "Provenance for concept 1"@en ;
+    rdfs:isDefinedBy <http://example.org/external-source> ;
+    skos:altLabel "alternate label 1"@en ;
+    skos:definition "First top-level concept"@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/test-vocab/concept3>,
+        <http://example.org/test-vocab/concept4> ;
+    skos:prefLabel "Concept One"@en ;
+    skos:exactMatch <http://example.org/external/match1> ;
+    skos:topConceptOf cs: .
+
+# Top concept 2 with children
+<http://example.org/test-vocab/concept2> a skos:Concept ;
+    dcterms:identifier "concept2"^^xsd:token ;
+    skos:historyNote "Provenance for concept 2"@en ;
+    rdfs:isDefinedBy <http://example.org/another-source> ;
+    skos:definition "Second top-level concept"@en ;
+    skos:inScheme cs: ;
+    skos:narrower <http://example.org/test-vocab/concept5>,
+        <http://example.org/test-vocab/concept6> ;
+    skos:prefLabel "Concept Two"@en ;
+    skos:broadMatch <http://example.org/external/broad1> ;
+    skos:topConceptOf cs: .
+
+# Child concepts under concept1
+<http://example.org/test-vocab/concept3> a skos:Concept ;
+    dcterms:identifier "concept3"^^xsd:token ;
+    skos:definition "Child concept under Concept One"@en ;
+    skos:broader <http://example.org/test-vocab/concept1> ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Concept Three"@en ;
+    skos:narrower <http://example.org/test-vocab/concept7> .
+
+<http://example.org/test-vocab/concept4> a skos:Concept ;
+    dcterms:identifier "concept4"^^xsd:token ;
+    skos:historyNote "Provenance for concept 4"@en ;
+    skos:definition "Another child concept under Concept One"@en ;
+    skos:broader <http://example.org/test-vocab/concept1> ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Concept Four"@en ;
+    skos:relatedMatch <http://example.org/external/related1> .
+
+# Child concepts under concept2
+<http://example.org/test-vocab/concept5> a skos:Concept ;
+    dcterms:identifier "concept5"^^xsd:token ;
+    skos:definition "Child concept under Concept Two"@en ;
+    skos:broader <http://example.org/test-vocab/concept2> ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Concept Five"@en .
+
+<http://example.org/test-vocab/concept6> a skos:Concept ;
+    dcterms:identifier "concept6"^^xsd:token ;
+    rdfs:isDefinedBy <http://example.org/source-for-six> ;
+    skos:definition "Another child concept under Concept Two"@en ;
+    skos:broader <http://example.org/test-vocab/concept2> ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Concept Six"@en ;
+    skos:closeMatch <http://example.org/external/close1> .
+
+# Third-level concept (grandchild)
+<http://example.org/test-vocab/concept7> a skos:Concept ;
+    dcterms:identifier "concept7"^^xsd:token ;
+    skos:definition "Grandchild concept (3rd level)"@en ;
+    skos:broader <http://example.org/test-vocab/concept3> ;
+    skos:inScheme cs: ;
+    skos:prefLabel "Concept Seven"@en ;
+    skos:narrowMatch <http://example.org/external/narrow1> .
