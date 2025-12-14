@@ -87,7 +87,7 @@ def _validate_unit_usage(field_name: str, field_type: type, unit: str | None) ->
     # Handle Optional[numeric] types (Union[numeric, None])
     if get_origin(field_type) is Union:
         args = get_args(field_type)
-        if len(args) == 2 and type(None) in args:
+        if len(args) == 2 and type(None) in args:  # noqa: PLR2004
             non_none_type = next(arg for arg in args if arg is not type(None))
             if non_none_type not in numeric_types:
                 raise ValueError(
@@ -123,7 +123,7 @@ class XLSXFieldAnalyzer:
     def analyze_model(model: type[BaseModel]) -> dict[str, FieldAnalysis]:
         """Analyze all fields in a Pydantic model."""
         if not issubclass(model, BaseModel):
-            raise ValueError(f"Expected Pydantic BaseModel, got {type(model)}")
+            raise TypeError(f"Expected Pydantic BaseModel, got {type(model)}")
 
         field_analyses = {}
         for field_name, field_info in model.model_fields.items():
@@ -161,11 +161,11 @@ class XLSXFieldAnalyzer:
         origin = get_origin(field_type)
         if origin is Union:
             args = get_args(field_type)
-            return len(args) == 2 and type(None) in args
+            return len(args) == 2 and type(None) in args  # noqa: PLR2004
         # Handle Python 3.10+ union syntax (str | None)
         if hasattr(field_type, "__args__"):
             args = field_type.__args__
-            return len(args) == 2 and type(None) in args
+            return len(args) == 2 and type(None) in args  # noqa: PLR2004
         return False
 
     @staticmethod

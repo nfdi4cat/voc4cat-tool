@@ -153,10 +153,12 @@ class Vocab(BaseModel):
             raise ValueError(msg)
 
         # Validate provenance_url_template if provided
-        if self.provenance_url_template:
-            if "{{ entity_id }}" not in self.provenance_url_template:
-                msg = "provenance_url_template must contain '{{ entity_id }}'"
-                raise ValueError(msg)
+        if (
+            self.provenance_url_template
+            and "{{ entity_id }}" not in self.provenance_url_template
+        ):
+            msg = "provenance_url_template must contain '{{ entity_id }}'"
+            raise ValueError(msg)
 
         return self
 

@@ -31,7 +31,7 @@ def test_run_cli_app_no_args(capsys):
 def test_main_unknown_arg(capsys):
     with pytest.raises(SystemExit) as exc_info:
         main_cli(["--unknown-arg"])
-    assert exc_info.value.code == 2  # noqa: PLR2004
+    assert exc_info.value.code == 2
     captured = capsys.readouterr()
     assert "voc4cat: error: unrecognized arguments: --unknown-arg" in captured.err
 
@@ -105,7 +105,7 @@ def test_invalid_outdir(monkeypatch, datadir, tmp_path, caplog):
     with (
         caplog.at_level(logging.ERROR),
         pytest.raises(
-            Voc4catError, match="Outdir must be a directory but it is a file."
+            Voc4catError, match=r"Outdir must be a directory but it is a file."
         ),
     ):
         main_cli(["transform", "--outdir", str(tmp_path / "README.md"), CS_SIMPLE])

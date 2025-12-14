@@ -4,6 +4,8 @@ Tests for the xlsx_table module.
 This module tests the table format specific functionality for XLSX processing.
 """
 
+from datetime import date
+
 import pytest
 from openpyxl import load_workbook
 from pydantic import BaseModel
@@ -11,7 +13,7 @@ from pydantic import BaseModel
 from voc4cat.xlsx_api import export_to_xlsx, import_from_xlsx
 from voc4cat.xlsx_table import XLSXTableConfig
 
-from .conftest import DemoModelWithMetadata, Employee, Project, SimpleModel
+from .conftest import DemoModelWithMetadata, Employee, Project, SimpleModel, Status
 
 
 # Table Format Tests
@@ -140,7 +142,6 @@ class TestTableFormat:
 
     def test_table_with_enum_fields(self, temp_file):
         """Test table format with enum fields."""
-        from .conftest import Status
 
         class ModelWithEnum(BaseModel):
             name: str
@@ -325,7 +326,6 @@ class TestTableFormatEdgeCases:
 
     def test_table_with_mixed_data_types(self, temp_file):
         """Test table format with mixed data types."""
-        from datetime import date
 
         class MixedModel(BaseModel):
             name: str

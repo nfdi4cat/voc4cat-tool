@@ -5,6 +5,7 @@ xlsx infrastructure (xlsx_api, xlsx_table, xlsx_keyvalue).
 """
 
 import logging
+import tempfile
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
@@ -53,8 +54,6 @@ def generate_template_v1(output_path: Path | None = None) -> Workbook:
 
     if output_path is None:
         # Create a temporary file path for building
-        import tempfile
-
         temp_dir = Path(tempfile.mkdtemp())
         temp_path = temp_dir / "template_v1.0.xlsx"
     else:

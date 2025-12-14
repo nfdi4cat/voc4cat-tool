@@ -27,6 +27,11 @@ class ConversionError(Exception):
     pass
 
 
+class RowsPreAllocatedTypeError(TypeError):
+    def __init__(self):
+        super().__init__("rows_pre_allocated must be an int or a dict")
+
+
 def split_and_tidy(cell_value: str):
     # note this may not work in list of things that contain commas. Need to consider revising
     # to allow comma-separated values where it'll split in commas but not in things enclosed in quotes.
@@ -78,7 +83,7 @@ def adjust_length_of_tables(
                     0  # set default value for missing sheets
                 )
     else:
-        raise ValueError("rows_pre_allocated must be an int or a dict")
+        raise RowsPreAllocatedTypeError()
 
     wb = load_workbook(wb_path)
 

@@ -11,6 +11,7 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 
 from voc4cat.cli import main_cli
+from voc4cat.gen_template import generate_template_v1
 from voc4cat.models_v1 import (
     DEFAULT_PREFIXES,
     TEMPLATE_VERSION,
@@ -20,7 +21,6 @@ from voc4cat.models_v1 import (
     MappingV1,
     PrefixV1,
 )
-from voc4cat.gen_template import generate_template_v1
 
 # Path to reference template for comparison
 REFERENCE_TEMPLATE = (

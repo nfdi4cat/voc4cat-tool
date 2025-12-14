@@ -17,7 +17,7 @@ from voc4cat.xlsx_common import XLSXConverters, XLSXMetadata
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
 from voc4cat.xlsx_table import JoinConfiguration, XLSXTableConfig
 
-from .conftest import Employee, Project, SimpleModel
+from .conftest import Employee, Priority, Project, SimpleModel, Status
 
 
 # Vocabulary Template Models (copied from demo files)
@@ -330,10 +330,6 @@ class TestIntegration:
     def test_round_trip_keyvalue_format(self, temp_file):
         """Test complete round-trip for key-value format."""
         # Create a complex model with various field types
-        from datetime import date
-
-        from .conftest import Priority
-
         project = Project(
             project_id=42,
             project_name="Complex Project",
@@ -461,9 +457,6 @@ class TestIntegration:
 
     def test_mixed_data_types_integration(self, temp_file):
         """Test integration with mixed complex data types."""
-        from datetime import date
-
-        from .conftest import Priority, Status
 
         class ComplexIntegrationModel(BaseModel):
             # Basic types
@@ -583,7 +576,7 @@ class TestIntegration:
         )
 
         # 4. Missing sheet
-        with pytest.raises(ValueError, match="Sheet.*not found"):
+        with pytest.raises(ValueError, match=r"Sheet.*not found"):
             import_from_xlsx(
                 temp_file, SimpleModel, format_type="table", sheet_name="NonExistent"
             )
@@ -653,8 +646,6 @@ class TestIntegration:
         # Simulate multiple operations in sequence
 
         # Operation 1: Export employees
-        from .conftest import Employee, Status
-
         employees = [
             Employee(
                 employee_id=1,
@@ -959,45 +950,45 @@ class TestIntegration:
         assert len(imported_concepts) == len(multilingual_concepts)
 
         # Check first concept (TiO2) with complex lists and multiple translations
-        tio2_concept = next(
+        titania_concept = next(
             (c for c in imported_concepts if "TiO2" in c.concept_iri), None
         )
-        assert tio2_concept is not None
-        assert tio2_concept.status == "published"
-        assert len(tio2_concept.parent_iris) == 1
+        assert titania_concept is not None
+        assert titania_concept.status == "published"
+        assert len(titania_concept.parent_iris) == 1
         assert (
-            tio2_concept.parent_iris[0]
+            titania_concept.parent_iris[0]
             == "https://example.org/photocatalysis/PhotocatalystMaterials"
         )
-        assert len(tio2_concept.collection_membership) == 1
+        assert len(titania_concept.collection_membership) == 1
         assert (
-            tio2_concept.collection_membership[0]
+            titania_concept.collection_membership[0]
             == "https://example.org/photocatalysis/Materials"
         )
 
         # Check translations are properly reconstructed
-        assert len(tio2_concept.translations) == 2  # EN and DE
+        assert len(titania_concept.translations) == 2  # EN and DE
 
         # Check English translation
-        tio2_en = next(
-            (t for t in tio2_concept.translations if t.language_code == "en"), None
+        titania_en = next(
+            (t for t in titania_concept.translations if t.language_code == "en"), None
         )
-        assert tio2_en is not None
-        assert tio2_en.preferred_label == "Titanium Dioxide"
-        assert "Titania" in tio2_en.alternate_labels
-        assert "Titanium(IV) oxide" in tio2_en.alternate_labels
+        assert titania_en is not None
+        assert titania_en.preferred_label == "Titanium Dioxide"
+        assert "Titania" in titania_en.alternate_labels
+        assert "Titanium(IV) oxide" in titania_en.alternate_labels
         assert (
-            tio2_en.definition
+            titania_en.definition
             == "A widely used photocatalyst material with excellent properties."
         )
 
         # Check German translation
-        tio2_de = next(
-            (t for t in tio2_concept.translations if t.language_code == "de"), None
+        titania_de = next(
+            (t for t in titania_concept.translations if t.language_code == "de"), None
         )
-        assert tio2_de is not None
-        assert tio2_de.preferred_label == "Titandioxid"
-        assert "Titania" in tio2_de.alternate_labels
+        assert titania_de is not None
+        assert titania_de.preferred_label == "Titandioxid"
+        assert "Titania" in titania_de.alternate_labels
 
         # Check second concept (BandGap) with multiple parent IRIs
         bandgap_concept = next(

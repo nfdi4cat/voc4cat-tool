@@ -52,7 +52,7 @@ def test_overlapping_idranges(datadir, temp_config):
     overlapping_idrange = config.IdrangeItem(first_id=8, last_id=12, gh_name="overlap")
     config.IDRANGES.vocabs["myvocab"].id_range.append(overlapping_idrange)
 
-    with pytest.raises(ValidationError, match="Overlapping ID ranges for IDs 8-12."):
+    with pytest.raises(ValidationError, match=r"Overlapping ID ranges for IDs 8-12."):
         # pydantic does not automatically re-validate on attribute change.
         # We call load_config to trigger revalidation.
         config.load_config(config=config.IDRANGES)
@@ -83,7 +83,7 @@ def test_single_vocab_consistency(datadir, temp_config):
     assert config.IDRANGES.single_vocab is True
     with pytest.raises(
         ValidationError,
-        match='Inconsistent config: "single_vocab" is true but multiple vocabularies are found.',
+        match=r'Inconsistent config: "single_vocab" is true but multiple vocabularies are found.',
     ):
         config.load_config(config=config.IDRANGES)
 

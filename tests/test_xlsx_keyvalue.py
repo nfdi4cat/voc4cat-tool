@@ -4,6 +4,7 @@ Tests for the xlsx_keyvalue module.
 This module tests the key-value format specific functionality for XLSX processing.
 """
 
+from datetime import date
 from typing import Annotated
 
 import pytest
@@ -14,7 +15,7 @@ from voc4cat.xlsx_api import export_to_xlsx, import_from_xlsx
 from voc4cat.xlsx_common import XLSXConverters, XLSXMetadata
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
 
-from .conftest import DemoModelWithMetadata, SimpleModel
+from .conftest import DemoModelWithMetadata, Priority, Project, SimpleModel, Status
 
 
 # Key-Value Format Tests
@@ -102,10 +103,6 @@ class TestKeyValueFormat:
 
     def test_keyvalue_complex_model(self, temp_file):
         """Test key-value format with complex model."""
-        from datetime import date
-
-        from .conftest import Priority, Project
-
         project = Project(
             project_id=1,
             project_name="Test Project",
@@ -185,7 +182,6 @@ class TestKeyValueFormat:
 
     def test_keyvalue_with_enum_fields(self, temp_file):
         """Test key-value format with enum fields."""
-        from .conftest import Status
 
         class ModelWithEnum(BaseModel):
             name: str

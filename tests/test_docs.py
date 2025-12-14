@@ -150,6 +150,6 @@ def test_build_docs_unknown_builder(tmp_path, caplog, capsys):
                 str(tmp_path / CS_CYCLES_TURTLE),
             ]
         )
-    assert exc_info.value.code == 2  # noqa: PLR2004
+    assert exc_info.value.code == 2
     captured = capsys.readouterr()
     assert f"invalid choice: '{unknown_doc_builder}'" in captured.err

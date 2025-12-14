@@ -193,8 +193,8 @@ def _enrich_concept_scheme_from_config(
 
         # Extract URL(s) from value - format is "<name> <URL>" or just "<URL>"
         urls_found = []
-        for line in value.strip().split("\n"):
-            line = line.strip()
+        for iline in value.strip().split("\n"):
+            line = iline.strip()
             if not line:
                 continue
             # Find URL in line (could be at start or end)
