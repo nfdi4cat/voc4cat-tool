@@ -7,8 +7,21 @@ transforming predicates and enriching ConceptScheme metadata.
 import logging
 from pathlib import Path
 
-from rdflib import DCTERMS, PROV, RDF, RDFS, SKOS, XSD, Graph, Literal, Namespace
+from rdflib import (
+    DCAT,
+    DCTERMS,
+    OWL,
+    PROV,
+    RDF,
+    RDFS,
+    SKOS,
+    XSD,
+    Graph,
+    Literal,
+    Namespace,
+)
 
+from voc4cat.config import Vocab
 from voc4cat.convert_043 import convert_rdf_043_to_v1
 
 logger = logging.getLogger(__name__)
@@ -272,3 +285,191 @@ class TestConvert043ToV1:
         # Verify it's valid XML
         converted = Graph().parse(result_path, format="xml")
         assert len(converted) > 0
+
+    def test_convert_with_vocab_config_enriches_metadata(self, tmp_path):
+        """Test that vocab_config enriches ConceptScheme metadata."""
+        # Create minimal test RDF
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Original Title", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        # Add a concept so the conversion has something to process
+        g.add((EX.concept1, RDF.type, SKOS.Concept))
+        g.add((EX.concept1, SKOS.prefLabel, Literal("Test Concept", lang="en")))
+        g.add((EX.concept1, SKOS.inScheme, EX.scheme))
+
+        input_path = tmp_path / "test_043.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+
+        # Create vocab config with enrichment values
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="http://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="http://example.org/scheme",
+            title="Config Title",
+            description="Description from config",
+            created_date="2025-01-01",
+            creator="https://orcid.org/0000-0001-2345-6789",
+            repository="https://github.com/test/repo",
+        )
+
+        # Convert with vocab_config
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(input_path, output_path, vocab_config=vocab_config)
+
+        # Load and verify enrichment
+        converted = Graph().parse(output_path, format="turtle")
+
+        # Verify title was updated from config
+        titles = list(converted.objects(EX.scheme, SKOS.prefLabel))
+        assert len(titles) == 1
+        assert str(titles[0]) == "Config Title"
+
+        # Verify description was added from config
+        descriptions = list(converted.objects(EX.scheme, SKOS.definition))
+        assert len(descriptions) == 1
+        assert str(descriptions[0]) == "Description from config"
+
+        # Verify created date was updated from config
+        created_dates = list(converted.objects(EX.scheme, DCTERMS.created))
+        assert len(created_dates) == 1
+        assert str(created_dates[0]) == "2025-01-01"
+
+    def test_convert_with_vocab_config_custodian(self, tmp_path):
+        """Test that vocab_config custodian is added as dcat:contactPoint."""
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        g.add((EX.concept1, RDF.type, SKOS.Concept))
+        g.add((EX.concept1, SKOS.prefLabel, Literal("Test", lang="en")))
+        g.add((EX.concept1, SKOS.inScheme, EX.scheme))
+
+        input_path = tmp_path / "test_043.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="http://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="http://example.org/scheme",
+            title="Test",
+            description="Test",
+            created_date="2024-01-01",
+            creator="https://orcid.org/0000-0001-2345-6789",
+            repository="https://github.com/test/repo",
+            custodian="David Linke",
+        )
+
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(input_path, output_path, vocab_config=vocab_config)
+
+        converted = Graph().parse(output_path, format="turtle")
+
+        # Verify custodian was added as dcat:contactPoint
+        custodians = list(converted.objects(EX.scheme, DCAT.contactPoint))
+        assert len(custodians) == 1
+        assert str(custodians[0]) == "David Linke"
+
+    def test_convert_without_vocab_config_preserves_rdf_metadata(self, tmp_path):
+        """Test that without vocab_config, RDF metadata is preserved."""
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+        g.bind("owl", OWL)
+
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Original Title", lang="en")))
+        g.add((EX.scheme, SKOS.definition, Literal("Original Description", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+        g.add((EX.scheme, OWL.versionInfo, Literal("1.0.0")))
+
+        g.add((EX.concept1, RDF.type, SKOS.Concept))
+        g.add((EX.concept1, SKOS.prefLabel, Literal("Test", lang="en")))
+        g.add((EX.concept1, SKOS.inScheme, EX.scheme))
+
+        input_path = tmp_path / "test_043.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+
+        # Convert WITHOUT vocab_config
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(input_path, output_path)
+
+        converted = Graph().parse(output_path, format="turtle")
+
+        # Verify original RDF values are preserved
+        titles = list(converted.objects(EX.scheme, SKOS.prefLabel))
+        assert len(titles) == 1
+        assert str(titles[0]) == "Original Title"
+
+        descriptions = list(converted.objects(EX.scheme, SKOS.definition))
+        assert len(descriptions) == 1
+        assert str(descriptions[0]) == "Original Description"
+
+        versions = list(converted.objects(EX.scheme, OWL.versionInfo))
+        assert len(versions) == 1
+        assert str(versions[0]) == "1.0.0"
+
+    def test_convert_with_vocab_config_preserves_concepts(self, tmp_path):
+        """Test that conversion with vocab_config preserves concepts."""
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        # Add multiple concepts
+        g.add((EX.concept1, RDF.type, SKOS.Concept))
+        g.add((EX.concept1, SKOS.prefLabel, Literal("Concept One", lang="en")))
+        g.add((EX.concept1, SKOS.inScheme, EX.scheme))
+
+        g.add((EX.concept2, RDF.type, SKOS.Concept))
+        g.add((EX.concept2, SKOS.prefLabel, Literal("Concept Two", lang="en")))
+        g.add((EX.concept2, SKOS.inScheme, EX.scheme))
+
+        input_path = tmp_path / "test_043.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="http://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="http://example.org/scheme",
+            title="Updated Title",
+            description="Updated description",
+            created_date="2025-01-01",
+            creator="https://orcid.org/0000-0001-2345-6789",
+            repository="https://github.com/test/repo",
+        )
+
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(input_path, output_path, vocab_config=vocab_config)
+
+        converted = Graph().parse(output_path, format="turtle")
+
+        # Verify concepts are preserved
+        concepts = list(converted.subjects(RDF.type, SKOS.Concept))
+        assert len(concepts) == 2
+
+        # Verify concept labels are unchanged
+        concept1_labels = list(converted.objects(EX.concept1, SKOS.prefLabel))
+        assert len(concept1_labels) == 1
+        assert str(concept1_labels[0]) == "Concept One"
+
+        concept2_labels = list(converted.objects(EX.concept2, SKOS.prefLabel))
+        assert len(concept2_labels) == 1
+        assert str(concept2_labels[0]) == "Concept Two"

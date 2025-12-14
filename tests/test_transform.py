@@ -6,18 +6,17 @@ from unittest import mock
 import pytest
 from rdflib import DCTERMS, OWL, SKOS, XSD, Graph, Literal
 
-from tests.test_cli import (
-    CS_SIMPLE,
-    CS_SIMPLE_TURTLE,
-)
+from tests.test_cli import CS_CYCLES
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
+
+CS_SIMPLE_TURTLE = "concept-scheme-simple.ttl"
 
 # ===== Tests for no option set =====
 
 
-def test_transform_no_option(monkeypatch, datadir, tmp_path, caplog):
-    shutil.copy(datadir / CS_SIMPLE, tmp_path / CS_SIMPLE)
+def test_transform_no_option(monkeypatch, datadir, tmp_path, caplog, cs_cycles_xlsx):
+    shutil.copy(cs_cycles_xlsx, tmp_path / CS_CYCLES)
     monkeypatch.chdir(tmp_path)
 
     with caplog.at_level(logging.DEBUG):

@@ -57,7 +57,7 @@ def test_validate_config_has_idrange(datadir, temp_config):
     )
 
 
-def test_check_number_of_files_in_inbox(datadir, tmp_path, temp_config):
+def test_check_number_of_files_in_inbox(datadir, tmp_path, temp_config, cs_cycles_xlsx):
     # no warning for default config
     assert check_number_of_files_in_inbox(datadir) is None
 
@@ -66,15 +66,22 @@ def test_check_number_of_files_in_inbox(datadir, tmp_path, temp_config):
     config.load_config(datadir / VALID_CONFIG)
 
     assert check_number_of_files_in_inbox(tmp_path) is None
+
+    # Create a test directory with multiple xlsx files to trigger the error
+    inbox = tmp_path / "inbox"
+    inbox.mkdir()
+    shutil.copy(cs_cycles_xlsx, inbox / "vocab1.xlsx")
+    shutil.copy(cs_cycles_xlsx, inbox / "vocab2.xlsx")
+
     with pytest.raises(Voc4catError) as excinfo:
-        check_number_of_files_in_inbox(datadir)
+        check_number_of_files_in_inbox(inbox)
     assert "The single vocabulary option is active but " in str(excinfo.value)
 
 
 # To give the same result on gh-actions we need to clear the CI_RUN envvar
 @mock.patch.dict(os.environ, {"CI_RUN": ""})
 def test_validate_vocabulary_files_for_ci_workflow_default(
-    datadir, caplog, temp_config, tmp_path
+    datadir, caplog, temp_config, tmp_path, cs_cycles_xlsx
 ):
     """
     Test for validate_vocabulary_files_for_ci_workflow.
@@ -100,19 +107,20 @@ def test_validate_vocabulary_files_for_ci_workflow_default(
     inbox.mkdir(parents=True)
     vocab = tmp_path / "pr" / "vocab"
     vocab.mkdir(parents=True)
-    shutil.copy(datadir / "concept-scheme-simple.xlsx", inbox)
+    shutil.copy(cs_cycles_xlsx, inbox / "concept-scheme-with-cycles.xlsx")
 
     with pytest.raises(Voc4catError) as excinfo:
         validate_vocabulary_files_for_ci_workflow(vocab, inbox)
-    assert 'Missing vocabulary id_range config for "concept-scheme-simple".' in str(
-        excinfo.value
+    assert (
+        'Missing vocabulary id_range config for "concept-scheme-with-cycles".'
+        in str(excinfo.value)
     )
 
     # Check for inappropriate file in inbox
     # To reach this check we need a correct idrange section.
     config.load_config(datadir / VALID_CONFIG)
     config.IDRANGES.single_vocab = False
-    config.IDRANGES.vocabs["concept-scheme-simple"] = config.IDRANGES.vocabs.pop(
+    config.IDRANGES.vocabs["concept-scheme-with-cycles"] = config.IDRANGES.vocabs.pop(
         "myvocab"
     )
     config.load_config(config=config.IDRANGES)
@@ -130,7 +138,7 @@ def test_validate_vocabulary_files_for_ci_workflow_default(
 
 @mock.patch.dict(os.environ, {"CI_RUN": "true"})
 def test_validate_vocabulary_files_for_ci_workflow_single_vocab(
-    datadir, tmp_path, temp_config
+    datadir, tmp_path, temp_config, cs_cycles_xlsx
 ):
     """Test for validate_vocabulary_files_for_ci_workflow.
 
@@ -139,7 +147,7 @@ def test_validate_vocabulary_files_for_ci_workflow_single_vocab(
     # Load a valid stricter config.
     config = temp_config
     config.load_config(datadir / VALID_CONFIG)
-    config.IDRANGES.vocabs["concept-scheme-simple"] = config.IDRANGES.vocabs.pop(
+    config.IDRANGES.vocabs["concept-scheme-with-cycles"] = config.IDRANGES.vocabs.pop(
         "myvocab"
     )
     config.load_config(config=config.IDRANGES)
@@ -150,26 +158,28 @@ def test_validate_vocabulary_files_for_ci_workflow_single_vocab(
     pr_vocab.mkdir(parents=True)
 
     # Test valid use cases for single_vocab = True
-    shutil.copy(datadir / "concept-scheme-simple.xlsx", pr_inbox)
+    shutil.copy(cs_cycles_xlsx, pr_inbox / "concept-scheme-with-cycles.xlsx")
     assert validate_vocabulary_files_for_ci_workflow(pr_vocab, pr_inbox) is None
-    vocab_file = "concept-scheme-simple.ttl"
+    vocab_file = "concept-scheme-with-cycles.ttl"
     shutil.copy(datadir / vocab_file, pr_vocab)
     assert validate_vocabulary_files_for_ci_workflow(pr_vocab, pr_inbox) is None
-    os.remove(pr_inbox / "concept-scheme-simple.xlsx")
+    os.remove(pr_inbox / "concept-scheme-with-cycles.xlsx")
     assert validate_vocabulary_files_for_ci_workflow(pr_vocab, pr_inbox) is None
 
-    # More than one vocab in vocab-dir
-    shutil.copy(datadir / "concept-scheme-with-cycles.ttl", pr_vocab)
+    # More than one vocab in vocab-dir (copy cycles.ttl with different name)
+    shutil.copy(
+        datadir / "concept-scheme-with-cycles.ttl", pr_vocab / "other-vocab.ttl"
+    )
     with pytest.raises(Voc4catError) as excinfo:
         validate_vocabulary_files_for_ci_workflow(pr_vocab, pr_inbox)
     assert f'Directory "{pr_vocab}" may contain only a single vocabulary.' in str(
         excinfo.value
     )
-    os.remove(pr_vocab / "concept-scheme-with-cycles.ttl")
+    os.remove(pr_vocab / "other-vocab.ttl")
 
     # Test invalid use cases for single_vocab = True
-    inbox_file = "concept-scheme-with-cycles.xlsx"
-    shutil.copy(datadir / inbox_file, pr_inbox)
+    inbox_file = "other-vocab.xlsx"
+    shutil.copy(cs_cycles_xlsx, pr_inbox / inbox_file)
     with pytest.raises(Voc4catError) as excinfo:
         validate_vocabulary_files_for_ci_workflow(pr_vocab, pr_inbox)
     assert (
@@ -199,8 +209,8 @@ def test_validate_vocabulary_files_for_ci_workflow_single_vocab(
 
     # One inbox file but without idranges specified.
     os.remove(pr_vocab / unconfigured_vocab)
-    inbox_file = "concept-scheme-with-cycles.xlsx"
-    shutil.copy(datadir / inbox_file, pr_inbox)
+    inbox_file = "other-vocab.xlsx"
+    shutil.copy(cs_cycles_xlsx, pr_inbox / inbox_file)
     with pytest.raises(Voc4catError) as excinfo:
         validate_vocabulary_files_for_ci_workflow(pr_vocab, pr_inbox)
     assert (
@@ -211,7 +221,7 @@ def test_validate_vocabulary_files_for_ci_workflow_single_vocab(
 
 @mock.patch.dict(os.environ, {"CI_RUN": "true"}, clear=True)
 def test_validate_vocabulary_files_for_ci_workflow_multi_vocab(
-    datadir, tmp_path, temp_config, caplog
+    datadir, tmp_path, temp_config, caplog, cs_cycles_xlsx
 ):
     """Test for validate_vocabulary_files_for_ci_workflow.
 
@@ -220,10 +230,10 @@ def test_validate_vocabulary_files_for_ci_workflow_multi_vocab(
     # Load a valid stricter config.
     config = temp_config
     config.load_config(datadir / VALID_CONFIG)
-    config.IDRANGES.vocabs["concept-scheme-simple"] = config.IDRANGES.vocabs.pop(
+    config.IDRANGES.vocabs["concept-scheme-with-cycles"] = config.IDRANGES.vocabs.pop(
         "myvocab"
     )
-    config.IDRANGES.vocabs["concept-scheme-simple"].checks.allow_delete = True
+    config.IDRANGES.vocabs["concept-scheme-with-cycles"].checks.allow_delete = True
     config.load_config(config=config.IDRANGES)
 
     (tmp_path / "pr" / "inbox").mkdir(parents=True)
@@ -231,17 +241,14 @@ def test_validate_vocabulary_files_for_ci_workflow_multi_vocab(
     pr_inbox = tmp_path / "pr" / "inbox"
     pr_vocab = tmp_path / "pr" / "vocab"
 
-    # Test valid use cases for single_vocab = True
-    shutil.copy(datadir / "concept-scheme-with-cycles.xlsx", pr_inbox)
-    shutil.copy(datadir / "concept-scheme-simple.xlsx", pr_inbox)
-    shutil.copy(datadir / "concept-scheme-simple.ttl", pr_vocab)
+    # Test multi-vocab scenario: configured vocab + unconfigured vocab
+    shutil.copy(cs_cycles_xlsx, pr_inbox / "other-vocab.xlsx")
+    shutil.copy(cs_cycles_xlsx, pr_inbox / "concept-scheme-with-cycles.xlsx")
+    shutil.copy(datadir / "concept-scheme-with-cycles.ttl", pr_vocab)
 
     with pytest.raises(Voc4catError) as excinfo:
         validate_vocabulary_files_for_ci_workflow(pr_vocab, pr_inbox)
-    assert (
-        'Missing vocabulary id_range config for "concept-scheme-with-cycles".'
-        in str(excinfo.value)
-    )
+    assert 'Missing vocabulary id_range config for "other-vocab".' in str(excinfo.value)
 
 
 @pytest.mark.parametrize(
@@ -254,7 +261,7 @@ def test_validate_vocabulary_files_for_ci_workflow_multi_vocab(
 def test_check_for_removed_iris(  # noqa: PLR0913
     datadir, tmp_path, temp_config, caplog, skos_el, log_text
 ):
-    original = datadir / "concept-scheme-simple.ttl"
+    original = datadir / "concept-scheme-with-cycles.ttl"
     # Prepare data with removed concept
     g = Graph()
     g.parse(original, format="turtle")
@@ -266,7 +273,7 @@ def test_check_for_removed_iris(  # noqa: PLR0913
     # Test with a config that forbids to delete.
     config = temp_config
     config.load_config(datadir / VALID_CONFIG)
-    config.IDRANGES.vocabs["concept-scheme-simple"] = config.IDRANGES.vocabs.pop(
+    config.IDRANGES.vocabs["concept-scheme-with-cycles"] = config.IDRANGES.vocabs.pop(
         "myvocab"
     )
     config.load_config(config=config.IDRANGES)
@@ -282,7 +289,7 @@ def test_check_for_removed_iris(  # noqa: PLR0913
     assert log_text in caplog.text
 
     # Change to a config that allows to delete.
-    config.IDRANGES.vocabs["concept-scheme-simple"].checks.allow_delete = True
+    config.IDRANGES.vocabs["concept-scheme-with-cycles"].checks.allow_delete = True
     config.load_config(config=config.IDRANGES)
     with caplog.at_level(logging.WARNING):
         check_for_removed_iris(original, reduced)

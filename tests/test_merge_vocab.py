@@ -4,8 +4,10 @@ from unittest import mock
 
 import pytest
 
-from tests.test_cli import CS_CYCLES_TURTLE, CS_SIMPLE_TURTLE
+from tests.test_cli import CS_CYCLES_TURTLE
 from voc4cat.merge_vocab import main_cli
+
+CS_SIMPLE_TURTLE = "concept-scheme-simple.ttl"
 
 
 def test_main_no_args_entrypoint(monkeypatch, capsys):
