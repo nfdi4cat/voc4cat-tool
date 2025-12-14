@@ -66,9 +66,14 @@ lint = [
   "ruff",
   "mypy",
 ]
+docs = [
+  "sphinx",
+  "myst-parser",
+  "furo",
+]
 dev = [
     # Recursively including the project's own optional dependencies requires pip>=21.2
-    "voc4cat[tests,lint]",
+    "voc4cat[tests,lint,docs]",
 ]
 assistant = [
   "click",
@@ -260,8 +265,6 @@ max-complexity = 10
 # Allow Pydantic's `@validator` decorator to trigger class method treatment.
 classmethod-decorators = [
   "classmethod",
-  # for pydantic 1.x
-  "pydantic.validator", "pydantic.class_validators.root_validator"
 ]
 
 [tool.mypy]
@@ -270,7 +273,7 @@ classmethod-decorators = [
 ignore_missing_imports = true
 
 [tool.codespell]
-skip = "*.xlsx,pyproject.toml,./vocabularies,./example,./tests/data,./tmp"
+skip = "*.ttl,pyproject.toml,./example,./tests/data,./tmp"
 # Note: words have to be lowercased for the ignore-words-list
 ignore-words-list = "linke"
 quiet-level = 3

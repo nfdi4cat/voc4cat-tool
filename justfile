@@ -37,6 +37,12 @@ typecheck:
     @echo "Running ty type checks..."
     uv run ty check src/
 
+# Build Sphinx documentation
+[group('development')]
+docs:
+    @echo "Building Sphinx documentation..."
+    uv run sphinx-build -M html docs/ docs/_build/
+
 # Detect code duplicates using PMD CPD
 [group('development')]
 duplicates TOKENS="100" OUTPUT=".duplicates.txt" *DIRS:
