@@ -392,7 +392,6 @@ def demo_basic_keyvalue_styling(demo_file: Path):
         title="Project Information",
         field_column_header="Property",
         value_column_header="Value",
-        show_descriptions=True,
     )
 
     export_to_xlsx(
@@ -436,9 +435,6 @@ def demo_comprehensive_metadata(demo_file: Path):
         unit_column_header="Unit",
         description_column_header="Description",
         meaning_column_header="Ontology URI",
-        show_descriptions=True,
-        show_units=True,
-        show_meanings=True,
     )
 
     export_to_xlsx(
@@ -490,8 +486,6 @@ def demo_field_filtering_and_selection(demo_file: Path):
         },
         field_column_header="Key Metric",
         value_column_header="Value",
-        show_descriptions=True,
-        show_units=True,
     )
 
     export_to_xlsx(
@@ -521,8 +515,6 @@ def demo_field_filtering_and_selection(demo_file: Path):
         },
         field_column_header="Technical Aspect",
         value_column_header="Details",
-        show_descriptions=True,
-        show_meanings=True,
     )
 
     export_to_xlsx(
@@ -555,9 +547,6 @@ def demo_research_project_styling(demo_file: Path):
         value_column_header="Information",
         description_column_header="Details",
         meaning_column_header="Semantic Reference",
-        show_descriptions=True,
-        show_meanings=True,
-        show_units=True,
     )
 
     export_to_xlsx(
@@ -625,7 +614,6 @@ def demo_custom_column_headers(demo_file: Path):
             field_column_header=context["field_header"],
             value_column_header=context["value_header"],
             description_column_header=context["desc_header"],
-            show_descriptions=True,
         )
 
         export_to_xlsx(
@@ -661,9 +649,6 @@ def demo_minimal_vs_detailed_styling(demo_file: Path):
             "status",
             "budget",
         },
-        show_descriptions=False,
-        show_units=False,
-        show_meanings=False,
     )
 
     export_to_xlsx(
@@ -687,9 +672,6 @@ def demo_minimal_vs_detailed_styling(demo_file: Path):
         unit_column_header="Unit of Measure",
         description_column_header="Detailed Description",
         meaning_column_header="Ontological Definition",
-        show_descriptions=True,
-        show_units=True,
-        show_meanings=True,
     )
 
     export_to_xlsx(
@@ -729,7 +711,6 @@ def demo_comparison_layouts(demo_file: Path):
                     "status",
                     "completion_percentage",
                 },
-                show_descriptions=False,
             ),
         },
         {
@@ -740,8 +721,6 @@ def demo_comparison_layouts(demo_file: Path):
                 field_column_header="Analysis Parameter",
                 value_column_header="Current State",
                 description_column_header="Parameter Description",
-                show_descriptions=True,
-                show_units=True,
             ),
         },
         {
@@ -752,8 +731,6 @@ def demo_comparison_layouts(demo_file: Path):
                 field_column_header="Concept",
                 value_column_header="Instance",
                 meaning_column_header="Ontology URI",
-                show_meanings=True,
-                show_descriptions=True,
             ),
         },
     ]
