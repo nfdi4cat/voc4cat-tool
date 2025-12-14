@@ -9,7 +9,8 @@ from datetime import date, datetime
 from typing import Annotated, Optional, Union
 
 import pytest
-from pydantic import BaseModel, Field
+from openpyxl import load_workbook
+from pydantic import BaseModel, Field, HttpUrl
 
 from voc4cat.fields import ORCIDIdentifier, RORIdentifier
 from voc4cat.xlsx_api import export_to_xlsx, import_from_xlsx
@@ -165,13 +166,13 @@ class TestXLSXConverters:
         assert from_int("") == []
         assert from_int("   ") == []
         # Test that empty strings in integer lists raise ValueError
-        with pytest.raises(ValueError, match="Cannot convert.*to list of integers"):
+        with pytest.raises(ValueError, match=r"Cannot convert.*to list of integers"):
             from_int("1, , 3")
 
     def test_integer_conversion_error(self):
         """Test error handling in integer list conversion."""
         _, from_int = XLSXConverters.create_int_separated_converters(",")
-        with pytest.raises(ValueError, match="Cannot convert.*to list of integers"):
+        with pytest.raises(ValueError, match=r"Cannot convert.*to list of integers"):
             from_int("1, abc, 3")
 
     def test_escaped_pattern_converters(self):
@@ -203,7 +204,7 @@ class TestXLSXConverters:
 
     def test_json_string_to_dict_error(self):
         """Test error handling in JSON string to dictionary conversion."""
-        with pytest.raises(ValueError, match="Cannot parse.*as JSON"):
+        with pytest.raises(ValueError, match=r"Cannot parse.*as JSON"):
             XLSXConverters.json_string_to_dict("invalid json")
 
 
@@ -217,7 +218,7 @@ class TestXLSXFieldAnalyzer:
         assert len(fields) == 3
 
         name_field = next(f for f in fields.values() if f.name == "name")
-        assert name_field.field_type == str
+        assert name_field.field_type is str
         assert not name_field.is_optional
         assert name_field.enum_values == []
 
@@ -348,7 +349,7 @@ class TestFieldAnalysis:
         )
 
         assert field_analysis.name == "test_field"
-        assert field_analysis.field_type == str
+        assert field_analysis.field_type is str
         assert field_analysis.is_optional is True
         assert field_analysis.enum_values == ["a", "b", "c"]
         assert field_analysis.xlsx_metadata == metadata
@@ -360,7 +361,7 @@ class TestFieldAnalysis:
         field_analysis = FieldAnalysis(name="test", field_type=int)
 
         assert field_analysis.name == "test"
-        assert field_analysis.field_type == int
+        assert field_analysis.field_type is int
         assert field_analysis.is_optional is False
         assert field_analysis.enum_values == []
         assert field_analysis.xlsx_metadata is None
@@ -673,8 +674,6 @@ class TestORCIDRORXLSXIntegration:
 
         # Check ORCID field - ORCIDIdentifier resolves to HttpUrl during field analysis
         orcid_field = next(f for f in fields.values() if f.name == "orcid")
-        from pydantic import HttpUrl
-
         assert orcid_field.field_type == HttpUrl
         assert not orcid_field.is_optional
 
@@ -745,7 +744,6 @@ class TestORCIDRORXLSXIntegration:
 
         # Test ORCID serialization
         orcid_field = FieldAnalysis(name="orcid", field_type=ORCIDIdentifier)
-        from pydantic import HttpUrl
 
         orcid_value = HttpUrl("https://orcid.org/0000-0002-1825-0097")
 
@@ -777,8 +775,6 @@ class TestORCIDRORXLSXIntegration:
         export_to_xlsx(sample_researcher, temp_file, format_type="keyvalue")
 
         # Now manually corrupt the Excel file by reading and modifying
-        from openpyxl import load_workbook
-
         workbook = load_workbook(temp_file)
         worksheet = workbook.active
 

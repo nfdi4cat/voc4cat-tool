@@ -16,6 +16,7 @@ import re
 from typing import TYPE_CHECKING
 
 import curies
+from jinja2 import Template
 
 from voc4cat import config
 from voc4cat.models_v1 import (
@@ -115,8 +116,6 @@ def build_provenance_url(
         The provenance URL, or empty string if no template is provided and
         no GitHub repository can be detected.
     """
-    from jinja2 import Template
-
     version = os.getenv("VOC4CAT_VERSION", "") or "main"
 
     # Determine github_repo (for default template and as template variable)
@@ -160,7 +159,7 @@ def extract_entity_id_from_iri(iri: str, vocab_name: str) -> str:
     Returns:
         The entity ID portion (with vocab prefix stripped if applicable).
     """
-    if "#" in iri:
+    if "#" in iri:  # noqa: SIM108
         entity_id = iri.split("#")[-1]
     else:
         entity_id = iri.rstrip("/").split("/")[-1]
@@ -402,8 +401,8 @@ def derive_contributors(
     # Parse creator field to extract identifiers for exclusion
     creator_identifiers: set[str] = set()
     if vocab_config.creator:
-        for line in vocab_config.creator.strip().split("\n"):
-            line = line.strip()
+        for iline in vocab_config.creator.strip().split("\n"):
+            line = iline.strip()
             if not line:
                 continue
             # Extract ORCID from creator line
@@ -473,12 +472,12 @@ def parse_replaced_by_from_change_note(change_note: str) -> str | None:
     if not change_note:
         return None
 
-    for line in change_note.split("\n"):
-        line = line.strip()
+    for iline in change_note.split("\n"):
+        line = iline.strip()
         if line.lower().startswith("replaced_by "):
             # Extract the IRI (everything after "replaced_by ")
             parts = line.split(maxsplit=1)
-            if len(parts) == 2:
+            if len(parts) == 2:  # noqa: PLR2004
                 return parts[1].strip()
     return None
 

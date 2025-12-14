@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Literal as TypingLiteral
 
 import curies
+from openpyxl import load_workbook
+from openpyxl.styles import Font
 from rdflib import (
     DCAT,
     DCTERMS,
@@ -26,13 +28,16 @@ from rdflib import (
     RDFS,
     SKOS,
     XSD,
+    BNode,
     Graph,
     Literal,
     Namespace,
     URIRef,
 )
+from rdflib.collection import Collection as RDFCollection
 
 from voc4cat import config
+from voc4cat.checks import Voc4catError
 from voc4cat.convert_v1_helpers import (
     build_id_range_info,
     build_provenance_url,
@@ -263,8 +268,6 @@ def extract_collections_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
         Each collection_data_dict contains: preferred_label, definition, change_note,
         editorial_note, obsolete_reason, ordered, members.
     """
-    from rdflib.collection import Collection as RDFCollection
-
     collections_by_iri_lang: dict[str, dict[str, dict]] = defaultdict(
         lambda: defaultdict(dict)
     )
@@ -464,7 +467,6 @@ def build_concept_to_ordered_collections_map(
         Dict: {concept_iri: {collection_iri: position}}
         Position is 1-indexed (first member is position 1).
     """
-    from rdflib.collection import Collection as RDFCollection
 
     concept_to_ordered: dict[str, dict[str, int]] = defaultdict(dict)
 
@@ -479,9 +481,11 @@ def build_concept_to_ordered_collections_map(
                     # Only map if member is a concept
                     if (member, RDF.type, SKOS.Concept) in graph:
                         concept_to_ordered[member_iri][str(collection_iri)] = position
-            except Exception:
-                # If parsing fails, skip this collection
-                pass
+            except Exception as e:
+                # If parsing fails, warn and skip this collection
+                logger.warning(
+                    "Failed to parse ordered collection %s: %s", collection_iri, e
+                )
 
     return dict(concept_to_ordered)
 
@@ -1089,8 +1093,6 @@ def _apply_hyperlink_style(cell) -> None:
     Args:
         cell: openpyxl cell object.
     """
-    from openpyxl.styles import Font
-
     cell.font = Font(
         name=cell.font.name,
         size=cell.font.size,
@@ -1289,8 +1291,6 @@ def export_vocabulary_v1(
     )
 
     # Post-processing: reorder sheets, add hyperlinks, set freeze panes
-    from openpyxl import load_workbook
-
     wb = load_workbook(output_path)
     _reorder_sheets(wb)
 
@@ -1686,8 +1686,8 @@ def expand_iri_list(iri_string: str, converter: curies.Converter) -> list[str]:
     if not iri_string or not iri_string.strip():
         return []
     results = []
-    for part in iri_string.split("\n"):
-        part = part.strip()
+    for ipart in iri_string.split("\n"):
+        part = ipart.strip()
         if not part:
             continue
         # Strip label if present
@@ -1720,14 +1720,14 @@ def parse_ordered_collection_positions(
     result: dict[str, int] = {}
 
     # Split by newline - each entry is one line
-    for line in position_string.split("\n"):
-        line = line.strip()
+    for iline in position_string.split("\n"):
+        line = iline.strip()
         if not line or "#" not in line:
             continue
 
         # Split by "#" to separate IRI (with optional label) from position
         parts = line.split("#")
-        if len(parts) < 2:
+        if len(parts) < 2:  # noqa: PLR2004
             continue
 
         # Left part is "collIRI (label)" or just "collIRI"
@@ -2138,8 +2138,8 @@ def build_concept_scheme_graph(
     # Format is multi-line "<name> <URL>" - extract URLs and add as URIRefs
     creator_urls: list[str] = []
     if cs.creator:
-        for line in cs.creator.strip().split("\n"):
-            line = line.strip()
+        for iline in cs.creator.strip().split("\n"):
+            line = iline.strip()
             if not line:
                 continue
             for part in line.split():
@@ -2150,8 +2150,8 @@ def build_concept_scheme_graph(
                     break
 
     if cs.publisher:
-        for line in cs.publisher.strip().split("\n"):
-            line = line.strip()
+        for iline in cs.publisher.strip().split("\n"):
+            line = iline.strip()
             if not line:
                 continue
             for part in line.split():
@@ -2164,8 +2164,8 @@ def build_concept_scheme_graph(
 
     # Contributors (multiple, stored as literals in format "<name> <orcid-URL or ror-URL>")
     if cs.contributor:
-        for line in cs.contributor.strip().split("\n"):
-            line = line.strip()
+        for iline in cs.contributor.strip().split("\n"):
+            line = iline.strip()
             if line:
                 g.add((scheme_iri, DCTERMS.contributor, Literal(line)))
 
@@ -2198,8 +2198,8 @@ def build_concept_scheme_graph(
 
     # Conforms to (SHACL profile)
     if cs.conforms_to:
-        for line in cs.conforms_to.strip().split("\n"):
-            line = line.strip()
+        for iline in cs.conforms_to.strip().split("\n"):
+            line = iline.strip()
             if not line:
                 continue
             if line.startswith("http"):
@@ -2341,9 +2341,6 @@ def build_collection_graph(
     Returns:
         Graph with Collection triples.
     """
-    from rdflib import BNode
-    from rdflib.collection import Collection as RDFCollection
-
     ordered_collection_members = ordered_collection_members or {}
     g = Graph()
     c = URIRef(collection.iri)

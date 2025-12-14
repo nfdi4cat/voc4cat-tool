@@ -6,8 +6,13 @@ from pathlib import Path
 from typing import Annotated
 
 import pytest
+from curies import Converter
 from pydantic import BaseModel, Field
+from rdflib import DCTERMS, RDF, SKOS, Graph, URIRef
+from rdflib.namespace import NamespaceManager
 
+from voc4cat import config
+from voc4cat.config import Checks, Vocab
 from voc4cat.xlsx_common import XLSXMetadata
 
 
@@ -93,11 +98,6 @@ def temp_config():
 
     After the test the config will be reset to default.
     """
-    from curies import Converter
-    from rdflib import Graph
-    from rdflib.namespace import NamespaceManager
-
-    from voc4cat import config
 
     config.curies_converter.add_prefix("ex", "http://example.org/", merge=True)
     yield config
@@ -115,7 +115,6 @@ def temp_config():
 @pytest.fixture
 def test_vocab_config():
     """Minimal vocab config for testing excel_to_rdf_v1."""
-    from voc4cat.config import Checks, Vocab
 
     return Vocab(
         id_length=7,
@@ -150,10 +149,6 @@ def make_vocab_config_from_rdf(graph, vocab_iri: str | None = None):
     This extracts ConceptScheme metadata from the RDF and creates a Vocab config
     that can be used with excel_to_rdf_v1.
     """
-    from rdflib import DCTERMS, RDF, SKOS, URIRef
-
-    from voc4cat.config import Checks, Vocab
-
     # Find concept scheme
     if vocab_iri is None:
         schemes = list(graph.subjects(RDF.type, SKOS.ConceptScheme))

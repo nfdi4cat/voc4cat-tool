@@ -185,6 +185,7 @@ exclude = [
     "__pycache__",
     "*.egg",
     ".*",
+    "_version.py",
 ]
 
 # Assume Python 3.10 syntax and semantics for linting.

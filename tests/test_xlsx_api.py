@@ -272,7 +272,7 @@ class TestErrorHandling:
             value: str  # Different type than what's in the file
             required_field: str  # Missing field
 
-        with pytest.raises(ValueError, match="Failed to create|Sheet.*not found"):
+        with pytest.raises(ValueError, match=r"Failed to create|Sheet.*not found"):
             import_from_xlsx(
                 temp_file, StrictModel, format_type="keyvalue", sheet_name="SimpleModel"
             )

@@ -4,16 +4,30 @@ These tests verify that the RDF to v1.0 Excel converter works correctly,
 extracting data from RDF graphs and producing valid v1.0 template Excel files.
 """
 
+import shutil
 from pathlib import Path
 
 import pytest
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
-from rdflib import DCTERMS, RDF, SKOS, Graph, Literal, Namespace, URIRef
+from pydantic import ValidationError
+from rdflib import (
+    DCTERMS,
+    OWL,
+    PROV,
+    RDF,
+    RDFS,
+    SKOS,
+    XSD,
+    Graph,
+    Literal,
+    Namespace,
+    URIRef,
+)
 
 from tests.conftest import make_vocab_config_from_rdf
+from voc4cat.config import Checks, Vocab
 from voc4cat.convert_v1 import (
-    OBSOLETE_PREFIX,
     aggregate_collections,
     aggregate_concepts,
     build_concept_to_collections_map,
@@ -27,10 +41,8 @@ from voc4cat.convert_v1 import (
     extract_concept_scheme_from_rdf,
     extract_concepts_from_rdf,
     extract_entity_id_from_iri,
-    extract_github_repo_from_url,
     extract_mappings_from_rdf,
     format_change_note_with_replaced_by,
-    format_contributor_string,
     parse_ordered_collection_positions,
     parse_replaced_by_from_change_note,
     rdf_concept_scheme_to_v1,
@@ -39,14 +51,24 @@ from voc4cat.convert_v1 import (
     rdf_to_excel_v1,
     validate_deprecation,
 )
+from voc4cat.convert_v1_helpers import (
+    OBSOLETE_PREFIX,
+    build_id_range_info,
+    extract_github_repo_from_url,
+    extract_used_ids,
+    format_contributor_string,
+)
 from voc4cat.models_v1 import (
     OBSOLETION_REASONS_COLLECTIONS,
     OBSOLETION_REASONS_CONCEPTS,
     TEMPLATE_VERSION,
     CollectionV1,
+    ConceptSchemeV1,
     ConceptV1,
     PrefixV1,
 )
+
+EX = Namespace("http://example.org/")
 
 # Test data paths
 TEST_DATA_DIR = Path(__file__).parent / "data"
@@ -359,8 +381,6 @@ class TestRdfToExcelV1:
 
     def test_default_output_path(self, tmp_path, temp_config):
         """Test that default output path uses .xlsx extension."""
-        import shutil
-
         # Copy test file to tmp_path
         test_file = tmp_path / "test.ttl"
         shutil.copy(CS_SIMPLE_TTL, test_file)
@@ -556,7 +576,6 @@ class TestMultiLanguageSupport:
     def test_multi_language_concepts_create_multiple_rows(self, tmp_path):
         """Test that concepts with multiple languages create multiple rows."""
         # Create a simple RDF with multi-language concept
-        EX = Namespace("http://example.org/")
         graph = Graph()
         graph.bind("ex", EX)
         graph.bind("skos", SKOS)
@@ -564,8 +583,6 @@ class TestMultiLanguageSupport:
         # Add concept scheme
         graph.add((EX.scheme, SKOS.prefLabel, Literal("Test Scheme", lang="en")))
         graph.add((EX.scheme, SKOS.definition, Literal("A test scheme", lang="en")))
-        from rdflib import XSD
-
         graph.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
         graph.add(
             (EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date))
@@ -675,8 +692,8 @@ class TestRoundTrip:
         )
 
         # Check that all prefLabels are preserved
-        original_labels = set(str(o) for o in original.objects(None, SKOS.prefLabel))
-        roundtrip_labels = set(str(o) for o in roundtrip.objects(None, SKOS.prefLabel))
+        original_labels = {str(o) for o in original.objects(None, SKOS.prefLabel)}
+        roundtrip_labels = {str(o) for o in roundtrip.objects(None, SKOS.prefLabel)}
         assert original_labels == roundtrip_labels, (
             f"Label mismatch.\n"
             f"Only in original: {original_labels - roundtrip_labels}\n"
@@ -693,8 +710,6 @@ class TestRoundTrip:
         Note: Provenance predicates (dct:provenance, rdfs:seeAlso) are auto-generated
         based on repository config, not roundtripped from original data.
         """
-        from rdflib import RDFS
-
         # Load original v1.0 format data
         original = Graph().parse(V1_COMPREHENSIVE_TTL, format="turtle")
 
@@ -951,8 +966,6 @@ class TestV1RoundTrip:
         )
 
         # Check editorial note is preserved
-        from rdflib import SKOS
-
         photocat_ns = "https://w3id.org/nfdi4cat/voc4cat-photocat/"
         concept_iri = URIRef(f"{photocat_ns}0000001")
 
@@ -973,8 +986,6 @@ class TestV1RoundTrip:
         )
 
         # Check deprecated flag and history note are preserved
-        from rdflib import OWL, SKOS
-
         photocat_ns = "https://w3id.org/nfdi4cat/voc4cat-photocat/"
         concept_iri = URIRef(f"{photocat_ns}0000005")
 
@@ -989,8 +1000,6 @@ class TestV1RoundTrip:
 
     def test_roundtrip_preserves_source_attribution(self, tmp_path, temp_config):
         """Test that source attribution survives round-trip."""
-        from rdflib import PROV
-
         original = Graph().parse(V1_COMPREHENSIVE_TTL, format="turtle")
         vocab_config = make_vocab_config_from_rdf(original)
 
@@ -1018,8 +1027,6 @@ class TestV1RoundTrip:
 
     def test_roundtrip_preserves_ordered_collection(self, tmp_path, temp_config):
         """Test that ordered collections survive round-trip."""
-        from rdflib import SKOS
-
         original = Graph().parse(V1_COMPREHENSIVE_TTL, format="turtle")
         vocab_config = make_vocab_config_from_rdf(original)
 
@@ -1034,8 +1041,6 @@ class TestV1RoundTrip:
         coll_iri = URIRef(f"{photocat_ns}coll002")
 
         # Check it's an OrderedCollection
-        from rdflib import RDF
-
         types = list(roundtrip.objects(coll_iri, RDF.type))
         assert SKOS.OrderedCollection in types
 
@@ -1049,7 +1054,6 @@ class TestAlternateLabelSeparator:
 
     def test_alternate_labels_split_by_pipe(self, temp_config):
         """Test that alternate labels are split by pipe separator."""
-        from voc4cat.models_v1 import ConceptV1
 
         prefixes = [PrefixV1(prefix="ex", namespace="http://example.org/")]
         converter = build_curies_converter_from_prefixes(prefixes)
@@ -1071,7 +1075,6 @@ class TestAlternateLabelSeparator:
 
     def test_alternate_labels_trim_whitespace(self, temp_config):
         """Test that whitespace is trimmed from alternate labels."""
-        from voc4cat.models_v1 import ConceptV1
 
         prefixes = [PrefixV1(prefix="ex", namespace="http://example.org/")]
         converter = build_curies_converter_from_prefixes(prefixes)
@@ -1177,7 +1180,7 @@ class TestValidateDeprecation:
 
     def test_error_obsolete_prefix_without_deprecated(self):
         """Test error when OBSOLETE prefix exists but owl:deprecated is not set."""
-        label, errors = validate_deprecation(
+        _label, errors = validate_deprecation(
             pref_label="OBSOLETE Old Concept",
             is_deprecated=False,  # Not deprecated!
             history_note="",
@@ -1191,7 +1194,7 @@ class TestValidateDeprecation:
 
     def test_error_deprecated_without_valid_reason(self):
         """Test error when owl:deprecated but historyNote is not valid."""
-        label, errors = validate_deprecation(
+        _label, errors = validate_deprecation(
             pref_label="Old Concept",
             is_deprecated=True,
             history_note="Invalid reason not in enum",
@@ -1248,9 +1251,6 @@ class TestDeprecationRdfExtraction:
 
     def test_extract_replaced_by_from_concept(self):
         """Test extracting dct:isReplacedBy from a concept."""
-        from rdflib import OWL
-
-        EX = Namespace("http://example.org/")
         g = Graph()
         g.bind("ex", EX)
         g.bind("skos", SKOS)
@@ -1280,9 +1280,6 @@ class TestDeprecationRdfExtraction:
 
     def test_extract_replaced_by_from_collection(self):
         """Test extracting dct:isReplacedBy from a collection."""
-        from rdflib import OWL
-
-        EX = Namespace("http://example.org/")
         g = Graph()
         g.bind("ex", EX)
         g.bind("skos", SKOS)
@@ -1390,9 +1387,6 @@ class TestDeprecationRoundTrip:
 
     def test_roundtrip_deprecated_concept_with_replacement(self, tmp_path, temp_config):
         """Test round-trip of deprecated concept with dct:isReplacedBy."""
-        from rdflib import OWL, XSD
-
-        EX = Namespace("http://example.org/")
         g = Graph()
         g.bind("ex", EX)
         g.bind("skos", SKOS)
@@ -1461,9 +1455,6 @@ class TestDeprecationRoundTrip:
 
     def test_roundtrip_obsolete_prefix_preserved(self, tmp_path, temp_config):
         """Test that OBSOLETE prefix is preserved in round-trip."""
-        from rdflib import OWL, XSD
-
-        EX = Namespace("http://example.org/")
         g = Graph()
         g.bind("ex", EX)
         g.bind("skos", SKOS)
@@ -1827,7 +1818,6 @@ class TestProvenanceInRdf:
         self, tmp_path, temp_config, test_vocab_config, monkeypatch
     ):
         """Test that XLSX->RDF generates dct:provenance triples."""
-        from rdflib import RDFS
 
         monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/voc4cat")
         monkeypatch.setenv("VOC4CAT_VERSION", "v2025-01-01")
@@ -1863,8 +1853,6 @@ class TestProvenanceInRdf:
         Uses a non-GitHub repository URL (GitLab) which cannot be used for
         provenance URL generation since we only support GitHub blame URLs.
         """
-        from voc4cat.config import Checks, Vocab
-
         monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
         monkeypatch.delenv("VOC4CAT_VERSION", raising=False)
 
@@ -1971,7 +1959,6 @@ class TestConfigToConceptSchemeV1:
 
     def test_config_overrides_rdf(self, datadir, temp_config):
         """Test that config values override RDF values."""
-        from voc4cat.models_v1 import ConceptSchemeV1
 
         config = temp_config
         config.load_config(datadir / "idranges_with_scheme.toml")
@@ -2001,9 +1988,6 @@ class TestConfigToConceptSchemeV1:
 
     def test_rdf_fills_gaps_for_optional_fields(self, temp_config):
         """Test that RDF fills gaps for optional fields when config fields are empty."""
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.models_v1 import ConceptSchemeV1
-
         # Create a vocab config with mandatory fields but empty optional fields
         vocab = Vocab(
             id_length=7,
@@ -2046,10 +2030,6 @@ class TestConfigToConceptSchemeV1:
 
     def test_mandatory_fields_required_in_config(self, temp_config):
         """Test that mandatory fields must be in config (can't rely on RDF)."""
-        from pydantic import ValidationError
-
-        from voc4cat.config import Checks, Vocab
-
         # Try to create a vocab config without mandatory fields - should fail
         with pytest.raises(ValidationError) as excinfo:
             Vocab(
@@ -2119,7 +2099,6 @@ class TestExcelToRdfWithConfig:
 
     def test_config_used_ignores_excel_scheme(self, tmp_path, datadir, temp_config):
         """Test that config is used and Excel scheme is ignored."""
-        from rdflib import SKOS
 
         config = temp_config
         config.load_config(datadir / "idranges_with_scheme.toml")
@@ -2150,10 +2129,6 @@ class TestExtractUsedIds:
 
     def test_extract_ids_from_concepts(self, temp_config):
         """Test that concept IDs are extracted correctly."""
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import extract_used_ids
-        from voc4cat.models_v1 import ConceptV1
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="https://example.org/",
@@ -2181,10 +2156,6 @@ class TestExtractUsedIds:
 
     def test_extract_ids_from_collections(self, temp_config, mandatory_fields):
         """Test that collection IDs are extracted correctly."""
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import extract_used_ids
-        from voc4cat.models_v1 import CollectionV1
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="https://example.org/",
@@ -2205,10 +2176,6 @@ class TestExtractUsedIds:
 
     def test_extract_ids_combined(self, temp_config, mandatory_fields):
         """Test that both concept and collection IDs are extracted."""
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import extract_used_ids
-        from voc4cat.models_v1 import CollectionV1, ConceptV1
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="https://example.org/",
@@ -2231,10 +2198,6 @@ class TestExtractUsedIds:
 
     def test_ignores_foreign_iris(self, temp_config, mandatory_fields):
         """Test that IRIs from other vocabularies are ignored."""
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import extract_used_ids
-        from voc4cat.models_v1 import ConceptV1
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="https://example.org/",
@@ -2255,10 +2218,6 @@ class TestExtractUsedIds:
 
     def test_handles_empty_iris(self, temp_config, mandatory_fields):
         """Test that empty IRIs are handled gracefully."""
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import extract_used_ids
-        from voc4cat.models_v1 import CollectionV1, ConceptV1
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="https://example.org/",
@@ -2283,9 +2242,6 @@ class TestBuildIdRangeInfo:
 
     def test_build_single_range(self, temp_config, mandatory_fields):
         """Test building info for a single ID range."""
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import build_id_range_info
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="https://example.org/",
@@ -2307,9 +2263,6 @@ class TestBuildIdRangeInfo:
 
     def test_build_multiple_ranges(self, temp_config, mandatory_fields):
         """Test building info for multiple ID ranges."""
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import build_id_range_info
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="https://example.org/",
@@ -2333,9 +2286,6 @@ class TestBuildIdRangeInfo:
 
     def test_all_ids_used(self, temp_config, mandatory_fields):
         """Test when all IDs in a range are used."""
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import build_id_range_info
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="https://example.org/",
@@ -2355,9 +2305,6 @@ class TestBuildIdRangeInfo:
 
     def test_orcid_fallback(self, temp_config, mandatory_fields):
         """Test that ORCID is used when gh_name is empty."""
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import build_id_range_info
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="https://example.org/",
@@ -2382,9 +2329,6 @@ class TestBuildIdRangeInfo:
 
     def test_zero_padding(self, temp_config, mandatory_fields):
         """Test that ID padding respects id_length from config."""
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import build_id_range_info
-
         vocab_config = Vocab(
             id_length=5,  # Shorter padding
             permanent_iri_part="https://example.org/",
@@ -2408,11 +2352,6 @@ class TestIdRangesSheetExport:
 
     def test_id_ranges_sheet_created(self, tmp_path, temp_config, datadir):
         """Test that ID Ranges sheet is created when vocab_config has id_range."""
-        from openpyxl import load_workbook
-
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import rdf_to_excel_v1
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="https://example.org/",
@@ -2437,11 +2376,6 @@ class TestIdRangesSheetExport:
 
     def test_id_ranges_sheet_position(self, tmp_path, temp_config, datadir):
         """Test that ID Ranges sheet is positioned before Prefixes."""
-        from openpyxl import load_workbook
-
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import rdf_to_excel_v1
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="https://example.org/",
@@ -2468,11 +2402,6 @@ class TestIdRangesSheetExport:
 
     def test_id_ranges_sheet_content(self, tmp_path, temp_config, datadir):
         """Test that ID Ranges sheet has correct content."""
-        from openpyxl import load_workbook
-
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import rdf_to_excel_v1
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="https://example.org/",
@@ -2512,10 +2441,6 @@ class TestIdRangesSheetExport:
 
     def test_id_ranges_empty_when_no_config(self, tmp_path, temp_config):
         """Test that ID Ranges sheet is empty when no config provided."""
-        from openpyxl import load_workbook
-
-        from voc4cat.convert_v1 import rdf_to_excel_v1
-
         xlsx_path = tmp_path / "test.xlsx"
         rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path)  # No vocab_config
 
@@ -2531,14 +2456,7 @@ class TestIdRangesSheetExport:
 
     def test_unused_ids_calculation(self, tmp_path, temp_config):
         """Test that unused IDs are calculated correctly from vocabulary content."""
-        from openpyxl import load_workbook
-        from rdflib import SKOS, Graph, Literal, Namespace
-
-        from voc4cat.config import Checks, Vocab
-        from voc4cat.convert_v1 import rdf_to_excel_v1
-
         # Create RDF with known concept IRIs
-        EX = Namespace("https://example.org/")
         graph = Graph()
         graph.bind("skos", SKOS)
         graph.bind("ex", EX)

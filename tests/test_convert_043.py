@@ -4,12 +4,16 @@ These tests verify that the 0.4.3 to v1.0 RDF format converter works correctly,
 transforming predicates and enriching ConceptScheme metadata.
 """
 
+import logging
 from pathlib import Path
 
 import pytest
-from rdflib import DCTERMS, RDF, SKOS, Graph, Literal, Namespace
+from rdflib import DCTERMS, PROV, RDF, RDFS, SKOS, XSD, Graph, Literal, Namespace
 
 from voc4cat.convert_043 import convert_rdf_043_to_v1
+
+logger = logging.getLogger(__name__)
+EX = Namespace("http://example.org/")
 
 # Test data paths
 TEST_DATA_DIR = Path(__file__).parent / "data"
@@ -38,10 +42,7 @@ class TestConvert043ToV1:
 
     def test_history_note_transformed_to_change_note(self, tmp_path):
         """Test that skos:historyNote is transformed to skos:changeNote."""
-        from rdflib import XSD
-
         # Create test RDF with skos:historyNote
-        EX = Namespace("http://example.org/")
         g = Graph()
         g.bind("ex", EX)
         g.bind("skos", SKOS)
@@ -78,11 +79,8 @@ class TestConvert043ToV1:
 
     def test_is_defined_by_on_concept_transformed(self, tmp_path):
         """Test that rdfs:isDefinedBy on concepts becomes prov:hadPrimarySource."""
-        from rdflib import PROV, RDFS, XSD
-
         # Create test RDF with rdfs:isDefinedBy on a concept
-        EX = Namespace("http://example.org/")
-        EXT = Namespace("http://external.org/")
+        EXT = Namespace("http://external.org/")  # noqa: N806
         g = Graph()
         g.bind("ex", EX)
         g.bind("ext", EXT)
@@ -120,10 +118,7 @@ class TestConvert043ToV1:
 
     def test_is_defined_by_on_collection_preserved(self, tmp_path):
         """Test that rdfs:isDefinedBy on collections is preserved."""
-        from rdflib import RDFS, XSD
-
         # Create test RDF with rdfs:isDefinedBy on a collection
-        EX = Namespace("http://example.org/")
         g = Graph()
         g.bind("ex", EX)
         g.bind("skos", SKOS)
@@ -158,10 +153,7 @@ class TestConvert043ToV1:
 
     def test_has_part_on_concept_scheme_dropped(self, tmp_path):
         """Test that dcterms:hasPart on ConceptScheme is dropped."""
-        from rdflib import XSD
-
         # Create test RDF with dcterms:hasPart on ConceptScheme (linking to collection)
-        EX = Namespace("http://example.org/")
         g = Graph()
         g.bind("ex", EX)
         g.bind("skos", SKOS)
@@ -198,13 +190,8 @@ class TestConvert043ToV1:
 
     def test_unknown_predicates_dropped_with_warning(self, tmp_path, caplog):
         """Test that unknown predicates are dropped and logged."""
-        import logging
-
-        from rdflib import XSD
-
         # Create test RDF with unknown predicate
-        EX = Namespace("http://example.org/")
-        CUSTOM = Namespace("http://custom.org/")
+        CUSTOM = Namespace("http://custom.org/")  # noqa: N806
         g = Graph()
         g.bind("ex", EX)
         g.bind("custom", CUSTOM)
@@ -241,10 +228,7 @@ class TestConvert043ToV1:
 
     def test_default_output_path(self, tmp_path):
         """Test that default output path adds _v1 suffix."""
-        from rdflib import XSD
-
         # Create minimal test RDF
-        EX = Namespace("http://example.org/")
         g = Graph()
         g.bind("ex", EX)
         g.bind("skos", SKOS)
@@ -267,10 +251,7 @@ class TestConvert043ToV1:
 
     def test_output_format_xml(self, tmp_path):
         """Test conversion to XML format."""
-        from rdflib import XSD
-
         # Create minimal test RDF
-        EX = Namespace("http://example.org/")
         g = Graph()
         g.bind("ex", EX)
         g.bind("skos", SKOS)

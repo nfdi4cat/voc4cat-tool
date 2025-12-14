@@ -50,7 +50,7 @@ def validate_with_profile(
         shacl_graph_path = str(Path(__file__).parent / "profile" / "vocpub-4.7.ttl")
 
     # validate the RDF file
-    conforms, results_graph, results_text = pyshacl.validate(
+    _conforms, results_graph, _results_text = pyshacl.validate(
         data_graph,
         shacl_graph=shacl_graph_path,
         allow_warnings=allow_warnings,
@@ -105,8 +105,6 @@ def validate_with_profile(
 
 
 def format_log_msg(result: dict, colored: bool = False) -> str:
-    from rdflib.namespace import SH
-
     formatted_msg = ""
     message = f"""Validation Result in {result["sourceConstraintComponent"].split(str(SH))[1]} ({result["sourceConstraintComponent"]}):
 \tSeverity: sh:{result["resultSeverity"].split(str(SH))[1]}
