@@ -1,4 +1,5 @@
 # Common pytest fixtures for all test modules
+import shutil
 import tempfile
 from datetime import date
 from enum import Enum
@@ -7,12 +8,14 @@ from typing import Annotated
 
 import pytest
 from curies import Converter
+from openpyxl import load_workbook
 from pydantic import BaseModel, Field
 from rdflib import DCTERMS, RDF, SKOS, Graph, URIRef
 from rdflib.namespace import NamespaceManager
 
 from voc4cat import config
 from voc4cat.config import Checks, Vocab
+from voc4cat.convert_v1 import rdf_to_excel_v1
 from voc4cat.xlsx_common import XLSXMetadata
 
 
@@ -89,6 +92,48 @@ class DemoModelWithMetadata(BaseModel):
 def datadir():
     """DATADIR as a LocalPath"""
     return Path(__file__).resolve().parent / "data"
+
+
+@pytest.fixture(scope="session")
+def cs_cycles_xlsx(datadir, tmp_path_factory) -> Path:
+    """Generate concept-scheme-with-cycles.xlsx from TTL.
+
+    Session-scoped to avoid regenerating for each test.
+    Returns path to the generated xlsx file in a temp directory.
+    """
+    ttl_file = datadir / "concept-scheme-with-cycles.ttl"
+    output_dir = tmp_path_factory.mktemp("xlsx_cycles")
+    output_file = output_dir / "concept-scheme-with-cycles.xlsx"
+    graph = Graph().parse(str(ttl_file), format="turtle")
+    vocab_config = make_vocab_config_from_rdf(graph)
+    rdf_to_excel_v1(ttl_file, output_file, vocab_config=vocab_config)
+    return output_file
+
+
+@pytest.fixture(scope="session")
+def cs_duplicates_xlsx(cs_cycles_xlsx, tmp_path_factory) -> Path:
+    """Generate xlsx with duplicate IRI for error detection testing.
+
+    In the v1.0 template, data starts at row 5 (after title, empty, meanings, headers).
+    Creates duplicate concept row at rows 5 and 6 for testing
+    that the check command colors cells orange (#FFCC00).
+    """
+    output_dir = tmp_path_factory.mktemp("xlsx_duplicates")
+    output_file = output_dir / "concept-scheme-duplicates.xlsx"
+    shutil.copy(cs_cycles_xlsx, output_file)
+
+    wb = load_workbook(output_file)
+    ws = wb["Concepts"]
+
+    # In v1.0 template: row 1=title, 2=empty, 3=meanings, 4=headers, 5+=data
+    # Duplicate row 5 (first data row) to row 6
+    ws.insert_rows(6)
+    for col_idx in range(1, ws.max_column + 1):
+        ws.cell(row=6, column=col_idx).value = ws.cell(row=5, column=col_idx).value
+
+    wb.save(output_file)
+    wb.close()
+    return output_file
 
 
 @pytest.fixture

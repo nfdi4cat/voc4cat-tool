@@ -47,9 +47,9 @@ def test_run_voc4cat_outputdir(
     assert (outdir / log.name).exists()
 
 
-def test_duplicates(datadir, tmp_path, caplog):
+def test_duplicates(datadir, tmp_path, caplog, cs_cycles_xlsx):
     """Check that files do not have the same stem."""
-    shutil.copy(datadir / CS_CYCLES, tmp_path)
+    shutil.copy(cs_cycles_xlsx, tmp_path / CS_CYCLES)
     shutil.copy(datadir / CS_CYCLES_TURTLE, tmp_path)
     with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
         main_cli(["convert", str(tmp_path)])

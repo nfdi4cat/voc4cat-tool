@@ -8,11 +8,8 @@ import pytest
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli, run_cli_app
 
-CS_SIMPLE = "concept-scheme-simple.xlsx"
-CS_SIMPLE_TURTLE = "concept-scheme-simple.ttl"
 CS_CYCLES = "concept-scheme-with-cycles.xlsx"
 CS_CYCLES_TURTLE = "concept-scheme-with-cycles.ttl"
-CS_CYCLES_MULTI_LANG = "concept-scheme-with-cycles_multilang.xlsx"
 
 
 def test_run_cli_app_no_args_entrypoint(monkeypatch, capsys):
@@ -78,14 +75,16 @@ def test_exit_errorvalue(monkeypatch, datadir, caplog):
 def test_nonexisting_config(monkeypatch, datadir, caplog):
     monkeypatch.chdir(datadir)
     with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
-        main_cli(["transform", "--config", "missing.toml", CS_SIMPLE])
+        main_cli(["transform", "--config", "missing.toml", CS_CYCLES])
     assert "Config file not found at" in caplog.text
 
 
 @mock.patch.dict(os.environ, {"LOGLEVEL": "DEBUG"})
-def test_valid_config(monkeypatch, datadir, caplog, tmp_path, temp_config):
+def test_valid_config(
+    monkeypatch, datadir, caplog, tmp_path, temp_config, cs_cycles_xlsx
+):
     # Don't remove "temp_config". The fixture avoid global config change.
-    shutil.copy(datadir / CS_SIMPLE, tmp_path / CS_SIMPLE)
+    shutil.copy(cs_cycles_xlsx, tmp_path / CS_CYCLES)
     monkeypatch.chdir(datadir)
     with caplog.at_level(logging.DEBUG):
         main_cli(
@@ -93,7 +92,7 @@ def test_valid_config(monkeypatch, datadir, caplog, tmp_path, temp_config):
                 "transform",
                 "--config",
                 str(datadir / "valid_idranges.toml"),
-                str(tmp_path / CS_SIMPLE),
+                str(tmp_path / CS_CYCLES),
             ]
         )
     assert "Config loaded from" in caplog.text
@@ -108,5 +107,5 @@ def test_invalid_outdir(monkeypatch, datadir, tmp_path, caplog):
             Voc4catError, match=r"Outdir must be a directory but it is a file."
         ),
     ):
-        main_cli(["transform", "--outdir", str(tmp_path / "README.md"), CS_SIMPLE])
+        main_cli(["transform", "--outdir", str(tmp_path / "README.md"), CS_CYCLES])
     assert "Outdir must be a directory but it is a file." in caplog.text

@@ -49,9 +49,10 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     subsequent_empty_rows = 0
     seen_concept_iris = []
     failed_checks = 0
-    for row in ws.iter_rows(min_row=3, max_col=3):  # pragma: no branch
+    # v1.0 template: data starts at row 5, columns are IRI(A), Language(B)
+    for row in ws.iter_rows(min_row=5, max_col=2):  # pragma: no branch
         if row[0].value and row[1].value:
-            concept_iri, _, lang = (
+            concept_iri, lang = (
                 c.value.strip() if c.value is not None else "" for c in row
             )
             # Check that IRI is valid.
@@ -65,12 +66,12 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
                     f'language "{lang}"'
                 )
                 logger.error(msg)
-                # colorize problematic cells
+                # colorize problematic cells (columns A and B for IRI and Language)
                 row[0].fill = color
-                row[2].fill = color
-                previously_seen_in_row = 3 + seen_concept_iris.index(new_concept_iri)
+                row[1].fill = color
+                previously_seen_in_row = 5 + seen_concept_iris.index(new_concept_iri)
                 ws[f"A{previously_seen_in_row}"].fill = color
-                ws[f"C{previously_seen_in_row}"].fill = color
+                ws[f"B{previously_seen_in_row}"].fill = color
             else:
                 seen_concept_iris.append(new_concept_iri)
 

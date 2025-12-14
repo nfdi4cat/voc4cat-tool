@@ -7,11 +7,12 @@ from openpyxl import load_workbook
 
 from tests.test_cli import (
     CS_CYCLES,
-    CS_SIMPLE_TURTLE,
 )
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
 from voc4cat.utils import ConversionError
+
+CS_SIMPLE_TURTLE = "concept-scheme-simple.ttl"
 
 
 @pytest.mark.parametrize(
@@ -21,28 +22,26 @@ from voc4cat.utils import ConversionError
     ],
     ids=["no error"],
 )
-def test_check_xlsx(datadir, tmp_path, caplog, test_file, msg):
+def test_check_xlsx(tmp_path, caplog, test_file, msg, cs_cycles_xlsx):
     dst = tmp_path / test_file
-    shutil.copy(datadir / test_file, dst)
+    shutil.copy(cs_cycles_xlsx, dst)
     with caplog.at_level(logging.INFO):
         main_cli(["check", "--inplace", str(dst)])
     assert msg in caplog.text
 
 
-def test_check_xlsx_with_cell_coloring(datadir, tmp_path, caplog):
+def test_check_xlsx_with_cell_coloring(tmp_path, caplog, cs_duplicates_xlsx):
     """Test that erroneous cells get colored when duplicates are found."""
     test_file = "concept-scheme-duplicates.xlsx"
     dst = tmp_path / test_file
-    shutil.copy(datadir / test_file, dst)
+    shutil.copy(cs_duplicates_xlsx, dst)
 
     with caplog.at_level(logging.ERROR):
         main_cli(["check", "--inplace", str(dst)])
 
-    # Check that the error was logged
-    assert (
-        'Same Concept IRI "ex:test01" used more than once for language "en"'
-        in caplog.text
-    )
+    # Check that the error was logged (IRI may vary depending on the source TTL)
+    assert "Same Concept IRI" in caplog.text
+    assert 'used more than once for language "en"' in caplog.text
 
     # Check that cells were colored orange
     wb = load_workbook(dst)
@@ -51,17 +50,18 @@ def test_check_xlsx_with_cell_coloring(datadir, tmp_path, caplog):
     # Expected orange color from check.py: PatternFill("solid", start_color="00FFCC00")
     expected_color = "00FFCC00"
 
-    # Check that the duplicate concept IRI cells are colored (rows 3 and 4, columns A and C)
-    assert ws["A3"].fill.start_color.rgb == expected_color, (
+    # In v1.0 template, data starts at row 5. Duplicate rows are 5 and 6.
+    # Column A = Concept IRI, Column B = Language Code
+    assert ws["A5"].fill.start_color.rgb == expected_color, (
         "First duplicate IRI cell should be colored orange"
     )
-    assert ws["C3"].fill.start_color.rgb == expected_color, (
+    assert ws["B5"].fill.start_color.rgb == expected_color, (
         "First duplicate language cell should be colored orange"
     )
-    assert ws["A4"].fill.start_color.rgb == expected_color, (
+    assert ws["A6"].fill.start_color.rgb == expected_color, (
         "Second duplicate IRI cell should be colored orange"
     )
-    assert ws["C4"].fill.start_color.rgb == expected_color, (
+    assert ws["B6"].fill.start_color.rgb == expected_color, (
         "Second duplicate language cell should be colored orange"
     )
 
