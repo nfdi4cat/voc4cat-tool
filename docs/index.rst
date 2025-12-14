@@ -10,6 +10,7 @@ Welcome to voc4cat's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   migration-to-v1.0
 
 
 Indices and tables

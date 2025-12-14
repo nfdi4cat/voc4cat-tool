@@ -21,10 +21,10 @@ voc4cat was mainly developed to be used in gh-actions but it is also useful as a
 
 - Convert between SKOS-vocabularies in Excel/xlsx format and rdf-format (turtle) in both directions.
 - Check/validate SKOS-vocabularies in rdf/turtle format with the [vocpub](https://w3id.org/profile/vocpub) SHACL-profile.
-- Use a vocabulary-configuration file to specify for example ID ranges for each contributor.
-- Check xlsx vocabulary files for errors or incorrect use of IDs (voc4cat uses pydantic for this validation)
-- Generate documentation from SKOS/turtle vocabulary file using [pyLODE](https://github.com/RDFLib/pyLODE)
-- Consistently update all IRIs in the xlsx vocabulary (e.g. with new namespace or IDs)
+- Manage vocabulary metadata (title, description, creator, publisher, etc.) via configuration file.
+- Allocate ID ranges to contributors and track their contributions.
+- Check xlsx vocabulary files for errors or incorrect use of IDs (voc4cat uses pydantic for this validation).
+- Generate documentation from SKOS/turtle vocabulary file using [pyLODE](https://github.com/RDFLib/pyLODE).
 
 voc4cat works on files or folders. If a folder is given all matching files are processed at once.
 
@@ -38,46 +38,72 @@ voc4cat is platform independent and should work at least on windows, linux and m
 
 ### Installation steps
 
-If you just want to use the command line interface it is strongly suggested to use [pipx](https://pypa.github.io/pipx/) for the installation. `pipx` makes installing and managing python command line application very easy.
+If you just want to use the command line interface it is strongly suggested to use [pipx](https://pypa.github.io/pipx/) or [uv tool](https://docs.astral.sh/uv/concepts/tools/) for the installation.
+Both make installing and managing python command line application very easy.
 
 `pipx install voc4cat`
 
+or
+
+`uv tool install voc4cat`
+
 Alternatively you can `pip`-install voc4cat like any other Python package.
-To install including all development tools use `pip install .[dev]` for just the test tools `pip install .[tests]`. For tests we use [pytest](https://docs.pytest.org).
+
+To install including all development tools use `pip install .[dev]` for just the test tools `pip install .[tests]`. For testing we use [pytest](https://docs.pytest.org).
 
 ### Typical use
 
 The available commands and options can be explored via the help system:
 
-`voc4cat --help` (or simply `voc4cat`)
+```bash
+voc4cat --help
+```
 
 which lists all available sub commands. These have their own help, for example:
 
-`voc4cat transform --help`
+```bash
+voc4cat transform --help
+```
 
-To create a new vocabulary use the voc4cat-adjusted template from the `templates` subfolder.
-For starting you can use simple temporary IRIs like (`ex:my_term`) for your concepts.
-With voc4cat you can later replace these later by different namespaces and/or different numeric IDs.
+To create a new vocabulary, first set up a configuration file `idranges.toml` for your vocabulary.
+This file defines vocabulary metadata and ID ranges for contributors.
+Then create an xlsx-template:
 
-The files used below to demonstrate some commands can be found in the example folder of the [repository](https://github.com/nfdi4cat/voc4cat-tool/).
+```bash
+voc4cat template --config myvocab/idranges.toml --outdir myvocab/
+```
 
-For expressing hierarchies in SKOS ("broader"/"narrower") voc4cat uses parent IRIs in the sheet "Concepts". Enter a list of parent IRIs in the Parent IRIs column to define the concept hierarchy. Each concept can have zero, one or even multiple parents, to represent hierarchical relationships to broader concepts.
+This creates `myvocab.xlsx` (named after your vocabulary) with the structure for entering concepts.
 
-As mentioned above, you can replace all IDs belonging to a given prefix (here `temp`) by numeric IDs e.g. starting from 1001:
+To express hierarchies in SKOS ("broader"/"narrower") voc4cat uses parent IRIs in the sheet "Concepts".
+Enter a list of parent IRIs in the Parent IRIs column to define the concept hierarchy.
+Each concept can have zero, one or even multiple parents.
 
-`voc4cat transform --make-ids temp 1001 --outdir outbox example/photocatalysis_example_prelim-IDs.xlsx`
+### Configuration file (idranges.toml)
 
-This will consistently update all IRIs matching the `temp:`-prefix in the sheets "Concepts", "Additional Concept Features" and "Collections".
+The `idranges.toml` file is central to vocabulary management. It contains:
 
-Finally, the vocabulary file can be converted from xlsx to SKOS/turtle format.
+- **Vocabulary metadata**: Title, description, creator, publisher, and other ConceptScheme properties.
+- **ID ranges**: Pre-allocated ranges of concept IDs for each contributor (with ORCID, GitHub username).
+- **Vocabulary settings**: ID length, base IRI, prefix mappings.
 
-`voc4cat convert example/photocatalysis_example.xlsx`
+The xlsx file shows ConceptScheme metadata as read-only information derived from this config.
 
-A turtle file `photocatalysis_example.ttl` is created in the same directory where the xlsx-file is located.
+### Converting vocabularies
 
-The reverse is also possible. You can create an xlsx file from a turtle vocabulary file:
+Convert the vocabulary file from xlsx to SKOS/turtle format:
 
-`voc4cat convert -O outbox example/photocatalysis_example.ttl`
+```bash
+voc4cat convert --config myvocab/idranges.toml myvocab/myvocab.xlsx
+```
+
+A turtle file `myvocab.ttl` is created in the same directory.
+
+The reverse is also possible. Create an xlsx file from a turtle vocabulary:
+
+```bash
+voc4cat convert --config myvocab/idranges.toml --outdir myvocab/ myvocab/myvocab.ttl
+```
 
 In addition to `transform` and `convert` voc4cat offers checking and validation under the sub-command `check` and documentation generation under `docs`.
 See the command line help for details.
@@ -92,6 +118,11 @@ or compare the additions made against existing concepts:
 `voc-assistant compare voc4cat.ttl voc4cat_new.ttl`
 
 It creates reports in markdown format.
+
+## Migrating from older versions
+
+Vocabularies created with voc4cat-tool v0.10.0 or earlier (format "043") can be converted to the v1.0 format.
+See [docs/migration-to-v1.0.md](docs/migration-to-v1.0.md) for details.
 
 ## Feedback and code contributions
 
