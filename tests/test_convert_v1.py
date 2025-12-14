@@ -72,11 +72,10 @@ EX = Namespace("http://example.org/")
 
 # Test data paths
 TEST_DATA_DIR = Path(__file__).parent / "data"
-EXAMPLE_DIR = Path(__file__).parent.parent / "example"
 
 CS_SIMPLE_TTL = TEST_DATA_DIR / "concept-scheme-simple.ttl"
 V1_COMPREHENSIVE_TTL = TEST_DATA_DIR / "v1-test-comprehensive.ttl"
-PHOTOCATALYSIS_TTL = EXAMPLE_DIR / "photocatalysis_example.ttl"
+VOCAB_043_TTL = TEST_DATA_DIR / "vocab-043-test.ttl"
 
 
 class TestExtractConceptScheme:
@@ -93,20 +92,14 @@ class TestExtractConceptScheme:
         assert data["created_date"] == "2022-12-01"
         assert data["modified_date"] == "2022-12-01"
 
-    def test_extract_photocatalysis_concept_scheme(self):
-        """Test extracting concept scheme from photocatalysis example."""
-        if not PHOTOCATALYSIS_TTL.exists():
-            pytest.skip("Photocatalysis example not found")
-
-        graph = Graph().parse(PHOTOCATALYSIS_TTL, format="turtle")
+    def test_extract_043_concept_scheme(self):
+        """Test extracting concept scheme from 0.4.3 format vocabulary."""
+        graph = Graph().parse(VOCAB_043_TTL, format="turtle")
         data = extract_concept_scheme_from_rdf(graph)
 
         # URI should have trailing slash (VocPub 5.2 convention)
-        assert data["vocabulary_iri"] == "https://example.org/"
-        assert (
-            "photocatalysis" in data["title"].lower()
-            or "example" in data["title"].lower()
-        )
+        assert data["vocabulary_iri"] == "http://example.org/test-vocab/"
+        assert "test vocabulary 043" in data["title"].lower()
         assert data["created_date"] == "2023-06-29"
 
 
@@ -361,14 +354,11 @@ class TestRdfToExcelV1:
         assert "Mappings" in wb.sheetnames
         assert "Prefixes" in wb.sheetnames
 
-    def test_convert_photocatalysis(self, tmp_path, temp_config):
-        """Test converting photocatalysis example TTL file."""
-        if not PHOTOCATALYSIS_TTL.exists():
-            pytest.skip("Photocatalysis example not found")
+    def test_convert_043_vocab(self, tmp_path, temp_config):
+        """Test converting 0.4.3 format TTL file."""
+        output_path = tmp_path / "vocab_043.xlsx"
 
-        output_path = tmp_path / "photocatalysis.xlsx"
-
-        result_path = rdf_to_excel_v1(PHOTOCATALYSIS_TTL, output_path)
+        result_path = rdf_to_excel_v1(VOCAB_043_TTL, output_path)
 
         assert result_path.exists()
 
@@ -656,34 +646,30 @@ class TestCollectionMembership:
 class TestRoundTrip:
     """Tests for lossless round-trip conversion RDF -> XLSX -> RDF."""
 
-    def test_roundtrip_photocatalysis(self, tmp_path, temp_config):
-        """Test that photocatalysis RDF -> XLSX -> RDF preserves core data.
+    def test_roundtrip_043_vocab(self, tmp_path, temp_config):
+        """Test that 0.4.3 format RDF -> XLSX -> RDF preserves core data.
 
-        Note: The photocatalysis example uses older predicates (e.g. rdfs:isDefinedBy)
+        Note: The 0.4.3 format uses older predicates (e.g. rdfs:isDefinedBy)
         that are now mapped to newer predicates (e.g. prov:hadPrimarySource) in v1.0.
         Therefore exact triple count match is not expected. The important thing is
         that core SKOS data is preserved.
         """
-        if not PHOTOCATALYSIS_TTL.exists():
-            pytest.skip("Photocatalysis example not found")
-
         # Load original
-        original = Graph().parse(PHOTOCATALYSIS_TTL, format="turtle")
+        original = Graph().parse(VOCAB_043_TTL, format="turtle")
 
         # Create vocab config from RDF for roundtrip
         vocab_config = make_vocab_config_from_rdf(original)
 
         # RDF -> XLSX
-        xlsx_path = tmp_path / "photocatalysis.xlsx"
-        rdf_to_excel_v1(PHOTOCATALYSIS_TTL, xlsx_path, vocab_config=vocab_config)
+        xlsx_path = tmp_path / "vocab_043.xlsx"
+        rdf_to_excel_v1(VOCAB_043_TTL, xlsx_path, vocab_config=vocab_config)
 
         # XLSX -> RDF
         roundtrip = excel_to_rdf_v1(
             xlsx_path, output_type="graph", vocab_config=vocab_config
         )
 
-        # Check that concept count matches
-
+        # Check that concept count matches (7 concepts in test fixture)
         original_concepts = list(original.subjects(RDF.type, SKOS.Concept))
         roundtrip_concepts = list(roundtrip.subjects(RDF.type, SKOS.Concept))
         assert len(original_concepts) == len(roundtrip_concepts), (
