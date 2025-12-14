@@ -1,11 +1,21 @@
-### Example files that demonstrate typical conversions with voc4cat
+# Pydantic-xlsx interface examples
 
-For a new vocabulary one would probably start with an xlsx file that does not yet have permanent IRIs.
-The typical workflow involves:
+Demos for the pydantic-to-xlsx interface included in voc4cat-tool.
 
-- `photocatalysis_example_prelim-IDs.xlsx`
-  - This file contains temporary IRIs for concepts and uses the ParentIRI column to express hierarchy between concepts.
-- `photocatalysis_example.xlsx`
-  - This results from processing the previous file with voc4cat using the `--make-ids temp 1` option which replaces the temporary "temp:###"-IRIs with IRIs containing numeric IDs starting from 1. The prefix is replaced by the concept scheme IRI from the "concept scheme" sheet and the standard 7-digit IDs are used instead of the 3 digits of the preliminary IRIs.
-  - If this file is further processed with voc4cat without options, the SKOS file `photocatalysis_example.ttl` is generated.
-  - Running voc4cat on the turtle file generates again the xlsx file. - The conversion works both ways!
+## Features
+
+- **Key-value tables** and **normal tables**
+- Rich headers with units, description, and semantic meaning
+- Multi-sheet input/output
+- Integration with existing pydantic models
+
+## Demo files
+
+| File | Description |
+|------|-------------|
+| `demo_xlsx_table_data.py` | Table data handling |
+| `demo_xlsx_table_styling.py` | Table styling options |
+| `demo_xlsx_keyvalue_data.py` | Key-value table data |
+| `demo_xlsx_keyvalue_styling.py` | Key-value table styling |
+| `demo_xlsx_joins.py` | Joining data across sheets |
+| `demo_xlsx_adapt_to_model.py` | Adding xlsx support to existing models |
