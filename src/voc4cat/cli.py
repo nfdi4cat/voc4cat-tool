@@ -51,10 +51,10 @@ def process_common_options(args, raw_args):
             logger.error(msg, args.config)
             raise Voc4catError(msg % args.config)
 
-    # check VOCAB
+    # check VOCAB (only for commands where VOCAB is a Path to existing file/dir)
     if args.VOCAB is None:
         return
-    if not args.VOCAB.exists():
+    if isinstance(args.VOCAB, Path) and not args.VOCAB.exists():
         msg = "File/dir not found: %s"
         logger.error(msg, args.VOCAB)
         raise Voc4catError(msg % args.VOCAB)
@@ -395,12 +395,10 @@ def add_template_subparser(subparsers, options):
         default="v1.0",
         dest="template_version",  # avoid conflict with root --version
     )
-    # Note: VOCAB is not required for template generation
     parser.add_argument(
         "VOCAB",
-        nargs="?",
-        type=Path,
-        help="Not used for template generation (placeholder for common options).",
+        type=str,
+        help="Vocabulary name used as the filename for the generated xlsx template.",
     )
     parser.set_defaults(func=template_cmd)
 
