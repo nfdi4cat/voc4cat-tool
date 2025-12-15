@@ -1,5 +1,13 @@
 # Change log
 
+## Release 0.10.1 (2025-12-15)
+
+**This is the last release of the 0.x series.**
+
+Changes:
+
+- Removed extra code related to 1.0-series which was not used at all.
+
 ## Release 0.10.0 (2025-11-29)
 
 > [!IMPORTANT]
