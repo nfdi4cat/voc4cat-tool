@@ -8,13 +8,6 @@ In addition, a few other parameters can be specified for vocabularies, e.g. the 
 
 ## Excel templates
 
-### Version 1.0
-
-### Revision 2025-06-11
-
-First version of the new v1.0 xlsx template.
-For more info about the changes including their motivations, see https://github.com/nfdi4cat/voc4cat-tool/issues/124.
-
 ### Version 0.4.3
 
 The identical template `voc4cat_template_043.xlsx` is included in [voc4cat-template/templates](https://github.com/nfdi4cat/voc4cat-template/tree/main/templates).
