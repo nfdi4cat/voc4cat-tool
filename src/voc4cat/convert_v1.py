@@ -55,16 +55,17 @@ from voc4cat.models_v1 import (
     CONCEPT_SCHEME_SHEET_TITLE,
     ID_RANGES_SHEET_NAME,
     ID_RANGES_SHEET_TITLE,
-    OBSOLETION_REASONS_COLLECTIONS,
-    OBSOLETION_REASONS_CONCEPTS,
     PREFIXES_SHEET_NAME,
     PREFIXES_SHEET_TITLE,
     TEMPLATE_VERSION,
+    CollectionObsoletionReason,
     CollectionV1,
+    ConceptObsoletionReason,
     ConceptSchemeV1,
     ConceptV1,
     IDRangeInfoV1,
     MappingV1,
+    OrderedChoice,
     PrefixV1,
 )
 from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS
@@ -76,6 +77,71 @@ from voc4cat.xlsx_table import XLSXTableConfig
 SDO = Namespace("https://schema.org/")
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Enum Conversion Helpers
+# =============================================================================
+
+
+def string_to_concept_obsoletion_enum(value: str) -> ConceptObsoletionReason | None:
+    """Convert string to ConceptObsoletionReason enum or None.
+
+    Args:
+        value: The obsoletion reason string from RDF.
+
+    Returns:
+        The matching enum value, or None if empty or no match found.
+    """
+    if not value:
+        return None
+    for reason in ConceptObsoletionReason:
+        if reason.value == value:
+            return reason
+    # Non-standard reason - log warning and return None
+    logger.warning("Non-standard obsoletion reason for concept: %s", value)
+    return None
+
+
+def string_to_collection_obsoletion_enum(
+    value: str,
+) -> CollectionObsoletionReason | None:
+    """Convert string to CollectionObsoletionReason enum or None.
+
+    Args:
+        value: The obsoletion reason string from RDF.
+
+    Returns:
+        The matching enum value, or None if empty or no match found.
+    """
+    if not value:
+        return None
+    for reason in CollectionObsoletionReason:
+        if reason.value == value:
+            return reason
+    # Non-standard reason - log warning and return None
+    logger.warning("Non-standard obsoletion reason for collection: %s", value)
+    return None
+
+
+def string_to_ordered_enum(value: str | bool) -> OrderedChoice | None:
+    """Convert string/bool to OrderedChoice enum or None.
+
+    Args:
+        value: The ordered flag value (string or bool) from RDF.
+
+    Returns:
+        OrderedChoice.YES if true/yes, OrderedChoice.NO if no, None otherwise.
+    """
+    if isinstance(value, bool):
+        return OrderedChoice.YES if value else None
+    if not value:
+        return None
+    if value.strip().lower() == "yes":
+        return OrderedChoice.YES
+    if value.strip().lower() == "no":
+        return OrderedChoice.NO
+    return None
 
 
 # =============================================================================
@@ -663,7 +729,7 @@ def rdf_concepts_to_v1(
                 pref_label=en_pref_label,
                 is_deprecated=is_deprecated,
                 history_note=obsolete_reason_raw,
-                valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+                valid_reasons=[e.value for e in ConceptObsoletionReason],
                 entity_iri=concept_iri,
                 entity_type="concept",
             )
@@ -726,7 +792,9 @@ def rdf_concepts_to_v1(
                     change_note = format_change_note_with_replaced_by(
                         compressed_replacement
                     )
-                obsolete_reason = data.get("obsolete_reason", "")
+                obsolete_reason = string_to_concept_obsoletion_enum(
+                    data.get("obsolete_reason", "")
+                )
 
                 # Influenced by IRIs with labels
                 influenced_iris = data.get("influenced_by_iris", [])
@@ -745,7 +813,7 @@ def rdf_concepts_to_v1(
                 source_vocab_license = ""
                 source_vocab_rights_holder = ""
                 change_note = ""
-                obsolete_reason = ""
+                obsolete_reason = None
                 influenced_by_iris_str = ""
                 provenance = ""
 
@@ -829,7 +897,7 @@ def rdf_collections_to_v1(
                 pref_label=en_pref_label,
                 is_deprecated=is_deprecated,
                 history_note=obsolete_reason_raw,
-                valid_reasons=OBSOLETION_REASONS_COLLECTIONS,
+                valid_reasons=[e.value for e in CollectionObsoletionReason],
                 entity_iri=collection_iri,
                 entity_type="collection",
             )
@@ -857,7 +925,7 @@ def rdf_collections_to_v1(
                 parent_iris_str = "\n".join(parents_strs)
 
                 # Ordered flag
-                ordered = "Yes" if data.get("ordered", False) else ""
+                ordered = string_to_ordered_enum(data.get("ordered", False))
 
                 # Notes - handle replaced_by_iri
                 change_note = data.get("change_note", "")
@@ -869,15 +937,17 @@ def rdf_collections_to_v1(
                     change_note = format_change_note_with_replaced_by(
                         compressed_replacement
                     )
-                obsolete_reason = data.get("obsolete_reason", "")
+                obsolete_reason = string_to_collection_obsoletion_enum(
+                    data.get("obsolete_reason", "")
+                )
 
                 provenance = provenance_url
                 is_first_row = False
             else:
                 parent_iris_str = ""
-                ordered = ""
+                ordered = None
                 change_note = ""
-                obsolete_reason = ""
+                obsolete_reason = None
                 provenance = ""
 
             collections_v1.append(
@@ -1802,7 +1872,9 @@ def aggregate_concepts(
                 source_vocab_license=row.source_vocab_license or "",
                 source_vocab_rights_holder=row.source_vocab_rights_holder or "",
                 change_note=change_note,
-                obsolete_reason=row.obsolete_reason or "",
+                obsolete_reason=row.obsolete_reason.value
+                if row.obsolete_reason
+                else "",
                 influenced_by_iris=expand_iri_list(row.influenced_by_iris, converter),
                 replaced_by_iri=replaced_by_iri,
             )
@@ -1831,8 +1903,8 @@ def aggregate_concepts(
             corrected_label, errors = validate_deprecation(
                 pref_label=en_pref_label,
                 is_deprecated=is_deprecated,
-                history_note=concept.obsolete_reason,
-                valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+                history_note=concept.obsolete_reason,  # Already a string
+                valid_reasons=[e.value for e in ConceptObsoletionReason],
                 entity_iri=iri,
                 entity_type="concept",
             )
@@ -1876,8 +1948,8 @@ def aggregate_collections(
 
         if iri not in collections:
             # First row for this collection - create new entry with structural data
-            # Parse "Yes" as True for ordered flag
-            is_ordered = row.ordered.strip().lower() == "yes" if row.ordered else False
+            # Parse ordered flag (now an enum)
+            is_ordered = row.ordered == OrderedChoice.YES if row.ordered else False
 
             # Parse replaced_by from change_note
             change_note = row.change_note or ""
@@ -1893,7 +1965,9 @@ def aggregate_collections(
                 ),
                 ordered=is_ordered,
                 change_note=change_note,
-                obsolete_reason=row.obsolete_reason or "",
+                obsolete_reason=row.obsolete_reason.value
+                if row.obsolete_reason
+                else "",
                 replaced_by_iri=replaced_by_iri,
             )
 
@@ -1916,8 +1990,8 @@ def aggregate_collections(
             corrected_label, errors = validate_deprecation(
                 pref_label=en_pref_label,
                 is_deprecated=is_deprecated,
-                history_note=collection.obsolete_reason,
-                valid_reasons=OBSOLETION_REASONS_COLLECTIONS,
+                history_note=collection.obsolete_reason,  # Already a string
+                valid_reasons=[e.value for e in CollectionObsoletionReason],
                 entity_iri=iri,
                 entity_type="collection",
             )

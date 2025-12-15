@@ -17,11 +17,14 @@ from typing import Any
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import BaseModel, ValidationError
 from pydantic_core import PydanticUndefined
+
+from voc4cat.xlsx_common import EXCEL_DV_FORMULA_LIMIT
 
 from .xlsx_common import (
     MAX_SHEETNAME_LENGTH,
@@ -592,7 +595,11 @@ class XLSXTableFormatter(XLSXFormatter):
     def _add_data_validation(
         self, worksheet: Worksheet, fields: list[FieldAnalysis], data_rows: int
     ) -> None:
-        """Add data validation for enum fields."""
+        """Add data validation for enum fields.
+
+        For enum lists that exceed Excel's 255 character limit for inline
+        formulas, creates a hidden sheet with the values and uses a named range.
+        """
         start_col_idx = self.config.start_column
 
         # Calculate data start row - account for title, meanings, descriptions, and units
@@ -603,16 +610,87 @@ class XLSXTableFormatter(XLSXFormatter):
                 col_letter = get_column_letter(start_col_idx + i)
                 validation_range = f"{col_letter}{data_start_row}:{col_letter}{data_start_row + data_rows - 1}"
 
+                # Check if inline formula would exceed Excel's limit
+                inline_formula = f'"{",".join(field_analysis.enum_values)}"'
+
+                if len(inline_formula) <= EXCEL_DV_FORMULA_LIMIT:
+                    # Use inline formula (shorter lists)
+                    formula1 = inline_formula
+                else:
+                    # Use named range on hidden sheet (longer lists)
+                    formula1 = self._create_validation_list_range(
+                        worksheet.parent,
+                        field_analysis.name,
+                        field_analysis.enum_values,
+                    )
+
                 dv = DataValidation(
                     type="list",
-                    formula1=f'"{",".join(field_analysis.enum_values)}"',
+                    formula1=formula1,
                     allow_blank=field_analysis.is_optional,
                 )
-                dv.error = f"Invalid value. Must be one of: {', '.join(field_analysis.enum_values)}"
+                # Excel limits error message to 255 characters
+                error_msg = f"Invalid value. Must be one of: {', '.join(field_analysis.enum_values)}"
+                if len(error_msg) > 255:
+                    error_msg = "Invalid value. Please select from the dropdown list."
+                dv.error = error_msg
                 dv.errorTitle = "Invalid Input"
 
                 worksheet.add_data_validation(dv)
                 dv.add(validation_range)
+
+    def _create_validation_list_range(
+        self, workbook: Workbook, field_name: str, values: list[str]
+    ) -> str:
+        """Create a named range for validation values on a hidden sheet.
+
+        Args:
+            workbook: The workbook to add the hidden sheet to.
+            field_name: Name of the field (used for named range).
+            values: List of enum values.
+
+        Returns:
+            Formula referencing the named range (e.g., "=ValidationList_field").
+        """
+        # Hidden sheet name for validation lists
+        hidden_sheet_name = "_ValidationLists"
+
+        # Get or create hidden sheet
+        if hidden_sheet_name not in workbook.sheetnames:
+            hidden_sheet = workbook.create_sheet(hidden_sheet_name)
+            hidden_sheet.sheet_state = "hidden"
+            # Track which column to use next
+            hidden_sheet["A1"] = "Validation Lists (hidden)"
+            workbook._validation_list_col = 2  # Start from column B
+        else:
+            hidden_sheet = workbook[hidden_sheet_name]
+
+        # Get next available column
+        if not hasattr(workbook, "_validation_list_col"):
+            workbook._validation_list_col = 2
+        col_idx = workbook._validation_list_col
+        workbook._validation_list_col += 1
+
+        col_letter = get_column_letter(col_idx)
+
+        # Write values to column
+        for row_idx, value in enumerate(values, start=1):
+            hidden_sheet.cell(row=row_idx, column=col_idx, value=value)
+
+        # Create named range - sanitize field name for Excel
+        range_name = f"ValidationList_{field_name.replace(' ', '_')}"
+        range_ref = f"'{hidden_sheet_name}'!${col_letter}$1:${col_letter}${len(values)}"
+
+        # Remove existing definition if present (in case of regeneration)
+        if range_name in workbook.defined_names:
+            del workbook.defined_names[range_name]
+
+        workbook.defined_names[range_name] = DefinedName(
+            name=range_name, attr_text=range_ref
+        )
+
+        # Named range reference without = prefix for data validation
+        return range_name
 
     def parse_import(
         self,
