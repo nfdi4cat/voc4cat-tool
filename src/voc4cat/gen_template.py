@@ -222,9 +222,11 @@ def template_cmd(args) -> None:
         args: Parsed command-line arguments containing:
             - outdir: Output directory for the template (from common options)
             - template_version: Template version to generate
+            - VOCAB: Vocabulary name for the output filename
     """
     version = getattr(args, "template_version", "v1.0")
     outdir = getattr(args, "outdir", None)
+    vocab = args.VOCAB
 
     if version != "v1.0":
         msg = f"Unsupported template version: {version}"
@@ -237,9 +239,16 @@ def template_cmd(args) -> None:
         outdir = Path(outdir)
         outdir.mkdir(parents=True, exist_ok=True)
 
-    output_path = outdir / f"blank_{version}.xlsx"
+    # Use vocab name for filename, strip any extension if provided
+    vocab_name = Path(vocab).stem if "." in vocab else vocab
+    output_path = outdir / f"{vocab_name}.xlsx"
 
-    logger.info("Generating v%s template at: %s", version, output_path)
+    # Check if file already exists
+    if output_path.exists():
+        logger.error("File already exists: %s", output_path)
+        return
+
+    logger.info("Generating %s template at: %s", version, output_path)
 
     generate_template_v1(output_path)
 

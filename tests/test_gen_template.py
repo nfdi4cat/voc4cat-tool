@@ -390,9 +390,9 @@ class TestTemplateCLI:
     def test_template_cli_default_output(self, tmp_path, monkeypatch):
         """Test template command generates file in current directory."""
         monkeypatch.chdir(tmp_path)
-        main_cli(["template"])
+        main_cli(["template", "myvocab"])
 
-        expected_file = tmp_path / "blank_v1.0.xlsx"
+        expected_file = tmp_path / "myvocab.xlsx"
         assert expected_file.exists(), f"Template file not created: {expected_file}"
 
         # Verify it's a valid xlsx with expected sheets
@@ -402,9 +402,9 @@ class TestTemplateCLI:
     def test_template_cli_with_outdir(self, tmp_path):
         """Test template command with --outdir option."""
         outdir = tmp_path / "output"
-        main_cli(["template", "--outdir", str(outdir)])
+        main_cli(["template", "--outdir", str(outdir), "testvocab"])
 
-        expected_file = outdir / "blank_v1.0.xlsx"
+        expected_file = outdir / "testvocab.xlsx"
         assert expected_file.exists(), (
             f"Template file not created in outdir: {expected_file}"
         )
@@ -412,11 +412,41 @@ class TestTemplateCLI:
     def test_template_cli_with_version_option(self, tmp_path, monkeypatch):
         """Test template command with --version option."""
         monkeypatch.chdir(tmp_path)
-        main_cli(["template", "--version", "v1.0"])
-        assert (tmp_path / "blank_v1.0.xlsx").exists()
+        main_cli(["template", "--version", "v1.0", "versionedvocab"])
+        assert (tmp_path / "versionedvocab.xlsx").exists()
 
-    def test_template_cli_invalid_version(self):
+    def test_template_cli_invalid_version(self, tmp_path):
         """Test template command with invalid --version option."""
         with pytest.raises(SystemExit) as exc_info:
-            main_cli(["template", "--version", "v0.5"])
+            main_cli(["template", "--version", "v0.5", "somevocab"])
         assert exc_info.value.code == 2  # argparse error
+
+    def test_template_cli_requires_vocab(self):
+        """Test template command requires VOCAB argument."""
+        with pytest.raises(SystemExit) as exc_info:
+            main_cli(["template"])
+        assert exc_info.value.code == 2  # argparse error
+
+    def test_template_cli_no_overwrite(self, tmp_path, monkeypatch, caplog):
+        """Test template command does not overwrite existing files."""
+        monkeypatch.chdir(tmp_path)
+        # Create first
+        main_cli(["template", "existingvocab"])
+        file_path = tmp_path / "existingvocab.xlsx"
+        assert file_path.exists()
+        original_mtime = file_path.stat().st_mtime
+
+        # Try to create again - should log error and not overwrite
+        main_cli(["template", "existingvocab"])
+        assert "File already exists" in caplog.text
+        assert file_path.stat().st_mtime == original_mtime  # File not modified
+
+    def test_template_cli_strips_extension(self, tmp_path, monkeypatch):
+        """Test template command strips extension from VOCAB name."""
+        monkeypatch.chdir(tmp_path)
+        main_cli(["template", "withext.xlsx"])
+
+        expected_file = tmp_path / "withext.xlsx"
+        assert expected_file.exists(), f"Template file not created: {expected_file}"
+        # Should not create withext.xlsx.xlsx
+        assert not (tmp_path / "withext.xlsx.xlsx").exists()
