@@ -41,7 +41,7 @@ typecheck:
 [group('development')]
 docs:
     @echo "Building Sphinx documentation..."
-    uv run sphinx-build -M html docs/ docs/_build/
+    uv run sphinx-build -b html docs/ docs/_build/
 
 # Detect code duplicates using PMD CPD
 [group('development')]

@@ -9,7 +9,7 @@
 For **[voc4cat](https://github.com/nfdi4cat/voc4cat)**, a term collection for catalysis created in [NFDI4Cat](https://www.nfdi4cat.org), we developed a **toolbox for collaboratively maintaining SKOS vocabularies on GitHub using Excel** (xlsx-files) as user-friendly interface. It consists of several parts:
 
 - **voc4cat-tool** (this package)
-  - A command-line tool to convert vocabularies from Excel to SKOS (turtle/rdf) and validate the vocabulary. Validation includes formal validation with SHACL-profiles but also additional checks. The `voc4cat` tool can be run locally but is also well suited for integration in CI-pipelines. It was inspired by [RDFlib/VocExcel](https://github.com/nfdi4cat/VocExcel). Parts of the vocexcel code base were merged into this repository (see git history).
+  - A command-line tool to convert vocabularies from Excel/xlsx to SKOS (turtle/rdf) and validate the vocabulary. Validation includes formal validation with SHACL-profiles but also additional checks. The `voc4cat` tool can be run locally but is also well suited for integration in CI-pipelines. It was inspired by [RDFlib/VocExcel](https://github.com/nfdi4cat/VocExcel). Parts of the vocexcel code base were merged into this repository (see git history).
 - **[voc4cat-template](https://github.com/nfdi4cat/voc4cat-template)**
   - A github project template for managing SKOS-vocabularies using a GitHub-based workflows including automation by gh-actions.
 - **[voc4cat](https://github.com/nfdi4cat/voc4cat)**

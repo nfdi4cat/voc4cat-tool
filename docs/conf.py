@@ -34,6 +34,7 @@ version = ".".join(release.split(".")[:3])
 # ones.
 extensions = [
     "myst_parser",
+    "sphinx.ext.githubpages",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -56,3 +57,10 @@ html_theme = "furo"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ["_static"]
+
+# -- Options for MyST parser -------------------------------------------------
+# https://myst-parser.readthedocs.io/en/latest/configuration.html
+
+myst_enable_extensions = [
+    "colon_fence",  # allow ::: for directives
+]
