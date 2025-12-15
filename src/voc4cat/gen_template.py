@@ -5,14 +5,18 @@ xlsx infrastructure (xlsx_api, xlsx_table, xlsx_keyvalue).
 """
 
 import logging
+import shutil
 import tempfile
 from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
 
+from voc4cat.checks import Voc4catError
 from voc4cat.models_v1 import (
+    COLLECTIONS_SHEET_NAME,
     CONCEPT_SCHEME_SHEET_NAME,
     CONCEPT_SCHEME_SHEET_TITLE,
+    CONCEPTS_SHEET_NAME,
     DEFAULT_PREFIXES,
     EXAMPLE_COLLECTIONS,
     EXAMPLE_CONCEPT_SCHEME,
@@ -20,9 +24,16 @@ from voc4cat.models_v1 import (
     EXAMPLE_MAPPINGS,
     ID_RANGES_SHEET_NAME,
     ID_RANGES_SHEET_TITLE,
+    MAPPINGS_SHEET_NAME,
     PREFIXES_SHEET_NAME,
     PREFIXES_SHEET_TITLE,
     IDRangeInfoV1,
+)
+from voc4cat.utils import (
+    EXCEL_FILE_ENDINGS,
+    get_template_sheet_names,
+    reorder_sheets_with_template,
+    validate_template_sheets,
 )
 from voc4cat.xlsx_api import export_to_xlsx
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
@@ -31,7 +42,10 @@ from voc4cat.xlsx_table import XLSXTableConfig
 logger = logging.getLogger(__name__)
 
 
-def generate_template_v1(output_path: Path | None = None) -> Workbook:
+def generate_template_v1(
+    output_path: Path | None = None,
+    template_path: Path | None = None,
+) -> Workbook:
     """Generate a complete v1.0 vocabulary template workbook.
 
     Creates an Excel workbook with the following sheets:
@@ -44,6 +58,9 @@ def generate_template_v1(output_path: Path | None = None) -> Workbook:
     Args:
         output_path: Optional path to save the workbook. If provided, the
                     workbook is saved to this path.
+        template_path: Optional path to an xlsx template file. If provided,
+                      the template's sheets are preserved and placed before
+                      the auto-generated vocabulary sheets.
 
     Returns:
         The generated Workbook object.
@@ -58,6 +75,11 @@ def generate_template_v1(output_path: Path | None = None) -> Workbook:
         temp_path = temp_dir / "template_v1.0.xlsx"
     else:
         temp_path = output_path
+
+    # If template provided, copy it to output location first
+    if template_path is not None:
+        shutil.copy(template_path, temp_path)
+        logger.debug("Copied template from %s to %s", template_path, temp_path)
 
     # Create the workbook by exporting each sheet
     # 1. Concept Scheme (key-value format)
@@ -81,12 +103,17 @@ def generate_template_v1(output_path: Path | None = None) -> Workbook:
     # Load the workbook to return and possibly adjust
     wb = load_workbook(temp_path)
 
+    # Get template sheet names for ordering (if template was used)
+    template_sheet_names = None
+    if template_path is not None:
+        template_sheet_names = get_template_sheet_names(template_path)
+
     # Reorder sheets to match expected order
-    _reorder_sheets(wb)
+    reorder_sheets_with_template(wb, template_sheet_names)
 
     # Set freeze panes for Concepts sheet
-    if "Concepts" in wb.sheetnames:
-        wb["Concepts"].freeze_panes = "A5"
+    if CONCEPTS_SHEET_NAME in wb.sheetnames:
+        wb[CONCEPTS_SHEET_NAME].freeze_panes = "A5"
 
     # Save if output_path was provided
     if output_path:
@@ -113,7 +140,7 @@ def _export_concept_scheme(filepath: Path) -> None:
 def _export_concepts(filepath: Path) -> None:
     """Export Concepts sheet in table format."""
     config = XLSXTableConfig(
-        title="Concepts",
+        title=CONCEPTS_SHEET_NAME,
         freeze_panes=True,
         table_style="TableStyleMedium2",
     )
@@ -122,14 +149,14 @@ def _export_concepts(filepath: Path) -> None:
         filepath,
         format_type="table",
         config=config,
-        sheet_name="Concepts",
+        sheet_name=CONCEPTS_SHEET_NAME,
     )
 
 
 def _export_collections(filepath: Path) -> None:
     """Export Collections sheet in table format."""
     config = XLSXTableConfig(
-        title="Collections",
+        title=COLLECTIONS_SHEET_NAME,
         table_style="TableStyleMedium7",
     )
     export_to_xlsx(
@@ -137,14 +164,14 @@ def _export_collections(filepath: Path) -> None:
         filepath,
         format_type="table",
         config=config,
-        sheet_name="Collections",
+        sheet_name=COLLECTIONS_SHEET_NAME,
     )
 
 
 def _export_mappings(filepath: Path) -> None:
     """Export Mappings sheet in table format."""
     config = XLSXTableConfig(
-        title="Mappings",
+        title=MAPPINGS_SHEET_NAME,
         table_style="TableStyleMedium3",
     )
     export_to_xlsx(
@@ -152,7 +179,7 @@ def _export_mappings(filepath: Path) -> None:
         filepath,
         format_type="table",
         config=config,
-        sheet_name="Mappings",
+        sheet_name=MAPPINGS_SHEET_NAME,
     )
 
 
@@ -187,34 +214,6 @@ def _export_prefixes(filepath: Path) -> None:
     )
 
 
-def _reorder_sheets(wb: Workbook) -> None:
-    """Reorder sheets to match expected template order."""
-    expected_order = [
-        CONCEPT_SCHEME_SHEET_NAME,
-        "Concepts",
-        "Collections",
-        "Mappings",
-        ID_RANGES_SHEET_NAME,
-        PREFIXES_SHEET_NAME,
-    ]
-
-    # Get current sheet order
-    current_sheets = wb.sheetnames
-
-    # Build new order based on expected, then any remaining
-    new_order = []
-    for sheet_name in expected_order:
-        if sheet_name in current_sheets:
-            new_order.append(sheet_name)
-    for sheet_name in current_sheets:
-        if sheet_name not in new_order:
-            new_order.append(sheet_name)
-
-    # Reorder
-    for idx, sheet_name in enumerate(new_order):
-        wb.move_sheet(sheet_name, offset=idx - wb.sheetnames.index(sheet_name))
-
-
 def template_cmd(args) -> None:
     """CLI command handler for template generation.
 
@@ -222,15 +221,30 @@ def template_cmd(args) -> None:
         args: Parsed command-line arguments containing:
             - outdir: Output directory for the template (from common options)
             - template_version: Template version to generate
+            - template: Optional path to base template xlsx file
             - VOCAB: Vocabulary name for the output filename
     """
     version = getattr(args, "template_version", "v1.0")
     outdir = getattr(args, "outdir", None)
+    template_path = getattr(args, "template", None)
     vocab = args.VOCAB
 
     if version != "v1.0":
         msg = f"Unsupported template version: {version}"
         raise ValueError(msg)
+
+    # Validate template if provided
+    if template_path is not None:
+        if not template_path.exists():
+            msg = f"Template file not found: {template_path}"
+            logger.error(msg)
+            raise Voc4catError(msg)
+        if template_path.suffix.lower() not in EXCEL_FILE_ENDINGS:
+            msg = 'Template file must be of type ".xlsx".'
+            logger.error(msg)
+            raise Voc4catError(msg)
+        # Validate template doesn't contain reserved sheet names
+        validate_template_sheets(template_path)
 
     # Determine output path
     if outdir is None:
@@ -250,7 +264,7 @@ def template_cmd(args) -> None:
 
     logger.info("Generating %s template at: %s", version, output_path)
 
-    generate_template_v1(output_path)
+    generate_template_v1(output_path, template_path=template_path)
 
     logger.info("Template generated successfully: %s", output_path)
     print(f"Generated template: {output_path}")

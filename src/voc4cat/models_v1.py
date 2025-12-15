@@ -232,6 +232,8 @@ class ConceptSchemeV1(BaseModel):
 
 # === Concepts (table format) ===
 
+CONCEPTS_SHEET_NAME = "Concepts"
+
 
 class ConceptV1(BaseModel):
     """Single concept row in the Concepts table."""
@@ -366,6 +368,8 @@ class ConceptV1(BaseModel):
 
 # === Collections (table format) ===
 
+COLLECTIONS_SHEET_NAME = "Collections"
+
 
 class CollectionV1(BaseModel):
     """Single collection row in the Collections table."""
@@ -450,6 +454,8 @@ class CollectionV1(BaseModel):
 
 
 # === Mappings (table format) ===
+
+MAPPINGS_SHEET_NAME = "Mappings"
 
 
 class MappingV1(BaseModel):
@@ -540,6 +546,18 @@ class PrefixV1(BaseModel):
 
 ID_RANGES_SHEET_NAME = "ID Ranges"
 ID_RANGES_SHEET_TITLE = "ID Ranges (read-only)"
+
+# Reserved sheet names (auto-created by voc4cat, not allowed in templates)
+RESERVED_SHEET_NAMES = frozenset(
+    {
+        CONCEPT_SCHEME_SHEET_NAME,
+        CONCEPTS_SHEET_NAME,
+        COLLECTIONS_SHEET_NAME,
+        MAPPINGS_SHEET_NAME,
+        ID_RANGES_SHEET_NAME,
+        PREFIXES_SHEET_NAME,
+    }
+)
 
 
 class IDRangeInfoV1(BaseModel):
