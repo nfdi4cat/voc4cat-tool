@@ -4,6 +4,7 @@ These tests verify that the v1.0 template generator creates Excel templates
 with the correct structure matching the reference template.
 """
 
+import logging
 from pathlib import Path
 
 import pytest
@@ -450,3 +451,102 @@ class TestTemplateCLI:
         assert expected_file.exists(), f"Template file not created: {expected_file}"
         # Should not create withext.xlsx.xlsx
         assert not (tmp_path / "withext.xlsx.xlsx").exists()
+
+    def test_template_cli_with_base_template(self, tmp_path, monkeypatch):
+        """Test template command with --template option preserves base sheets."""
+        from openpyxl import Workbook
+
+        monkeypatch.chdir(tmp_path)
+
+        # Create base template with custom sheets
+        base_wb = Workbook()
+        base_wb.active.title = "Cover"
+        base_wb.create_sheet("Instructions")
+        base_wb.create_sheet("Help")
+        base_template = tmp_path / "base_template.xlsx"
+        base_wb.save(base_template)
+        base_wb.close()
+
+        # Generate template with base
+        main_cli(["template", "--template", str(base_template), "myvocab"])
+
+        # Verify output
+        output_file = tmp_path / "myvocab.xlsx"
+        assert output_file.exists()
+
+        result_wb = load_workbook(output_file)
+        sheets = result_wb.sheetnames
+
+        # Template sheets should come first
+        assert sheets[0] == "Cover"
+        assert sheets[1] == "Instructions"
+        assert sheets[2] == "Help"
+
+        # Auto-created sheets should follow
+        assert "Concept Scheme" in sheets
+        assert "Concepts" in sheets
+        assert "Collections" in sheets
+        assert "Mappings" in sheets
+        assert "ID Ranges" in sheets
+        assert "Prefixes" in sheets
+
+        # Verify order: template sheets before auto-created
+        cover_idx = sheets.index("Cover")
+        cs_idx = sheets.index("Concept Scheme")
+        assert cover_idx < cs_idx
+
+        result_wb.close()
+
+    def test_template_cli_rejects_conflicting_base_template(
+        self, tmp_path, monkeypatch, caplog
+    ):
+        """Test template command rejects base template with reserved sheet names."""
+        from openpyxl import Workbook
+
+        from voc4cat.checks import Voc4catError
+
+        monkeypatch.chdir(tmp_path)
+
+        # Create base template with a reserved sheet name
+        base_wb = Workbook()
+        base_wb.active.title = "Cover"
+        base_wb.create_sheet("Concepts")  # Reserved name - should be rejected
+        base_template = tmp_path / "bad_template.xlsx"
+        base_wb.save(base_template)
+        base_wb.close()
+
+        with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
+            main_cli(["template", "--template", str(base_template), "myvocab"])
+
+        assert "reserved sheet names" in caplog.text
+        assert "Concepts" in caplog.text
+
+    def test_template_cli_rejects_nonexistent_base_template(
+        self, tmp_path, monkeypatch, caplog
+    ):
+        """Test template command rejects non-existent base template."""
+        from voc4cat.checks import Voc4catError
+
+        monkeypatch.chdir(tmp_path)
+
+        with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
+            main_cli(["template", "--template", "nonexistent.xlsx", "myvocab"])
+
+        assert "Template file not found" in caplog.text
+
+    def test_template_cli_rejects_invalid_base_template_format(
+        self, tmp_path, monkeypatch, caplog
+    ):
+        """Test template command rejects base template with wrong file type."""
+        from voc4cat.checks import Voc4catError
+
+        monkeypatch.chdir(tmp_path)
+
+        # Create a non-xlsx file
+        bad_template = tmp_path / "bad_template.txt"
+        bad_template.touch()
+
+        with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
+            main_cli(["template", "--template", str(bad_template), "myvocab"])
+
+        assert 'Template file must be of type ".xlsx"' in caplog.text

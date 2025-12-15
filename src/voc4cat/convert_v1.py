@@ -10,6 +10,7 @@ The two-way conversion is designed to be lossless (isomorphic graphs).
 
 import logging
 import os
+import shutil
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -51,10 +52,13 @@ from voc4cat.convert_v1_helpers import (
     validate_deprecation,
 )
 from voc4cat.models_v1 import (
+    COLLECTIONS_SHEET_NAME,
     CONCEPT_SCHEME_SHEET_NAME,
     CONCEPT_SCHEME_SHEET_TITLE,
+    CONCEPTS_SHEET_NAME,
     ID_RANGES_SHEET_NAME,
     ID_RANGES_SHEET_TITLE,
+    MAPPINGS_SHEET_NAME,
     PREFIXES_SHEET_NAME,
     PREFIXES_SHEET_TITLE,
     TEMPLATE_VERSION,
@@ -68,7 +72,12 @@ from voc4cat.models_v1 import (
     OrderedChoice,
     PrefixV1,
 )
-from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS
+from voc4cat.utils import (
+    EXCEL_FILE_ENDINGS,
+    RDF_FILE_ENDINGS,
+    get_template_sheet_names,
+    reorder_sheets_with_template,
+)
 from voc4cat.xlsx_api import export_to_xlsx, import_from_xlsx
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
 from voc4cat.xlsx_table import XLSXTableConfig
@@ -1252,6 +1261,7 @@ def export_vocabulary_v1(
     prefixes: list[PrefixV1],
     output_path: Path,
     id_ranges: list[IDRangeInfoV1] | None = None,
+    template_path: Path | None = None,
 ) -> None:
     """Export v1.0 vocabulary data to Excel.
 
@@ -1266,7 +1276,15 @@ def export_vocabulary_v1(
         output_path: Path to save the Excel file.
         id_ranges: Optional list of IDRangeInfoV1 model instances. If provided,
                   an "ID Ranges" sheet is added showing contributor allocations.
+        template_path: Optional path to an xlsx template file. If provided,
+                      the template's sheets are preserved and placed before
+                      the auto-generated vocabulary sheets.
     """
+    # If template provided, copy it to output location first
+    if template_path is not None:
+        shutil.copy(template_path, output_path)
+        logger.debug("Copied template from %s to %s", template_path, output_path)
+
     # 1. Concept Scheme (key-value format, read-only)
     kv_config = XLSXKeyValueConfig(
         title=CONCEPT_SCHEME_SHEET_TITLE,
@@ -1286,7 +1304,7 @@ def export_vocabulary_v1(
         concepts = [ConceptV1()]
 
     table_config = XLSXTableConfig(
-        title="Concepts",
+        title=CONCEPTS_SHEET_NAME,
         table_style="TableStyleMedium2",
         freeze_panes=True,
         bold_fields={"preferred_label"},
@@ -1296,7 +1314,7 @@ def export_vocabulary_v1(
         output_path,
         format_type="table",
         config=table_config,
-        sheet_name="Concepts",
+        sheet_name=CONCEPTS_SHEET_NAME,
     )
 
     # 3. Collections (table format)
@@ -1304,7 +1322,7 @@ def export_vocabulary_v1(
         collections = [CollectionV1()]
 
     table_config = XLSXTableConfig(
-        title="Collections",
+        title=COLLECTIONS_SHEET_NAME,
         table_style="TableStyleMedium7",
         bold_fields={"preferred_label"},
     )
@@ -1313,7 +1331,7 @@ def export_vocabulary_v1(
         output_path,
         format_type="table",
         config=table_config,
-        sheet_name="Collections",
+        sheet_name=COLLECTIONS_SHEET_NAME,
     )
 
     # 4. Mappings (table format)
@@ -1321,7 +1339,7 @@ def export_vocabulary_v1(
         mappings = [MappingV1()]
 
     table_config = XLSXTableConfig(
-        title="Mappings",
+        title=MAPPINGS_SHEET_NAME,
         table_style="TableStyleMedium3",
     )
     export_to_xlsx(
@@ -1329,7 +1347,7 @@ def export_vocabulary_v1(
         output_path,
         format_type="table",
         config=table_config,
-        sheet_name="Mappings",
+        sheet_name=MAPPINGS_SHEET_NAME,
     )
     # 5. ID Ranges (table format, read-only)
     if not id_ranges:
@@ -1362,53 +1380,34 @@ def export_vocabulary_v1(
 
     # Post-processing: reorder sheets, add hyperlinks, set freeze panes
     wb = load_workbook(output_path)
-    _reorder_sheets(wb)
+
+    # Get template sheet names for ordering (if template was used)
+    template_sheet_names = None
+    if template_path is not None:
+        template_sheet_names = get_template_sheet_names(template_path)
+
+    reorder_sheets_with_template(wb, template_sheet_names)
 
     # Add hyperlinks to entity IRI columns (Concepts and Collections sheets)
-    _add_entity_iri_hyperlinks(wb, "Concepts", "Concept IRI*")
-    _add_entity_iri_hyperlinks(wb, "Collections", "Collection IRI")
+    _add_entity_iri_hyperlinks(wb, CONCEPTS_SHEET_NAME, "Concept IRI*")
+    _add_entity_iri_hyperlinks(wb, COLLECTIONS_SHEET_NAME, "Collection IRI")
 
     # Add hyperlinks to provenance columns (Concepts and Collections sheets)
-    _add_provenance_hyperlinks(wb, "Concepts")
-    _add_provenance_hyperlinks(wb, "Collections")
+    _add_provenance_hyperlinks(wb, CONCEPTS_SHEET_NAME)
+    _add_provenance_hyperlinks(wb, COLLECTIONS_SHEET_NAME)
 
     # Add hyperlinks to concept IRI column in Mappings sheet (with labels)
-    _add_concept_iri_hyperlinks(wb, "Mappings")
+    _add_concept_iri_hyperlinks(wb, MAPPINGS_SHEET_NAME)
 
     # Set freeze panes for Concepts sheet
-    if "Concepts" in wb.sheetnames:
-        wb["Concepts"].freeze_panes = "A5"
+    if CONCEPTS_SHEET_NAME in wb.sheetnames:
+        wb[CONCEPTS_SHEET_NAME].freeze_panes = "A5"
 
     # Add hyperlink to Vocabulary IRI in Concept Scheme
     _add_vocabulary_iri_hyperlink(wb, CONCEPT_SCHEME_SHEET_NAME)
 
     wb.save(output_path)
     wb.close()
-
-
-def _reorder_sheets(wb) -> None:
-    """Reorder sheets to match expected template order."""
-    expected_order = [
-        CONCEPT_SCHEME_SHEET_NAME,
-        "Concepts",
-        "Collections",
-        "Mappings",
-        ID_RANGES_SHEET_NAME,
-        PREFIXES_SHEET_NAME,
-    ]
-
-    current_sheets = wb.sheetnames
-
-    new_order = []
-    for sheet_name in expected_order:
-        if sheet_name in current_sheets:
-            new_order.append(sheet_name)
-    for sheet_name in current_sheets:
-        if sheet_name not in new_order:
-            new_order.append(sheet_name)
-
-    for idx, sheet_name in enumerate(new_order):
-        wb.move_sheet(sheet_name, offset=idx - wb.sheetnames.index(sheet_name))
 
 
 # =============================================================================
@@ -1420,6 +1419,7 @@ def rdf_to_excel_v1(
     file_to_convert_path: Path,
     output_file_path: Path | None = None,
     vocab_config: "config.Vocab | None" = None,
+    template_path: Path | None = None,
 ) -> Path:
     """Convert an RDF vocabulary to v1.0 Excel template.
 
@@ -1433,6 +1433,9 @@ def rdf_to_excel_v1(
                          Defaults to same name with .xlsx extension.
         vocab_config: Optional Vocab config from idranges.toml. If provided,
                      scheme metadata is merged (config overrides RDF).
+        template_path: Optional path to an xlsx template file. If provided,
+                      the template's sheets are preserved and placed before
+                      the auto-generated vocabulary sheets.
 
     Returns:
         Path to the generated Excel file.
@@ -1548,6 +1551,7 @@ def rdf_to_excel_v1(
         prefixes_v1,
         output_file_path,
         id_ranges=id_ranges_v1,
+        template_path=template_path,
     )
 
     logger.info("Conversion complete: %s", output_file_path)
@@ -1630,13 +1634,13 @@ def read_concepts_v1(filepath: Path) -> list[ConceptV1]:
         List of ConceptV1 model instances (one per row).
     """
     # Must match the config used during export
-    config = XLSXTableConfig(title="Concepts")
+    config = XLSXTableConfig(title=CONCEPTS_SHEET_NAME)
     return import_from_xlsx(
         filepath,
         ConceptV1,
         format_type="table",
         config=config,
-        sheet_name="Concepts",
+        sheet_name=CONCEPTS_SHEET_NAME,
     )
 
 
@@ -1650,13 +1654,13 @@ def read_collections_v1(filepath: Path) -> list[CollectionV1]:
         List of CollectionV1 model instances (one per row).
     """
     # Must match the config used during export
-    config = XLSXTableConfig(title="Collections")
+    config = XLSXTableConfig(title=COLLECTIONS_SHEET_NAME)
     return import_from_xlsx(
         filepath,
         CollectionV1,
         format_type="table",
         config=config,
-        sheet_name="Collections",
+        sheet_name=COLLECTIONS_SHEET_NAME,
     )
 
 
@@ -1670,13 +1674,13 @@ def read_mappings_v1(filepath: Path) -> list[MappingV1]:
         List of MappingV1 model instances (one per row).
     """
     # Must match the config used during export
-    config = XLSXTableConfig(title="Mappings")
+    config = XLSXTableConfig(title=MAPPINGS_SHEET_NAME)
     return import_from_xlsx(
         filepath,
         MappingV1,
         format_type="table",
         config=config,
-        sheet_name="Mappings",
+        sheet_name=MAPPINGS_SHEET_NAME,
     )
 
 

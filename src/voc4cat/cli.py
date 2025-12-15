@@ -396,6 +396,13 @@ def add_template_subparser(subparsers, options):
         dest="template_version",  # avoid conflict with root --version
     )
     parser.add_argument(
+        "-t",
+        "--template",
+        help="An optionally-provided xlsx-template file to use as base.",
+        type=Path,
+        metavar="FILE",
+    )
+    parser.add_argument(
         "VOCAB",
         type=str,
         help="Vocabulary name used as the filename for the generated xlsx template.",

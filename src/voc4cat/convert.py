@@ -20,6 +20,7 @@ from voc4cat.utils import (
     ConversionError,
     adjust_length_of_tables,
     has_file_in_multiple_formats,
+    validate_template_sheets,
 )
 
 logger = logging.getLogger(__name__)
@@ -170,6 +171,8 @@ def _check_convert_args(args):
         if msg:
             logging.error(msg)
             raise Voc4catError(msg)
+        # Validate template doesn't contain reserved sheet names
+        validate_template_sheets(args.template)
     # Option outputformat is validated by argparse since its restricted by choices.
 
     # Add check if files of the same name are present in different formats.
@@ -249,6 +252,11 @@ def convert(args):
         vocab_config = _get_vocab_config(vocab_name)
 
         if file in xlsx_files:
+            if args.template is not None:
+                logger.warning(
+                    "Template option ignored for xlsx->RDF conversion (input: %s)",
+                    file.name,
+                )
             if vocab_config is None:
                 msg = (
                     f"No idranges.toml config found for vocabulary '{vocab_name}'. "
@@ -267,7 +275,12 @@ def convert(args):
         elif file in rdf_files:
             output_file_path = outfile.with_suffix(".xlsx")
             # RDF to Excel always uses v1.0 format
-            rdf_to_excel_v1(file, output_file_path, vocab_config=vocab_config)
+            rdf_to_excel_v1(
+                file,
+                output_file_path,
+                vocab_config=vocab_config,
+                template_path=args.template,
+            )
             logger.info("-> successfully converted to %s", output_file_path)
             # Extend size (length) of tables in all sheets
             adjust_length_of_tables(
