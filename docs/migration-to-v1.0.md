@@ -1,6 +1,6 @@
-# Migrating from 043 to v1.0 format
+# Migrating from 043 to v1.0
 
-This guide explains how to migrate vocabularies created with voc4cat-tool v0.10.0 or earlier to the v1.0 format.
+This guide explains how to migrate vocabularies created with voc4cat-tool v0.10.0 or earlier which used the "0.43"-xlsx format, to the v1.0 format.
 
 ## What changed in v1.0
 
