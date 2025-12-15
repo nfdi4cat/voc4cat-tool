@@ -25,6 +25,9 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import BaseModel
 
+# Excel's limit for data validation formula length
+EXCEL_DV_FORMULA_LIMIT = 255
+
 
 # Exception classes
 class XLSXSerializationError(ValueError):
@@ -290,13 +293,13 @@ class XLSXSerializationEngine:
         ):
             return field_analysis.xlsx_metadata.xlsx_serializer(value)
 
+        # Handle Enum types BEFORE basic types (str, Enum subclasses are also str)
+        if isinstance(value, Enum):
+            return value.value
+
         # Handle basic types that Excel supports natively
         if isinstance(value, bool | int | float | str | date | datetime):
             return value
-
-        # Handle Enum types
-        if isinstance(value, Enum):
-            return value.value
 
         # For complex types, convert to string representation
         if isinstance(value, list | dict):

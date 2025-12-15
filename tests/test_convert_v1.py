@@ -59,10 +59,10 @@ from voc4cat.convert_v1_helpers import (
     format_contributor_string,
 )
 from voc4cat.models_v1 import (
-    OBSOLETION_REASONS_COLLECTIONS,
-    OBSOLETION_REASONS_CONCEPTS,
     TEMPLATE_VERSION,
+    CollectionObsoletionReason,
     CollectionV1,
+    ConceptObsoletionReason,
     ConceptSchemeV1,
     ConceptV1,
     PrefixV1,
@@ -1143,8 +1143,8 @@ class TestValidateDeprecation:
         label, errors = validate_deprecation(
             pref_label="OBSOLETE Old Concept",
             is_deprecated=True,
-            history_note=OBSOLETION_REASONS_CONCEPTS[0],
-            valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+            history_note=ConceptObsoletionReason.UNCLEAR.value,
+            valid_reasons=[e.value for e in ConceptObsoletionReason],
             entity_iri="http://example.org/old",
             entity_type="concept",
         )
@@ -1156,8 +1156,8 @@ class TestValidateDeprecation:
         label, errors = validate_deprecation(
             pref_label="Old Concept",  # Missing OBSOLETE prefix
             is_deprecated=True,
-            history_note=OBSOLETION_REASONS_CONCEPTS[0],
-            valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+            history_note=ConceptObsoletionReason.UNCLEAR.value,
+            valid_reasons=[e.value for e in ConceptObsoletionReason],
             entity_iri="http://example.org/old",
             entity_type="concept",
         )
@@ -1170,7 +1170,7 @@ class TestValidateDeprecation:
             pref_label="OBSOLETE Old Concept",
             is_deprecated=False,  # Not deprecated!
             history_note="",
-            valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+            valid_reasons=[e.value for e in ConceptObsoletionReason],
             entity_iri="http://example.org/old",
             entity_type="concept",
         )
@@ -1184,7 +1184,7 @@ class TestValidateDeprecation:
             pref_label="Old Concept",
             is_deprecated=True,
             history_note="Invalid reason not in enum",
-            valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+            valid_reasons=[e.value for e in ConceptObsoletionReason],
             entity_iri="http://example.org/old",
             entity_type="concept",
         )
@@ -1197,7 +1197,7 @@ class TestValidateDeprecation:
             pref_label="Active Concept",
             is_deprecated=False,
             history_note="",
-            valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+            valid_reasons=[e.value for e in ConceptObsoletionReason],
             entity_iri="http://example.org/active",
             entity_type="concept",
         )
@@ -1205,16 +1205,16 @@ class TestValidateDeprecation:
         assert label == "Active Concept"
 
     def test_collection_uses_different_enum(self):
-        """Test collection validation uses OBSOLETION_REASONS_COLLECTIONS."""
+        """Test collection validation uses CollectionObsoletionReason."""
         # This reason is valid for collections but not concepts
-        collection_reason = OBSOLETION_REASONS_COLLECTIONS[0]
+        collection_reason = CollectionObsoletionReason.UNCLEAR.value
 
         # Should fail with concept enum
         _, errors = validate_deprecation(
             pref_label="Old",
             is_deprecated=True,
             history_note=collection_reason,
-            valid_reasons=OBSOLETION_REASONS_CONCEPTS,
+            valid_reasons=[e.value for e in ConceptObsoletionReason],
             entity_iri="http://example.org/old",
             entity_type="concept",
         )
@@ -1225,7 +1225,7 @@ class TestValidateDeprecation:
             pref_label="Old",
             is_deprecated=True,
             history_note=collection_reason,
-            valid_reasons=OBSOLETION_REASONS_COLLECTIONS,
+            valid_reasons=[e.value for e in CollectionObsoletionReason],
             entity_iri="http://example.org/old",
             entity_type="collection",
         )
@@ -1249,7 +1249,7 @@ class TestDeprecationRdfExtraction:
             (
                 EX.oldConcept,
                 SKOS.historyNote,
-                Literal(OBSOLETION_REASONS_CONCEPTS[0], lang="en"),
+                Literal(ConceptObsoletionReason.UNCLEAR.value, lang="en"),
             )
         )
         g.add((EX.oldConcept, DCTERMS.isReplacedBy, EX.newConcept))
@@ -1278,7 +1278,7 @@ class TestDeprecationRdfExtraction:
             (
                 EX.oldColl,
                 SKOS.historyNote,
-                Literal(OBSOLETION_REASONS_COLLECTIONS[0], lang="en"),
+                Literal(CollectionObsoletionReason.UNCLEAR.value, lang="en"),
             )
         )
         g.add((EX.oldColl, DCTERMS.isReplacedBy, EX.newColl))
@@ -1310,7 +1310,7 @@ class TestDeprecationXlsxAggregation:
                 language_code="en",
                 preferred_label="OBSOLETE Old Concept",
                 definition="An old concept",
-                obsolete_reason=OBSOLETION_REASONS_CONCEPTS[0],
+                obsolete_reason=ConceptObsoletionReason.UNCLEAR,
                 change_note="replaced_by ex:newConcept",
             ),
         ]
@@ -1334,7 +1334,7 @@ class TestDeprecationXlsxAggregation:
                 language_code="en",
                 preferred_label="Old Concept",  # Missing OBSOLETE prefix
                 definition="An old concept",
-                obsolete_reason=OBSOLETION_REASONS_CONCEPTS[0],
+                obsolete_reason=ConceptObsoletionReason.UNCLEAR,
             ),
         ]
 
@@ -1356,7 +1356,7 @@ class TestDeprecationXlsxAggregation:
                 language_code="en",
                 preferred_label="OBSOLETE Old Collection",
                 definition="An old collection",
-                obsolete_reason=OBSOLETION_REASONS_COLLECTIONS[0],
+                obsolete_reason=CollectionObsoletionReason.UNCLEAR,
                 change_note="replaced_by ex:newColl",
             ),
         ]
@@ -1400,7 +1400,7 @@ class TestDeprecationRoundTrip:
             (
                 EX.oldConcept,
                 SKOS.historyNote,
-                Literal(OBSOLETION_REASONS_CONCEPTS[0], lang="en"),
+                Literal(ConceptObsoletionReason.UNCLEAR.value, lang="en"),
             )
         )
         g.add((EX.oldConcept, DCTERMS.isReplacedBy, EX.newConcept))
@@ -1460,7 +1460,7 @@ class TestDeprecationRoundTrip:
             (
                 EX.old,
                 SKOS.historyNote,
-                Literal(OBSOLETION_REASONS_CONCEPTS[1], lang="en"),
+                Literal(ConceptObsoletionReason.ADDED_IN_ERROR.value, lang="en"),
             )
         )
 

@@ -359,7 +359,7 @@ class TestModels:
             preferred_label="Collection",
         )
         assert collection.collection_iri == "ex:col1"
-        assert collection.ordered == ""  # default
+        assert collection.ordered is None  # default
 
     def test_mapping_v1_model(self):
         """Test MappingV1 model creation."""

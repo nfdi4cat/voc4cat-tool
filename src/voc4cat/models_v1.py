@@ -4,6 +4,7 @@ These models define the structure of the v1.0 Excel template using XLSXMetadata
 annotations to specify column headers, SKOS meanings, and field descriptions.
 """
 
+from enum import Enum
 from typing import Annotated
 
 from pydantic import BaseModel
@@ -15,21 +16,32 @@ TEMPLATE_VERSION = "1.0.rev-2025-06a"
 
 # === Obsoletion Reason Enums ===
 
-OBSOLETION_REASONS_CONCEPTS = [
-    "The concept is not clearly defined and usage has been inconsistent.",
-    "This concept was added in error.",
-    "More specific concepts were created.",
-    "This concept was converted to a collection.",
-    "The meaning of the concept is ambiguous.",
-    "Lack of evidence that this function/process/component exists.",
-]
 
-OBSOLETION_REASONS_COLLECTIONS = [
-    "The collection is not clearly defined and usage has been inconsistent.",
-    "This collection was added in error.",
-    "More collections were created.",
-    "This collection was converted to a concept.",
-]
+class ConceptObsoletionReason(str, Enum):
+    """Reasons for obsoleting a concept."""
+
+    UNCLEAR = "The concept is not clearly defined and usage has been inconsistent."
+    ADDED_IN_ERROR = "This concept was added in error."
+    MORE_SPECIFIC = "More specific concepts were created."
+    CONVERTED_TO_COLLECTION = "This concept was converted to a collection."
+    AMBIGUOUS = "The meaning of the concept is ambiguous."
+    LACK_OF_EVIDENCE = "Lack of evidence that this function/process/component exists."
+
+
+class CollectionObsoletionReason(str, Enum):
+    """Reasons for obsoleting a collection."""
+
+    UNCLEAR = "The collection is not clearly defined and usage has been inconsistent."
+    ADDED_IN_ERROR = "This collection was added in error."
+    MORE_SPECIFIC = "More collections were created."
+    CONVERTED_TO_CONCEPT = "This collection was converted to a concept."
+
+
+class OrderedChoice(str, Enum):
+    """Whether a collection is ordered."""
+
+    YES = "Yes"
+    NO = "No"
 
 
 # === Concept Scheme (key-value format) ===
@@ -312,12 +324,12 @@ class ConceptV1(BaseModel):
     ] = ""
 
     obsolete_reason: Annotated[
-        str,
+        ConceptObsoletionReason | None,
         XLSXMetadata(
             display_name="Obsoletion reason",
             meaning="owl:deprecated,\nskos:historyNote",
         ),
-    ] = ""
+    ] = None
 
     influenced_by_iris: Annotated[
         str,
@@ -398,11 +410,11 @@ class CollectionV1(BaseModel):
     ] = ""
 
     ordered: Annotated[
-        str,
+        OrderedChoice | None,
         XLSXMetadata(
             display_name="Ordered? Yes or No (default)",
         ),
-    ] = ""
+    ] = None
 
     provenance: Annotated[
         str,
@@ -429,12 +441,12 @@ class CollectionV1(BaseModel):
     ] = ""
 
     obsolete_reason: Annotated[
-        str,
+        CollectionObsoletionReason | None,
         XLSXMetadata(
             display_name="Obsoletion reason",
             meaning="owl:deprecated,\nskos:historyNote",
         ),
-    ] = ""
+    ] = None
 
 
 # === Mappings (table format) ===
