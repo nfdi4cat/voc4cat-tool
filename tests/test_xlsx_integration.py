@@ -12,6 +12,7 @@ from typing import Annotated
 import pytest
 from pydantic import BaseModel, Field
 
+from voc4cat.models_v1 import TEMPLATE_VERSION
 from voc4cat.xlsx_api import XLSXProcessorFactory, export_to_xlsx, import_from_xlsx
 from voc4cat.xlsx_common import XLSXConverters, XLSXMetadata
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
@@ -60,7 +61,7 @@ class ConceptScheme(BaseModel):
             meaning="dcterms:hasVersion",
             description="Gets increments only on structural changes. Its general pattern is major.minor.rev-JJJJ-MM[a-z].",
         ),
-    ] = Field(default="1.0.rev-2025-06a")
+    ] = Field(default=TEMPLATE_VERSION)
 
     vocabulary_iri: Annotated[
         str,

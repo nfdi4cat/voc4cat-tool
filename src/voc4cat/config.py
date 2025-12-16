@@ -113,6 +113,7 @@ class Vocab(BaseModel):
     provenance_url_template: str = ""  # Jinja template for provenance (git blame) URLs
     homepage: str = ""
     conforms_to: str = ""
+    history_note: str = ""  # Auto-generated if empty: "Created {date} by {names}."
     profile_local_path: str = (
         ""  # Path to SHACL profile file, relative to idranges.toml
     )

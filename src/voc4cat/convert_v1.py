@@ -13,6 +13,7 @@ import os
 import shutil
 from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Literal as TypingLiteral
 
@@ -44,10 +45,12 @@ from voc4cat.convert_v1_helpers import (
     build_provenance_url,
     derive_contributors,
     expand_curie,
+    extract_creator_names,
     extract_entity_id_from_iri,
     extract_used_ids,
     format_change_note_with_replaced_by,
     format_iri_with_label,
+    generate_history_note,
     parse_replaced_by_from_change_note,
     validate_deprecation,
 )
@@ -158,6 +161,33 @@ def string_to_ordered_enum(value: str | bool) -> OrderedChoice | None:
 # =============================================================================
 
 
+def lookup_entity_name(graph: Graph, entity_iri: str) -> str:
+    """Look up schema:name for an entity and format as 'name <url>'.
+
+    Looks for schema:name on the entity IRI. If found and not a URL,
+    returns 'name url'. Otherwise returns just the URL.
+
+    Args:
+        graph: The RDF graph to query.
+        entity_iri: The IRI of the entity (Person or Organization).
+
+    Returns:
+        Formatted string: 'name url' if name found, else just 'url'.
+    """
+    entity_ref = URIRef(entity_iri)
+    name = None
+
+    # Look up schema:name
+    for obj in graph.objects(entity_ref, SDO.name):
+        name = str(obj)
+        break
+
+    # If name exists and is not a URL, format as "name url"
+    if name and not name.startswith("http"):
+        return f"{name} {entity_iri}"
+    return entity_iri
+
+
 def extract_concept_scheme_from_rdf(graph: Graph) -> dict:
     """Extract ConceptScheme data from an RDF graph.
 
@@ -177,13 +207,16 @@ def extract_concept_scheme_from_rdf(graph: Graph) -> dict:
         "contributor": "",
         "publisher": "",
         "version": "",
-        "change_note": "",
+        "history_note": "",
         "custodian": "",
         "catalogue_pid": "",
     }
 
-    # Collect multiple contributors
+    # Collect multiple values for fields that can have multiple entries
+    creators = []
     contributors = []
+    publishers = []
+    custodians = []
 
     for s in graph.subjects(RDF.type, SKOS.ConceptScheme):
         holder["vocabulary_iri"] = str(s)
@@ -198,22 +231,33 @@ def extract_concept_scheme_from_rdf(graph: Graph) -> dict:
             elif p == DCTERMS.modified:
                 holder["modified_date"] = str(o)
             elif p == DCTERMS.creator:
-                holder["creator"] = str(o)
+                creators.append(str(o))
             elif p == DCTERMS.contributor:
                 contributors.append(str(o))
             elif p == DCTERMS.publisher:
-                holder["publisher"] = str(o)
+                publishers.append(str(o))
             elif p == OWL.versionInfo:
                 holder["version"] = str(o)
             elif p in [SKOS.historyNote, DCTERMS.provenance, PROV.wasDerivedFrom]:
-                holder["change_note"] = str(o)
+                holder["history_note"] = str(o)
             elif p == DCAT.contactPoint:
-                holder["custodian"] = str(o)
+                custodians.append(str(o))
             elif p == RDFS.seeAlso:
                 holder["catalogue_pid"] = str(o)
 
-        # Join multiple contributors with newlines
-        holder["contributor"] = "\n".join(contributors)
+        # Look up names from schema:name and format as "name url"
+        holder["creator"] = "\n".join(
+            lookup_entity_name(graph, iri) for iri in creators
+        )
+        holder["contributor"] = "\n".join(
+            lookup_entity_name(graph, iri) for iri in contributors
+        )
+        holder["publisher"] = "\n".join(
+            lookup_entity_name(graph, iri) for iri in publishers
+        )
+        holder["custodian"] = "\n".join(
+            lookup_entity_name(graph, iri) for iri in custodians
+        )
 
         # Only process the first ConceptScheme found
         # TODO: log warning or error if multiple found
@@ -590,7 +634,7 @@ def rdf_concept_scheme_to_v1(data: dict) -> ConceptSchemeV1:
         contributor=data.get("contributor", ""),
         publisher=data.get("publisher", ""),
         version=data.get("version", ""),
-        change_note=data.get("change_note", ""),
+        history_note=data.get("history_note", ""),
         custodian=data.get("custodian", ""),
         catalogue_pid=data.get("catalogue_pid", ""),
     )
@@ -632,6 +676,21 @@ def config_to_concept_scheme_v1(
     # Get RDF values (or empty defaults)
     rdf = rdf_scheme or ConceptSchemeV1()
 
+    # Determine history_note: config > RDF > auto-generate
+    history_note = ""
+    if vocab_config.history_note and vocab_config.history_note.strip():
+        history_note = vocab_config.history_note.strip()
+    elif rdf.history_note:
+        history_note = rdf.history_note
+    else:
+        # Auto-generate from created_date and creator names
+        created_date = get_field(
+            vocab_config.created_date, rdf.created_date, "created_date"
+        )
+        creator = get_field(vocab_config.creator, rdf.creator, "creator")
+        creator_names = extract_creator_names(creator)
+        history_note = generate_history_note(created_date, creator_names)
+
     return ConceptSchemeV1(
         template_version=TEMPLATE_VERSION,
         vocabulary_iri=get_field(
@@ -669,8 +728,8 @@ def config_to_concept_scheme_v1(
         repository=get_field(vocab_config.repository, rdf.repository, "repository"),
         homepage=get_field(vocab_config.homepage, rdf.homepage, "homepage"),
         conforms_to=get_field(vocab_config.conforms_to, rdf.conforms_to, "conforms_to"),
-        # Change note from RDF only (not in config)
-        change_note=rdf.change_note,
+        # History note: config > RDF > auto-generated
+        history_note=history_note,
     )
 
 
@@ -2144,11 +2203,48 @@ def extract_identifier(iri: str) -> str:
 # --- RDF Graph Building Functions ---
 
 
-def build_organization_graph(org_iri: str) -> Graph:
+def parse_name_url(line: str) -> tuple[str, str]:
+    """Parse a string in format 'Name with spaces https://url' into (name, url).
+
+    Splits from the right at the first space before the URL.
+
+    Args:
+        line: String in format "<name> <URL>" or just "<URL>".
+
+    Returns:
+        Tuple of (name, url). Name is empty string if only URL provided.
+    """
+    line = line.strip()
+    if not line:
+        return "", ""
+
+    # Split from right: "Name with spaces https://url" -> ["Name with spaces", "https://url"]
+    parts = line.rsplit(" ", 1)
+    if len(parts) == 2 and parts[1].startswith("http"):
+        return parts[0], parts[1]
+    if line.startswith("http"):
+        # URL only, no name
+        return "", line
+    # No URL found, treat entire line as name
+    return line, ""
+
+
+def is_orcid_url(url: str) -> bool:
+    """Check if URL is an ORCID identifier."""
+    return "orcid.org" in url.lower()
+
+
+def is_ror_url(url: str) -> bool:
+    """Check if URL is a ROR identifier."""
+    return "ror.org" in url.lower()
+
+
+def build_organization_graph(org_iri: str, name: str = "") -> Graph:
     """Build RDF graph for an Organization.
 
     Args:
         org_iri: IRI of the organization (creator or publisher).
+        name: Name of the organization. If not provided, extracts from IRI.
 
     Returns:
         Graph with Organization triples.
@@ -2158,11 +2254,60 @@ def build_organization_graph(org_iri: str) -> Graph:
 
     g.add((org, RDF.type, SDO.Organization))
 
-    # Use the IRI itself as name (could be improved with lookup)
-    g.add((org, SDO.name, Literal(org_iri, lang="en")))
+    # Use provided name or fall back to extracting from IRI
+    org_name = name if name else org_iri
+    g.add((org, SDO.name, Literal(org_name)))
     g.add((org, SDO.url, Literal(org_iri, datatype=XSD.anyURI)))
 
     return g
+
+
+def build_person_graph(person_iri: str, name: str = "") -> Graph:
+    """Build RDF graph for a Person.
+
+    Args:
+        person_iri: IRI of the person (e.g., ORCID URL).
+        name: Name of the person. If not provided, uses IRI as fallback.
+
+    Returns:
+        Graph with Person triples.
+    """
+    g = Graph()
+    person = URIRef(person_iri)
+
+    g.add((person, RDF.type, SDO.Person))
+
+    # Use provided name or fall back to IRI
+    person_name = name if name else person_iri
+    g.add((person, SDO.name, Literal(person_name)))
+    g.add((person, SDO.url, Literal(person_iri, datatype=XSD.anyURI)))
+
+    return g
+
+
+def build_entity_graph(url: str, name: str, field_type: str) -> Graph:
+    """Build Person or Organization graph based on field type and URL pattern.
+
+    Type determination rules:
+    - ORCID URL -> always Person
+    - ROR URL -> always Organization
+    - publisher field (no pattern match) -> Organization
+    - creator/contributor/custodian (no pattern match) -> Person
+
+    Args:
+        url: The entity IRI.
+        name: Name of the entity.
+        field_type: One of "publisher", "creator", "contributor", "custodian".
+
+    Returns:
+        Graph with Person or Organization triples.
+    """
+    if is_orcid_url(url):
+        return build_person_graph(url, name)
+    if is_ror_url(url) or field_type == "publisher":
+        return build_organization_graph(url, name)
+    # creator, contributor, custodian default to Person
+    return build_person_graph(url, name)
 
 
 def build_concept_scheme_graph(
@@ -2212,52 +2357,59 @@ def build_concept_scheme_graph(
             )
         )
 
-    # Creator and Publisher (with Organization triples)
-    # Format is multi-line "<name> <URL>" - extract URLs and add as URIRefs
+    # Creator and Publisher (with Person/Organization triples)
+    # Format is multi-line "<name> <URL>" - use parse_name_url for extraction
     creator_urls: list[str] = []
     if cs.creator:
         for iline in cs.creator.strip().split("\n"):
-            line = iline.strip()
-            if not line:
-                continue
-            for part in line.split():
-                if part.startswith("http"):
-                    creator_urls.append(part)
-                    g.add((scheme_iri, DCTERMS.creator, URIRef(part)))
-                    g += build_organization_graph(part)
-                    break
+            name, url = parse_name_url(iline)
+            if url:
+                creator_urls.append(url)
+                g.add((scheme_iri, DCTERMS.creator, URIRef(url)))
+                g += build_entity_graph(url, name, "creator")
 
     if cs.publisher:
         for iline in cs.publisher.strip().split("\n"):
-            line = iline.strip()
-            if not line:
-                continue
-            for part in line.split():
-                if part.startswith("http"):
-                    g.add((scheme_iri, DCTERMS.publisher, URIRef(part)))
-                    # Only add org graph if not already added as creator
-                    if part not in creator_urls:
-                        g += build_organization_graph(part)
-                    break
+            name, url = parse_name_url(iline)
+            if url:
+                g.add((scheme_iri, DCTERMS.publisher, URIRef(url)))
+                # Only add entity graph if not already added as creator
+                if url not in creator_urls:
+                    g += build_entity_graph(url, name, "publisher")
 
-    # Contributors (multiple, stored as literals in format "<name> <orcid-URL or ror-URL>")
+    # Contributors (with Person/Organization triples when URL present)
     if cs.contributor:
         for iline in cs.contributor.strip().split("\n"):
-            line = iline.strip()
-            if line:
-                g.add((scheme_iri, DCTERMS.contributor, Literal(line)))
+            name, url = parse_name_url(iline)
+            if url:
+                g.add((scheme_iri, DCTERMS.contributor, URIRef(url)))
+                # Only add entity graph if not already added as creator
+                if url not in creator_urls:
+                    g += build_entity_graph(url, name, "contributor")
+            elif iline.strip():
+                # Fallback to literal if no URL
+                g.add((scheme_iri, DCTERMS.contributor, Literal(iline.strip())))
 
     # Version
     if cs.version:
         g.add((scheme_iri, OWL.versionInfo, Literal(cs.version)))
 
-    # Change note
-    if cs.change_note:
-        g.add((scheme_iri, SKOS.changeNote, Literal(cs.change_note, lang="en")))
+    # History note (satisfies vocpub requirement 2.1.7 for ConceptScheme origins)
+    if cs.history_note:
+        g.add((scheme_iri, SKOS.historyNote, Literal(cs.history_note, lang="en")))
 
-    # Custodian
+    # Custodian (with Person/Organization triples when URL present)
     if cs.custodian:
-        g.add((scheme_iri, DCAT.contactPoint, Literal(cs.custodian)))
+        for iline in cs.custodian.strip().split("\n"):
+            name, url = parse_name_url(iline)
+            if url:
+                g.add((scheme_iri, DCAT.contactPoint, URIRef(url)))
+                # Only add entity graph if not already added as creator
+                if url not in creator_urls:
+                    g += build_entity_graph(url, name, "custodian")
+            elif iline.strip():
+                # Fallback to literal if no URL
+                g.add((scheme_iri, DCAT.contactPoint, Literal(iline.strip())))
 
     # Catalogue PID - both dct:identifier and rdfs:seeAlso
     if cs.catalogue_pid:
@@ -2622,9 +2774,8 @@ def excel_to_rdf_v1(
             raise Voc4catError(msg)
         concept_scheme.version = version
 
-    modified_date = os.getenv("VOC4CAT_MODIFIED", "")
-    if modified_date:
-        concept_scheme.modified_date = modified_date
+    modified_date = os.getenv("VOC4CAT_MODIFIED") or date.today().isoformat()
+    concept_scheme.modified_date = modified_date
 
     # Build inverse relationships
     logger.debug("Building inverse relationships...")

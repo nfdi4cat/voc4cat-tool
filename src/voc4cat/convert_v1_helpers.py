@@ -54,6 +54,69 @@ def expand_curie(curie_or_iri: str, converter: curies.Converter) -> str:
 
 
 # =============================================================================
+# Creator Field Utilities
+# =============================================================================
+
+
+def extract_creator_names(creator_field: str) -> list[str]:
+    """Extract names from creator field.
+
+    The creator field format is '<URL> <name>' per line, where URL is an
+    ORCID or ROR identifier.
+
+    Examples:
+        'https://orcid.org/0000-0001-2345-6789 John Doe\\n...' -> ['John Doe', ...]
+
+    Args:
+        creator_field: Multi-line string with creator entries.
+
+    Returns:
+        List of extracted names (empty list if no names found).
+    """
+    if not creator_field:
+        return []
+
+    names = []
+    for line in creator_field.strip().split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        # Split by whitespace - name is everything after the URL
+        parts = line.split()
+        # Find the URL (starts with http) and take everything after it
+        for i, part in enumerate(parts):
+            if part.startswith("http"):
+                name = " ".join(parts[i + 1 :])
+                if name:
+                    names.append(name)
+                break
+    return names
+
+
+def generate_history_note(created_date: str, creator_names: list[str]) -> str:
+    """Generate a history note from creation date and creator names.
+
+    Format: "Created {date}." or "Created {date} by {name1}, {name2}."
+
+    Args:
+        created_date: Creation date string (e.g., "2025" or "2025-01-15").
+        creator_names: List of creator names.
+
+    Returns:
+        Generated history note, or empty string if no created_date.
+    """
+    if not created_date:
+        return ""
+
+    note = f"Created {created_date}"
+    if creator_names:
+        names_str = ", ".join(creator_names)
+        note += f" by {names_str}"
+    note += "."
+    return note
+
+
+# =============================================================================
 # Provenance URL Helpers
 # =============================================================================
 

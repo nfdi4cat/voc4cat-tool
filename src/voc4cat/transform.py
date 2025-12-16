@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from rdflib import DCTERMS, OWL, RDF, SDO, SKOS, XSD, Graph, Literal, URIRef
+from rdflib import DCTERMS, OWL, RDF, SDO, SKOS, XSD, Graph, Literal
 
 from voc4cat.checks import Voc4catError
 from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS
@@ -29,7 +29,8 @@ def write_split_turtle(vocab_graph: Graph, outdir: Path) -> None:
     """
     Write each concept, collection and concept scheme to a separate turtle file.
 
-    The ids are used as filenames.
+    The ids are used as filenames. Schema:Person and schema:Organization entities
+    are included in the concept_scheme.ttl file.
     """
     outdir.mkdir(exist_ok=True)
     query = "SELECT ?iri WHERE {?iri a %s.}"
@@ -44,6 +45,11 @@ def write_split_turtle(vocab_graph: Graph, outdir: Path) -> None:
             tmp_graph += vocab_graph.triples((iri, None, None))
             id_part = extract_numeric_id_from_iri(iri)
             if skos_class == "skos:ConceptScheme":
+                # Include schema:Person and schema:Organization entities
+                # in the concept scheme file (metadata related to scheme)
+                for entity_type in [SDO.Person, SDO.Organization]:
+                    for entity_iri in vocab_graph.subjects(RDF.type, entity_type):
+                        tmp_graph += vocab_graph.triples((entity_iri, None, None))
                 outfile = outdir / "concept_scheme.ttl"
             else:
                 outfile = outdir / f"{id_part}.ttl"
@@ -73,6 +79,11 @@ def autoversion_cs(graph: Graph) -> Graph:
 
 
 def join_split_turtle(vocab_dir: Path) -> Graph:
+    """Join split turtle files back into a single graph.
+
+    The schema:Person and schema:Organization entities are included in
+    concept_scheme.ttl and will be joined automatically.
+    """
     # Search recursively all turtle files belonging to the concept scheme
     turtle_files = vocab_dir.rglob("*.ttl")
     # Create an empty RDF graph to hold the concept scheme
@@ -86,35 +97,6 @@ def join_split_turtle(vocab_dir: Path) -> Graph:
         ):
             graph = autoversion_cs(graph)
         cs_graph += graph
-
-    # TODO The metadata should also be present in a separate ttl-file and
-    #    joined just like the other.
-    # Newer for vocpub profile require creator_/publisher for vocabulary:
-    # Requirement 2.1.6 Each vocabulary MUST have at least one creator,
-    #   indicated using sdo:creator or dcterms:creator predicate and exactly
-    #   one publisher, indicated using sdo:publisher or dcterms:publisher,
-    #   all of which MUST be IRIs indicating instances of sdo:Person,
-    #   or sdo:Organization.
-    # Get the publisher from the first concept scheme
-    publisher = next(cs_graph.triples((None, DCTERMS.publisher, None)))[2]
-    tg = Graph()
-    org = URIRef(publisher) if not isinstance(publisher, URIRef) else publisher
-    tg.add((org, RDF.type, SDO.Organization))
-    tg.add(
-        (
-            org,
-            SDO.name,
-            Literal(str(publisher)),
-        )
-    )
-    tg.add(
-        (
-            org,
-            SDO.url,
-            Literal(str(publisher), datatype=XSD.anyURI),
-        )
-    )
-    cs_graph += tg
 
     return cs_graph
 

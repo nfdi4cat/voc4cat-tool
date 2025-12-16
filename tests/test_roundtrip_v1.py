@@ -1009,8 +1009,8 @@ def test_roundtrip_full_vocabulary_isomorphic(
             # but Keep hasTopConcept relationships
             if exclude_scheme_triples and s == scheme_iri and p != SKOS.hasTopConcept:
                 continue
-            # Skip Organization triples (auto-generated from config creator/publisher)
-            if (s, RDF.type, SDO.Organization) in g:
+            # Skip Person/Organization triples (auto-generated from config creator/publisher)
+            if (s, RDF.type, SDO.Organization) in g or (s, RDF.type, SDO.Person) in g:
                 continue
             filtered.add((s, p, o))
         return filtered
