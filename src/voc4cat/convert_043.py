@@ -155,7 +155,7 @@ def _enrich_concept_scheme_from_config(
         (DCTERMS.created, "created_date", True, XSD.date),
         (DCTERMS.modified, "modified_date", True, XSD.date),
         (OWL.versionInfo, "version", True, None),
-        (SKOS.historyNote, "change_note", True, "en"),
+        (SKOS.historyNote, "history_note", True, "en"),
         (DCAT.contactPoint, "custodian", True, None),
     ]
 

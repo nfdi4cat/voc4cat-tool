@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from voc4cat.xlsx_common import XLSXMetadata
 
-TEMPLATE_VERSION = "1.0.rev-2025-06a"
+TEMPLATE_VERSION = "v1.0.rev-2025-12a"
 
 
 # === Obsoletion Reason Enums ===
@@ -153,12 +153,12 @@ class ConceptSchemeV1(BaseModel):
         ),
     ] = ""
 
-    change_note: Annotated[
+    history_note: Annotated[
         str,
         XLSXMetadata(
-            display_name="Change Note",
-            description="A note on the Vocabulary source",
-            meaning="skos:changeNote",
+            display_name="History Note",
+            description="A note on the source or history of this vocabulary.",
+            meaning="skos:historyNote",
         ),
     ] = ""
 
