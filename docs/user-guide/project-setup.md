@@ -1,21 +1,10 @@
 # Setting up a Vocabulary Project
 
-How to create a new vocabulary project using the voc4cat-template.
-
-## Use voc4cat-template (recommended)
+This section is about how to create a new vocabulary project using the voc4cat-template repository.
 
 The [voc4cat-template](https://github.com/nfdi4cat/voc4cat-template) provides a complete GitHub repository structure with CI/CD workflows, issue templates, and documentation generation.
 
 ## Creating your repository
-
-### Option 1: GitHub template (simple)
-
-1. Go to [github.com/nfdi4cat/voc4cat-template](https://github.com/nfdi4cat/voc4cat-template)
-2. Click "Use this template" → "Create a new repository"
-3. Choose your organization and repository name
-4. Clone your new repository
-
-### Option 2: Git clone (preserves history)
 
 Create an empty repository on GitHub first, then:
 
@@ -23,11 +12,12 @@ Create an empty repository on GitHub first, then:
 git init my-vocabulary
 cd my-vocabulary
 git pull https://github.com/nfdi4cat/voc4cat-template
-git remote add origin https://github.com/yourorg/my-vocabulary.git
+git remote add origin https://github.com/my-gh-name/my-vocabulary.git
 git push -u origin main
 ```
 
 This preserves the template's commit history, making future syncs easier.
+By syncing you can update your repositories with features or bug fixes made in the template.
 
 ## What's included
 
@@ -75,14 +65,25 @@ myvoc = "https://example.org/myvocab_"
 # Your initial ID range
 [[vocabs.myvocab.id_range]]
 first_id = 1
-last_id = 10000
+last_id = 100
 gh_name = "your-username"
 orcid = "0000-0000-0000-0000"
 ```
 
-See {doc}`../reference/schemas` for complete field documentation.
+See {doc}`../reference/schemas` for the complete documentation of the configuration fields.
+
+When your are done, add this configuration to the repository:
+
+```bash
+# Commit & push
+git add idranges.toml
+git commit -m "Initial vocabulary config"
+git push
+```
 
 ## Generate your first vocabulary
+
+First, add the configuration for your vocabularies to the repository:
 
 ```bash
 # Generate Excel template from configuration
@@ -90,19 +91,14 @@ voc4cat template --config idranges.toml --outdir vocabularies/
 
 # Edit the xlsx file in Excel or LibreOffice
 # Add your initial concepts
-
-# Convert to turtle
-voc4cat convert --config idranges.toml vocabularies/myvocab.xlsx
-
-# Commit
-git add .
-git commit -m "Initial vocabulary"
-git push
 ```
 
 ## Configure GitHub settings
 
 ### Branch protection
+
+It is recommended to prevent accidental changes to the main branch.
+On Github this can be achieved via branch preptection rules.
 
 Settings → Branches → Add rule for `main`:
 
@@ -112,21 +108,23 @@ Settings → Branches → Add rule for `main`:
 
 ### GitHub Pages
 
+GitHub pages are used to serve the documentation and vocabulary.
+
 Settings → Pages:
 
 - Source: Deploy from a branch
 - Branch: `gh-pages` / `root`
 - Save
 
-The gh-pages branch will be created automatically on the first successful merge.
+The gh-pages branch will be created automatically on the first successful merge of a pull request with vocabulary data.
 
 ### Repository settings
 
 Recommended settings:
 
 - Enable Issues (for ID range requests and discussions)
-- Enable Wiki (optional, for extended documentation)
-- Disable "Allow merge commits" (use squash or rebase for cleaner history)
+- Disable Wiki (optional, storing documentation in the code-repository is typically preferred)
+- Disable "Allow merge commits" (optional, the remaining options "squash" and "rebase" give a cleaner git history)
 
 ## Customize your project
 
@@ -137,7 +135,8 @@ Replace the template README with your own:
 - Describe your vocabulary's scope and purpose
 - Add contribution guidelines
 - Include links to documentation on gh-pages
-- Add badges (CI status, license, DOI if available)
+- Review/change the license
+- Add badges (CI status, DOI if available)
 
 ### Adjust issue templates
 
@@ -147,31 +146,35 @@ The templates in `.github/ISSUE_TEMPLATE/` can be customized:
 - `improvement.yaml` - Vocabulary improvement suggestions
 - `bug.yaml` - Bug reports
 
-### Configure validation
+### Customize the xlsx template
 
-In `idranges.toml`, under `[vocabs.myvocab.checks]`:
+While most sheets in the xlsx vocdabulary are created automatically, you can still provide a base-template to which the auto-created sheets will be added.
+This could for example be used to provide a help sheet.
 
-```toml
-[vocabs.myvocab.checks]
-# Set to true to allow concept deletion in PRs
-allow_delete = false
-```
+Drop a custom template file `template_myvocab.xlsx` to the folder `templates/`.
+The sheets that you put into this template may not have the same name as any of the auto-generated sheets.
 
+(keeping-in-sync-with-the-template)=
 ## Keeping in sync with the template
 
-Periodically sync with the template to get workflow improvements:
+It is suggested to merge the changes from the template repository before every new release of your vocabulary.
+This ensures that the centrally maintained features and best practices trickle into your project.
+
+To review the changes made in the template after you last pulled it use:
 
 ```bash
 # View changes
 git fetch https://github.com/nfdi4cat/voc4cat-template
 git diff ...FETCH_HEAD
+```
 
+If you decide to take over the changes, pull them into your repository and push them to GitHub.
+
+```bash
 # Apply changes
 git pull https://github.com/nfdi4cat/voc4cat-template
 git push
 ```
-
-**Recommended**: Sync before each release.
 
 ### Handling merge conflicts
 
@@ -201,6 +204,15 @@ https://w3id.org/yourorg/myvocab_0000001
 This allows content negotiation (HTML for browsers, RDF for machines).
 
 ## Next steps
+
+:::{admonition} **Deeper Customization**
+:class: tip
+
+Study [Voc4Cat](https://nfdi4cat.github.io/voc4cat/), the vocabulary for Catalysis, and look at its [code](https://github.com/nfdi4cat/voc4cat/) for inspiration how to further customize your vocabulary.
+For, example you may also want to include a [custom homepage](https://github.com/nfdi4cat/voc4cat) built with [Sphinx](https://www.sphinx-doc.org)/[MyST](https://myst-parser.readthedocs.io/).
+
+Also take a look at its w3id.org [redirect configuration](https://github.com/perma-id/w3id.org/tree/master/nfdi4cat) if you struggle to create your own.
+:::
 
 - {doc}`contributing` - Learn the contribution workflow
 - {doc}`local-development` - Set up local development

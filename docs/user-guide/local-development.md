@@ -1,12 +1,14 @@
 # Running Workflows Locally
 
-How to work with voc4cat tools on your local machine.
+The voc4cat-template includes a `justfile` with the same commands as used in GitHub Actions.
+This enables running the actions workflows locally on your machine exactly as they are run in GitHub actions,
+which is very useful to
 
-TODO: Add why/when running locally is required: Debug workflow issues, test/develop code, test migrations etc.
+- debug workflow issues
+- test and develop voc4cat-tool code
+- test migrating to a new version
 
 ## Prerequisites
-
-The voc4cat-template includes a `justfile` that runs the same commands used in GitHub Actions locally. You need:
 
 - **[just](https://github.com/casey/just)** - A command runner (like make, but simpler)
 - **[uv](https://docs.astral.sh/uv/)** - A fast Python package manager
@@ -23,13 +25,13 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ### Installing just
 
-Just is available at PyPi. So we can use UV (or pipx) to install
+`just` is available via [PyPI](https://pypi.org/project/rust-just/). So we can use UV (or pipx) to install
 
 ```bash
 uv tool rust-just
 ```
 
-Alternatively, you can download from [releases](https://github.com/casey/just/releases)
+Alternatively, you can download from just's GitHub [releases](https://github.com/casey/just/releases) page.
 
 ## Available commands
 
@@ -50,6 +52,9 @@ Available recipes:
 
 ### Command descriptions
 
+:::{table}
+:align: left
+
 | Command | Description |
 |---------|-------------|
 | `just setup` | Initial setup - creates virtual environment and installs voc4cat |
@@ -60,6 +65,8 @@ Available recipes:
 | `just all` | Run the complete pipeline (check → convert → docs → xlsx) |
 | `just clean` | Remove generated files and directories |
 | `just update` | Update voc4cat-tool to the latest version |
+
+:::
 
 ## Typical local workflow
 
@@ -74,25 +81,47 @@ cd your-vocabulary
 just setup
 ```
 
+No environment variables need to be set manually.
+The justfile automatically creates `_main_branch/` and copies `idranges.toml` when running `just check` or `just convert`.
+
+:::{tip}
+For verbose output, set `LOGLEVEL=DEBUG` before running commands:
+
+```bash
+export LOGLEVEL=DEBUG  # Linux/macOS
+set LOGLEVEL=DEBUG     # Windows cmd
+```
+:::
+
 ### Testing changes
 
 1. Place your modified xlsx file in `inbox-excel-vocabs/`
 2. Run the full pipeline:
 
-```bash
-just all
-```
+  ```bash
+  just all
+  ```
 
 3. Review the output:
    - Check console for validation errors
+   - Inspect the intermediate files and HTML documentation in `outbox/`
    - Inspect generated turtle files in `vocabularies/`
-   - View HTML documentation in the output directory
 
 ## Troubleshooting
 
-### idranges copy?
+### idranges comparison with main branch
 
-TODO check if an idranges copy is created as in actions. Comment on env vars. (or are they set in just commands?)
+In CI, the workflow prevents unauthorized modification of `idranges.toml` by comparing it against the main branch version.
+The justfile automatically creates `_main_branch/` and copies your local `idranges.toml` there.
+
+:::{note}
+The automatic setup copies your *current* `idranges.toml`.
+If you're testing changes to `idranges.toml` itself and want to simulate exact CI behavior, manually copy the main branch version:
+
+```bash
+git show main:idranges.toml > _main_branch/idranges.toml
+```
+:::
 
 ### Virtual environment issues
 

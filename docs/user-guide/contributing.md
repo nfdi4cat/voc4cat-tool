@@ -1,6 +1,11 @@
 # Contributing to a Vocabulary
 
-How to contribute concepts, collections, and mappings to a voc4cat-based vocabulary.
+How to contribute concepts, collections, and mappings to a voc4cat-template-based vocabulary.
+
+:::{seealso}
+
+Our Catalysis Vocabulary **Voc4Cat** includes a [comprehensive contribution guide](https://nfdi4cat.github.io/voc4cat/docs_usage/how-to-contribute.html) that you may find helpful.
+:::
 
 ## Overview
 
@@ -21,8 +26,6 @@ https://<org>.github.io/<repo>/dev/<vocab-name>.xlsx
 
 For example, the voc4cat vocabulary is available at:
 `https://nfdi4cat.github.io/voc4cat/dev/voc4cat.xlsx`
-
-Alternatively, use the Excel file from the `templates/` folder when starting a new vocabulary.
 
 ## Make your changes
 
@@ -47,11 +50,12 @@ For multi-language support, add one row per language with the same Concept IRI.
 
 ### Modifying existing concepts
 
-Edit the relevant cells in the Concepts sheet. Use the "Change Note" column to document significant changes.
+Edit the relevant cells in the Concepts sheet. Use the "Change Note" column to document the reason for the changes.
 
 ### Deprecating concepts
 
 Select a reason from the "Obsoletion reason" dropdown. Do not delete the row - deprecated concepts remain in the vocabulary for reference.
+Note that version 1.0 does not support linking an successor of the deprecated concept. Let us know via an issue if you need this feature.
 
 ## Request an ID range
 
@@ -59,10 +63,12 @@ If you need to add new concepts but don't have an ID range allocated:
 
 1. Go to the repository's Issues tab
 2. Select "Request ID range" from the issue templates
-3. Provide your ORCID and the number of IDs needed
+3. Provide your GitHub name and ORCID (reocmmended) and the number of IDs needed
 4. A maintainer will update `idranges.toml` with your allocation
 
 ## Submit your contribution
+
+See also voc4cat´s help.
 
 ### Prepare your repository
 
@@ -104,11 +110,16 @@ After the pipeline completes:
 
 ### Common validation errors
 
+:::{table}
+:align: left
+
 | Error | Cause | Fix |
 |-------|-------|-----|
 | Missing required field | Empty Definition or Label | Add the missing content |
 | Invalid IRI format | Malformed CURIE | Use format `prefix:id` |
 | ID outside range | Using unallocated ID | Request an ID range first |
+
+:::
 
 ## Fix issues in your PR
 

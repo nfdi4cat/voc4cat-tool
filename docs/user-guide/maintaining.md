@@ -2,59 +2,22 @@
 
 Guide for vocabulary maintainers and editors.
 
-## Roles
+https://nfdi4cat.github.io/voc4cat/
+:::{seealso}
 
-### Editors
+Our Catalysis Vocabulary **Voc4Cat** includes [various sections for maintiners](https://nfdi4cat.github.io/voc4cat/) that you may find helpful.
+:::
+
+In the vocabulary maintenance, two roles are distinguished, Contributors and Editors (AKA Maintainers).
 
 Editors are responsible for:
 
 - Reviewing and merging pull requests
 - Managing contributor ID ranges
 - Creating releases
-- Maintaining documentation quality
+- Maintaining vocabulary and documentation quality
 
-### Contributors
-
-Contributors submit changes via pull requests. They need:
-
-- A GitHub account
-- An allocated ID range (for adding new concepts)
-- Access to fork the repository
-
-## Onboarding contributors
-
-### Allocating ID ranges
-
-When a contributor requests IDs (via the issue template):
-
-1. Review their request for:
-   - Valid ORCID identifier
-   - Reasonable number of IDs requested
-   - ROR identifier (optional, for institutional affiliation)
-
-2. Choose a range that doesn't overlap with existing allocations
-
-3. Update `idranges.toml`:
-
-```toml
-[[vocabs.myvocab.id_range]]
-first_id = 5001
-last_id = 6000
-gh_name = "new-contributor"
-name = "New Contributor Name"
-orcid = "0000-0001-2345-6789"
-ror_id = "https://ror.org/012345678"  # optional
-```
-
-4. Commit and push the change to main (or create a PR for review)
-
-5. Close the issue and notify the contributor
-
-### ID range planning
-
-- Allocate generous ranges (1000+ IDs) to avoid frequent updates
-- Leave gaps between ranges for future expansion
-- Document the allocation strategy in your repository's README
+Contributors submit suggestions for vocabulary additions or changes.
 
 ## Reviewing pull requests
 
@@ -124,16 +87,16 @@ Example: `v2025-01-15`
    - Creates versioned documentation
    - Updates `latest/` directory on gh-pages
 
-### Release notes
+### Write Release notes
 
-Include:
+Use GitHub´s feature to create a list of changes made since the last release.
 
-- Summary of new concepts added
-- Significant changes or deprecations
-- Contributors acknowledged
-- Link to the HTML documentation
+Review and revise as needed but be sure to include
 
-## Managing gh-pages
+- Significant changes including contributor information
+- Deprecations
+
+## Managing gh-pages / documentation
 
 GitHub Pages hosts your vocabulary documentation.
 
@@ -167,7 +130,7 @@ If documentation doesn't update:
 
 ## Local testing
 
-Use the justfile to test locally before merging:
+Use the justfile to test and debug failing workflows locally:
 
 ```bash
 # Clone and setup
@@ -185,46 +148,9 @@ See {doc}`local-development` for detailed local development instructions.
 
 ## Keeping in sync with voc4cat-template
 
-Periodically pull updates from the template repository:
-
-```bash
-# View changes since last sync
-git fetch https://github.com/nfdi4cat/voc4cat-template
-git diff ...FETCH_HEAD
-
-# Apply updates
-git pull https://github.com/nfdi4cat/voc4cat-template
-git push
-```
+See {ref}`keeping-in-sync-with-the-template` in {doc}`project-setup`.
 
 Recommended: Sync before each release to get the latest workflow improvements.
-
-## Repository settings
-
-### Branch protection
-
-Configure branch protection for `main`:
-
-- Require pull request reviews
-- Require status checks to pass (CI/CD)
-- Prevent force pushes
-
-### GitHub Pages
-
-Settings → Pages:
-
-- Source: Deploy from a branch
-- Branch: gh-pages
-
-### Issue templates
-
-The template repository includes issue templates for:
-
-- Requesting ID ranges
-- Suggesting improvements
-- Reporting bugs
-
-Customize these for your vocabulary's needs.
 
 ## See also
 
