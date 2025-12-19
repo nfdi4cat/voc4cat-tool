@@ -6,14 +6,19 @@ from pathlib import Path
 import openpyxl
 from openpyxl.styles import PatternFill
 
-from voc4cat import config, profiles
+from voc4cat import config
 from voc4cat.checks import (
     Voc4catError,
     check_for_removed_iris,
     check_number_of_files_in_inbox,
     validate_vocabulary_files_for_ci_workflow,
 )
-from voc4cat.convert import validate_with_profile
+from voc4cat.convert import (
+    DEFAULT_PROFILE,
+    get_bundled_profiles,
+    resolve_profile,
+    validate_with_profile,
+)
 from voc4cat.transform import join_split_turtle
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
@@ -150,10 +155,16 @@ def check(args):
         sys.exit(2)
 
     if args.listprofiles:
-        s = "\nKnown profiles:\n\nSource\tToken\tIRI\n------\t-----\t---\n"
-        # Built-in profiles
-        for k, v in profiles.PROFILES.items():
-            s += f"builtin\t{k}\t{v.uri}\n"
+        cwd = Path.cwd()
+        s = "\nKnown profiles:\n\nSource\tToken\tPath\n------\t-----\t----\n"
+        # Bundled profiles (dynamically scanned)
+        bundled = get_bundled_profiles()
+        for token in sorted(bundled.keys()):
+            try:
+                rel_path = bundled[token].relative_to(cwd)
+            except ValueError:
+                rel_path = bundled[token]
+            s += f"bundled\t{token}\t{rel_path}\n"
         # Custom profiles from config (if config is loaded)
         if not config.IDRANGES.default_config and config.IDRANGES_PATH:
             for vocab_name, vocab_config in config.IDRANGES.vocabs.items():
@@ -161,7 +172,11 @@ def check(args):
                     profile_path = (
                         config.IDRANGES_PATH.parent / vocab_config.profile_local_path
                     ).resolve()
-                    s += f"config\t{vocab_name}\t{profile_path}\n"
+                    try:
+                        rel_path = profile_path.relative_to(cwd)
+                    except ValueError:
+                        rel_path = profile_path
+                    s += f"config\t{vocab_name}\t{rel_path}\n"
         print(s.rstrip())
         return
 
@@ -196,18 +211,32 @@ def check(args):
     # validate rdf files with profile/pyshacl
     for file in rdf_files:
         logger.debug("Running SHACL validation for file %s", file)
-        # Resolve profile_local_path from vocab config if available
-        profile_path = None
-        vocab_name = file.stem.lower()
-        vocab_config = config.IDRANGES.vocabs.get(vocab_name)
-        if vocab_config and vocab_config.profile_local_path and config.IDRANGES_PATH:
-            profile_path = (
-                config.IDRANGES_PATH.parent / vocab_config.profile_local_path
-            ).resolve()
+        # Priority: CLI --profile (highest) > config profile_local_path > default
+        # If user explicitly set --profile (not default), use it
+        user_set_profile = args.profile != DEFAULT_PROFILE
+        if user_set_profile:
+            effective_profile = args.profile
+        else:
+            # Check config for vocab-specific profile
+            vocab_name = file.stem.lower()
+            vocab_config = config.IDRANGES.vocabs.get(vocab_name)
+            if (
+                vocab_config
+                and vocab_config.profile_local_path
+                and config.IDRANGES_PATH
+            ):
+                effective_profile = str(
+                    (
+                        config.IDRANGES_PATH.parent / vocab_config.profile_local_path
+                    ).resolve()
+                )
+            else:
+                effective_profile = args.profile  # default
         validate_with_profile(
             str(file),
-            profile=args.profile,
+            profile=effective_profile,
             error_level=args.fail_at_level,
-            profile_path=profile_path,
         )
-        logger.info("-> The file is valid according to the %s profile.", args.profile)
+        # Get profile name for log message
+        _, profile_name = resolve_profile(effective_profile)
+        logger.info("-> The file is valid according to the %s profile.", profile_name)

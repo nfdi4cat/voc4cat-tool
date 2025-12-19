@@ -296,11 +296,13 @@ def add_check_subparser(subparsers, options):
         "-p",
         "--profile",
         help=(
-            "A token for a SHACL profile to check against. To list the supported "
-            "profiles and their corresponding tokens run the program with the "
-            'flag --listprofiles. (default: "vocpub")'
+            "A SHACL profile token or path to a profile file. "
+            "If a file path with an RDF extension exists, it is used directly. "
+            "Otherwise, treated as a bundled profile token. "
+            "Run with --listprofiles to see available profiles. "
+            '(default: "vocpub-4.7")'
         ),
-        default="vocpub",
+        default="vocpub-4.7",
     )
     shacl.add_argument(
         "--fail-at-level",
@@ -454,8 +456,8 @@ def run_cli_app(raw_args=None):
         raw_args = sys.argv[1:]
     try:
         main_cli(raw_args)
-    except (Voc4catError, ConversionError):
-        logger.exception("Terminating with Voc4cat error.")
+    except (Voc4catError, ConversionError) as e:
+        logger.error("Terminating with error: %s", e)
         sys.exit(1)
     except Exception:
         logger.exception("Unexpected error.")

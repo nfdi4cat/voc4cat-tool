@@ -168,7 +168,7 @@ voc4cat check [options] [VOCAB]
 | Option | Description |
 |--------|-------------|
 | `--inplace` | Annotate xlsx files in place with validation results |
-| `-p, --profile PROFILE` | SHACL profile to check against (default: `vocpub`) |
+| `-p, --profile PROFILE` | SHACL profile token or path to a SHACL file (default: `vocpub-4.7`) |
 | `--fail-at-level {1,2,3}` | Minimum severity to fail: 1=info, 2=warning, 3=violation |
 | `--listprofiles` | List available SHACL profiles |
 | `--ci-pre INBOX` | Pre-merge CI check comparing INBOX to VOCAB |
@@ -185,8 +185,11 @@ voc4cat check --config idranges.toml myvocab.ttl
 # List available profiles
 voc4cat check --listprofiles
 
-# Validate with specific profile
-voc4cat check --config idranges.toml --profile vocpub myvocab.ttl
+# Validate with a bundled profile token
+voc4cat check --config idranges.toml --profile vocpub-4.7 myvocab.ttl
+
+# Validate with a custom SHACL file
+voc4cat check --config idranges.toml --profile ./my-profile.ttl myvocab.ttl
 
 # Only fail on violations (ignore warnings)
 voc4cat check --config idranges.toml --fail-at-level 3 myvocab.ttl

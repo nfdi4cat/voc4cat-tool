@@ -7,7 +7,7 @@ from colorama import Fore, Style
 from pyshacl.pytypes import GraphLike
 from rdflib import RDF, SH
 
-from voc4cat import config, profiles
+from voc4cat import config
 from voc4cat.checks import Voc4catError
 from voc4cat.convert_043 import convert_rdf_043_to_v1
 from voc4cat.convert_v1 import (
@@ -25,30 +25,74 @@ from voc4cat.utils import (
 
 logger = logging.getLogger(__name__)
 
+PROFILE_DIR = Path(__file__).parent / "profile"
+DEFAULT_PROFILE = "vocpub-4.7"
+
+
+def get_bundled_profiles() -> dict[str, Path]:
+    """Return dict mapping profile tokens to their .ttl file paths."""
+    profiles = {}
+    for ttl_file in PROFILE_DIR.glob("*.ttl"):
+        # Token is filename without extension
+        token = ttl_file.stem
+        profiles[token] = ttl_file
+    return profiles
+
+
+def resolve_profile(profile: str) -> tuple[Path, str]:
+    """Resolve a profile argument to a file path and profile name.
+
+    Args:
+        profile: Either a bundled profile token (e.g., "vocpub-4.7") or
+                 a path to a custom SHACL profile file.
+
+    Returns:
+        Tuple of (profile_path, profile_name).
+
+    Raises:
+        Voc4catError: If the profile file doesn't exist or token is unknown.
+    """
+    profile_as_path = Path(profile)
+
+    # Check if it's a file path (exists and has RDF extension)
+    if profile_as_path.suffix.lower() in RDF_FILE_ENDINGS and profile_as_path.exists():
+        return profile_as_path, profile_as_path.stem
+
+    # Otherwise treat as bundled profile token
+    bundled = get_bundled_profiles()
+    if profile in bundled:
+        return bundled[profile], profile
+
+    # If it looks like a file path but doesn't exist, give specific error
+    if profile_as_path.suffix.lower() in RDF_FILE_ENDINGS:
+        msg = f"SHACL profile file not found: {profile}"
+        logger.error(msg)
+        raise Voc4catError(msg)
+
+    # Unknown profile token
+    available = ", ".join(sorted(bundled.keys()))
+    msg = f"Unknown profile '{profile}'. Available: {available}"
+    raise Voc4catError(msg)
+
 
 def validate_with_profile(
     data_graph: GraphLike | str | bytes,
-    profile="vocpub",
-    error_level=1,
-    profile_path: Path | None = None,
+    profile: str = DEFAULT_PROFILE,
+    error_level: int = 1,
 ):
-    if profile not in profiles.PROFILES:
-        msg = "The profile chosen for conversion must be one of '{}'. 'vocpub' is default".format(
-            "', '".join(profiles.PROFILES.keys())
-        )
-        raise Voc4catError(msg)
+    """Validate data graph against a SHACL profile.
+
+    Args:
+        data_graph: The RDF data to validate.
+        profile: Either a bundled profile token (e.g., "vocpub-4.7") or
+                 a path to a custom SHACL profile file.
+        error_level: Minimum severity level to treat as error (1=info, 2=warning, 3=violation).
+    """
     allow_warnings = error_level > 1
 
-    # Determine SHACL profile file path
-    if profile_path is not None:
-        if not profile_path.exists():
-            msg = f"SHACL profile file not found: {profile_path}"
-            logger.error(msg)
-            raise Voc4catError(msg)
-        shacl_graph_path = str(profile_path)
-    else:
-        # Default to bundled vocpub-4.7.ttl
-        shacl_graph_path = str(Path(__file__).parent / "profile" / "vocpub-4.7.ttl")
+    # Resolve profile to file path
+    shacl_graph_path, _profile_name = resolve_profile(profile)
+    shacl_graph_path = str(shacl_graph_path)
 
     # validate the RDF file
     _conforms, results_graph, _results_text = pyshacl.validate(
@@ -91,6 +135,18 @@ def validate_with_profile(
                 logger.error(result_message_formatted)
                 violation_list.append(result_message)
 
+    # Log summary of validation results
+    n_info = len(info_list)
+    n_warn = len(warning_list)
+    n_viol = len(violation_list)
+    if n_info or n_warn or n_viol:
+        logger.info(
+            "Validation summary: %d info, %d warnings, %d violations",
+            n_info,
+            n_warn,
+            n_viol,
+        )
+
     error_messages = []
 
     if error_level == 3:  # noqa: PLR2004
@@ -101,7 +157,7 @@ def validate_with_profile(
         error_messages = info_list + warning_list + violation_list
 
     if len(error_messages) > 0:
-        msg = f"The file you supplied is not valid according to the {profile} profile."
+        msg = f"The vocabulary is not valid according to the {profile} profile."
         raise ConversionError(msg)
 
 
