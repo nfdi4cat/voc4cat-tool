@@ -32,8 +32,10 @@ from rdflib import (
 )
 
 from voc4cat.convert_v1 import (
+    build_entity_graph,
     config_to_concept_scheme_v1,
     extract_concept_scheme_from_rdf,
+    parse_name_url,
     rdf_concept_scheme_to_v1,
 )
 from voc4cat.utils import RDF_FILE_ENDINGS
@@ -188,25 +190,17 @@ def _enrich_concept_scheme_from_config(
         if not value:
             continue
 
-        # Remove existing
+        # Remove existing triples for this predicate
         graph.remove((scheme_iri, predicate, None))
 
-        # Extract URL(s) from value - format is "<name> <URL>" or just "<URL>"
-        urls_found = []
+        # Parse each line and add triples for all entries
         for iline in value.strip().split("\n"):
-            line = iline.strip()
-            if not line:
-                continue
-            # Find URL in line (could be at start or end)
-            parts = line.split()
-            for part in parts:
-                if part.startswith("http"):
-                    urls_found.append(part)
-                    break
-
-        # Add first URL found (RDF typically has single creator/publisher)
-        if urls_found:
-            graph.add((scheme_iri, predicate, URIRef(urls_found[0])))
+            name, url = parse_name_url(iline)
+            if url:
+                # Add the predicate triple (dcterms:creator or dcterms:publisher)
+                graph.add((scheme_iri, predicate, URIRef(url)))
+                # Add entity graph (schema:Person or schema:Organization with name)
+                graph += build_entity_graph(url, name, field_name)
 
     # Handle catalogue_pid -> rdfs:seeAlso
     if enriched.catalogue_pid:
