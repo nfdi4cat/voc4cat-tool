@@ -180,6 +180,8 @@ def build_provenance_url(
         no GitHub repository can be detected.
     """
     version = os.getenv("VOC4CAT_VERSION", "") or "main"
+    if version.lower().startswith("v_"):  # hash version identifier
+        version = "main"
 
     # Determine github_repo (for default template and as template variable)
     github_repo = os.getenv("GITHUB_REPOSITORY", "")
@@ -233,6 +235,43 @@ def extract_entity_id_from_iri(iri: str, vocab_name: str) -> str:
         entity_id = entity_id[len(prefix) :]
 
     return entity_id
+
+
+def add_provenance_triples_to_graph(
+    graph,  # rdflib.Graph - not typed to avoid circular import
+    entity_iri,  # URIRef
+    vocab_name: str,
+    provenance_template: str = "",
+    repository_url: str = "",
+) -> bool:
+    """Add provenance triples (dcterms:provenance, rdfs:seeAlso) for an entity.
+
+    Generates a provenance URL (git blame link) and adds both dcterms:provenance
+    and rdfs:seeAlso triples pointing to it.
+
+    Args:
+        graph: The RDF graph to modify (mutated in place).
+        entity_iri: The IRI of the entity (concept or collection) as URIRef.
+        vocab_name: The vocabulary name from idranges.toml.
+        provenance_template: Optional Jinja template for the provenance URL.
+        repository_url: Optional repository URL for GitHub auto-detection.
+
+    Returns:
+        True if provenance triples were added, False if no URL could be generated.
+    """
+    # Import here to avoid circular dependency
+    from rdflib import DCTERMS, RDFS, URIRef
+
+    entity_id = extract_entity_id_from_iri(str(entity_iri), vocab_name)
+    provenance_url = build_provenance_url(
+        entity_id, vocab_name, provenance_template, repository_url
+    )
+    if provenance_url:
+        provenance_uri = URIRef(provenance_url)
+        graph.add((entity_iri, DCTERMS.provenance, provenance_uri))
+        graph.add((entity_iri, RDFS.seeAlso, provenance_uri))
+        return True
+    return False
 
 
 def format_iri_with_label(
