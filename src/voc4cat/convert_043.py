@@ -19,6 +19,7 @@ from typing import Literal as TypingLiteral
 from rdflib import (
     DCAT,
     DCTERMS,
+    FOAF,
     OWL,
     PROV,
     RDF,
@@ -118,6 +119,8 @@ PREDICATES_PRESERVED = {
     RDFS.seeAlso,
     # DCAT
     DCAT.contactPoint,
+    # FOAF
+    FOAF.homepage,
 }
 
 
@@ -201,6 +204,14 @@ def _enrich_concept_scheme_from_config(
                 graph.add((scheme_iri, predicate, URIRef(url)))
                 # Add entity graph (schema:Person or schema:Organization with name)
                 graph += build_entity_graph(url, name, field_name)
+
+    # Handle homepage -> foaf:homepage
+    if enriched.homepage:
+        graph.remove((scheme_iri, FOAF.homepage, None))
+        if enriched.homepage.startswith("http"):
+            graph.add((scheme_iri, FOAF.homepage, URIRef(enriched.homepage)))
+        else:
+            graph.add((scheme_iri, FOAF.homepage, Literal(enriched.homepage)))
 
     # Handle catalogue_pid -> rdfs:seeAlso
     if enriched.catalogue_pid:
