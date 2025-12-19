@@ -16,7 +16,6 @@ on:
   workflow_dispatch:
 
 env:
-  FORCE_COLOR: "1"  # Make tool output pretty.
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PIP_PROGRESS_BAR: "off"
   LOGLEVEL: "DEBUG"
@@ -57,30 +56,11 @@ jobs:
       - name: Build Sphinx documentation (website)
         run: |
           sphinx-build --nitpicky --fail-on-warning --keep-going docs docs/_build
-          cp -r docs/_build/. publish/
+
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b
+        with:
+          path: 'docs/_build/html'
 
       - name: Deploy updated gh-pages content
-        # This replaces all prior content in gh-pages branch. But we have
-        # checked out the gh-pages branch above so that we keep all prior
-        # content and just re-publish the extended version.
-        # Pinning of action managed by dependabot
-        uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
-        with:
-          publish_branch: gh-pages
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./publish
-          force_orphan: true
-
-      - name: Store publish dir (=pages) as artifact
-        # This step is not required and may be removed.
-        # It may be helpful for trouble shooting.
-        if: ${{ always() }}
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
-        with:
-          name: repo4cat-gh-pages-content
-          path: publish/
-          retention-days: 5
-
-# Lit:
-# https://github.com/peaceiris/actions-gh-pages
