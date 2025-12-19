@@ -12,6 +12,7 @@ from v1.0 in several predicate choices and structural conventions.
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Literal as TypingLiteral
@@ -39,12 +40,16 @@ from voc4cat.convert_v1 import (
     parse_name_url,
     rdf_concept_scheme_to_v1,
 )
+from voc4cat.convert_v1_helpers import add_provenance_triples_to_graph
 from voc4cat.utils import RDF_FILE_ENDINGS
 
 if TYPE_CHECKING:
     from voc4cat.config import Vocab
 
 logger = logging.getLogger(__name__)
+
+# schema.org namespace (not in rdflib by default)
+SDO = Namespace("https://schema.org/")
 
 
 # =============================================================================
@@ -152,6 +157,11 @@ def _enrich_concept_scheme_from_config(
     rdf_scheme = rdf_concept_scheme_to_v1(rdf_data)
     enriched = config_to_concept_scheme_v1(vocab_config, rdf_scheme)
 
+    # Override version from environment variable if present (takes precedence)
+    env_version = os.getenv("VOC4CAT_VERSION", "")
+    if env_version:
+        enriched = enriched.model_copy(update={"version": env_version})
+
     # Define predicate-to-field mappings for update
     # Each tuple: (predicate, field_name, is_literal, lang_or_datatype)
     metadata_mappings = [
@@ -161,7 +171,6 @@ def _enrich_concept_scheme_from_config(
         (DCTERMS.modified, "modified_date", True, XSD.date),
         (OWL.versionInfo, "version", True, None),
         (SKOS.historyNote, "history_note", True, "en"),
-        (DCAT.contactPoint, "custodian", True, None),
     ]
 
     # Update metadata triples
@@ -183,11 +192,12 @@ def _enrich_concept_scheme_from_config(
                 obj = Literal(value)
             graph.add((scheme_iri, predicate, obj))
 
-    # Handle URI-valued predicates separately (creator, publisher)
+    # Handle URI-valued predicates separately (creator, publisher, custodian)
     # These fields may contain multi-line text with format "<name> <URL>" per line
     for predicate, field_name in [
         (DCTERMS.creator, "creator"),
         (DCTERMS.publisher, "publisher"),
+        (DCAT.contactPoint, "custodian"),
     ]:
         value = getattr(enriched, field_name, "")
         if not value:
@@ -200,10 +210,16 @@ def _enrich_concept_scheme_from_config(
         for iline in value.strip().split("\n"):
             name, url = parse_name_url(iline)
             if url:
-                # Add the predicate triple (dcterms:creator or dcterms:publisher)
+                # Add the predicate triple (dcterms:creator, dcterms:publisher, or dcat:contactPoint)
                 graph.add((scheme_iri, predicate, URIRef(url)))
+                # Remove existing schema:name for this entity (may have wrong value from 043)
+                entity_ref = URIRef(url)
+                graph.remove((entity_ref, SDO.name, None))
                 # Add entity graph (schema:Person or schema:Organization with name)
                 graph += build_entity_graph(url, name, field_name)
+            elif iline.strip() and predicate == DCAT.contactPoint:
+                # Fallback to literal for custodian if no URL (matches convert_v1 behavior)
+                graph.add((scheme_iri, predicate, Literal(iline.strip())))
 
     # Handle homepage -> foaf:homepage
     if enriched.homepage:
@@ -213,15 +229,72 @@ def _enrich_concept_scheme_from_config(
         else:
             graph.add((scheme_iri, FOAF.homepage, Literal(enriched.homepage)))
 
-    # Handle catalogue_pid -> rdfs:seeAlso
+    # Handle catalogue_pid -> dcterms:identifier and rdfs:seeAlso
     if enriched.catalogue_pid:
+        # Replace existing identifier with catalogue_pid
+        graph.remove((scheme_iri, DCTERMS.identifier, None))
+        graph.add((scheme_iri, DCTERMS.identifier, Literal(enriched.catalogue_pid)))
+        # Also add as rdfs:seeAlso
         graph.remove((scheme_iri, RDFS.seeAlso, None))
         if enriched.catalogue_pid.startswith("http"):
             graph.add((scheme_iri, RDFS.seeAlso, URIRef(enriched.catalogue_pid)))
         else:
             graph.add((scheme_iri, RDFS.seeAlso, Literal(enriched.catalogue_pid)))
 
+    # Handle conforms_to -> dcterms:conformsTo (multi-line, one profile per line)
+    if enriched.conforms_to:
+        graph.remove((scheme_iri, DCTERMS.conformsTo, None))
+        for iline in enriched.conforms_to.strip().split("\n"):
+            line = iline.strip()
+            if not line:
+                continue
+            if line.startswith("http"):
+                graph.add((scheme_iri, DCTERMS.conformsTo, URIRef(line)))
+            else:
+                graph.add((scheme_iri, DCTERMS.conformsTo, Literal(line)))
+
     logger.debug("Enriched ConceptScheme metadata from config")
+
+
+def _add_provenance_triples(
+    graph: Graph,
+    concepts: set[URIRef],
+    collections: set[URIRef],
+    vocab_name: str,
+    vocab_config: Vocab,
+) -> None:
+    """Add provenance triples for concepts and collections.
+
+    Uses the shared helper to generate git blame URLs and add
+    dcterms:provenance and rdfs:seeAlso triples.
+
+    Args:
+        graph: The RDF graph to modify (mutated in place).
+        concepts: Set of concept IRIs.
+        collections: Set of collection IRIs.
+        vocab_name: The vocabulary name (from input file stem).
+        vocab_config: Vocab configuration from idranges.toml.
+    """
+    repository_url = vocab_config.repository or ""
+    provenance_template = vocab_config.provenance_url_template or ""
+
+    # Add provenance for concepts
+    for concept_iri in concepts:
+        add_provenance_triples_to_graph(
+            graph, concept_iri, vocab_name, provenance_template, repository_url
+        )
+
+    # Add provenance for collections
+    for collection_iri in collections:
+        add_provenance_triples_to_graph(
+            graph, collection_iri, vocab_name, provenance_template, repository_url
+        )
+
+    logger.debug(
+        "Added provenance triples for %d concepts and %d collections",
+        len(concepts),
+        len(collections),
+    )
 
 
 def convert_rdf_043_to_v1(
@@ -317,6 +390,12 @@ def convert_rdf_043_to_v1(
     if vocab_config is not None:
         _enrich_concept_scheme_from_config(output_graph, vocab_config)
 
+        # Add provenance triples for concepts and collections
+        vocab_name = input_path.stem.lower()
+        _add_provenance_triples(
+            output_graph, concepts, collections, vocab_name, vocab_config
+        )
+
     # Determine output path
     if output_path is None:
         if output_format == "xml":
@@ -370,6 +449,15 @@ def _transform_triple_043_to_v1(
 
     # Drop dcterms:isPartOf on Collections (redundant with skos:inScheme)
     if p == DCTERMS.isPartOf and s in collections:
+        return None
+
+    # Drop history/provenance notes on ConceptScheme (replaced by config-generated historyNote)
+    # These would otherwise be transformed to skos:changeNote which is not wanted on scheme
+    if s in concept_schemes and p in (
+        SKOS.historyNote,
+        DCTERMS.provenance,
+        PROV.wasDerivedFrom,
+    ):
         return None
 
     # Special case: rdfs:isDefinedBy on concepts -> prov:hadPrimarySource

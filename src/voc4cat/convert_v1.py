@@ -41,6 +41,7 @@ from rdflib.collection import Collection as RDFCollection
 from voc4cat import config
 from voc4cat.checks import Voc4catError
 from voc4cat.convert_v1_helpers import (
+    add_provenance_triples_to_graph,
     build_id_range_info,
     build_provenance_url,
     derive_contributors,
@@ -2351,9 +2352,10 @@ def build_concept_scheme_graph(
     # Type
     g.add((scheme_iri, RDF.type, SKOS.ConceptScheme))
 
-    # Identifier
-    identifier = extract_identifier(cs.vocabulary_iri)
-    g.add((scheme_iri, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
+    # Identifier - use catalogue_pid if provided, otherwise extract from vocabulary IRI
+    if not cs.catalogue_pid:
+        identifier = extract_identifier(cs.vocabulary_iri)
+        g.add((scheme_iri, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
 
     # Basic metadata
     if cs.title:
@@ -2557,14 +2559,9 @@ def build_concept_graph(
         g.add((c, DCTERMS.isReplacedBy, URIRef(concept.replaced_by_iri)))
 
     # Provenance (git blame URL)
-    entity_id = extract_entity_id_from_iri(concept.iri, vocab_name)
-    provenance_url = build_provenance_url(
-        entity_id, vocab_name, provenance_template, repository_url
+    add_provenance_triples_to_graph(
+        g, c, vocab_name, provenance_template, repository_url
     )
-    if provenance_url:
-        provenance_uri = URIRef(provenance_url)
-        g.add((c, DCTERMS.provenance, provenance_uri))
-        g.add((c, RDFS.seeAlso, provenance_uri))
 
     return g
 
@@ -2652,14 +2649,9 @@ def build_collection_graph(
         g.add((c, DCTERMS.isReplacedBy, URIRef(collection.replaced_by_iri)))
 
     # Provenance (git blame URL)
-    entity_id = extract_entity_id_from_iri(collection.iri, vocab_name)
-    provenance_url = build_provenance_url(
-        entity_id, vocab_name, provenance_template, repository_url
+    add_provenance_triples_to_graph(
+        g, c, vocab_name, provenance_template, repository_url
     )
-    if provenance_url:
-        provenance_uri = URIRef(provenance_url)
-        g.add((c, DCTERMS.provenance, provenance_uri))
-        g.add((c, RDFS.seeAlso, provenance_uri))
 
     return g
 
