@@ -1,11 +1,9 @@
 # This action runs on merging of PR to main.
 #
-# Workflow steps:
-# - checkout gh-pages for updating
-# - build sphinx docs/site
-# - publish new docs to gh-pages
+# Note that we directly publish to gh-pages without a gh-pages branch.
+# Be sure to select "GitHub Actions" under Settings > Pages > Build and deployment: Source
 #
-# passes all zizmor --nitpicky checks (zizmor 1.19.0)
+# Checks: Passes zizmor --nitpicky checks (zizmor 1.19.0)
 
 name: Build docs
 on:
