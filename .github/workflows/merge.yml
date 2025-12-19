@@ -65,7 +65,8 @@ jobs:
     name: Publish documentation on gh-pages
     needs: build
     permissions:
-      id-token: write  # Required to write to gh-pages branch
+      id-token: write   # to verify the deployment originates from an trusted source
+      pages: write      # to write to gh-pages branch
       contents: read
     runs-on: ubuntu-latest
     steps:
