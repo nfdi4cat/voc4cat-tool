@@ -69,7 +69,7 @@ def test_exit_errorvalue(monkeypatch, datadir, caplog):
     with caplog.at_level(logging.ERROR), pytest.raises(SystemExit) as exc_info:
         run_cli_app(["transform", "missing.xyz"])
     assert exc_info.value.code == 1
-    assert "Terminating with Voc4cat error." in caplog.text
+    assert "Terminating with error:" in caplog.text
 
 
 def test_nonexisting_config(monkeypatch, datadir, caplog):

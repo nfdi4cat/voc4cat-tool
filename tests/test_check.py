@@ -72,7 +72,7 @@ def test_check_skos_rdf(datadir, tmp_path, caplog):
     shutil.copy(datadir / CS_SIMPLE_TURTLE, tmp_path)
     with caplog.at_level(logging.INFO):
         main_cli(["check", str(tmp_path / CS_SIMPLE_TURTLE)])
-    assert "The file is valid according to the vocpub profile." in caplog.text
+    assert "The file is valid according to the vocpub-4.7 profile." in caplog.text
 
 
 def test_check_skos_badfile(monkeypatch, datadir, tmp_path, temp_config, caplog):
@@ -90,7 +90,7 @@ def test_check_list_profiles(capsys):
     main_cli(["check", "--listprofiles"])
     captured = capsys.readouterr()
     assert "Known profiles:" in captured.out
-    assert "builtin\tvocpub" in captured.out
+    assert "bundled\tvocpub-4.7" in captured.out
 
 
 def test_check_list_profiles_with_config(datadir, capsys, temp_config):
@@ -105,7 +105,7 @@ def test_check_list_profiles_with_config(datadir, capsys, temp_config):
     )
     captured = capsys.readouterr()
     assert "Known profiles:" in captured.out
-    assert "builtin\tvocpub" in captured.out
+    assert "bundled\tvocpub-4.7" in captured.out
     assert "config\tmyvocab" in captured.out
     assert "custom_profile.ttl" in captured.out
 
