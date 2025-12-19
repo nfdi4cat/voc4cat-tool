@@ -68,6 +68,9 @@ jobs:
       id-token: write   # to verify the deployment originates from an trusted source
       pages: write      # to write to gh-pages branch
       contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Deploy updated gh-pages content
