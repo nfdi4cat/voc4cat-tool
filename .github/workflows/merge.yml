@@ -1,0 +1,86 @@
+# This action runs on merging of PR to main.
+#
+# Workflow steps:
+# - checkout gh-pages for updating
+# - build sphinx docs/site
+# - publish new docs to gh-pages
+
+name: Build docs
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - '*.md'
+  workflow_dispatch:
+
+env:
+  FORCE_COLOR: "1"  # Make tool output pretty.
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_PROGRESS_BAR: "off"
+  LOGLEVEL: "DEBUG"
+
+jobs:
+  build:
+    name: Build documentation for gh-pages
+    permissions:
+      # Required for peaceiris/actions-gh-pages below
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          # Using fetch-depth 0 is the only way to get all tags which are needed for building docs.
+          fetch-depth: 0
+
+      - name: Checkout gh-pages branch to dir publish/
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+        with:
+          ref: gh-pages
+          path: publish
+          fetch-depth: 1
+
+      - uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -VV
+          python -m pip install --upgrade pip
+
+          # install tagged version
+          python -m pip install .[docs]
+
+      - name: Build Sphinx documentation (website)
+        run: |
+          sphinx-build --nitpicky --fail-on-warning --keep-going docs docs/_build
+          cp -r docs/_build/. publish/
+
+      - name: Deploy updated gh-pages content
+        # This replaces all prior content in gh-pages branch. But we have
+        # checked out the gh-pages branch above so that we keep all prior
+        # content and just re-publish the extended version.
+        # Pinning of action managed by dependabot
+        uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        with:
+          publish_branch: gh-pages
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./publish
+          force_orphan: true
+
+      - name: Store publish dir (=pages) as artifact
+        # This step is not required and may be removed.
+        # It may be helpful for trouble shooting.
+        if: ${{ always() }}
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        with:
+          name: repo4cat-gh-pages-content
+          path: publish/
+          retention-days: 5
+
+# Lit:
+# https://github.com/peaceiris/actions-gh-pages
