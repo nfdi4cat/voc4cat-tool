@@ -188,6 +188,28 @@ def lookup_entity_name(graph: Graph, entity_iri: str) -> str:
     return entity_iri
 
 
+def lookup_entity_name_safe(graph: Graph, value: str) -> str:
+    """Look up entity name, handling both URIs and literal strings.
+
+    For URI values (starting with http), looks up schema:name and formats
+    as 'name url'. For literal strings, returns them as-is.
+
+    This is useful for fields like dcat:contactPoint that may be either
+    a URI reference or a literal string in different RDF sources.
+
+    Args:
+        graph: The RDF graph to query.
+        value: Either a URI or a literal string value.
+
+    Returns:
+        Formatted string: 'name url' for URIs, or the literal value as-is.
+    """
+    if value.startswith("http"):
+        return lookup_entity_name(graph, value)
+    # For literal values, return as-is
+    return value
+
+
 def extract_concept_scheme_from_rdf(graph: Graph) -> dict:
     """Extract ConceptScheme data from an RDF graph.
 
@@ -256,7 +278,7 @@ def extract_concept_scheme_from_rdf(graph: Graph) -> dict:
             lookup_entity_name(graph, iri) for iri in publishers
         )
         holder["custodian"] = "\n".join(
-            lookup_entity_name(graph, iri) for iri in custodians
+            lookup_entity_name_safe(graph, value) for value in custodians
         )
 
         # Only process the first ConceptScheme found
