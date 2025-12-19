@@ -4,6 +4,8 @@
 # - checkout gh-pages for updating
 # - build sphinx docs/site
 # - publish new docs to gh-pages
+#
+# passes all zizmor --nitpicky checks (zizmor 1.19.0)
 
 name: Build docs
 on:
@@ -20,26 +22,24 @@ env:
   PIP_PROGRESS_BAR: "off"
   LOGLEVEL: "DEBUG"
 
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build documentation for gh-pages
     permissions:
-      # Required for peaceiris/actions-gh-pages below
-      contents: write
+      contents: read
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
         with:
           # Using fetch-depth 0 is the only way to get all tags which are needed for building docs.
           fetch-depth: 0
-
-      - name: Checkout gh-pages branch to dir publish/
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
-        with:
-          ref: gh-pages
-          path: publish
-          fetch-depth: 1
+          persist-credentials: false
 
       - uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548
         with:
@@ -61,6 +61,13 @@ jobs:
         with:
           path: 'docs/_build/html'
 
+  publish:
+    name: Publish documentation on gh-pages
+    permissions:
+      id-token: write  # Required to write to gh-pages branch
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy updated gh-pages content
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
