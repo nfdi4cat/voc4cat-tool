@@ -104,5 +104,6 @@ ex:test03 a skos:Concept ;
     skos:hasTopConcept ex:test01,
         ex:test05,
         ex:test06 ;
+    skos:historyNote "This vocabulary was created for unit testing voc4cat."@en ;
     skos:prefLabel "voc4cat-test-data"@en ;
     dcat:contactPoint "Sofia Garcia" .

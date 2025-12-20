@@ -72,7 +72,7 @@ def test_check_skos_rdf(datadir, tmp_path, caplog):
     shutil.copy(datadir / CS_SIMPLE_TURTLE, tmp_path)
     with caplog.at_level(logging.INFO):
         main_cli(["check", str(tmp_path / CS_SIMPLE_TURTLE)])
-    assert "The file is valid according to the vocpub-4.7 profile." in caplog.text
+    assert "The file is valid according to the vp4cat-5.2 profile." in caplog.text
 
 
 def test_check_skos_badfile(monkeypatch, datadir, tmp_path, temp_config, caplog):

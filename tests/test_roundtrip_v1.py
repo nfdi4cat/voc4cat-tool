@@ -541,6 +541,7 @@ def collection_hierarchy_graph():
 AUTO_GENERATED_PREDICATES = {
     DCTERMS.provenance,  # Git blame URL (env-dependent)
     RDFS.seeAlso,  # Also contains provenance URL
+    SKOS.historyNote,  # Auto-generated for concepts/collections without provenance
 }
 
 

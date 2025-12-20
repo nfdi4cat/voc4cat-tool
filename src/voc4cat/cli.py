@@ -10,7 +10,7 @@ from pathlib import Path
 from voc4cat import __version__, config, setup_logging
 from voc4cat.check import check
 from voc4cat.checks import Voc4catError
-from voc4cat.convert import convert
+from voc4cat.convert import DEFAULT_PROFILE, convert
 from voc4cat.docs import docs
 from voc4cat.gen_template import template_cmd
 from voc4cat.transform import transform
@@ -300,9 +300,9 @@ def add_check_subparser(subparsers, options):
             "If a file path with an RDF extension exists, it is used directly. "
             "Otherwise, treated as a bundled profile token. "
             "Run with --listprofiles to see available profiles. "
-            '(default: "vocpub-4.7")'
+            f'(default: "{DEFAULT_PROFILE}")'
         ),
-        default="vocpub-4.7",
+        default=DEFAULT_PROFILE,
     )
     shacl.add_argument(
         "--fail-at-level",
