@@ -91,6 +91,8 @@ SDO = Namespace("https://schema.org/")
 
 # History note for concepts/collections expressed for the first time
 HISTORY_NOTE_FIRST_TIME = "This concept is expressed here for the first time."
+# History note template for concepts influenced by external sources
+HISTORY_NOTE_INFLUENCED_BY = "This concept was influenced by: {iris}"
 
 logger = logging.getLogger(__name__)
 
@@ -2557,9 +2559,16 @@ def build_concept_graph(
         g.add((c, OWL.deprecated, Literal(True)))
         g.add((c, SKOS.historyNote, Literal(concept.obsolete_reason, lang="en")))
 
-    # First-time expressed concept (no external source or influence)
-    if not concept.source_vocab_iri and not concept.influenced_by_iris:
-        g.add((c, SKOS.historyNote, Literal(HISTORY_NOTE_FIRST_TIME, lang="en")))
+    # Generate historyNote for provenance (only if no prov:hadPrimarySource)
+    if not concept.source_vocab_iri:
+        if concept.influenced_by_iris:
+            # Concept influenced by external sources
+            iris_str = ", ".join(concept.influenced_by_iris)
+            note = HISTORY_NOTE_INFLUENCED_BY.format(iris=iris_str)
+            g.add((c, SKOS.historyNote, Literal(note, lang="en")))
+        else:
+            # First-time expressed concept (no external source or influence)
+            g.add((c, SKOS.historyNote, Literal(HISTORY_NOTE_FIRST_TIME, lang="en")))
 
     # Replaced by (dct:isReplacedBy)
     if concept.replaced_by_iri:

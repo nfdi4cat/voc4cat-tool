@@ -21,4 +21,3 @@ ex:test a skos:ConceptScheme ;
 <http://example.org/nfdi4cat/> a schema:Organization ;
     schema:name "http://example.org/nfdi4cat/" ;
     schema:url "http://example.org/nfdi4cat/"^^xsd:anyURI .
-
