@@ -1608,6 +1608,14 @@ where it has been used to collect, measure, obtain, or observe data."""@en ;
     skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
     skos:prefLabel "total faradaic efficiency"@en .
 
+<https://w3id.org/nfdi4cat/voc4cat_0007793> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007793"^^xsd:token ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000181> ;
+    skos:definition "A substance that is added to a reaction or material and influences the reaction outcome or material properties."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "additive"@en .
+
 <https://w3id.org/nfdi4cat/voc4cat_0007794> a skos:Concept ;
     dcterms:identifier "voc4cat_0007794"^^xsd:token ;
     skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000181> ;
@@ -1615,6 +1623,16 @@ where it has been used to collect, measure, obtain, or observe data."""@en ;
     skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
     skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
     skos:prefLabel "precursor"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007795> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007795"^^xsd:token ;
+    skos:altLabel "co precipitation"@en,
+        "coprecipitation"@en ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0007016> ;
+    skos:definition "A synthesis method for chemical substances which includes the simultaneous precipitation of two or more precursors."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "co-precipitation"@en .
 
 <https://w3id.org/nfdi4cat/voc4cat_0007803> a skos:Concept ;
     dcterms:identifier "voc4cat_0007803"^^xsd:token ;
@@ -1625,6 +1643,82 @@ where it has been used to collect, measure, obtain, or observe data."""@en ;
     skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
     skos:prefLabel "turnover number"@en .
 
+<https://w3id.org/nfdi4cat/voc4cat_0007806> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007806"^^xsd:token ;
+    skos:altLabel "IWI"@en ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0007028> ;
+    skos:definition "A synthesis method in which inorganic compounds are dissolved in a solvent and brought into contact with a solid support in order to deposit them. The volume of the solution corresponds exactly to the pore volume."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "incipient wetness impregnation"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007807> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007807"^^xsd:token ;
+    skos:altLabel "operando characterization"@en ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000066> ;
+    skos:definition "Characterization during the ongoing catalytic process whereby the catalytic activity is measured simultaneously."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "operando analysis"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007808> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007808"^^xsd:token ;
+    skos:altLabel "in situ analysis"@en,
+        "in situ characterization"@en,
+        "in-situ characterization"@en ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000066> ;
+    skos:definition "Characterization under the catalytic conditions without measuring the catalytic activity simultaneously."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "in-situ analysis"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007809> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007809"^^xsd:token ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000181> ;
+    skos:definition "The gaseous environment in which a process, such as a catalytic test, synthesis or a measurement, takes place."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "atmosphere"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007811> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007811"^^xsd:token ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0005056> ;
+    skos:definition "Liquid fraction which is collected from the catalytic reaction mixture for analysis."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "liquid sample"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007812> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007812"^^xsd:token ;
+    skos:altLabel "gas sample"@en ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0005056> ;
+    skos:definition "Gaseous fraction which is collected from the catalytic reaction mixture for analysis."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "gaseous sample"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007813> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007813"^^xsd:token ;
+    skos:altLabel "liquid phase characterization"@en,
+        "liquid-phase analysis"@en,
+        "liquid-phase characterization"@en ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000129> ;
+    skos:definition "Analysis of the liquid sample from a catalytic test."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "liquid phase analysis"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007814> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007814"^^xsd:token ;
+    skos:altLabel "gas phase characterization"@en,
+        "gas-phase analysis"@en,
+        "gas-phase characterization"@en ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000129> ;
+    skos:definition "Analysis of the gaseous sample from a catalytic test."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "gas phase analysis"@en .
+
 <https://w3id.org/nfdi4cat/voc4cat_0007817> a skos:Concept ;
     dcterms:identifier "voc4cat_0007817"^^xsd:token ;
     skos:altLabel "TOF"@en ;
@@ -1633,6 +1727,54 @@ where it has been used to collect, measure, obtain, or observe data."""@en ;
     skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
     skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
     skos:prefLabel "turnover frequency"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007828> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007828"^^xsd:token ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000181> ;
+    skos:definition "A compound that is used to generate a calibration curve which can then be used to determine the concentration of a compound in a reaction mixture."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "external standard"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007829> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007829"^^xsd:token ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000181> ;
+    skos:definition "A compound that is added in a known concentration to a product mixture to determine the concentration of another compound."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "internal standard"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007838> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007838"^^xsd:token ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000181> ;
+    skos:definition "The sum of all products after a catalytic reaction which is analysed to measure the catalytic performance."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "product mixture"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007839> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007839"^^xsd:token ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000186> ;
+    skos:definition "Description if a substance is brought into a homogeneous solution in the presence of a liquid solvent or if it remains (partly) undissolved."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "solubility"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007840> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007840"^^xsd:token ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000049> ;
+    skos:definition "A step within the synthesis of a catalyst whereby a precursor is dissolved or dispersed in a solution."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "solvation"@en .
+
+<https://w3id.org/nfdi4cat/voc4cat_0007844> a skos:Concept ;
+    dcterms:identifier "voc4cat_0007844"^^xsd:token ;
+    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000186> ;
+    skos:definition "Ratio of the amount of one substance compared to the amount of another substance."@en ;
+    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
+    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
+    skos:prefLabel "molar equivalent"@en .
 
 <https://w3id.org/nfdi4cat/voc4cat_0008098> a skos:Collection ;
     dcterms:identifier "voc4cat_0008098"^^xsd:token ;
@@ -3897,164 +4039,6 @@ where it has been used to collect, measure, obtain, or observe data."""@en ;
     skos:narrower <https://w3id.org/nfdi4cat/voc4cat_0007259> ;
     skos:prefLabel "current"@en .
 
-<https://w3id.org/nfdi4cat/voc4cat_0007793> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007793"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007793> ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000181> ;
-    skos:definition "A substance that is added to a reaction or material and influences the reaction outcome or material properties."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "additive"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007795> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007795"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007795> ;
-    skos:altLabel "co precipitation"@en,
-        "coprecipitation"@en ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0007016> ;
-    skos:definition "A synthesis method for chemical substances which includes the simultaneous precipitation of two or more precursors."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "co-precipitation"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007806> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007806"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007806> ;
-    skos:altLabel "IWI"@en ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0007028> ;
-    skos:definition "A synthesis method in which inorganic compounds are dissolved in a solvent and brought into contact with a solid support in order to deposit them. The volume of the solution corresponds exactly to the pore volume."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "incipient wetness impregnation"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007807> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007807"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007807> ;
-    skos:altLabel "operando characterization"@en ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000066> ;
-    skos:definition "Characterization during the ongoing catalytic process whereby the catalytic activity is measured simultaneously."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "operando analysis"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007808> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007808"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007808> ;
-    skos:altLabel "in situ analysis"@en,
-        "in situ characterization"@en,
-        "in-situ characterization"@en ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000066> ;
-    skos:definition "Characterization under the catalytic conditions without measuring the catalytic activity simultaneously."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "in-situ analysis"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007809> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007809"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007809> ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000181> ;
-    skos:definition "The gaseous environment in which a process, such as a catalytic test, synthesis or a measurement, takes place."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "atmosphere"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007811> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007811"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007811> ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0005056> ;
-    skos:definition "Liquid fraction which is collected from the catalytic reaction mixture for analysis."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "liquid sample"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007812> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007812"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007812> ;
-    skos:altLabel "gas sample"@en ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0005056> ;
-    skos:definition "Gaseous fraction which is collected from the catalytic reaction mixture for analysis."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "gaseous sample"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007813> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007813"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007813> ;
-    skos:altLabel "liquid phase characterization"@en,
-        "liquid-phase analysis"@en,
-        "liquid-phase characterization"@en ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000129> ;
-    skos:definition "Analysis of the liquid sample from a catalytic test."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "liquid phase analysis"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007814> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007814"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007814> ;
-    skos:altLabel "gas phase characterization"@en,
-        "gas-phase analysis"@en,
-        "gas-phase characterization"@en ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000129> ;
-    skos:definition "Analysis of the gaseous sample from a catalytic test."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "gas phase analysis"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007828> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007828"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007828> ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000181> ;
-    skos:definition "A compound that is used to generate a calibration curve which can then be used to determine the concentration of a compound in a reaction mixture."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "external standard"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007829> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007829"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007829> ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000181> ;
-    skos:definition "A compound that is added in a known concentration to a product mixture to determine the concentration of another compound."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "internal standard"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007838> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007838"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007838> ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000181> ;
-    skos:definition "The sum of all products after a catalytic reaction which is analysed to measure the catalytic performance."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "product mixture"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007839> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007839"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007839> ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000186> ;
-    skos:definition "Description if a substance is brought into a homogeneous solution in the presence of a liquid solvent or if it remains (partly) undissolved."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "solubility"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007840> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007840"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007840> ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000049> ;
-    skos:definition "A step within the synthesis of a catalyst whereby a precursor is dissolved or dispersed in a solution."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "solvation"@en .
-
-<https://w3id.org/nfdi4cat/voc4cat_0007844> a skos:Concept ;
-    dcterms:identifier "voc4cat_0007844"^^xsd:token ;
-    rdfs:isDefinedBy <https://w3id.org/nfdi4cat/voc4cat_0007844> ;
-    skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000186> ;
-    skos:definition "Ratio of the amount of one substance compared to the amount of another substance."@en ;
-    skos:historyNote "0000-0003-4418-7455 Franziska Flecken created the resource"@en ;
-    skos:inScheme <https://w3id.org/nfdi4cat/voc4cat> ;
-    skos:prefLabel "molar equivalent"@en .
-
 <https://w3id.org/nfdi4cat/voc4cat_0008081> a skos:Concept ;
     dcterms:identifier "voc4cat_0008081"^^xsd:token ;
     skos:broader <https://w3id.org/nfdi4cat/voc4cat_0000286> ;
@@ -5676,9 +5660,9 @@ Example unit: kg{product} / (hour * cubicmeter{catalyst})"""@en ;
         <https://w3id.org/nfdi4cat/voc4cat_0007131>,
         <https://w3id.org/nfdi4cat/voc4cat_0008098> ;
     dcterms:identifier "voc4cat"^^xsd:token ;
-    dcterms:modified "2025-12-05"^^xsd:date ;
+    dcterms:modified "2025-12-19"^^xsd:date ;
     dcterms:publisher <https://w3id.org/nfdi4cat/> ;
-    owl:versionInfo "v_7e5a5226" ;
+    owl:versionInfo "v_d54c5982" ;
     skos:definition """The Voc4Cat vocabulary is a collection of concepts (or "terms") from the field of catalysis and related disciplines such as chemical engineering or materials science. For each concept, Voc4Cat provides a unique resolvable persistent identifier and a carefully written textual definition, which reflects the community’s shared understanding of the concept’s meaning.
 
 By using the identifiers provided by Voc4Cat to annotate data, rather than just words and symbols, ambiguity as to what is meant is avoided. Producing Voc4Cat-annotated data contributes to realising the vision of machine-actionability described as the ultimate goal of the FAIR principles.

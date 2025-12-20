@@ -89,6 +89,9 @@ from voc4cat.xlsx_table import XLSXTableConfig
 # schema.org namespace (not in rdflib by default)
 SDO = Namespace("https://schema.org/")
 
+# History note for concepts/collections expressed for the first time
+HISTORY_NOTE_FIRST_TIME = "This concept is expressed here for the first time."
+
 logger = logging.getLogger(__name__)
 
 
@@ -2554,6 +2557,10 @@ def build_concept_graph(
         g.add((c, OWL.deprecated, Literal(True)))
         g.add((c, SKOS.historyNote, Literal(concept.obsolete_reason, lang="en")))
 
+    # First-time expressed concept (no external source or influence)
+    if not concept.source_vocab_iri and not concept.influenced_by_iris:
+        g.add((c, SKOS.historyNote, Literal(HISTORY_NOTE_FIRST_TIME, lang="en")))
+
     # Replaced by (dct:isReplacedBy)
     if concept.replaced_by_iri:
         g.add((c, DCTERMS.isReplacedBy, URIRef(concept.replaced_by_iri)))
@@ -2643,6 +2650,9 @@ def build_collection_graph(
     if collection.obsolete_reason:
         g.add((c, OWL.deprecated, Literal(True)))
         g.add((c, SKOS.historyNote, Literal(collection.obsolete_reason, lang="en")))
+
+    # Collections always get first-time historyNote (no source fields in model)
+    g.add((c, SKOS.historyNote, Literal(HISTORY_NOTE_FIRST_TIME, lang="en")))
 
     # Replaced by (dct:isReplacedBy)
     if collection.replaced_by_iri:

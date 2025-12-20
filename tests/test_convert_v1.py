@@ -28,8 +28,13 @@ from rdflib import (
 from tests.conftest import make_vocab_config_from_rdf
 from voc4cat.config import Checks, Vocab
 from voc4cat.convert_v1 import (
+    HISTORY_NOTE_FIRST_TIME,
+    AggregatedCollection,
+    AggregatedConcept,
     aggregate_collections,
     aggregate_concepts,
+    build_collection_graph,
+    build_concept_graph,
     build_concept_to_collections_map,
     build_concept_to_ordered_collections_map,
     build_curies_converter_from_prefixes,
@@ -934,8 +939,10 @@ class TestV1RoundTrip:
         original_count = len(original)
         roundtrip_count = len(roundtrip)
 
-        # Allow small difference due to BNode handling in RDF lists
-        assert abs(original_count - roundtrip_count) <= 10, (
+        # Allow difference due to:
+        # - BNode handling in RDF lists
+        # - skos:historyNote added for first-time expressed concepts/collections
+        assert abs(original_count - roundtrip_count) <= 20, (
             f"Triple count mismatch: original={original_count}, roundtrip={roundtrip_count}"
         )
 
@@ -2797,3 +2804,137 @@ class TestDeriveContributors:
         # Should be two lines
         lines = [line for line in result.split("\n") if line.strip()]
         assert len(lines) == 2
+
+
+class TestFirstTimeExpressedHistoryNote:
+    """Tests for skos:historyNote on first-time expressed concepts/collections."""
+
+    def test_concept_without_provenance_gets_history_note(self):
+        """Concept without source or influence gets first-time historyNote."""
+        concept = AggregatedConcept(
+            iri="http://example.org/concept1",
+            pref_labels={"en": "Test Concept"},
+            definitions={"en": "A test concept"},
+        )
+        scheme_iri = URIRef("http://example.org/")
+
+        graph = build_concept_graph(concept, scheme_iri, narrower_map={})
+
+        history_notes = list(
+            graph.objects(URIRef("http://example.org/concept1"), SKOS.historyNote)
+        )
+        assert len(history_notes) == 1
+        assert str(history_notes[0]) == HISTORY_NOTE_FIRST_TIME
+
+    def test_concept_with_source_vocab_no_history_note(self):
+        """Concept with source_vocab_iri should NOT get first-time historyNote."""
+        concept = AggregatedConcept(
+            iri="http://example.org/concept1",
+            pref_labels={"en": "Test Concept"},
+            definitions={"en": "A test concept"},
+            source_vocab_iri="http://other.org/vocab/",
+        )
+        scheme_iri = URIRef("http://example.org/")
+
+        graph = build_concept_graph(concept, scheme_iri, narrower_map={})
+
+        history_notes = list(
+            graph.objects(URIRef("http://example.org/concept1"), SKOS.historyNote)
+        )
+        assert len(history_notes) == 0
+
+    def test_concept_with_influenced_by_no_history_note(self):
+        """Concept with influenced_by_iris should NOT get first-time historyNote."""
+        concept = AggregatedConcept(
+            iri="http://example.org/concept1",
+            pref_labels={"en": "Test Concept"},
+            definitions={"en": "A test concept"},
+            influenced_by_iris=["http://other.org/concept99"],
+        )
+        scheme_iri = URIRef("http://example.org/")
+
+        graph = build_concept_graph(concept, scheme_iri, narrower_map={})
+
+        history_notes = list(
+            graph.objects(URIRef("http://example.org/concept1"), SKOS.historyNote)
+        )
+        assert len(history_notes) == 0
+
+    def test_concept_with_both_fields_no_history_note(self):
+        """Concept with both source and influence should NOT get first-time historyNote."""
+        concept = AggregatedConcept(
+            iri="http://example.org/concept1",
+            pref_labels={"en": "Test Concept"},
+            definitions={"en": "A test concept"},
+            source_vocab_iri="http://other.org/vocab/",
+            influenced_by_iris=["http://other.org/concept99"],
+        )
+        scheme_iri = URIRef("http://example.org/")
+
+        graph = build_concept_graph(concept, scheme_iri, narrower_map={})
+
+        history_notes = list(
+            graph.objects(URIRef("http://example.org/concept1"), SKOS.historyNote)
+        )
+        assert len(history_notes) == 0
+
+    def test_deprecated_concept_gets_both_history_notes(self):
+        """Deprecated concept without provenance gets BOTH historyNotes."""
+        concept = AggregatedConcept(
+            iri="http://example.org/concept1",
+            pref_labels={"en": "Test Concept"},
+            definitions={"en": "A test concept"},
+            obsolete_reason="Merged with concept2",
+        )
+        scheme_iri = URIRef("http://example.org/")
+
+        graph = build_concept_graph(concept, scheme_iri, narrower_map={})
+
+        history_notes = list(
+            graph.objects(URIRef("http://example.org/concept1"), SKOS.historyNote)
+        )
+        assert len(history_notes) == 2
+        note_values = {str(n) for n in history_notes}
+        assert HISTORY_NOTE_FIRST_TIME in note_values
+        assert "Merged with concept2" in note_values
+
+    def test_collection_always_gets_history_note(self):
+        """Collections always get first-time historyNote (no source fields in model)."""
+        collection = AggregatedCollection(
+            iri="http://example.org/collection1",
+            pref_labels={"en": "Test Collection"},
+            definitions={"en": "A test collection"},
+        )
+        scheme_iri = URIRef("http://example.org/")
+
+        graph = build_collection_graph(
+            collection, scheme_iri, collection_members={}, ordered_collection_members={}
+        )
+
+        history_notes = list(
+            graph.objects(URIRef("http://example.org/collection1"), SKOS.historyNote)
+        )
+        assert len(history_notes) == 1
+        assert str(history_notes[0]) == HISTORY_NOTE_FIRST_TIME
+
+    def test_deprecated_collection_gets_both_history_notes(self):
+        """Deprecated collection gets BOTH historyNotes."""
+        collection = AggregatedCollection(
+            iri="http://example.org/collection1",
+            pref_labels={"en": "Test Collection"},
+            definitions={"en": "A test collection"},
+            obsolete_reason="No longer needed",
+        )
+        scheme_iri = URIRef("http://example.org/")
+
+        graph = build_collection_graph(
+            collection, scheme_iri, collection_members={}, ordered_collection_members={}
+        )
+
+        history_notes = list(
+            graph.objects(URIRef("http://example.org/collection1"), SKOS.historyNote)
+        )
+        assert len(history_notes) == 2
+        note_values = {str(n) for n in history_notes}
+        assert HISTORY_NOTE_FIRST_TIME in note_values
+        assert "No longer needed" in note_values
