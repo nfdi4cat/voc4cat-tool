@@ -2843,8 +2843,8 @@ class TestFirstTimeExpressedHistoryNote:
         )
         assert len(history_notes) == 0
 
-    def test_concept_with_influenced_by_no_history_note(self):
-        """Concept with influenced_by_iris should NOT get first-time historyNote."""
+    def test_concept_with_influenced_by_gets_influenced_history_note(self):
+        """Concept with influenced_by_iris should get influenced-by historyNote."""
         concept = AggregatedConcept(
             iri="http://example.org/concept1",
             pref_labels={"en": "Test Concept"},
@@ -2858,7 +2858,9 @@ class TestFirstTimeExpressedHistoryNote:
         history_notes = list(
             graph.objects(URIRef("http://example.org/concept1"), SKOS.historyNote)
         )
-        assert len(history_notes) == 0
+        assert len(history_notes) == 1
+        assert "influenced by" in str(history_notes[0]).lower()
+        assert "http://other.org/concept99" in str(history_notes[0])
 
     def test_concept_with_both_fields_no_history_note(self):
         """Concept with both source and influence should NOT get first-time historyNote."""

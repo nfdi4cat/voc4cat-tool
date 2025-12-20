@@ -35,6 +35,7 @@ from rdflib import (
 
 from voc4cat.convert_v1 import (
     HISTORY_NOTE_FIRST_TIME,
+    HISTORY_NOTE_INFLUENCED_BY,
     build_entity_graph,
     config_to_concept_scheme_v1,
     extract_concept_scheme_from_rdf,
@@ -303,11 +304,11 @@ def _add_first_time_history_notes(
     concepts: set[URIRef],
     collections: set[URIRef],
 ) -> None:
-    """Add historyNote for concepts/collections expressed for the first time.
+    """Add historyNote for concepts/collections based on provenance.
 
-    A concept/collection is "first-time expressed" when it has neither:
-    - prov:hadPrimarySource (source vocabulary IRI)
-    - prov:wasInfluencedBy (influenced by IRIs)
+    - If prov:hadPrimarySource exists: no historyNote added (satisfies SHACL)
+    - If prov:wasInfluencedBy exists (but no hadPrimarySource): add influenced-by note
+    - If neither exists: add first-time expressed note
 
     Args:
         graph: The RDF graph to modify.
@@ -316,9 +317,18 @@ def _add_first_time_history_notes(
     """
     for entity_iri in concepts | collections:
         has_primary_source = any(graph.objects(entity_iri, PROV.hadPrimarySource))
-        has_influenced_by = any(graph.objects(entity_iri, PROV.wasInfluencedBy))
+        if has_primary_source:
+            # prov:hadPrimarySource satisfies the SHACL provenance requirement
+            continue
 
-        if not has_primary_source and not has_influenced_by:
+        influenced_by_iris = list(graph.objects(entity_iri, PROV.wasInfluencedBy))
+        if influenced_by_iris:
+            # Generate historyNote with influenced-by IRIs
+            iris_str = ", ".join(str(iri) for iri in influenced_by_iris)
+            note = HISTORY_NOTE_INFLUENCED_BY.format(iris=iris_str)
+            graph.add((entity_iri, SKOS.historyNote, Literal(note, lang="en")))
+        else:
+            # First-time expressed (no external source or influence)
             graph.add(
                 (
                     entity_iri,
