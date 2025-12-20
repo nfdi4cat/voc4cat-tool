@@ -37,10 +37,10 @@ issue_tracker = "..."
 helpdesk = "..."
 conforms_to = "..."
 
-[vocabs.VOCAB_NAME.checks]
+[vocabs.VOCAB_NAME.checks]       # Required section
 allow_delete = false
 
-[vocabs.VOCAB_NAME.prefix_map]
+[vocabs.VOCAB_NAME.prefix_map]   # Required section
 prefix = "namespace"
 
 [[vocabs.VOCAB_NAME.id_range]]
@@ -93,7 +93,7 @@ These fields define vocabulary metadata shown in the Concept Scheme sheet.
 | `title` | Human-readable name | skos:prefLabel |
 | `description` | What the vocabulary covers | skos:definition |
 | `created_date` | Creation date (YYYY-MM-DD) | dct:created |
-| `creator` | Creator(s) with identifiers | dct:creator |
+| `creator` | Creators: name(s) with identifier(s), newline-separated | dct:creator |
 | `repository` | Source repository URL | - |
 
 :::
@@ -106,14 +106,17 @@ These fields define vocabulary metadata shown in the Concept Scheme sheet.
 | Field | Description | SKOS/RDF |
 |-------|-------------|----------|
 | `prefix` | Preferred prefix for CURIEs | - |
-| `publisher` | Publishing organization | dct:publisher |
-| `custodian` | Maintenance responsibility | - |
+| `publisher` | Publishers: name(s) with identifier(s), newline-separated | dct:publisher |
+| `custodian` | Custodians: name(s) with identifier(s), newline-separated | - |
 | `homepage` | Public website URL | foaf:homepage |
 | `catalogue_pid` | DOI or persistent identifier | dct:identifier |
 | `documentation` | Documentation URL | - |
 | `issue_tracker` | Issue tracker URL | - |
 | `helpdesk` | Helpdesk URL | - |
 | `conforms_to` | SHACL profile URL | dct:conformsTo |
+| `provenance_url_template` | Jinja template for provenance URLs | - |
+| `history_note` | Auto-generated if empty from created_date and creator | skos:historyNote |
+| `profile_local_path` | Path to local SHACL profile file (relative to idranges.toml) | - |
 
 :::
 
@@ -134,7 +137,7 @@ Vocabulary Curator Group https://github.com/orgs/example/teams/curators
 """
 ```
 
-### Prefix map
+### Prefix map (required)
 
 Define namespace prefixes for CURIE expansion:
 
@@ -144,7 +147,7 @@ myvoc = "https://example.org/myvocab_"
 skos = "http://www.w3.org/2004/02/skos/core#"
 ```
 
-### Checks configuration
+### Checks configuration (required)
 
 Configure validation behavior:
 
@@ -183,14 +186,14 @@ orcid = "0000-0002-3456-7890"
 |-------|----------|-------------|
 | `first_id` | Yes | First ID in range (inclusive) |
 | `last_id` | Yes | Last ID in range (inclusive) |
-| `gh_name` | Yes | GitHub username |
+| `gh_name` | Yes* | GitHub username |
 | `orcid` | Yes* | ORCID identifier (without URL prefix) |
 | `name` | No | Human-readable name |
 | `ror_id` | No | ROR identifier for institution |
 
 :::
 
-*At least one of `orcid` or `ror_id` is recommended.
+*At least one of `gh_name` or `orcid` is required.
 
 ### Complete example
 
@@ -315,13 +318,13 @@ The main sheet where you define vocabulary concepts. Each row represents one con
 |--------|-------------|--------------|
 | Alternate Labels | Synonyms (comma-separated) | skos:altLabel |
 | Parent IRIs | Broader concepts (comma-separated) | skos:broader |
-| Member of collection(s) | Collection memberships | skos:member |
+| Member of collection(s) | Collection memberships (comma-separated) | skos:member |
 | Member of ordered collection # position | Position in ordered collection | - |
 | Provenance | Origin of concept (read-only) | dct:provenance |
 | Change Note | Documentation of changes | skos:changeNote |
 | Editorial Note | Internal notes | skos:editorialNote |
 | Obsoletion reason | Why deprecated | owl:deprecated |
-| Influenced by IRIs | Related external concepts | prov:wasInfluencedBy |
+| Influenced by IRIs | Related external concepts (comma-separated) | prov:wasInfluencedBy |
 | Source Vocab IRI or URL | Original source | prov:hadPrimarySource |
 | Source Vocab License | License of source | dct:license |
 | Source Vocab Rights Holder | Rights holder of source | dct:rightsHolder |
@@ -385,7 +388,7 @@ Collections group related concepts together without implying hierarchy.
 | Language Code | ISO language code |
 | Preferred Label | Name of the collection |
 | Definition | What the collection contains |
-| Parent Collection IRIs | Nest collections within other collections |
+| Parent Collection IRIs | Nest collections within other collections (comma-separated) |
 | Ordered? | "Yes" for ordered collection, blank for unordered |
 | Change Note | Documentation of changes |
 | Editorial Note | Internal notes |
@@ -403,16 +406,14 @@ Link your concepts to terms in other vocabularies.
 | Column | Description | SKOS mapping |
 |--------|-------------|--------------|
 | Concept IRI* | Your concept | - |
-| Related Matches | Loosely related external concepts | skos:relatedMatch |
-| Close Matches | Similar but not identical | skos:closeMatch |
-| Exact Matches | Semantically equivalent | skos:exactMatch |
-| Narrower Matches | More specific external concepts | skos:narrowMatch |
-| Broader Matches | More general external concepts | skos:broadMatch |
+| Related Matches | Loosely related external concepts (comma-separated) | skos:relatedMatch |
+| Close Matches | Similar but not identical (comma-separated) | skos:closeMatch |
+| Exact Matches | Semantically equivalent (comma-separated) | skos:exactMatch |
+| Narrower Matches | More specific external concepts (comma-separated) | skos:narrowMatch |
+| Broader Matches | More general external concepts (comma-separated) | skos:broadMatch |
 | Editorial Note | Internal notes (not exported to RDF) | - |
 
 :::
-
-Multiple IRIs in each field should be comma-separated.
 
 ### ID Ranges sheet
 
@@ -427,7 +428,6 @@ The prefixes come the `idranges.toml` configuration enriched with the default pr
 ### Data formats
 
 - **IRIs**: Full IRI or CURIE (`prefix:id`)
-- **Multi-value**: Comma-separated
 - **Language codes**: ISO 639-1 (`en`, `de`)
 - **Dates**: ISO 8601 (`YYYY-MM-DD`)
 
