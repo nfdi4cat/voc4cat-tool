@@ -34,6 +34,7 @@ from rdflib import (
 )
 
 from voc4cat.convert_v1 import (
+    HISTORY_NOTE_FIRST_TIME,
     build_entity_graph,
     config_to_concept_scheme_v1,
     extract_concept_scheme_from_rdf,
@@ -297,6 +298,36 @@ def _add_provenance_triples(
     )
 
 
+def _add_first_time_history_notes(
+    graph: Graph,
+    concepts: set[URIRef],
+    collections: set[URIRef],
+) -> None:
+    """Add historyNote for concepts/collections expressed for the first time.
+
+    A concept/collection is "first-time expressed" when it has neither:
+    - prov:hadPrimarySource (source vocabulary IRI)
+    - prov:wasInfluencedBy (influenced by IRIs)
+
+    Args:
+        graph: The RDF graph to modify.
+        concepts: Set of concept IRIs.
+        collections: Set of collection IRIs.
+    """
+    for entity_iri in concepts | collections:
+        has_primary_source = any(graph.objects(entity_iri, PROV.hadPrimarySource))
+        has_influenced_by = any(graph.objects(entity_iri, PROV.wasInfluencedBy))
+
+        if not has_primary_source and not has_influenced_by:
+            graph.add(
+                (
+                    entity_iri,
+                    SKOS.historyNote,
+                    Literal(HISTORY_NOTE_FIRST_TIME, lang="en"),
+                )
+            )
+
+
 def convert_rdf_043_to_v1(
     input_path: Path,
     output_path: Path | None = None,
@@ -395,6 +426,9 @@ def convert_rdf_043_to_v1(
         _add_provenance_triples(
             output_graph, concepts, collections, vocab_name, vocab_config
         )
+
+    # Add historyNote for first-time expressed concepts and collections
+    _add_first_time_history_notes(output_graph, concepts, collections)
 
     # Determine output path
     if output_path is None:

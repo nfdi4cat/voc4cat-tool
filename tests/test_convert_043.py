@@ -53,6 +53,8 @@ class TestConvert043ToV1:
 
     def test_history_note_transformed_to_change_note(self, tmp_path):
         """Test that skos:historyNote is transformed to skos:changeNote."""
+        from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
+
         # Create test RDF with skos:historyNote
         g = Graph()
         g.bind("ex", EX)
@@ -80,13 +82,15 @@ class TestConvert043ToV1:
         # Verify
         converted = Graph().parse(output_path, format="turtle")
 
-        # Should have skos:changeNote, not skos:historyNote
+        # The 043 historyNote should be transformed to changeNote
         change_notes = list(converted.objects(EX.concept1, SKOS.changeNote))
-        history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
-
         assert len(change_notes) == 1
-        assert len(history_notes) == 0
         assert "Created by author" in str(change_notes[0])
+
+        # Concept should also have the first-time historyNote (no provenance)
+        history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
+        assert len(history_notes) == 1
+        assert str(history_notes[0]) == HISTORY_NOTE_FIRST_TIME
 
     def test_is_defined_by_on_concept_transformed(self, tmp_path):
         """Test that rdfs:isDefinedBy on concepts becomes prov:hadPrimarySource."""
@@ -473,3 +477,124 @@ class TestConvert043ToV1:
         concept2_labels = list(converted.objects(EX.concept2, SKOS.prefLabel))
         assert len(concept2_labels) == 1
         assert str(concept2_labels[0]) == "Concept Two"
+
+
+class TestFirstTimeHistoryNote043:
+    """Tests for skos:historyNote on first-time expressed concepts in 043 conversion."""
+
+    def test_first_time_history_note_added_without_provenance(self, tmp_path):
+        """Concept without prov:hadPrimarySource/wasInfluencedBy gets first-time historyNote."""
+        from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
+
+        # Create test RDF with concept that has no provenance predicates
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test Scheme", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        g.add((EX.concept1, RDF.type, SKOS.Concept))
+        g.add((EX.concept1, SKOS.prefLabel, Literal("Test Concept", lang="en")))
+        g.add((EX.concept1, SKOS.inScheme, EX.scheme))
+
+        input_path = tmp_path / "test_043.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(input_path, output_path)
+
+        converted = Graph().parse(output_path, format="turtle")
+
+        history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
+        assert len(history_notes) == 1
+        assert str(history_notes[0]) == HISTORY_NOTE_FIRST_TIME
+
+    def test_first_time_history_note_not_added_with_primary_source(self, tmp_path):
+        """Concept with prov:hadPrimarySource should NOT get first-time historyNote."""
+        from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
+
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+        g.bind("prov", PROV)
+
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test Scheme", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        g.add((EX.concept1, RDF.type, SKOS.Concept))
+        g.add((EX.concept1, SKOS.prefLabel, Literal("Test Concept", lang="en")))
+        g.add((EX.concept1, SKOS.inScheme, EX.scheme))
+        g.add((EX.concept1, PROV.hadPrimarySource, EX.other_vocab))
+
+        input_path = tmp_path / "test_043.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(input_path, output_path)
+
+        converted = Graph().parse(output_path, format="turtle")
+
+        history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
+        note_values = [str(n) for n in history_notes]
+        assert HISTORY_NOTE_FIRST_TIME not in note_values
+
+    def test_first_time_history_note_not_added_with_influenced_by(self, tmp_path):
+        """Concept with prov:wasInfluencedBy should NOT get first-time historyNote."""
+        from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
+
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+        g.bind("prov", PROV)
+
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test Scheme", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        g.add((EX.concept1, RDF.type, SKOS.Concept))
+        g.add((EX.concept1, SKOS.prefLabel, Literal("Test Concept", lang="en")))
+        g.add((EX.concept1, SKOS.inScheme, EX.scheme))
+        g.add((EX.concept1, PROV.wasInfluencedBy, EX.other_concept))
+
+        input_path = tmp_path / "test_043.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(input_path, output_path)
+
+        converted = Graph().parse(output_path, format="turtle")
+
+        history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
+        note_values = [str(n) for n in history_notes]
+        assert HISTORY_NOTE_FIRST_TIME not in note_values
+
+    def test_collection_gets_first_time_history_note(self, tmp_path):
+        """Collection without provenance gets first-time historyNote in 043 conversion."""
+        from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
+
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test Scheme", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        g.add((EX.collection1, RDF.type, SKOS.Collection))
+        g.add((EX.collection1, SKOS.prefLabel, Literal("Test Collection", lang="en")))
+        g.add((EX.collection1, SKOS.inScheme, EX.scheme))
+
+        input_path = tmp_path / "test_043.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(input_path, output_path)
+
+        converted = Graph().parse(output_path, format="turtle")
+
+        history_notes = list(converted.objects(EX.collection1, SKOS.historyNote))
+        assert len(history_notes) == 1
+        assert str(history_notes[0]) == HISTORY_NOTE_FIRST_TIME
