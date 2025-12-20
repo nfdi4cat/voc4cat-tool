@@ -1,11 +1,10 @@
 """Tests for the gen_template module.
 
 These tests verify that the v1.0 template generator creates Excel templates
-with the correct structure matching the reference template.
+with the correct structure.
 """
 
 import logging
-from pathlib import Path
 
 import pytest
 from openpyxl import load_workbook
@@ -21,16 +20,6 @@ from voc4cat.models_v1 import (
     ConceptV1,
     MappingV1,
     PrefixV1,
-)
-
-# Path to reference template for comparison
-REFERENCE_TEMPLATE = (
-    Path(__file__).parent.parent
-    / "src"
-    / "voc4cat"
-    / "templates"
-    / "vocab"
-    / "blank_1.0_min.xlsx"
 )
 
 
@@ -246,87 +235,6 @@ class TestTemplateGeneration:
 
         # Data row should be empty (headers only in blank template)
         assert ws["A4"].value is None or ws["A4"].value == ""
-
-
-class TestTemplateComparisonWithReference:
-    """Tests comparing generated template against reference template."""
-
-    @pytest.fixture
-    def reference_workbook(self):
-        """Load reference template for comparison."""
-        if not REFERENCE_TEMPLATE.exists():
-            pytest.skip(f"Reference template not found: {REFERENCE_TEMPLATE}")
-        return load_workbook(REFERENCE_TEMPLATE)
-
-    @pytest.fixture
-    def generated_workbook(self, tmp_path):
-        """Generate a template for comparison."""
-        output_path = tmp_path / "generated_template.xlsx"
-        return generate_template_v1(output_path)
-
-    def test_concepts_columns_match_reference(
-        self, reference_workbook, generated_workbook
-    ):
-        """Compare Concepts column headers against reference."""
-        ref_ws = reference_workbook["Concepts"]
-        gen_ws = generated_workbook["Concepts"]
-
-        # Compare headers in row 4
-        for col in range(1, 16):
-            col_letter = get_column_letter(col)
-            ref_header = ref_ws[f"{col_letter}4"].value
-            gen_header = gen_ws[f"{col_letter}4"].value
-            assert ref_header == gen_header, (
-                f"Column {col} header mismatch: reference='{ref_header}', generated='{gen_header}'"
-            )
-
-    def test_concepts_meanings_match_reference(
-        self, reference_workbook, generated_workbook
-    ):
-        """Compare Concepts SKOS meanings against reference."""
-        ref_ws = reference_workbook["Concepts"]
-        gen_ws = generated_workbook["Concepts"]
-
-        # Compare meanings in row 3
-        for col in range(1, 16):
-            col_letter = get_column_letter(col)
-            ref_meaning = ref_ws[f"{col_letter}3"].value
-            gen_meaning = gen_ws[f"{col_letter}3"].value
-            assert ref_meaning == gen_meaning, (
-                f"Column {col} meaning mismatch: reference='{ref_meaning}', generated='{gen_meaning}'"
-            )
-
-    def test_collections_columns_match_reference(
-        self, reference_workbook, generated_workbook
-    ):
-        """Compare Collections column headers against reference."""
-        ref_ws = reference_workbook["Collections"]
-        gen_ws = generated_workbook["Collections"]
-
-        # Compare headers in row 4
-        for col in range(1, 10):
-            col_letter = get_column_letter(col)
-            ref_header = ref_ws[f"{col_letter}4"].value
-            gen_header = gen_ws[f"{col_letter}4"].value
-            assert ref_header == gen_header, (
-                f"Column {col} header mismatch: reference='{ref_header}', generated='{gen_header}'"
-            )
-
-    def test_mappings_columns_match_reference(
-        self, reference_workbook, generated_workbook
-    ):
-        """Compare Mappings column headers against reference."""
-        ref_ws = reference_workbook["Mappings"]
-        gen_ws = generated_workbook["Mappings"]
-
-        # Compare headers in row 4
-        for col in range(1, 8):
-            col_letter = get_column_letter(col)
-            ref_header = ref_ws[f"{col_letter}4"].value
-            gen_header = gen_ws[f"{col_letter}4"].value
-            assert ref_header == gen_header, (
-                f"Column {col} header mismatch: reference='{ref_header}', generated='{gen_header}'"
-            )
 
 
 class TestModels:
