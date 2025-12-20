@@ -486,5 +486,151 @@ class TestKeyValuePositioning:
         assert first_value_cell.value is not None
 
 
+class TestKeyValueRequirednessAndToggles:
+    """Tests for requiredness column and metadata visibility toggles."""
+
+    def test_keyvalue_with_requiredness_column_shown(self, temp_file):
+        """Test that requiredness column is shown when explicitly enabled."""
+        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
+
+        class ModelForReq(BaseModel):
+            required_field: str
+            optional_field: str | None = None
+            with_default: str = "default_value"
+
+        data = ModelForReq(required_field="test")
+
+        config = XLSXKeyValueConfig(
+            title="Test Model",
+            metadata_visibility=MetadataToggleConfig(
+                requiredness=MetadataVisibility.SHOW
+            ),
+        )
+
+        export_to_xlsx(data, temp_file, format_type="keyvalue", config=config)
+
+        workbook = load_workbook(temp_file)
+        worksheet = workbook.active
+
+        # Find the "Required" header
+        header_row = 3
+        found_required_header = False
+        for col in range(1, 10):
+            cell_value = worksheet.cell(row=header_row, column=col).value
+            if cell_value == "Required":
+                found_required_header = True
+                break
+
+        assert found_required_header, "Required column header should be present"
+
+    def test_keyvalue_without_requiredness_column_by_default(self, temp_file):
+        """Test that requiredness column is NOT shown by default."""
+
+        class SimpleModelForReq(BaseModel):
+            name: str = "test"
+
+        data = SimpleModelForReq()
+
+        config = XLSXKeyValueConfig(title="Test Model")
+        export_to_xlsx(data, temp_file, format_type="keyvalue", config=config)
+
+        workbook = load_workbook(temp_file)
+        worksheet = workbook.active
+
+        # Check that no "Required" header exists
+        header_row = 3
+        for col in range(1, 10):
+            cell_value = worksheet.cell(row=header_row, column=col).value
+            assert cell_value != "Required", "Required column should not be present"
+
+    def test_keyvalue_toggle_hide_description(self, temp_file):
+        """Test that HIDE toggle removes description column."""
+        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
+
+        class ModelWithDesc(BaseModel):
+            name: Annotated[
+                str,
+                XLSXMetadata(description="A description"),
+            ] = "test"
+
+        data = ModelWithDesc()
+
+        # First verify description shows in AUTO mode
+        config_auto = XLSXKeyValueConfig(title="Test")
+        export_to_xlsx(data, temp_file, format_type="keyvalue", config=config_auto)
+        workbook = load_workbook(temp_file)
+        worksheet = workbook.active
+
+        header_row = 3
+        found_desc = False
+        for col in range(1, 10):
+            if worksheet.cell(row=header_row, column=col).value == "Description":
+                found_desc = True
+                break
+        assert found_desc, "Description should be shown in AUTO mode"
+
+        # Now with HIDE
+        config_hide = XLSXKeyValueConfig(
+            title="Test",
+            metadata_visibility=MetadataToggleConfig(
+                description=MetadataVisibility.HIDE
+            ),
+        )
+        export_to_xlsx(data, temp_file, format_type="keyvalue", config=config_hide)
+        workbook = load_workbook(temp_file)
+        worksheet = workbook.active
+
+        for col in range(1, 10):
+            cell_value = worksheet.cell(row=header_row, column=col).value
+            assert cell_value != "Description", (
+                "Description should not be shown with HIDE"
+            )
+
+    def test_keyvalue_requiredness_values_correct(self, temp_file):
+        """Test that requiredness column values are correct."""
+        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
+
+        class ModelWithVariousFields(BaseModel):
+            required_field: str
+            optional_field: str | None = None
+            with_default: str = "custom"
+
+        data = ModelWithVariousFields(required_field="value")
+
+        config = XLSXKeyValueConfig(
+            metadata_visibility=MetadataToggleConfig(
+                requiredness=MetadataVisibility.SHOW
+            ),
+        )
+
+        export_to_xlsx(data, temp_file, format_type="keyvalue", config=config)
+
+        workbook = load_workbook(temp_file)
+        worksheet = workbook.active
+
+        # Find requiredness column
+        header_row = 1  # No title
+        req_col = None
+        for col in range(1, 10):
+            if worksheet.cell(row=header_row, column=col).value == "Required":
+                req_col = col
+                break
+
+        assert req_col is not None, "Required column should exist"
+
+        # Check values - data starts at row 2
+        # Find field names and their requiredness
+        field_col = 1
+        values = {}
+        for row in range(2, 5):
+            field_name = worksheet.cell(row=row, column=field_col).value
+            req_value = worksheet.cell(row=row, column=req_col).value
+            if field_name:
+                values[field_name.lower().replace(" ", "_")] = req_value
+
+        # required_field should be "Yes"
+        assert "yes" in str(values.get("required_field", "")).lower()
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

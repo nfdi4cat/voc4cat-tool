@@ -792,5 +792,132 @@ class TestORCIDRORXLSXIntegration:
             import_from_xlsx(temp_file, ResearcherModel, format_type="keyvalue")
 
 
+class TestRequirednessHelpers:
+    """Tests for requiredness detection and formatting."""
+
+    def test_get_requiredness_info_required_field(self):
+        """Test detection of required field (no default, not optional)."""
+
+        class ModelWithRequired(BaseModel):
+            required_field: str
+
+        field_info = ModelWithRequired.model_fields["required_field"]
+        field_analysis = XLSXFieldAnalyzer.analyze_field(
+            "required_field", field_info, ModelWithRequired
+        )
+
+        is_required, default_value = XLSXFieldAnalyzer.get_requiredness_info(
+            field_info, field_analysis
+        )
+
+        assert is_required is True
+
+    def test_get_requiredness_info_optional_field(self):
+        """Test detection of optional field (Union with None)."""
+
+        class ModelWithOptional(BaseModel):
+            optional_field: str | None = None
+
+        field_info = ModelWithOptional.model_fields["optional_field"]
+        field_analysis = XLSXFieldAnalyzer.analyze_field(
+            "optional_field", field_info, ModelWithOptional
+        )
+
+        is_required, default_value = XLSXFieldAnalyzer.get_requiredness_info(
+            field_info, field_analysis
+        )
+
+        assert is_required is False
+        assert default_value is None
+
+    def test_get_requiredness_info_field_with_default(self):
+        """Test detection of field with non-optional type but has default."""
+
+        class ModelWithDefault(BaseModel):
+            field_with_default: str = "default_value"
+
+        field_info = ModelWithDefault.model_fields["field_with_default"]
+        field_analysis = XLSXFieldAnalyzer.analyze_field(
+            "field_with_default", field_info, ModelWithDefault
+        )
+
+        is_required, default_value = XLSXFieldAnalyzer.get_requiredness_info(
+            field_info, field_analysis
+        )
+
+        assert is_required is False
+        assert default_value == "default_value"
+
+    def test_format_requiredness_text_required(self):
+        """Test formatting of required field."""
+        from pydantic_core import PydanticUndefined
+
+        result = XLSXFieldAnalyzer.format_requiredness_text(True, PydanticUndefined)
+        assert result == "Yes"
+
+    def test_format_requiredness_text_optional_no_default(self):
+        """Test formatting of optional field with no/trivial default."""
+        result = XLSXFieldAnalyzer.format_requiredness_text(False, None)
+        assert result == "No"
+
+        result = XLSXFieldAnalyzer.format_requiredness_text(False, "")
+        assert result == "No"
+
+        result = XLSXFieldAnalyzer.format_requiredness_text(False, 0)
+        assert result == "No"
+
+        result = XLSXFieldAnalyzer.format_requiredness_text(False, [])
+        assert result == "No"
+
+    def test_format_requiredness_text_with_default(self):
+        """Test formatting of field with non-trivial default."""
+        result = XLSXFieldAnalyzer.format_requiredness_text(False, "custom_default")
+        assert result == "No (default: custom_default)"
+
+        result = XLSXFieldAnalyzer.format_requiredness_text(False, 42)
+        assert result == "No (default: 42)"
+
+    def test_format_requiredness_text_enum_default(self):
+        """Test formatting of field with enum default."""
+        result = XLSXFieldAnalyzer.format_requiredness_text(False, Status.ACTIVE)
+        assert result == "No (default: active)"
+
+
+class TestMetadataVisibilityToggle:
+    """Tests for metadata visibility toggle configuration."""
+
+    def test_metadata_visibility_enum_values(self):
+        """Test MetadataVisibility enum has expected values."""
+        from voc4cat.xlsx_common import MetadataVisibility
+
+        assert MetadataVisibility.AUTO.value == "auto"
+        assert MetadataVisibility.SHOW.value == "show"
+        assert MetadataVisibility.HIDE.value == "hide"
+
+    def test_metadata_toggle_config_defaults(self):
+        """Test MetadataToggleConfig has correct defaults."""
+        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
+
+        config = MetadataToggleConfig()
+        assert config.unit == MetadataVisibility.AUTO
+        assert config.requiredness == MetadataVisibility.AUTO
+        assert config.description == MetadataVisibility.AUTO
+        assert config.meaning == MetadataVisibility.AUTO
+
+    def test_xlsx_config_with_metadata_visibility(self):
+        """Test XLSXConfig accepts metadata_visibility parameter."""
+        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
+
+        toggle_config = MetadataToggleConfig(
+            unit=MetadataVisibility.HIDE, requiredness=MetadataVisibility.SHOW
+        )
+
+        config = XLSXConfig(metadata_visibility=toggle_config)
+
+        assert config.metadata_visibility is not None
+        assert config.metadata_visibility.unit == MetadataVisibility.HIDE
+        assert config.metadata_visibility.requiredness == MetadataVisibility.SHOW
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

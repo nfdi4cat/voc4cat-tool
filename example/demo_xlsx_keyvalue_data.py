@@ -720,6 +720,94 @@ def demo_enum_validation(demo_file: Path):
     print("  - Enum fields can be serialized as strings or with dropdowns")
 
 
+def demo_requiredness_column(demo_file: Path):
+    """Demonstrate requiredness column display in key-value format."""
+    from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
+    from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
+
+    print("\n" + "=" * 50)
+    print("9. Requiredness Column Display")
+    print("=" * 50)
+
+    # Model with various field types
+    class ConfigModel(BaseModel):
+        api_key: str  # Required
+        endpoint: str  # Required
+        timeout: int = 30  # Optional with non-trivial default
+        debug: bool = False  # Optional with trivial default
+        proxy: str | None = None  # Optional (nullable)
+
+    config_data = ConfigModel(api_key="abc123", endpoint="https://api.example.com")
+
+    # Export with requiredness column enabled
+    config = XLSXKeyValueConfig(
+        title="API Configuration",
+        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
+    )
+
+    sheet_name = "Requiredness_KV"
+    export_to_xlsx(
+        config_data,
+        demo_file,
+        format_type="keyvalue",
+        config=config,
+        sheet_name=sheet_name,
+    )
+
+    print("✓ Exported key-value with requiredness column")
+    print("  Column shows:")
+    print('  - "Yes" for required fields (api_key, endpoint)')
+    print('  - "No (default: 30)" for timeout')
+    print('  - "No" for debug (trivial default) and proxy (nullable)')
+
+
+def demo_metadata_visibility_keyvalue(demo_file: Path):
+    """Demonstrate metadata visibility toggles for key-value format."""
+    from typing import Annotated
+
+    from voc4cat.xlsx_common import (
+        MetadataToggleConfig,
+        MetadataVisibility,
+        XLSXMetadata,
+    )
+    from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
+
+    print("\n" + "=" * 50)
+    print("10. Metadata Visibility Toggles (Key-Value)")
+    print("=" * 50)
+
+    class DeviceSettings(BaseModel):
+        device_id: str
+        temperature: Annotated[
+            float,
+            XLSXMetadata(
+                unit="°C",
+                description="Operating temperature",
+            ),
+        ] = 25.0
+
+    settings = DeviceSettings(device_id="DEV001")
+
+    # Hide description but show requiredness
+    config = XLSXKeyValueConfig(
+        title="Device Settings",
+        metadata_visibility=MetadataToggleConfig(
+            requiredness=MetadataVisibility.SHOW,
+            description=MetadataVisibility.HIDE,
+        ),
+    )
+
+    export_to_xlsx(
+        settings,
+        demo_file,
+        format_type="keyvalue",
+        config=config,
+        sheet_name="KV_Visibility",
+    )
+    print("✓ Exported with requiredness shown, description hidden")
+    print("  Columns: Field, Value, Unit, Required (no Description)")
+
+
 def main():
     """Run all key-value data demonstrations."""
 
@@ -741,6 +829,8 @@ def main():
         demo_ontology_meanings(demo_file)
         demo_field_filtering(demo_file)
         demo_enum_validation(demo_file)
+        demo_requiredness_column(demo_file)
+        demo_metadata_visibility_keyvalue(demo_file)
 
         print("\n✅ All demonstrations completed successfully!")
         print(f"Demo file: {demo_file.absolute()}")
@@ -757,6 +847,8 @@ def main():
         print(
             "• Enum_Table_Validation - Enum validation with Excel dropdowns (table format)"
         )
+        print("• Requiredness_KV - Requiredness column display")
+        print("• KV_Visibility - Metadata visibility toggles")
 
     except Exception as e:
         print(f"\n❌ Demo failed: {e}")
