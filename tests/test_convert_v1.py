@@ -426,7 +426,7 @@ class TestConceptsSheetStructure:
 
         for col, expected in enumerate(expected_headers, 1):
             col_letter = get_column_letter(col)
-            actual = ws[f"{col_letter}4"].value
+            actual = ws[f"{col_letter}5"].value
             assert actual == expected, (
                 f"Column {col} header mismatch: expected '{expected}', got '{actual}'"
             )
@@ -449,8 +449,8 @@ class TestConceptsSheetStructure:
         wb = load_workbook(output_path)
         ws = wb["Concepts"]
 
-        assert ws.freeze_panes == "A5", (
-            f"Expected freeze panes at A5, got {ws.freeze_panes}"
+        assert ws.freeze_panes == "A6", (
+            f"Expected freeze panes at A6, got {ws.freeze_panes}"
         )
 
 
@@ -480,7 +480,7 @@ class TestCollectionsSheetStructure:
 
         for col, expected in enumerate(expected_headers, 1):
             col_letter = get_column_letter(col)
-            actual = ws[f"{col_letter}4"].value
+            actual = ws[f"{col_letter}5"].value
             assert actual == expected, (
                 f"Column {col} header mismatch: expected '{expected}', got '{actual}'"
             )
@@ -509,7 +509,7 @@ class TestMappingsSheetStructure:
 
         for col, expected in enumerate(expected_headers, 1):
             col_letter = get_column_letter(col)
-            actual = ws[f"{col_letter}4"].value
+            actual = ws[f"{col_letter}5"].value
             assert actual == expected, (
                 f"Column {col} header mismatch: expected '{expected}', got '{actual}'"
             )
@@ -1771,8 +1771,8 @@ class TestProvenanceInXlsx:
         ws = wb["Concepts"]
 
         # Find Provenance column (column I based on our header order)
-        # Row 5 is first data row (row 4 is header)
-        cell = ws["I5"]
+        # Row 6 is first data row (row 5 is header, row 4 is requiredness)
+        cell = ws["I6"]
         provenance_display = cell.value
         provenance_hyperlink = cell.hyperlink
 
@@ -1799,8 +1799,8 @@ class TestProvenanceInXlsx:
         wb = load_workbook(output_path)
         ws = wb["Concepts"]
 
-        # Provenance column should be empty
-        provenance_value = ws["I5"].value
+        # Provenance column should be empty (row 6 is first data row)
+        provenance_value = ws["I6"].value
         assert provenance_value is None or provenance_value == ""
 
 

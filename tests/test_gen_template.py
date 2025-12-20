@@ -98,7 +98,7 @@ class TestTemplateGeneration:
 
         for col, expected_header in enumerate(expected_headers, 1):
             col_letter = get_column_letter(col)
-            actual_header = ws[f"{col_letter}4"].value
+            actual_header = ws[f"{col_letter}5"].value
             assert actual_header == expected_header, (
                 f"Column {col} header mismatch: expected '{expected_header}', got '{actual_header}'"
             )
@@ -109,8 +109,8 @@ class TestTemplateGeneration:
         wb = generate_template_v1(output_path)
         ws = wb["Concepts"]
 
-        assert ws.freeze_panes == "A5", (
-            f"Expected freeze panes at A5, got {ws.freeze_panes}"
+        assert ws.freeze_panes == "A6", (
+            f"Expected freeze panes at A6, got {ws.freeze_panes}"
         )
 
     def test_collections_sheet_has_table(self, tmp_path):
@@ -137,7 +137,7 @@ class TestTemplateGeneration:
 
         for col, expected_header in enumerate(expected_headers, 1):
             col_letter = get_column_letter(col)
-            actual_header = ws[f"{col_letter}4"].value
+            actual_header = ws[f"{col_letter}5"].value
             assert actual_header == expected_header, (
                 f"Column {col} header mismatch: expected '{expected_header}', got '{actual_header}'"
             )
@@ -163,7 +163,7 @@ class TestTemplateGeneration:
 
         for col, expected_header in enumerate(expected_headers, 1):
             col_letter = get_column_letter(col)
-            actual_header = ws[f"{col_letter}4"].value
+            actual_header = ws[f"{col_letter}5"].value
             assert actual_header == expected_header, (
                 f"Column {col} header mismatch: expected '{expected_header}', got '{actual_header}'"
             )
