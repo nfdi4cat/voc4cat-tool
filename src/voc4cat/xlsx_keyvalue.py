@@ -28,6 +28,7 @@ from .xlsx_common import (
     FieldAnalysis,
     XLSXConfig,
     XLSXDeserializationError,
+    XLSXFieldAnalyzer,
     XLSXFormatter,
     XLSXProcessor,
     XLSXSerializationError,
@@ -42,11 +43,13 @@ class XLSXKeyValueConfig(XLSXConfig):
     field_column_header: str = "Field"
     value_column_header: str = "Value"
     unit_column_header: str = "Unit"
+    requiredness_column_header: str = "Required"
     description_column_header: str = "Description"
     meaning_column_header: str = "Meaning"
     field_column_width: int = 25
     value_column_width: int = 30
     unit_column_width: int = 10
+    requiredness_column_width: int = 20
     description_column_width: int = 50
     meaning_column_width: int = 40
     table_style: str = "TableStyleMedium9"
@@ -112,26 +115,35 @@ class XLSXKeyValueFormatter(XLSXFormatter):
         )
 
     def _get_column_layout(self, fields: list[FieldAnalysis]) -> dict[str, str]:
-        """Get column layout based on which optional columns are present."""
-        has_units = self._has_any_units(fields)
-        has_descriptions = self._has_any_descriptions(fields)
-        has_meanings = self._has_any_meanings(fields)
+        """Get column layout based on which optional columns are present.
+
+        Order: Field, Value, Unit, Requiredness, Description, Meaning
+        """
+        # Use row_calculator's visibility methods which respect config toggles
+        show_units = self.row_calculator._should_show_units(fields)
+        show_requiredness = self.row_calculator._should_show_requiredness(fields)
+        show_descriptions = self.row_calculator._should_show_descriptions(fields)
+        show_meanings = self.row_calculator._should_show_meanings(fields)
 
         # Build column mapping dynamically
         # Required: Field (A), Value (B)
-        # Optional: Unit, Description, Meaning (only shown if any field has them)
+        # Optional: Unit, Requiredness, Description, Meaning
         columns = {"field": "A", "value": "B"}
         next_col = "C"
 
-        if has_units:
+        if show_units:
             columns["unit"] = next_col
             next_col = chr(ord(next_col) + 1)
 
-        if has_descriptions:
+        if show_requiredness:
+            columns["requiredness"] = next_col
+            next_col = chr(ord(next_col) + 1)
+
+        if show_descriptions:
             columns["description"] = next_col
             next_col = chr(ord(next_col) + 1)
 
-        if has_meanings:
+        if show_meanings:
             columns["meaning"] = next_col
 
         return columns
@@ -164,6 +176,10 @@ class XLSXKeyValueFormatter(XLSXFormatter):
         # Optional columns - only write if present in layout
         if "unit" in col_layout:
             worksheet[f"{col_layout['unit']}{header_row}"] = config.unit_column_header
+        if "requiredness" in col_layout:
+            worksheet[f"{col_layout['requiredness']}{header_row}"] = (
+                config.requiredness_column_header
+            )
         if "description" in col_layout:
             worksheet[f"{col_layout['description']}{header_row}"] = (
                 config.description_column_header
@@ -234,6 +250,26 @@ class XLSXKeyValueFormatter(XLSXFormatter):
                 # Apply formatting to unit cell (treat as text field)
                 text_field_analysis = FieldAnalysis(name="unit", field_type=str)
                 self._apply_data_cell_formatting(unit_cell, text_field_analysis)
+
+            # Requiredness column (optional)
+            if "requiredness" in col_layout:
+                field_info = data.__class__.model_fields.get(field_analysis.name)
+                if field_info:
+                    is_required, default_value = (
+                        XLSXFieldAnalyzer.get_requiredness_info(
+                            field_info, field_analysis
+                        )
+                    )
+                    req_text = XLSXFieldAnalyzer.format_requiredness_text(
+                        is_required, default_value
+                    )
+                else:
+                    req_text = ""
+                req_cell = worksheet[f"{col_layout['requiredness']}{row}"]
+                req_cell.value = req_text
+                # Apply formatting to requiredness cell (treat as text field)
+                text_field_analysis = FieldAnalysis(name="requiredness", field_type=str)
+                self._apply_data_cell_formatting(req_cell, text_field_analysis)
 
             # Description column (optional)
             if "description" in col_layout:
@@ -437,8 +473,8 @@ class XLSXKeyValueFormatter(XLSXFormatter):
         header_row = self.row_calculator.get_first_content_row()
         col_layout = {}
 
-        # Scan columns A through G to find headers
-        for col_idx in range(1, 8):  # A=1, B=2, ..., G=7
+        # Scan columns A through H to find headers
+        for col_idx in range(1, 9):  # A=1, B=2, ..., H=8
             col_letter = get_column_letter(col_idx)
             header_value = worksheet[f"{col_letter}{header_row}"].value
             if header_value:
@@ -449,6 +485,8 @@ class XLSXKeyValueFormatter(XLSXFormatter):
                     col_layout["value"] = col_letter
                 elif header_text == config.unit_column_header:
                     col_layout["unit"] = col_letter
+                elif header_text == config.requiredness_column_header:
+                    col_layout["requiredness"] = col_letter
                 elif header_text == config.description_column_header:
                     col_layout["description"] = col_letter
                 elif header_text == config.meaning_column_header:

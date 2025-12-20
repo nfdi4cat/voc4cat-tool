@@ -952,6 +952,120 @@ def demo_auto_detection(demo_file: Path):
     print("  - Consistent table layout across different input types")
 
 
+def demo_requiredness_row(demo_file: Path):
+    """Demonstrate requiredness row display in table format."""
+    from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
+
+    print("\n" + "=" * 50)
+    print("8. Requiredness Row Display")
+    print("=" * 50)
+
+    # Model with various field types
+    class ProductModel(BaseModel):
+        sku: str  # Required (no default)
+        name: str  # Required (no default)
+        price: float = 0.0  # Optional with trivial default
+        category: str = "General"  # Optional with non-trivial default
+        description: str | None = None  # Optional (nullable)
+
+    products = [
+        ProductModel(sku="A001", name="Widget"),
+        ProductModel(sku="A002", name="Gadget", price=19.99, category="Electronics"),
+    ]
+
+    # Export with requiredness row enabled
+    config = XLSXTableConfig(
+        title="Products with Requiredness",
+        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
+    )
+
+    sheet_name = "Requiredness_Demo"
+    export_to_xlsx(products, demo_file, config=config, sheet_name=sheet_name)
+
+    print("✓ Exported table with requiredness row")
+    print("  Fields show:")
+    print('  - "Required" for required fields (sku, name)')
+    print('  - "Optional" for optional with trivial default (price)')
+    print('  - "Optional (default: General)" for non-trivial default (category)')
+    print('  - "Optional" for nullable fields (description)')
+
+
+def demo_metadata_visibility_toggles(demo_file: Path):
+    """Demonstrate metadata visibility toggle controls."""
+    from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
+
+    print("\n" + "=" * 50)
+    print("9. Metadata Visibility Toggles")
+    print("=" * 50)
+
+    # Model with various metadata
+    class SensorReading(BaseModel):
+        sensor_id: str
+        temperature: Annotated[
+            float,
+            XLSXMetadata(
+                unit="°C",
+                description="Temperature reading",
+                meaning="sensor:temperature",
+            ),
+        ]
+        humidity: Annotated[
+            float,
+            XLSXMetadata(
+                unit="%",
+                description="Relative humidity",
+                meaning="sensor:humidity",
+            ),
+        ]
+
+    readings = [
+        SensorReading(sensor_id="S1", temperature=22.5, humidity=45.0),
+    ]
+
+    # Example 1: Hide units row
+    config_hide_units = XLSXTableConfig(
+        title="Readings - No Units Row",
+        metadata_visibility=MetadataToggleConfig(unit=MetadataVisibility.HIDE),
+    )
+    export_to_xlsx(
+        readings, demo_file, config=config_hide_units, sheet_name="Hide_Units"
+    )
+    print("✓ Exported with units row hidden (HIDE mode)")
+
+    # Example 2: Show requiredness but hide descriptions
+    config_mixed = XLSXTableConfig(
+        title="Readings - Custom Visibility",
+        metadata_visibility=MetadataToggleConfig(
+            requiredness=MetadataVisibility.SHOW,
+            description=MetadataVisibility.HIDE,
+        ),
+    )
+    export_to_xlsx(
+        readings, demo_file, config=config_mixed, sheet_name="Mixed_Visibility"
+    )
+    print("✓ Exported with requiredness shown, descriptions hidden")
+
+    # Example 3: Force show all metadata (even if empty)
+    config_show_all = XLSXTableConfig(
+        title="Readings - All Metadata",
+        metadata_visibility=MetadataToggleConfig(
+            unit=MetadataVisibility.SHOW,
+            requiredness=MetadataVisibility.SHOW,
+            description=MetadataVisibility.SHOW,
+            meaning=MetadataVisibility.SHOW,
+        ),
+    )
+    export_to_xlsx(
+        readings, demo_file, config=config_show_all, sheet_name="All_Metadata"
+    )
+    print("✓ Exported with all metadata rows shown (SHOW mode)")
+
+    print("\nVisibility modes:")
+    print("  - AUTO: Show row if any field has that metadata (default)")
+    print("  - SHOW: Always show the row (empty cells for fields without metadata)")
+    print("  - HIDE: Never show the row (even if fields have metadata)")
+
+
 def main():
     """Run all table data demonstrations."""
 
@@ -974,6 +1088,8 @@ def main():
         demo_model_joins(demo_file)
         demo_multi_row_joins(demo_file)
         demo_auto_detection(demo_file)
+        demo_requiredness_row(demo_file)
+        demo_metadata_visibility_toggles(demo_file)
 
         print("\n✅ All demonstrations completed successfully!")
         print(f"Demo file: {demo_file.absolute()}")
@@ -987,6 +1103,10 @@ def main():
         print("• Auto_List - Auto-detection with list")
         print("• Auto_Tuple - Auto-detection with tuple")
         print("• Explicit_Table - Explicit table format")
+        print("• Requiredness_Demo - Requiredness row display")
+        print("• Hide_Units - Metadata visibility toggle (HIDE)")
+        print("• Mixed_Visibility - Requiredness shown, descriptions hidden")
+        print("• All_Metadata - All metadata rows shown (SHOW mode)")
 
     except Exception as e:
         print(f"\n❌ Demo failed: {e}")

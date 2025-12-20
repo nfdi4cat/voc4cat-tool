@@ -333,6 +333,11 @@ class XLSXTableFormatter(XLSXFormatter):
         # Add field units (if enabled and any field has units)
         self._add_field_units(worksheet, fields)
 
+        # Add field requiredness (if enabled)
+        if data:
+            model_class = data[0].__class__
+            self._add_field_requiredness(worksheet, fields, model_class)
+
         # Add headers
         self._add_headers(worksheet, fields)
 
@@ -363,8 +368,8 @@ class XLSXTableFormatter(XLSXFormatter):
         if not data:
             return
 
-        # Check if any field has descriptions
-        if not self._has_any_descriptions(fields):
+        # Check if descriptions should be shown
+        if not self.row_calculator._should_show_descriptions(fields):
             return
 
         description_row = self.row_calculator.get_description_row(fields)
@@ -422,8 +427,8 @@ class XLSXTableFormatter(XLSXFormatter):
         if not isinstance(self.config, XLSXTableConfig):
             return
 
-        # Check if any field has meanings
-        if not self._has_any_meanings(fields):
+        # Check if meanings should be shown
+        if not self.row_calculator._should_show_meanings(fields):
             return
 
         # Calculate meaning row position (account for title + empty row)
@@ -461,8 +466,8 @@ class XLSXTableFormatter(XLSXFormatter):
         if not isinstance(self.config, XLSXTableConfig):
             return
 
-        # Check if any field has units
-        if not self._has_any_units(fields):
+        # Check if units should be shown
+        if not self.row_calculator._should_show_units(fields):
             return
 
         # Calculate unit row position
@@ -492,6 +497,56 @@ class XLSXTableFormatter(XLSXFormatter):
                 worksheet[unit_cell].alignment = Alignment(
                     horizontal="center", vertical="center", wrap_text=True
                 )
+
+    def _add_field_requiredness(
+        self,
+        worksheet: Worksheet,
+        fields: list[FieldAnalysis],
+        model_class: type[BaseModel],
+    ) -> None:
+        """Add field requiredness row above headers.
+
+        Shows "Yes" for required fields, "No" for optional fields,
+        and "No (default: value)" for fields with non-trivial defaults.
+        """
+        if not isinstance(self.config, XLSXTableConfig):
+            return
+
+        # Check if requiredness should be shown
+        if not self.row_calculator._should_show_requiredness(fields):
+            return
+
+        requiredness_row = self.row_calculator.get_requiredness_row(fields)
+        start_col_idx = self.config.start_column
+
+        for i, field_analysis in enumerate(fields):
+            col_letter = get_column_letter(start_col_idx + i)
+            req_cell = f"{col_letter}{requiredness_row}"
+
+            # Get requiredness info from the model
+            field_info = model_class.model_fields.get(field_analysis.name)
+            if field_info:
+                is_required, default_value = XLSXFieldAnalyzer.get_requiredness_info(
+                    field_info, field_analysis
+                )
+                # Use labels ("Required"/"Optional") for table format since there's no header
+                req_text = XLSXFieldAnalyzer.format_requiredness_text(
+                    is_required, default_value, use_labels=True
+                )
+            else:
+                req_text = ""
+
+            worksheet[req_cell] = req_text
+
+            # Style requiredness cell
+            worksheet[req_cell].font = Font(
+                italic=True,
+                size=9,
+                color="666666",
+            )
+            worksheet[req_cell].alignment = Alignment(
+                horizontal="center", vertical="center", wrap_text=False
+            )
 
     def _add_headers(self, worksheet: Worksheet, fields: list[FieldAnalysis]) -> None:
         """Add column headers."""

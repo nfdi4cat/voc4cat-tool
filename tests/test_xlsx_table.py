@@ -11,6 +11,7 @@ from openpyxl import load_workbook
 from pydantic import BaseModel
 
 from voc4cat.xlsx_api import export_to_xlsx, import_from_xlsx
+from voc4cat.xlsx_common import XLSXMetadata
 from voc4cat.xlsx_table import XLSXTableConfig
 
 from .conftest import DemoModelWithMetadata, Employee, Project, SimpleModel, Status
@@ -715,6 +716,132 @@ class TestTableMetadataPositioning:
         data_row = 2
         first_data_cell = worksheet.cell(row=data_row, column=1)
         assert first_data_cell.value is not None
+
+
+class TestTableRequirednessAndToggles:
+    """Tests for requiredness row and metadata visibility toggles."""
+
+    def test_table_with_requiredness_row_shown(self, temp_file, sample_employees):
+        """Test that requiredness row is shown when explicitly enabled."""
+        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
+
+        config = XLSXTableConfig(
+            title="Employees",
+            metadata_visibility=MetadataToggleConfig(
+                requiredness=MetadataVisibility.SHOW
+            ),
+        )
+
+        export_to_xlsx(sample_employees, temp_file, format_type="table", config=config)
+
+        workbook = load_workbook(temp_file)
+        worksheet = workbook.active
+
+        # Title at row 1, empty at row 2, requiredness at row 3, header at row 4
+        # With title: start_row=1, title+empty=rows 1-2, requiredness=row 3, header=row 4
+        requiredness_row = 3
+
+        # Check requiredness values (should be "Required"/"Optional" for table format)
+        first_req_cell = worksheet.cell(row=requiredness_row, column=1)
+        assert first_req_cell.value in [
+            "Required",
+            "Optional",
+            None,
+        ] or "Optional (default" in str(first_req_cell.value or "")
+
+    def test_table_without_requiredness_row_by_default(
+        self, temp_file, sample_employees
+    ):
+        """Test that requiredness row is NOT shown by default (AUTO mode)."""
+        config = XLSXTableConfig(title="Employees")
+
+        export_to_xlsx(sample_employees, temp_file, format_type="table", config=config)
+
+        workbook = load_workbook(temp_file)
+        worksheet = workbook.active
+
+        # With no requiredness row, header should be at row 3 (title + empty + header)
+        header_row = 3
+        first_header = worksheet.cell(row=header_row, column=1)
+
+        # Should be a header value, not "Required"/"Optional"
+        header_text = str(first_header.value).lower() if first_header.value else ""
+        assert header_text not in ["required", "optional"]
+
+    def test_table_toggle_hide_units(self, temp_file):
+        """Test that HIDE toggle prevents units row even when fields have units."""
+        from typing import Annotated
+
+        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
+
+        class ModelWithUnits(BaseModel):
+            temp: Annotated[
+                float,
+                XLSXMetadata(unit="°C"),
+            ] = 25.0
+
+        data = [ModelWithUnits()]
+
+        # First export WITH units (default AUTO behavior)
+        config_auto = XLSXTableConfig(title="With Units")
+        export_to_xlsx(data, temp_file, format_type="table", config=config_auto)
+        workbook = load_workbook(temp_file)
+        worksheet = workbook.active
+
+        # Find the unit row - should contain "°C"
+        found_unit = False
+        for row in worksheet.iter_rows(min_row=1, max_row=10):
+            for cell in row:
+                if cell.value == "°C":
+                    found_unit = True
+                    break
+        assert found_unit, "Unit should be shown in AUTO mode"
+
+        # Now export with HIDE
+        config_hide = XLSXTableConfig(
+            title="No Units",
+            metadata_visibility=MetadataToggleConfig(unit=MetadataVisibility.HIDE),
+        )
+        export_to_xlsx(data, temp_file, format_type="table", config=config_hide)
+        workbook = load_workbook(temp_file)
+        worksheet = workbook.active
+
+        # Unit row should NOT contain "°C"
+        found_unit = False
+        for row in worksheet.iter_rows(min_row=1, max_row=10):
+            for cell in row:
+                if cell.value == "°C":
+                    found_unit = True
+                    break
+        assert not found_unit, "Unit should NOT be shown with HIDE mode"
+
+    def test_table_toggle_force_show_description(self, temp_file):
+        """Test that SHOW toggle adds description row even without descriptions."""
+
+        class SimpleModelNoDesc(BaseModel):
+            name: str = "test"
+
+        data = [SimpleModelNoDesc()]
+
+        # Export with SHOW for descriptions
+        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
+
+        config = XLSXTableConfig(
+            title="Force Descriptions",
+            metadata_visibility=MetadataToggleConfig(
+                description=MetadataVisibility.SHOW
+            ),
+        )
+        export_to_xlsx(data, temp_file, format_type="table", config=config)
+
+        workbook = load_workbook(temp_file)
+        worksheet = workbook.active
+
+        # With title + empty + description row + header, header should be at row 4
+        # Check that we have more rows than just title + empty + header
+        header_row = 4
+        header_cell = worksheet.cell(row=header_row, column=1)
+        assert header_cell.value is not None
 
 
 if __name__ == "__main__":

@@ -68,6 +68,33 @@ class XLSXMetadata:
     xlsx_deserializer: Callable | None = None
 
 
+class MetadataVisibility(Enum):
+    """Control visibility of metadata rows/columns in XLSX output.
+
+    AUTO: Show if any field has this metadata type (current default behavior)
+    SHOW: Force show (empty cells for fields without metadata)
+    HIDE: Force hide (never show this metadata type)
+    """
+
+    AUTO = "auto"
+    SHOW = "show"
+    HIDE = "hide"
+
+
+@dataclass
+class MetadataToggleConfig:
+    """Configuration for metadata visibility toggles.
+
+    Controls whether unit, requiredness, description, and meaning
+    rows (table format) or columns (key-value format) are displayed.
+    """
+
+    unit: MetadataVisibility = MetadataVisibility.AUTO
+    requiredness: MetadataVisibility = MetadataVisibility.AUTO
+    description: MetadataVisibility = MetadataVisibility.AUTO
+    meaning: MetadataVisibility = MetadataVisibility.AUTO
+
+
 @dataclass
 class FieldAnalysis:
     """Runtime analysis data for Pydantic model fields."""
@@ -272,6 +299,79 @@ class XLSXFieldAnalyzer:
         if xlsx_metadata:
             return xlsx_metadata.separator_pattern
         return None
+
+    @staticmethod
+    def get_requiredness_info(
+        field_info: Any, field_analysis: "FieldAnalysis"
+    ) -> tuple[bool, Any]:
+        """Determine if field is required and get its default value.
+
+        A field is required if:
+        1. It is not an optional type (no Union with None)
+        2. It has no default value
+
+        Args:
+            field_info: Pydantic field info object
+            field_analysis: Analyzed field data
+
+        Returns:
+            Tuple of (is_required: bool, default_value: Any or PydanticUndefined)
+        """
+        from pydantic_core import PydanticUndefined
+
+        # Check if field has default value
+        has_default = (
+            hasattr(field_info, "default")
+            and field_info.default is not PydanticUndefined
+        )
+
+        # Field is required if not optional and has no default
+        is_required = not field_analysis.is_optional and not has_default
+
+        default_value = field_info.default if has_default else PydanticUndefined
+
+        return is_required, default_value
+
+    @staticmethod
+    def format_requiredness_text(
+        is_required: bool, default_value: Any, use_labels: bool = False
+    ) -> str:
+        """Format requiredness text for display in Excel.
+
+        Args:
+            is_required: Whether the field is required
+            default_value: The field's default value (or PydanticUndefined)
+            use_labels: If True, use "Required"/"Optional" labels (for table format).
+                       If False, use "Yes"/"No" (for key-value format with header).
+
+        Returns:
+            - "Yes" or "Required" for required fields
+            - "No" or "Optional" for optional fields with no default or trivial default
+            - "No/Optional (default: value)" for optional fields with non-trivial default
+        """
+        from pydantic_core import PydanticUndefined
+
+        required_text = "Required" if use_labels else "Yes"
+        optional_text = "Optional" if use_labels else "No"
+
+        if is_required:
+            return required_text
+
+        # Trivial defaults that don't need to be shown
+        trivial_defaults = (None, "", 0, 0.0, False, [], {})
+
+        if default_value is PydanticUndefined or default_value in trivial_defaults:
+            return optional_text
+
+        # Non-trivial default - format for display
+        if isinstance(default_value, Enum):
+            display_default = default_value.value
+        elif isinstance(default_value, (list, dict)):
+            display_default = json.dumps(default_value, default=str)
+        else:
+            display_default = str(default_value)
+
+        return f"{optional_text} (default: {display_default})"
 
 
 # Serialization engine
@@ -841,6 +941,7 @@ class XLSXConfig:
     include_fields: set[str] | None = None
     exclude_fields: set[str] | None = None
     field_order: list[str] | None = None
+    metadata_visibility: MetadataToggleConfig | None = None
 
     def should_include_field(self, field_name: str) -> bool:
         """Check if a field should be included based on configuration."""
@@ -1065,21 +1166,31 @@ class XLSXRowCalculator:
     def get_description_row(self, fields: list[FieldAnalysis] | None = None) -> int:
         """Get the row number for field descriptions."""
         row = self.get_meaning_row(fields)
-        if fields and self._has_any_meanings(fields):
+        if fields and self._should_show_meanings(fields):
             row += 1
         return row
 
     def get_unit_row(self, fields: list[FieldAnalysis] | None = None) -> int:
         """Get the row number for field units."""
         row = self.get_description_row(fields)
-        if fields and self._has_any_descriptions(fields):
+        if fields and self._should_show_descriptions(fields):
+            row += 1
+        return row
+
+    def get_requiredness_row(self, fields: list[FieldAnalysis] | None = None) -> int:
+        """Get the row number for field requiredness.
+
+        Position: After unit row, before header row.
+        """
+        row = self.get_unit_row(fields)
+        if fields and self._should_show_units(fields):
             row += 1
         return row
 
     def get_header_row(self, fields: list[FieldAnalysis] | None = None) -> int:
         """Get the row number for headers."""
-        row = self.get_unit_row(fields)
-        if fields and self._has_any_units(fields):
+        row = self.get_requiredness_row(fields)
+        if fields and self._should_show_requiredness(fields):
             row += 1
         return row
 
@@ -1120,6 +1231,65 @@ class XLSXRowCalculator:
             field_analysis.xlsx_metadata and field_analysis.xlsx_metadata.unit
             for field_analysis in fields
         )
+
+    def _should_show_meanings(self, fields: list[FieldAnalysis]) -> bool:
+        """Check if meanings row/column should be shown based on config and data."""
+        visibility = (
+            self.config.metadata_visibility.meaning
+            if self.config.metadata_visibility
+            else MetadataVisibility.AUTO
+        )
+        if visibility == MetadataVisibility.HIDE:
+            return False
+        if visibility == MetadataVisibility.SHOW:
+            return True
+        # AUTO: show if any field has meanings
+        return self._has_any_meanings(fields)
+
+    def _should_show_descriptions(self, fields: list[FieldAnalysis]) -> bool:
+        """Check if descriptions row/column should be shown based on config and data."""
+        visibility = (
+            self.config.metadata_visibility.description
+            if self.config.metadata_visibility
+            else MetadataVisibility.AUTO
+        )
+        if visibility == MetadataVisibility.HIDE:
+            return False
+        if visibility == MetadataVisibility.SHOW:
+            return True
+        # AUTO: show if any field has descriptions
+        return self._has_any_descriptions(fields)
+
+    def _should_show_units(self, fields: list[FieldAnalysis]) -> bool:
+        """Check if units row/column should be shown based on config and data."""
+        visibility = (
+            self.config.metadata_visibility.unit
+            if self.config.metadata_visibility
+            else MetadataVisibility.AUTO
+        )
+        if visibility == MetadataVisibility.HIDE:
+            return False
+        if visibility == MetadataVisibility.SHOW:
+            return True
+        # AUTO: show if any field has units
+        return self._has_any_units(fields)
+
+    def _should_show_requiredness(self, fields: list[FieldAnalysis]) -> bool:
+        """Check if requiredness row/column should be shown based on config.
+
+        Unlike other metadata, requiredness is derived from field definitions
+        rather than explicit XLSXMetadata. In AUTO mode, we don't show it
+        to maintain backwards compatibility - users must explicitly set SHOW.
+        """
+        visibility = (
+            self.config.metadata_visibility.requiredness
+            if self.config.metadata_visibility
+            else MetadataVisibility.AUTO
+        )
+        if visibility == MetadataVisibility.SHOW:
+            return True
+        # HIDE or AUTO: don't show (backwards compatible)
+        return False
 
 
 # Constants
