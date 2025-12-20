@@ -168,7 +168,7 @@ voc4cat check [options] [VOCAB]
 | Option | Description |
 |--------|-------------|
 | `--inplace` | Annotate xlsx files in place with validation results |
-| `-p, --profile PROFILE` | SHACL profile token or path to a SHACL file (default: `vocpub-4.7`) |
+| `-p, --profile PROFILE` | SHACL profile token or path to a SHACL file (default: `vp4cat-5.2`) |
 | `--fail-at-level {1,2,3}` | Minimum severity to fail: 1=info, 2=warning, 3=violation |
 | `--listprofiles` | List available SHACL profiles |
 | `--ci-pre INBOX` | Pre-merge CI check comparing INBOX to VOCAB |

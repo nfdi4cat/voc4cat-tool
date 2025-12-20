@@ -26,7 +26,7 @@ from voc4cat.utils import (
 logger = logging.getLogger(__name__)
 
 PROFILE_DIR = Path(__file__).parent / "profile"
-DEFAULT_PROFILE = "vocpub-4.7"
+DEFAULT_PROFILE = "vp4cat-5.2"
 
 
 def get_bundled_profiles() -> dict[str, Path]:
