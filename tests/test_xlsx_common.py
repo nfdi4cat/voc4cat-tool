@@ -863,11 +863,19 @@ class TestRequirednessHelpers:
         result = XLSXFieldAnalyzer.format_requiredness_text(False, "")
         assert result == "No"
 
-        result = XLSXFieldAnalyzer.format_requiredness_text(False, 0)
-        assert result == "No"
-
         result = XLSXFieldAnalyzer.format_requiredness_text(False, [])
         assert result == "No"
+
+    def test_format_requiredness_text_optional_with_falsy_default(self):
+        """Test formatting of optional field with falsy but meaningful defaults."""
+        result = XLSXFieldAnalyzer.format_requiredness_text(False, 0)
+        assert result == "No (default: 0)"
+
+        result = XLSXFieldAnalyzer.format_requiredness_text(False, 0.0)
+        assert result == "No (default: 0.0)"
+
+        result = XLSXFieldAnalyzer.format_requiredness_text(False, False)
+        assert result == "No (default: False)"
 
     def test_format_requiredness_text_with_default(self):
         """Test formatting of field with non-trivial default."""

@@ -358,7 +358,7 @@ class XLSXFieldAnalyzer:
             return required_text
 
         # Trivial defaults that don't need to be shown
-        trivial_defaults = (None, "", 0, 0.0, False, [], {})
+        trivial_defaults = (None, "", [], {})
 
         if default_value is PydanticUndefined or default_value in trivial_defaults:
             return optional_text
