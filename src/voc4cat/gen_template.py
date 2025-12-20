@@ -33,6 +33,7 @@ from voc4cat.models_v1 import (
     PREFIXES_SHEET_NAME,
     PREFIXES_SHEET_TITLE,
     ConceptSchemeV1,
+    ConceptV1,
     IDRangeInfoV1,
     PrefixV1,
 )
@@ -43,6 +44,12 @@ from voc4cat.utils import (
     validate_template_sheets,
 )
 from voc4cat.xlsx_api import export_to_xlsx
+from voc4cat.xlsx_common import (
+    MetadataToggleConfig,
+    MetadataVisibility,
+    XLSXFieldAnalyzer,
+    XLSXRowCalculator,
+)
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
 from voc4cat.xlsx_table import XLSXTableConfig
 
@@ -125,9 +132,20 @@ def generate_template_v1(
     # Reorder sheets to match expected order
     reorder_sheets_with_template(wb, template_sheet_names)
 
-    # Set freeze panes for Concepts sheet
+    # Set freeze panes for Concepts sheet (dynamically calculated)
     if CONCEPTS_SHEET_NAME in wb.sheetnames:
-        wb[CONCEPTS_SHEET_NAME].freeze_panes = "A5"
+        # Use same config as export to get correct row positions
+        freeze_config = XLSXTableConfig(
+            title=CONCEPTS_SHEET_NAME,
+            metadata_visibility=MetadataToggleConfig(
+                requiredness=MetadataVisibility.SHOW
+            ),
+        )
+        field_analyses = XLSXFieldAnalyzer.analyze_model(ConceptV1)
+        fields = list(field_analyses.values())
+        row_calculator = XLSXRowCalculator(freeze_config)
+        data_start_row = row_calculator.get_data_start_row(fields)
+        wb[CONCEPTS_SHEET_NAME].freeze_panes = f"A{data_start_row}"
 
     # Save if output_path was provided
     if output_path:
@@ -196,6 +214,7 @@ def _export_concepts(filepath: Path) -> None:
         title=CONCEPTS_SHEET_NAME,
         freeze_panes=True,
         table_style="TableStyleMedium2",
+        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
     )
     export_to_xlsx(
         EXAMPLE_CONCEPTS,
@@ -211,6 +230,7 @@ def _export_collections(filepath: Path) -> None:
     config = XLSXTableConfig(
         title=COLLECTIONS_SHEET_NAME,
         table_style="TableStyleMedium7",
+        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
     )
     export_to_xlsx(
         EXAMPLE_COLLECTIONS,
@@ -226,6 +246,7 @@ def _export_mappings(filepath: Path) -> None:
     config = XLSXTableConfig(
         title=MAPPINGS_SHEET_NAME,
         table_style="TableStyleMedium3",
+        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
     )
     export_to_xlsx(
         EXAMPLE_MAPPINGS,

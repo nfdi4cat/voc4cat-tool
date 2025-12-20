@@ -114,9 +114,9 @@ def cs_cycles_xlsx(datadir, tmp_path_factory) -> Path:
 def cs_duplicates_xlsx(cs_cycles_xlsx, tmp_path_factory) -> Path:
     """Generate xlsx with duplicate IRI for error detection testing.
 
-    In the v1.0 template, data starts at row 5 (after title, empty, meanings, headers).
-    Creates duplicate concept row at rows 5 and 6 for testing
-    that the check command colors cells orange (#FFCC00).
+    In the v1.0 template, data starts at row 6 (after title, empty, meanings,
+    requiredness, headers). Creates duplicate concept row at rows 6 and 7
+    for testing that the check command colors cells orange (#FFCC00).
     """
     output_dir = tmp_path_factory.mktemp("xlsx_duplicates")
     output_file = output_dir / "concept-scheme-duplicates.xlsx"
@@ -125,11 +125,11 @@ def cs_duplicates_xlsx(cs_cycles_xlsx, tmp_path_factory) -> Path:
     wb = load_workbook(output_file)
     ws = wb["Concepts"]
 
-    # In v1.0 template: row 1=title, 2=empty, 3=meanings, 4=headers, 5+=data
-    # Duplicate row 5 (first data row) to row 6
-    ws.insert_rows(6)
+    # In v1.0 template: row 1=title, 2=empty, 3=meanings, 4=requiredness, 5=headers, 6+=data
+    # Duplicate row 6 (first data row) to row 7
+    ws.insert_rows(7)
     for col_idx in range(1, ws.max_column + 1):
-        ws.cell(row=6, column=col_idx).value = ws.cell(row=5, column=col_idx).value
+        ws.cell(row=7, column=col_idx).value = ws.cell(row=6, column=col_idx).value
 
     wb.save(output_file)
     wb.close()

@@ -20,6 +20,7 @@ from typing import Literal as TypingLiteral
 import curies
 from openpyxl import load_workbook
 from openpyxl.styles import Font
+from pydantic import BaseModel
 from rdflib import (
     DCAT,
     DCTERMS,
@@ -83,6 +84,12 @@ from voc4cat.utils import (
     reorder_sheets_with_template,
 )
 from voc4cat.xlsx_api import export_to_xlsx, import_from_xlsx
+from voc4cat.xlsx_common import (
+    MetadataToggleConfig,
+    MetadataVisibility,
+    XLSXFieldAnalyzer,
+    XLSXRowCalculator,
+)
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
 from voc4cat.xlsx_table import XLSXTableConfig
 
@@ -1143,15 +1150,41 @@ def build_prefixes_v1() -> list[PrefixV1]:
 # =============================================================================
 
 
-def _find_column_by_header(
-    worksheet, header_name: str, header_row: int = 4
-) -> int | None:
+def _get_v1_table_row_info(
+    model_class: type[BaseModel], title: str = ""
+) -> tuple[int, int]:
+    """Get header and data start rows for v1.0 vocabulary tables.
+
+    Uses the xlsx-pydantic infrastructure to calculate row positions
+    based on the standard v1.0 config (with requiredness shown).
+
+    Args:
+        model_class: The Pydantic model class (e.g., ConceptV1).
+        title: Optional title for the table (affects row positions).
+
+    Returns:
+        Tuple of (header_row, data_start_row).
+    """
+    config = XLSXTableConfig(
+        title=title,
+        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
+    )
+    field_analyses = XLSXFieldAnalyzer.analyze_model(model_class)
+    fields = list(field_analyses.values())
+    row_calculator = XLSXRowCalculator(config)
+
+    return row_calculator.get_header_row(fields), row_calculator.get_data_start_row(
+        fields
+    )
+
+
+def _find_column_by_header(worksheet, header_name: str, header_row: int) -> int | None:
     """Find column index by header name in a worksheet.
 
     Args:
         worksheet: openpyxl worksheet object.
         header_name: The header text to search for.
-        header_row: Row number where headers are located (default 4 for v1.0 template).
+        header_row: Row number where headers are located.
 
     Returns:
         Column index (1-based) if found, None otherwise.
@@ -1182,7 +1215,9 @@ def _extract_entity_id_from_provenance_url(url: str) -> str:
     return path
 
 
-def _add_provenance_hyperlinks(workbook, sheet_name: str, header_row: int = 4) -> None:
+def _add_provenance_hyperlinks(
+    workbook, sheet_name: str, model_class: type[BaseModel]
+) -> None:
     """Add hyperlinks to provenance cells in a sheet.
 
     Finds the "Provenance (read-only)" column and sets cell.hyperlink for any
@@ -1192,19 +1227,18 @@ def _add_provenance_hyperlinks(workbook, sheet_name: str, header_row: int = 4) -
     Args:
         workbook: openpyxl Workbook object.
         sheet_name: Name of the sheet to process.
-        header_row: Row number where headers are located.
+        model_class: The Pydantic model class for row calculation.
     """
     if sheet_name not in workbook.sheetnames:
         return
+
+    header_row, data_start_row = _get_v1_table_row_info(model_class, title=sheet_name)
 
     ws = workbook[sheet_name]
     prov_col = _find_column_by_header(ws, "Provenance (read-only)", header_row)
 
     if prov_col is None:
         return
-
-    # Data starts after header row
-    data_start_row = header_row + 1
 
     for row_idx in range(data_start_row, ws.max_row + 1):
         cell = ws.cell(row=row_idx, column=prov_col)
@@ -1216,7 +1250,9 @@ def _add_provenance_hyperlinks(workbook, sheet_name: str, header_row: int = 4) -
             _apply_hyperlink_style(cell)
 
 
-def _add_concept_iri_hyperlinks(workbook, sheet_name: str, header_row: int = 4) -> None:
+def _add_concept_iri_hyperlinks(
+    workbook, sheet_name: str, model_class: type[BaseModel]
+) -> None:
     """Add hyperlinks to concept IRI cells in a sheet.
 
     Finds the "Concept IRI*" column and sets cell.hyperlink by expanding
@@ -1225,10 +1261,12 @@ def _add_concept_iri_hyperlinks(workbook, sheet_name: str, header_row: int = 4) 
     Args:
         workbook: openpyxl Workbook object.
         sheet_name: Name of the sheet to process.
-        header_row: Row number where headers are located.
+        model_class: The Pydantic model class for row calculation.
     """
     if sheet_name not in workbook.sheetnames:
         return
+
+    header_row, data_start_row = _get_v1_table_row_info(model_class, title=sheet_name)
 
     ws = workbook[sheet_name]
     iri_col = _find_column_by_header(ws, "Concept IRI*", header_row)
@@ -1236,8 +1274,6 @@ def _add_concept_iri_hyperlinks(workbook, sheet_name: str, header_row: int = 4) 
     if iri_col is None:
         return
 
-    # Data starts after header row
-    data_start_row = header_row + 1
     converter = config.curies_converter
 
     for row_idx in range(data_start_row, ws.max_row + 1):
@@ -1270,7 +1306,7 @@ def _apply_hyperlink_style(cell) -> None:
 
 
 def _add_entity_iri_hyperlinks(
-    workbook, sheet_name: str, column_header: str, header_row: int = 4
+    workbook, sheet_name: str, column_header: str, model_class: type[BaseModel]
 ) -> None:
     """Add hyperlinks to entity IRI cells (Concepts or Collections).
 
@@ -1281,10 +1317,12 @@ def _add_entity_iri_hyperlinks(
         workbook: openpyxl Workbook object.
         sheet_name: Name of the sheet to process.
         column_header: Header text of the IRI column (e.g., "Concept IRI*").
-        header_row: Row number where headers are located.
+        model_class: The Pydantic model class for row calculation.
     """
     if sheet_name not in workbook.sheetnames:
         return
+
+    header_row, data_start_row = _get_v1_table_row_info(model_class, title=sheet_name)
 
     ws = workbook[sheet_name]
     iri_col = _find_column_by_header(ws, column_header, header_row)
@@ -1292,8 +1330,6 @@ def _add_entity_iri_hyperlinks(
     if iri_col is None:
         return
 
-    # Data starts after header row
-    data_start_row = header_row + 1
     converter = config.curies_converter
 
     for row_idx in range(data_start_row, ws.max_row + 1):
@@ -1395,6 +1431,7 @@ def export_vocabulary_v1(
         table_style="TableStyleMedium2",
         freeze_panes=True,
         bold_fields={"preferred_label"},
+        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
     )
     export_to_xlsx(
         concepts,
@@ -1412,6 +1449,7 @@ def export_vocabulary_v1(
         title=COLLECTIONS_SHEET_NAME,
         table_style="TableStyleMedium7",
         bold_fields={"preferred_label"},
+        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
     )
     export_to_xlsx(
         collections,
@@ -1428,6 +1466,7 @@ def export_vocabulary_v1(
     table_config = XLSXTableConfig(
         title=MAPPINGS_SHEET_NAME,
         table_style="TableStyleMedium3",
+        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
     )
     export_to_xlsx(
         mappings,
@@ -1476,19 +1515,22 @@ def export_vocabulary_v1(
     reorder_sheets_with_template(wb, template_sheet_names)
 
     # Add hyperlinks to entity IRI columns (Concepts and Collections sheets)
-    _add_entity_iri_hyperlinks(wb, CONCEPTS_SHEET_NAME, "Concept IRI*")
-    _add_entity_iri_hyperlinks(wb, COLLECTIONS_SHEET_NAME, "Collection IRI")
+    _add_entity_iri_hyperlinks(wb, CONCEPTS_SHEET_NAME, "Concept IRI*", ConceptV1)
+    _add_entity_iri_hyperlinks(
+        wb, COLLECTIONS_SHEET_NAME, "Collection IRI", CollectionV1
+    )
 
     # Add hyperlinks to provenance columns (Concepts and Collections sheets)
-    _add_provenance_hyperlinks(wb, CONCEPTS_SHEET_NAME)
-    _add_provenance_hyperlinks(wb, COLLECTIONS_SHEET_NAME)
+    _add_provenance_hyperlinks(wb, CONCEPTS_SHEET_NAME, ConceptV1)
+    _add_provenance_hyperlinks(wb, COLLECTIONS_SHEET_NAME, CollectionV1)
 
     # Add hyperlinks to concept IRI column in Mappings sheet (with labels)
-    _add_concept_iri_hyperlinks(wb, MAPPINGS_SHEET_NAME)
+    _add_concept_iri_hyperlinks(wb, MAPPINGS_SHEET_NAME, MappingV1)
 
-    # Set freeze panes for Concepts sheet
+    # Set freeze panes for Concepts sheet (dynamically calculated)
     if CONCEPTS_SHEET_NAME in wb.sheetnames:
-        wb[CONCEPTS_SHEET_NAME].freeze_panes = "A5"
+        _, data_start_row = _get_v1_table_row_info(ConceptV1, title=CONCEPTS_SHEET_NAME)
+        wb[CONCEPTS_SHEET_NAME].freeze_panes = f"A{data_start_row}"
 
     # Add hyperlink to Vocabulary IRI in Concept Scheme
     _add_vocabulary_iri_hyperlink(wb, CONCEPT_SCHEME_SHEET_NAME)
@@ -1720,8 +1762,11 @@ def read_concepts_v1(filepath: Path) -> list[ConceptV1]:
     Returns:
         List of ConceptV1 model instances (one per row).
     """
-    # Must match the config used during export
-    config = XLSXTableConfig(title=CONCEPTS_SHEET_NAME)
+    # Must match the config used during export (including requiredness row)
+    config = XLSXTableConfig(
+        title=CONCEPTS_SHEET_NAME,
+        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
+    )
     return import_from_xlsx(
         filepath,
         ConceptV1,
@@ -1740,8 +1785,11 @@ def read_collections_v1(filepath: Path) -> list[CollectionV1]:
     Returns:
         List of CollectionV1 model instances (one per row).
     """
-    # Must match the config used during export
-    config = XLSXTableConfig(title=COLLECTIONS_SHEET_NAME)
+    # Must match the config used during export (including requiredness row)
+    config = XLSXTableConfig(
+        title=COLLECTIONS_SHEET_NAME,
+        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
+    )
     return import_from_xlsx(
         filepath,
         CollectionV1,
@@ -1760,8 +1808,11 @@ def read_mappings_v1(filepath: Path) -> list[MappingV1]:
     Returns:
         List of MappingV1 model instances (one per row).
     """
-    # Must match the config used during export
-    config = XLSXTableConfig(title=MAPPINGS_SHEET_NAME)
+    # Must match the config used during export (including requiredness row)
+    config = XLSXTableConfig(
+        title=MAPPINGS_SHEET_NAME,
+        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
+    )
     return import_from_xlsx(
         filepath,
         MappingV1,

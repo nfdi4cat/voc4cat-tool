@@ -19,12 +19,20 @@ from voc4cat.convert import (
     resolve_profile,
     validate_with_profile,
 )
+from voc4cat.models_v1 import ConceptV1
 from voc4cat.transform import join_split_turtle
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
     RDF_FILE_ENDINGS,
     adjust_length_of_tables,
 )
+from voc4cat.xlsx_common import (
+    MetadataToggleConfig,
+    MetadataVisibility,
+    XLSXFieldAnalyzer,
+    XLSXRowCalculator,
+)
+from voc4cat.xlsx_table import XLSXTableConfig
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +59,22 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     ws = wb["Concepts"]
     color = PatternFill("solid", start_color="00FFCC00")  # orange
 
+    # Calculate data start row dynamically using xlsx-pydantic infrastructure
+    # Use same config as export (including title) to get correct row positions
+    table_config = XLSXTableConfig(
+        title="Concepts",
+        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
+    )
+    field_analyses = XLSXFieldAnalyzer.analyze_model(ConceptV1)
+    fields = list(field_analyses.values())
+    row_calculator = XLSXRowCalculator(table_config)
+    data_start_row = row_calculator.get_data_start_row(fields)
+
     subsequent_empty_rows = 0
     seen_concept_iris = []
     failed_checks = 0
-    # v1.0 template: data starts at row 5, columns are IRI(A), Language(B)
-    for row in ws.iter_rows(min_row=5, max_col=2):  # pragma: no branch
+    # v1.0 template: data starts after header row, columns are IRI(A), Language(B)
+    for row in ws.iter_rows(min_row=data_start_row, max_col=2):  # pragma: no branch
         if row[0].value and row[1].value:
             concept_iri, lang = (
                 c.value.strip() if c.value is not None else "" for c in row
@@ -74,7 +93,9 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
                 # colorize problematic cells (columns A and B for IRI and Language)
                 row[0].fill = color
                 row[1].fill = color
-                previously_seen_in_row = 5 + seen_concept_iris.index(new_concept_iri)
+                previously_seen_in_row = data_start_row + seen_concept_iris.index(
+                    new_concept_iri
+                )
                 ws[f"A{previously_seen_in_row}"].fill = color
                 ws[f"B{previously_seen_in_row}"].fill = color
             else:

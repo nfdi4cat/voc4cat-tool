@@ -50,18 +50,18 @@ def test_check_xlsx_with_cell_coloring(tmp_path, caplog, cs_duplicates_xlsx):
     # Expected orange color from check.py: PatternFill("solid", start_color="00FFCC00")
     expected_color = "00FFCC00"
 
-    # In v1.0 template, data starts at row 5. Duplicate rows are 5 and 6.
+    # In v1.0 template, data starts at row 6. Duplicate rows are 6 and 7.
     # Column A = Concept IRI, Column B = Language Code
-    assert ws["A5"].fill.start_color.rgb == expected_color, (
+    assert ws["A6"].fill.start_color.rgb == expected_color, (
         "First duplicate IRI cell should be colored orange"
     )
-    assert ws["B5"].fill.start_color.rgb == expected_color, (
+    assert ws["B6"].fill.start_color.rgb == expected_color, (
         "First duplicate language cell should be colored orange"
     )
-    assert ws["A6"].fill.start_color.rgb == expected_color, (
+    assert ws["A7"].fill.start_color.rgb == expected_color, (
         "Second duplicate IRI cell should be colored orange"
     )
-    assert ws["B6"].fill.start_color.rgb == expected_color, (
+    assert ws["B7"].fill.start_color.rgb == expected_color, (
         "Second duplicate language cell should be colored orange"
     )
 
