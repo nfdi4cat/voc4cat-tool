@@ -19,20 +19,14 @@ from voc4cat.convert import (
     resolve_profile,
     validate_with_profile,
 )
-from voc4cat.models_v1 import ConceptV1
+from voc4cat.models_v1 import CONCEPTS_READ_CONFIG, ConceptV1
 from voc4cat.transform import join_split_turtle
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
     RDF_FILE_ENDINGS,
     adjust_length_of_tables,
 )
-from voc4cat.xlsx_common import (
-    MetadataToggleConfig,
-    MetadataVisibility,
-    XLSXFieldAnalyzer,
-    XLSXRowCalculator,
-)
-from voc4cat.xlsx_table import XLSXTableConfig
+from voc4cat.xlsx_common import XLSXFieldAnalyzer, XLSXRowCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -60,14 +54,9 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     color = PatternFill("solid", start_color="00FFCC00")  # orange
 
     # Calculate data start row dynamically using xlsx-pydantic infrastructure
-    # Use same config as export (including title) to get correct row positions
-    table_config = XLSXTableConfig(
-        title="Concepts",
-        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
-    )
     field_analyses = XLSXFieldAnalyzer.analyze_model(ConceptV1)
     fields = list(field_analyses.values())
-    row_calculator = XLSXRowCalculator(table_config)
+    row_calculator = XLSXRowCalculator(CONCEPTS_READ_CONFIG)
     data_start_row = row_calculator.get_data_start_row(fields)
 
     subsequent_empty_rows = 0

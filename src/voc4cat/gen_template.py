@@ -18,20 +18,23 @@ from voc4cat.checks import Voc4catError
 from voc4cat.config import load_config
 from voc4cat.convert_v1_helpers import extract_creator_names, generate_history_note
 from voc4cat.models_v1 import (
+    COLLECTIONS_EXPORT_CONFIG,
     COLLECTIONS_SHEET_NAME,
     CONCEPT_SCHEME_SHEET_NAME,
     CONCEPT_SCHEME_SHEET_TITLE,
+    CONCEPTS_EXPORT_CONFIG,
     CONCEPTS_SHEET_NAME,
     DEFAULT_PREFIXES,
     EXAMPLE_COLLECTIONS,
     EXAMPLE_CONCEPT_SCHEME,
     EXAMPLE_CONCEPTS,
     EXAMPLE_MAPPINGS,
+    ID_RANGES_EXPORT_CONFIG,
     ID_RANGES_SHEET_NAME,
-    ID_RANGES_SHEET_TITLE,
+    MAPPINGS_EXPORT_CONFIG,
     MAPPINGS_SHEET_NAME,
+    PREFIXES_EXPORT_CONFIG,
     PREFIXES_SHEET_NAME,
-    PREFIXES_SHEET_TITLE,
     ConceptSchemeV1,
     ConceptV1,
     IDRangeInfoV1,
@@ -44,14 +47,8 @@ from voc4cat.utils import (
     validate_template_sheets,
 )
 from voc4cat.xlsx_api import export_to_xlsx
-from voc4cat.xlsx_common import (
-    MetadataToggleConfig,
-    MetadataVisibility,
-    XLSXFieldAnalyzer,
-    XLSXRowCalculator,
-)
+from voc4cat.xlsx_common import XLSXFieldAnalyzer, XLSXRowCalculator
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
-from voc4cat.xlsx_table import XLSXTableConfig
 
 if TYPE_CHECKING:
     from voc4cat.config import Vocab
@@ -134,16 +131,9 @@ def generate_template_v1(
 
     # Set freeze panes for Concepts sheet (dynamically calculated)
     if CONCEPTS_SHEET_NAME in wb.sheetnames:
-        # Use same config as export to get correct row positions
-        freeze_config = XLSXTableConfig(
-            title=CONCEPTS_SHEET_NAME,
-            metadata_visibility=MetadataToggleConfig(
-                requiredness=MetadataVisibility.SHOW
-            ),
-        )
         field_analyses = XLSXFieldAnalyzer.analyze_model(ConceptV1)
         fields = list(field_analyses.values())
-        row_calculator = XLSXRowCalculator(freeze_config)
+        row_calculator = XLSXRowCalculator(CONCEPTS_EXPORT_CONFIG)
         data_start_row = row_calculator.get_data_start_row(fields)
         wb[CONCEPTS_SHEET_NAME].freeze_panes = f"A{data_start_row}"
 
@@ -210,51 +200,33 @@ def _export_concept_scheme(filepath: Path, vocab_config: Vocab | None = None) ->
 
 def _export_concepts(filepath: Path) -> None:
     """Export Concepts sheet in table format."""
-    config = XLSXTableConfig(
-        title=CONCEPTS_SHEET_NAME,
-        freeze_panes=True,
-        table_style="TableStyleMedium2",
-        bold_fields={"preferred_label"},
-        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
-    )
     export_to_xlsx(
         EXAMPLE_CONCEPTS,
         filepath,
         format_type="table",
-        config=config,
+        config=CONCEPTS_EXPORT_CONFIG,
         sheet_name=CONCEPTS_SHEET_NAME,
     )
 
 
 def _export_collections(filepath: Path) -> None:
     """Export Collections sheet in table format."""
-    config = XLSXTableConfig(
-        title=COLLECTIONS_SHEET_NAME,
-        table_style="TableStyleMedium7",
-        bold_fields={"preferred_label"},
-        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
-    )
     export_to_xlsx(
         EXAMPLE_COLLECTIONS,
         filepath,
         format_type="table",
-        config=config,
+        config=COLLECTIONS_EXPORT_CONFIG,
         sheet_name=COLLECTIONS_SHEET_NAME,
     )
 
 
 def _export_mappings(filepath: Path) -> None:
     """Export Mappings sheet in table format."""
-    config = XLSXTableConfig(
-        title=MAPPINGS_SHEET_NAME,
-        table_style="TableStyleMedium3",
-        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
-    )
     export_to_xlsx(
         EXAMPLE_MAPPINGS,
         filepath,
         format_type="table",
-        config=config,
+        config=MAPPINGS_EXPORT_CONFIG,
         sheet_name=MAPPINGS_SHEET_NAME,
     )
 
@@ -286,15 +258,11 @@ def _export_id_ranges(filepath: Path, vocab_config: Vocab | None = None) -> None
         # Export with empty row to get headers only
         id_ranges = [IDRangeInfoV1()]
 
-    config = XLSXTableConfig(
-        title=ID_RANGES_SHEET_TITLE,
-        table_style="TableStyleMedium16",
-    )
     export_to_xlsx(
         id_ranges,
         filepath,
         format_type="table",
-        config=config,
+        config=ID_RANGES_EXPORT_CONFIG,
         sheet_name=ID_RANGES_SHEET_NAME,
     )
 
@@ -317,15 +285,11 @@ def _export_prefixes(filepath: Path, vocab_config: Vocab | None = None) -> None:
             if prefix not in existing_prefixes:
                 prefixes.append(PrefixV1(prefix=prefix, namespace=str(namespace)))
 
-    config = XLSXTableConfig(
-        title=PREFIXES_SHEET_TITLE,
-        table_style="TableStyleMedium16",
-    )
     export_to_xlsx(
         prefixes,
         filepath,
         format_type="table",
-        config=config,
+        config=PREFIXES_EXPORT_CONFIG,
         sheet_name=PREFIXES_SHEET_NAME,
     )
 

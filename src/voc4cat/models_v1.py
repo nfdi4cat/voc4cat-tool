@@ -9,7 +9,8 @@ from typing import Annotated
 
 from pydantic import BaseModel
 
-from voc4cat.xlsx_common import XLSXMetadata
+from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility, XLSXMetadata
+from voc4cat.xlsx_table import XLSXTableConfig
 
 TEMPLATE_VERSION = "v1.0.rev-2025-12a"
 
@@ -633,3 +634,58 @@ EXAMPLE_MAPPINGS = [
         exact_matches="https://example.org/external/concept1",
     ),
 ]
+
+
+# === XLSXTableConfig constants for v1.0 sheets ===
+
+# Export configs (full styling for template/convert output)
+CONCEPTS_EXPORT_CONFIG = XLSXTableConfig(
+    title=CONCEPTS_SHEET_NAME,
+    freeze_panes=True,
+    table_style="TableStyleMedium2",
+    bold_fields={"preferred_label"},
+    metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
+)
+
+COLLECTIONS_EXPORT_CONFIG = XLSXTableConfig(
+    title=COLLECTIONS_SHEET_NAME,
+    table_style="TableStyleMedium7",
+    bold_fields={"preferred_label"},
+    metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
+)
+
+MAPPINGS_EXPORT_CONFIG = XLSXTableConfig(
+    title=MAPPINGS_SHEET_NAME,
+    table_style="TableStyleMedium3",
+    metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
+)
+
+ID_RANGES_EXPORT_CONFIG = XLSXTableConfig(
+    title=ID_RANGES_SHEET_TITLE,
+    table_style="TableStyleMedium16",
+)
+
+PREFIXES_EXPORT_CONFIG = XLSXTableConfig(
+    title=PREFIXES_SHEET_TITLE,
+    table_style="TableStyleMedium16",
+)
+
+# Read configs (minimal - for import operations)
+CONCEPTS_READ_CONFIG = XLSXTableConfig(
+    title=CONCEPTS_SHEET_NAME,
+    metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
+)
+
+COLLECTIONS_READ_CONFIG = XLSXTableConfig(
+    title=COLLECTIONS_SHEET_NAME,
+    metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
+)
+
+MAPPINGS_READ_CONFIG = XLSXTableConfig(
+    title=MAPPINGS_SHEET_NAME,
+    metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
+)
+
+PREFIXES_READ_CONFIG = XLSXTableConfig(
+    title=PREFIXES_SHEET_TITLE,
+)

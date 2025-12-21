@@ -57,15 +57,22 @@ from voc4cat.convert_v1_helpers import (
     validate_deprecation,
 )
 from voc4cat.models_v1 import (
+    COLLECTIONS_EXPORT_CONFIG,
+    COLLECTIONS_READ_CONFIG,
     COLLECTIONS_SHEET_NAME,
     CONCEPT_SCHEME_SHEET_NAME,
     CONCEPT_SCHEME_SHEET_TITLE,
+    CONCEPTS_EXPORT_CONFIG,
+    CONCEPTS_READ_CONFIG,
     CONCEPTS_SHEET_NAME,
+    ID_RANGES_EXPORT_CONFIG,
     ID_RANGES_SHEET_NAME,
-    ID_RANGES_SHEET_TITLE,
+    MAPPINGS_EXPORT_CONFIG,
+    MAPPINGS_READ_CONFIG,
     MAPPINGS_SHEET_NAME,
+    PREFIXES_EXPORT_CONFIG,
+    PREFIXES_READ_CONFIG,
     PREFIXES_SHEET_NAME,
-    PREFIXES_SHEET_TITLE,
     TEMPLATE_VERSION,
     CollectionObsoletionReason,
     CollectionV1,
@@ -1430,18 +1437,11 @@ def export_vocabulary_v1(
             )
         ]
 
-    table_config = XLSXTableConfig(
-        title=CONCEPTS_SHEET_NAME,
-        table_style="TableStyleMedium2",
-        freeze_panes=True,
-        bold_fields={"preferred_label"},
-        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
-    )
     export_to_xlsx(
         concepts,
         output_path,
         format_type="table",
-        config=table_config,
+        config=CONCEPTS_EXPORT_CONFIG,
         sheet_name=CONCEPTS_SHEET_NAME,
     )
 
@@ -1458,17 +1458,11 @@ def export_vocabulary_v1(
             )
         ]
 
-    table_config = XLSXTableConfig(
-        title=COLLECTIONS_SHEET_NAME,
-        table_style="TableStyleMedium7",
-        bold_fields={"preferred_label"},
-        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
-    )
     export_to_xlsx(
         collections,
         output_path,
         format_type="table",
-        config=table_config,
+        config=COLLECTIONS_EXPORT_CONFIG,
         sheet_name=COLLECTIONS_SHEET_NAME,
     )
 
@@ -1476,44 +1470,31 @@ def export_vocabulary_v1(
     if not mappings:
         mappings = [MappingV1(concept_iri="")]
 
-    table_config = XLSXTableConfig(
-        title=MAPPINGS_SHEET_NAME,
-        table_style="TableStyleMedium3",
-        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
-    )
     export_to_xlsx(
         mappings,
         output_path,
         format_type="table",
-        config=table_config,
+        config=MAPPINGS_EXPORT_CONFIG,
         sheet_name=MAPPINGS_SHEET_NAME,
     )
     # 5. ID Ranges (table format, read-only)
     if not id_ranges:
         id_ranges = [IDRangeInfoV1()]
 
-    table_config = XLSXTableConfig(
-        title=ID_RANGES_SHEET_TITLE,
-        table_style="TableStyleMedium16",
-    )
     export_to_xlsx(
         id_ranges,
         output_path,
         format_type="table",
-        config=table_config,
+        config=ID_RANGES_EXPORT_CONFIG,
         sheet_name=ID_RANGES_SHEET_NAME,
     )
 
     # 6. Prefixes (table format, read-only)
-    table_config = XLSXTableConfig(
-        title=PREFIXES_SHEET_TITLE,
-        table_style="TableStyleMedium16",
-    )
     export_to_xlsx(
         prefixes,
         output_path,
         format_type="table",
-        config=table_config,
+        config=PREFIXES_EXPORT_CONFIG,
         sheet_name=PREFIXES_SHEET_NAME,
     )
 
@@ -1775,16 +1756,11 @@ def read_concepts_v1(filepath: Path) -> list[ConceptV1]:
     Returns:
         List of ConceptV1 model instances (one per row).
     """
-    # Must match the config used during export (including requiredness row)
-    config = XLSXTableConfig(
-        title=CONCEPTS_SHEET_NAME,
-        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
-    )
     return import_from_xlsx(
         filepath,
         ConceptV1,
         format_type="table",
-        config=config,
+        config=CONCEPTS_READ_CONFIG,
         sheet_name=CONCEPTS_SHEET_NAME,
     )
 
@@ -1798,16 +1774,11 @@ def read_collections_v1(filepath: Path) -> list[CollectionV1]:
     Returns:
         List of CollectionV1 model instances (one per row).
     """
-    # Must match the config used during export (including requiredness row)
-    config = XLSXTableConfig(
-        title=COLLECTIONS_SHEET_NAME,
-        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
-    )
     return import_from_xlsx(
         filepath,
         CollectionV1,
         format_type="table",
-        config=config,
+        config=COLLECTIONS_READ_CONFIG,
         sheet_name=COLLECTIONS_SHEET_NAME,
     )
 
@@ -1821,16 +1792,11 @@ def read_mappings_v1(filepath: Path) -> list[MappingV1]:
     Returns:
         List of MappingV1 model instances (one per row).
     """
-    # Must match the config used during export (including requiredness row)
-    config = XLSXTableConfig(
-        title=MAPPINGS_SHEET_NAME,
-        metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
-    )
     return import_from_xlsx(
         filepath,
         MappingV1,
         format_type="table",
-        config=config,
+        config=MAPPINGS_READ_CONFIG,
         sheet_name=MAPPINGS_SHEET_NAME,
     )
 
@@ -1844,13 +1810,11 @@ def read_prefixes_v1(filepath: Path) -> list[PrefixV1]:
     Returns:
         List of PrefixV1 model instances.
     """
-    # Must match the config used during export
-    config = XLSXTableConfig(title=PREFIXES_SHEET_TITLE)
     return import_from_xlsx(
         filepath,
         PrefixV1,
         format_type="table",
-        config=config,
+        config=PREFIXES_READ_CONFIG,
         sheet_name=PREFIXES_SHEET_NAME,
     )
 
