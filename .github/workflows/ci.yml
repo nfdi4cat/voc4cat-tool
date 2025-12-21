@@ -41,7 +41,7 @@ jobs:
       run: |
         python -VV
         python -m pip install --upgrade pip
-        python -m pip install --upgrade .[tests]
+        python -m pip install --upgrade .[tests,docs]
         python -m pip install git+https://github.com/dalito/pyLODE.git@nfdi4cat-2.x
 
     - name: Run tests & collect coverage
@@ -54,6 +54,10 @@ jobs:
         include-hidden-files: true
         name: coverage-data-${{ matrix.python-version }}
         path: .coverage.*
+
+    - name: Build Sphinx documentation
+      run: |
+        sphinx-build -b html --nitpicky --fail-on-warning --keep-going docs docs/_build/html
 
   coverage:
     name: Combine & check coverage
