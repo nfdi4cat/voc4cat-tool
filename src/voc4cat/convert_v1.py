@@ -1424,7 +1424,11 @@ def export_vocabulary_v1(
     # 2. Concepts (table format)
     if not concepts:
         # Export empty concepts sheet with just headers
-        concepts = [ConceptV1()]
+        concepts = [
+            ConceptV1(
+                concept_iri="", language_code="", preferred_label="", definition=""
+            )
+        ]
 
     table_config = XLSXTableConfig(
         title=CONCEPTS_SHEET_NAME,
@@ -1443,7 +1447,16 @@ def export_vocabulary_v1(
 
     # 3. Collections (table format)
     if not collections:
-        collections = [CollectionV1()]
+        # Empty placeholder row - all values empty/None so it will be skipped on import
+        collections = [
+            CollectionV1(
+                collection_iri="",
+                language_code="",
+                preferred_label="",
+                definition="",
+                ordered=None,  # Override default to ensure row is empty
+            )
+        ]
 
     table_config = XLSXTableConfig(
         title=COLLECTIONS_SHEET_NAME,
@@ -1461,7 +1474,7 @@ def export_vocabulary_v1(
 
     # 4. Mappings (table format)
     if not mappings:
-        mappings = [MappingV1()]
+        mappings = [MappingV1(concept_iri="")]
 
     table_config = XLSXTableConfig(
         title=MAPPINGS_SHEET_NAME,

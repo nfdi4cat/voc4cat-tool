@@ -19,6 +19,7 @@ from voc4cat.models_v1 import (
     ConceptSchemeV1,
     ConceptV1,
     MappingV1,
+    OrderedChoice,
     PrefixV1,
 )
 
@@ -123,14 +124,14 @@ class TestTemplateGeneration:
 
         # Check column headers
         expected_headers = [
-            "Collection IRI",
+            "Collection IRI*",
             "Language Code*",
-            "Preferred Label",
-            "Definition",
+            "Preferred Label*",
+            "Definition*",
             "Parent Collection IRIs",
-            "Ordered? Yes or No (default)",
+            "Ordered?",
             "Provenance (read-only)",
-            "Change Note*",
+            "Change Note",
             "Editorial Note",
             "Obsoletion reason",
         ]
@@ -266,9 +267,10 @@ class TestModels:
             collection_iri="ex:col1",
             language_code="en",
             preferred_label="Collection",
+            definition="A collection for testing",
         )
         assert collection.collection_iri == "ex:col1"
-        assert collection.ordered is None  # default
+        assert collection.ordered == OrderedChoice.NO  # default
 
     def test_mapping_v1_model(self):
         """Test MappingV1 model creation."""

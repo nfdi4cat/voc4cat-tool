@@ -827,7 +827,8 @@ class XLSXTableFormatter(XLSXFormatter):
                 cell = f"{col_letter}{row_idx}"
                 value = worksheet[cell].value
 
-                if value is not None:
+                # Consider a value as "data" only if it's not None and not empty string
+                if value is not None and value != "":
                     has_data = True
 
                 row_data[field_name] = value
