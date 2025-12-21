@@ -439,62 +439,6 @@ def build_comprehensive_test_graph() -> Graph:  # noqa: PLR0915
 
 
 # =============================================================================
-# Helper Functions - Graph Comparison
-# =============================================================================
-
-
-def filter_graph_predicates(graph: Graph, predicates_to_remove: set) -> Graph:
-    """Create a new graph excluding specified predicates.
-
-    Args:
-        graph: Source graph.
-        predicates_to_remove: Set of predicates to exclude.
-
-    Returns:
-        New graph without the specified predicates.
-    """
-    filtered = Graph()
-    for s, p, o in graph:
-        if p not in predicates_to_remove:
-            filtered.add((s, p, o))
-    return filtered
-
-
-def assert_graphs_isomorphic(
-    original: Graph,
-    roundtrip: Graph,
-    ignore_predicates: set | None = None,
-    context: str = "",
-) -> None:
-    """Assert two graphs are isomorphic with detailed diff on failure.
-
-    Args:
-        original: The original/expected graph.
-        roundtrip: The roundtripped/actual graph.
-        ignore_predicates: Predicates to exclude from comparison.
-        context: Additional context for error messages.
-    """
-    # Optionally filter out predicates
-    if ignore_predicates:
-        g1 = filter_graph_predicates(original, ignore_predicates)
-        g2 = filter_graph_predicates(roundtrip, ignore_predicates)
-    else:
-        g1, g2 = original, roundtrip
-
-    if not rdf_compare.isomorphic(g1, g2):
-        in_both, only_in_g1, only_in_g2 = rdf_compare.graph_diff(g1, g2)
-
-        msg = f"Graphs are not isomorphic{f' ({context})' if context else ''}.\n"
-        msg += f"Common triples: {len(in_both)}\n"
-        msg += f"Only in original ({len(only_in_g1)} triples):\n"
-        msg += only_in_g1.serialize(format="turtle") + "\n"
-        msg += f"Only in roundtrip ({len(only_in_g2)} triples):\n"
-        msg += only_in_g2.serialize(format="turtle")
-
-        pytest.fail(msg)
-
-
-# =============================================================================
 # Fixtures
 # =============================================================================
 
@@ -538,6 +482,12 @@ def ordered_collection_graph():
 def collection_hierarchy_graph():
     """Graph with nested collections."""
     return build_collection_hierarchy_graph()
+
+
+@pytest.fixture
+def three_level_hierarchy_graph():
+    """Graph with three-level collection hierarchy."""
+    return build_three_level_hierarchy_graph()
 
 
 # Auto-generated predicates to exclude from roundtrip comparison
@@ -809,11 +759,9 @@ def test_collection_in_collection_via_parent_iris(collection_hierarchy_graph):
     assert parent_iri in hierarchy_map[child_iri]
 
 
-def test_multi_level_collection_hierarchy():
+def test_multi_level_collection_hierarchy(three_level_hierarchy_graph):
     """Test 3-level collection hierarchy: grandparent -> parent -> child."""
-
-    g = build_three_level_hierarchy_graph()
-    hierarchy_map = build_collection_hierarchy_map(g)
+    hierarchy_map = build_collection_hierarchy_map(three_level_hierarchy_graph)
 
     grandparent_iri = "https://example.org/test/coll001"
     parent_iri = "https://example.org/test/coll002"
@@ -1023,8 +971,6 @@ def test_roundtrip_full_vocabulary_isomorphic(
     roundtrip_filtered = filter_for_comparison(roundtrip)
 
     # Compare graphs
-    assert_graphs_isomorphic(
-        original_filtered,
-        roundtrip_filtered,
-        context="comprehensive vocabulary roundtrip (excluding ConceptScheme metadata)",
+    assert rdf_compare.isomorphic(original_filtered, roundtrip_filtered), (
+        "Graphs not isomorphic (comprehensive vocabulary roundtrip)"
     )

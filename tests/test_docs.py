@@ -16,7 +16,7 @@ try:
     import pylode
 
     HAS_PYLODE = True
-except ImportError:
+except ImportError:  # pragma: no cover
     HAS_PYLODE = False
 
 

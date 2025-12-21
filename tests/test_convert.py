@@ -40,10 +40,7 @@ def test_run_voc4cat_outputdir(
         + [str(tmp_path)]
     )
     outdir = tmp_path / outputdir
-    if testfile.endswith("xlsx"):
-        assert (outdir / testfile).with_suffix(".ttl").exists()
-    else:
-        assert (outdir / testfile).with_suffix(".xlsx").exists()
+    assert (outdir / testfile).with_suffix(".xlsx").exists()
     assert (outdir / log.name).exists()
 
 

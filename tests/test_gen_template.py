@@ -185,7 +185,7 @@ class TestTemplateGeneration:
         # Prefixes start after header row
         for row in range(4, ws.max_row + 1):
             prefix = ws[f"A{row}"].value
-            if prefix:
+            if prefix:  # pragma: no branch
                 found_prefixes.add(prefix)
 
         assert expected_prefixes.issubset(found_prefixes), (
@@ -214,7 +214,7 @@ class TestTemplateGeneration:
         found_fields = []
         for row in range(4, ws.max_row + 1):
             field = ws[f"A{row}"].value
-            if field:
+            if field:  # pragma: no branch
                 found_fields.append(field)
 
         for field in expected_fields:

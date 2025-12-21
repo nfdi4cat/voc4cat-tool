@@ -340,6 +340,37 @@ class TestKeyValuePositioning:
     - Data: next row after headers
     """
 
+    def _assert_worksheet_has_expected_fields(
+        self, worksheet, data_row, expected_fields, check_rows=3
+    ):
+        """Verify worksheet contains expected field names in first column.
+
+        Args:
+            worksheet: The openpyxl worksheet to check.
+            data_row: The row number where data starts.
+            expected_fields: List of field name substrings to look for.
+            check_rows: Number of data rows to check.
+        """
+        first_field_cell = worksheet.cell(row=data_row, column=1)
+        first_value_cell = worksheet.cell(row=data_row, column=2)
+
+        # Should contain actual field data
+        assert first_field_cell.value is not None
+        assert first_value_cell.value is not None
+
+        # Collect field names from first column
+        field_names = []
+        for row in range(data_row, data_row + check_rows):
+            field_cell = worksheet.cell(row=row, column=1)
+            if field_cell.value:  # pragma: no branch
+                field_names.append(str(field_cell.value).lower())
+
+        # Verify expected field names are present
+        for field in expected_fields:
+            assert any(field in name for name in field_names), (
+                f"Expected field '{field}' not found in {field_names}"
+            )
+
     def test_keyvalue_title_positioning_with_title(
         self, sample_simple_model, temp_file
     ):
@@ -380,23 +411,9 @@ class TestKeyValuePositioning:
 
         # Data should start in row 6 (start_row + 3)
         data_row = 6
-        first_field_cell = worksheet.cell(row=data_row, column=1)
-        first_value_cell = worksheet.cell(row=data_row, column=2)
-
-        # Should contain actual field data
-        assert first_field_cell.value is not None
-        assert first_value_cell.value is not None
-
-        # Verify it's field data (field names like "name", "value", "active")
-        field_names = []
-        for row in range(data_row, data_row + 3):  # Check first 3 data rows
-            field_cell = worksheet.cell(row=row, column=1)
-            if field_cell.value:
-                field_names.append(str(field_cell.value).lower())
-
-        # Should contain expected field names from SimpleModel
-        assert any("name" in field_name for field_name in field_names)
-        assert any("value" in field_name for field_name in field_names)
+        self._assert_worksheet_has_expected_fields(
+            worksheet, data_row, ["name", "value"]
+        )
 
     def test_keyvalue_title_positioning_without_title(
         self, sample_simple_model, temp_file
@@ -424,23 +441,9 @@ class TestKeyValuePositioning:
 
         # Data should start in row 3 (start_row + 1)
         data_row = 3
-        first_field_cell = worksheet.cell(row=data_row, column=1)
-        first_value_cell = worksheet.cell(row=data_row, column=2)
-
-        # Should contain actual field data
-        assert first_field_cell.value is not None
-        assert first_value_cell.value is not None
-
-        # Verify it's field data, not title text
-        field_names = []
-        for row in range(data_row, data_row + 3):  # Check first 3 data rows
-            field_cell = worksheet.cell(row=row, column=1)
-            if field_cell.value:
-                field_names.append(str(field_cell.value).lower())
-
-        # Should contain expected field names from SimpleModel
-        assert any("name" in field_name for field_name in field_names)
-        assert any("value" in field_name for field_name in field_names)
+        self._assert_worksheet_has_expected_fields(
+            worksheet, data_row, ["name", "value"]
+        )
 
     def test_keyvalue_positioning_with_custom_headers(
         self, sample_simple_model, temp_file
@@ -515,9 +518,9 @@ class TestKeyValueRequirednessAndToggles:
         # Find the "Required" header
         header_row = 3
         found_required_header = False
-        for col in range(1, 10):
+        for col in range(1, 10):  # pragma: no branch
             cell_value = worksheet.cell(row=header_row, column=col).value
-            if cell_value == "Required":
+            if cell_value == "Required":  # pragma: no branch
                 found_required_header = True
                 break
 
@@ -563,8 +566,10 @@ class TestKeyValueRequirednessAndToggles:
 
         header_row = 3
         found_desc = False
-        for col in range(1, 10):
-            if worksheet.cell(row=header_row, column=col).value == "Description":
+        for col in range(1, 10):  # pragma: no branch
+            if (
+                worksheet.cell(row=header_row, column=col).value == "Description"
+            ):  # pragma: no branch
                 found_desc = True
                 break
         assert found_desc, "Description should be shown in AUTO mode"
@@ -611,8 +616,10 @@ class TestKeyValueRequirednessAndToggles:
         # Find requiredness column
         header_row = 1  # No title
         req_col = None
-        for col in range(1, 10):
-            if worksheet.cell(row=header_row, column=col).value == "Required":
+        for col in range(1, 10):  # pragma: no branch
+            if (
+                worksheet.cell(row=header_row, column=col).value == "Required"
+            ):  # pragma: no branch
                 req_col = col
                 break
 
@@ -625,7 +632,7 @@ class TestKeyValueRequirednessAndToggles:
         for row in range(2, 5):
             field_name = worksheet.cell(row=row, column=field_col).value
             req_value = worksheet.cell(row=row, column=req_col).value
-            if field_name:
+            if field_name:  # pragma: no branch
                 values[field_name.lower().replace(" ", "_")] = req_value
 
         # required_field should be "Yes"

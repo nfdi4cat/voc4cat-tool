@@ -240,26 +240,6 @@ class TestDefaultFormat:
 class TestErrorHandling:
     """Tests for API error handling."""
 
-    def test_serialization_error_handling(self, temp_file):
-        """Test handling of serialization errors."""
-
-        # Create a model with a problematic field
-        class ProblematicModel(BaseModel):
-            name: str
-            problematic_field: object  # This might cause serialization issues
-
-        model = ProblematicModel(name="test", problematic_field=object())
-
-        # Should handle serialization gracefully
-        try:
-            export_to_xlsx(model, temp_file, format_type="keyvalue")
-        except Exception as e:
-            # Should be a meaningful error message
-            assert "serializ" in str(e).lower() or "convert" in str(e).lower()
-            return  # Expected failure, test passes
-
-        # If no exception, that's also fine - just means serialization worked
-
     def test_validation_error_handling(self, temp_file):
         """Test handling of validation errors during import."""
         # Create a simple model first

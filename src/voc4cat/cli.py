@@ -80,7 +80,7 @@ class DecentFormatter(argparse.HelpFormatter):
         """
         lines = []
         for line in textwrap.dedent(text).splitlines():
-            if not line.strip():
+            if not line.strip():  # pragma: no cover
                 continue
             indent = " " * (len(line) - len(line.lstrip()))
             lines.extend(

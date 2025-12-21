@@ -7,6 +7,7 @@ transforming predicates and enriching ConceptScheme metadata.
 import logging
 from pathlib import Path
 
+import pytest
 from rdflib import (
     DCAT,
     DCTERMS,
@@ -34,6 +35,21 @@ VOCAB_043_TTL = TEST_DATA_DIR / "vocab-043-test.ttl"
 
 class TestConvert043ToV1:
     """Tests for 043 to v1.0 RDF conversion."""
+
+    def _convert_and_parse(
+        self, tmp_path, graph, *, vocab_config=None, output_format="turtle"
+    ):
+        """Convert graph via 043->v1 pipeline and return parsed result."""
+        input_path = tmp_path / "test_043.ttl"
+        graph.serialize(destination=str(input_path), format="turtle")
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(
+            input_path,
+            output_path,
+            vocab_config=vocab_config,
+            output_format=output_format,
+        )
+        return Graph().parse(output_path, format=output_format)
 
     def test_convert_043_vocab(self, tmp_path):
         """Test converting 0.4.3 format vocabulary to v1.0."""
@@ -71,16 +87,7 @@ class TestConvert043ToV1:
         g.add((EX.concept1, SKOS.historyNote, Literal("Created by author", lang="en")))
         g.add((EX.concept1, SKOS.inScheme, EX.scheme))
 
-        # Save test file
-        input_path = tmp_path / "test_043.ttl"
-        g.serialize(destination=str(input_path), format="turtle")
-
-        # Convert
-        output_path = tmp_path / "test_v1.ttl"
-        convert_rdf_043_to_v1(input_path, output_path)
-
-        # Verify
-        converted = Graph().parse(output_path, format="turtle")
+        converted = self._convert_and_parse(tmp_path, g)
 
         # The 043 historyNote should be transformed to changeNote
         change_notes = list(converted.objects(EX.concept1, SKOS.changeNote))
@@ -112,16 +119,7 @@ class TestConvert043ToV1:
         g.add((EX.concept1, RDFS.isDefinedBy, EXT.source))
         g.add((EX.concept1, SKOS.inScheme, EX.scheme))
 
-        # Save test file
-        input_path = tmp_path / "test_043.ttl"
-        g.serialize(destination=str(input_path), format="turtle")
-
-        # Convert
-        output_path = tmp_path / "test_v1.ttl"
-        convert_rdf_043_to_v1(input_path, output_path)
-
-        # Verify
-        converted = Graph().parse(output_path, format="turtle")
+        converted = self._convert_and_parse(tmp_path, g)
 
         # Should have prov:hadPrimarySource, not rdfs:isDefinedBy on concept
         primary_sources = list(converted.objects(EX.concept1, PROV.hadPrimarySource))
@@ -149,16 +147,7 @@ class TestConvert043ToV1:
         g.add((EX.collection1, RDFS.isDefinedBy, EX.scheme))
         g.add((EX.collection1, SKOS.inScheme, EX.scheme))
 
-        # Save test file
-        input_path = tmp_path / "test_043.ttl"
-        g.serialize(destination=str(input_path), format="turtle")
-
-        # Convert
-        output_path = tmp_path / "test_v1.ttl"
-        convert_rdf_043_to_v1(input_path, output_path)
-
-        # Verify
-        converted = Graph().parse(output_path, format="turtle")
+        converted = self._convert_and_parse(tmp_path, g)
 
         # rdfs:isDefinedBy should be preserved on collection
         is_defined_by = list(converted.objects(EX.collection1, RDFS.isDefinedBy))
@@ -184,16 +173,7 @@ class TestConvert043ToV1:
         g.add((EX.collection1, SKOS.prefLabel, Literal("Test Collection", lang="en")))
         g.add((EX.collection1, SKOS.inScheme, EX.scheme))
 
-        # Save test file
-        input_path = tmp_path / "test_043.ttl"
-        g.serialize(destination=str(input_path), format="turtle")
-
-        # Convert
-        output_path = tmp_path / "test_v1.ttl"
-        convert_rdf_043_to_v1(input_path, output_path)
-
-        # Verify
-        converted = Graph().parse(output_path, format="turtle")
+        converted = self._convert_and_parse(tmp_path, g)
 
         # dcterms:hasPart should be dropped from ConceptScheme
         has_part = list(converted.objects(EX.scheme, DCTERMS.hasPart))
@@ -306,9 +286,6 @@ class TestConvert043ToV1:
         g.add((EX.concept1, SKOS.prefLabel, Literal("Test Concept", lang="en")))
         g.add((EX.concept1, SKOS.inScheme, EX.scheme))
 
-        input_path = tmp_path / "test_043.ttl"
-        g.serialize(destination=str(input_path), format="turtle")
-
         # Create vocab config with enrichment values
         vocab_config = Vocab(
             id_length=7,
@@ -323,12 +300,7 @@ class TestConvert043ToV1:
             repository="https://github.com/test/repo",
         )
 
-        # Convert with vocab_config
-        output_path = tmp_path / "test_v1.ttl"
-        convert_rdf_043_to_v1(input_path, output_path, vocab_config=vocab_config)
-
-        # Load and verify enrichment
-        converted = Graph().parse(output_path, format="turtle")
+        converted = self._convert_and_parse(tmp_path, g, vocab_config=vocab_config)
 
         # Verify title was updated from config
         titles = list(converted.objects(EX.scheme, SKOS.prefLabel))
@@ -359,9 +331,6 @@ class TestConvert043ToV1:
         g.add((EX.concept1, SKOS.prefLabel, Literal("Test", lang="en")))
         g.add((EX.concept1, SKOS.inScheme, EX.scheme))
 
-        input_path = tmp_path / "test_043.ttl"
-        g.serialize(destination=str(input_path), format="turtle")
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="http://example.org/",
@@ -376,10 +345,7 @@ class TestConvert043ToV1:
             custodian="David Linke",
         )
 
-        output_path = tmp_path / "test_v1.ttl"
-        convert_rdf_043_to_v1(input_path, output_path, vocab_config=vocab_config)
-
-        converted = Graph().parse(output_path, format="turtle")
+        converted = self._convert_and_parse(tmp_path, g, vocab_config=vocab_config)
 
         # Verify custodian was added as dcat:contactPoint
         custodians = list(converted.objects(EX.scheme, DCAT.contactPoint))
@@ -403,14 +369,8 @@ class TestConvert043ToV1:
         g.add((EX.concept1, SKOS.prefLabel, Literal("Test", lang="en")))
         g.add((EX.concept1, SKOS.inScheme, EX.scheme))
 
-        input_path = tmp_path / "test_043.ttl"
-        g.serialize(destination=str(input_path), format="turtle")
-
         # Convert WITHOUT vocab_config
-        output_path = tmp_path / "test_v1.ttl"
-        convert_rdf_043_to_v1(input_path, output_path)
-
-        converted = Graph().parse(output_path, format="turtle")
+        converted = self._convert_and_parse(tmp_path, g)
 
         # Verify original RDF values are preserved
         titles = list(converted.objects(EX.scheme, SKOS.prefLabel))
@@ -444,9 +404,6 @@ class TestConvert043ToV1:
         g.add((EX.concept2, SKOS.prefLabel, Literal("Concept Two", lang="en")))
         g.add((EX.concept2, SKOS.inScheme, EX.scheme))
 
-        input_path = tmp_path / "test_043.ttl"
-        g.serialize(destination=str(input_path), format="turtle")
-
         vocab_config = Vocab(
             id_length=7,
             permanent_iri_part="http://example.org/",
@@ -460,10 +417,7 @@ class TestConvert043ToV1:
             repository="https://github.com/test/repo",
         )
 
-        output_path = tmp_path / "test_v1.ttl"
-        convert_rdf_043_to_v1(input_path, output_path, vocab_config=vocab_config)
-
-        converted = Graph().parse(output_path, format="turtle")
+        converted = self._convert_and_parse(tmp_path, g, vocab_config=vocab_config)
 
         # Verify concepts are preserved
         concepts = list(converted.subjects(RDF.type, SKOS.Concept))
@@ -482,6 +436,14 @@ class TestConvert043ToV1:
 class TestFirstTimeHistoryNote043:
     """Tests for skos:historyNote on first-time expressed concepts in 043 conversion."""
 
+    def _convert_and_parse(self, tmp_path, graph):
+        """Convert graph via 043->v1 pipeline and return parsed result."""
+        input_path = tmp_path / "test_043.ttl"
+        graph.serialize(destination=str(input_path), format="turtle")
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(input_path, output_path)
+        return Graph().parse(output_path, format="turtle")
+
     def test_first_time_history_note_added_without_provenance(self, tmp_path):
         """Concept without prov:hadPrimarySource/wasInfluencedBy gets first-time historyNote."""
         from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
@@ -499,20 +461,24 @@ class TestFirstTimeHistoryNote043:
         g.add((EX.concept1, SKOS.prefLabel, Literal("Test Concept", lang="en")))
         g.add((EX.concept1, SKOS.inScheme, EX.scheme))
 
-        input_path = tmp_path / "test_043.ttl"
-        g.serialize(destination=str(input_path), format="turtle")
-
-        output_path = tmp_path / "test_v1.ttl"
-        convert_rdf_043_to_v1(input_path, output_path)
-
-        converted = Graph().parse(output_path, format="turtle")
+        converted = self._convert_and_parse(tmp_path, g)
 
         history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
         assert len(history_notes) == 1
         assert str(history_notes[0]) == HISTORY_NOTE_FIRST_TIME
 
-    def test_first_time_history_note_not_added_with_primary_source(self, tmp_path):
-        """Concept with prov:hadPrimarySource should NOT get first-time historyNote."""
+    @pytest.mark.parametrize(
+        "provenance_predicate,provenance_object",
+        [
+            (PROV.hadPrimarySource, EX.other_vocab),
+            (PROV.wasInfluencedBy, EX.other_concept),
+        ],
+        ids=["hadPrimarySource", "wasInfluencedBy"],
+    )
+    def test_first_time_history_note_not_added_with_provenance(
+        self, tmp_path, provenance_predicate, provenance_object
+    ):
+        """Concept with provenance predicates should NOT get first-time historyNote."""
         from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
 
         g = Graph()
@@ -527,45 +493,9 @@ class TestFirstTimeHistoryNote043:
         g.add((EX.concept1, RDF.type, SKOS.Concept))
         g.add((EX.concept1, SKOS.prefLabel, Literal("Test Concept", lang="en")))
         g.add((EX.concept1, SKOS.inScheme, EX.scheme))
-        g.add((EX.concept1, PROV.hadPrimarySource, EX.other_vocab))
+        g.add((EX.concept1, provenance_predicate, provenance_object))
 
-        input_path = tmp_path / "test_043.ttl"
-        g.serialize(destination=str(input_path), format="turtle")
-
-        output_path = tmp_path / "test_v1.ttl"
-        convert_rdf_043_to_v1(input_path, output_path)
-
-        converted = Graph().parse(output_path, format="turtle")
-
-        history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
-        note_values = [str(n) for n in history_notes]
-        assert HISTORY_NOTE_FIRST_TIME not in note_values
-
-    def test_first_time_history_note_not_added_with_influenced_by(self, tmp_path):
-        """Concept with prov:wasInfluencedBy should NOT get first-time historyNote."""
-        from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
-
-        g = Graph()
-        g.bind("ex", EX)
-        g.bind("skos", SKOS)
-        g.bind("prov", PROV)
-
-        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
-        g.add((EX.scheme, SKOS.prefLabel, Literal("Test Scheme", lang="en")))
-        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
-
-        g.add((EX.concept1, RDF.type, SKOS.Concept))
-        g.add((EX.concept1, SKOS.prefLabel, Literal("Test Concept", lang="en")))
-        g.add((EX.concept1, SKOS.inScheme, EX.scheme))
-        g.add((EX.concept1, PROV.wasInfluencedBy, EX.other_concept))
-
-        input_path = tmp_path / "test_043.ttl"
-        g.serialize(destination=str(input_path), format="turtle")
-
-        output_path = tmp_path / "test_v1.ttl"
-        convert_rdf_043_to_v1(input_path, output_path)
-
-        converted = Graph().parse(output_path, format="turtle")
+        converted = self._convert_and_parse(tmp_path, g)
 
         history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
         note_values = [str(n) for n in history_notes]
@@ -587,13 +517,7 @@ class TestFirstTimeHistoryNote043:
         g.add((EX.collection1, SKOS.prefLabel, Literal("Test Collection", lang="en")))
         g.add((EX.collection1, SKOS.inScheme, EX.scheme))
 
-        input_path = tmp_path / "test_043.ttl"
-        g.serialize(destination=str(input_path), format="turtle")
-
-        output_path = tmp_path / "test_v1.ttl"
-        convert_rdf_043_to_v1(input_path, output_path)
-
-        converted = Graph().parse(output_path, format="turtle")
+        converted = self._convert_and_parse(tmp_path, g)
 
         history_notes = list(converted.objects(EX.collection1, SKOS.historyNote))
         assert len(history_notes) == 1
