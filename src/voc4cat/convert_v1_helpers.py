@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+from enum import Enum
 from typing import TYPE_CHECKING
 
 import curies
@@ -646,3 +647,69 @@ def validate_deprecation(
         corrected_label = OBSOLETE_PREFIX + pref_label
 
     return corrected_label, errors
+
+
+def validate_entity_deprecation(
+    entity_iri: str,
+    lang_data: dict[str, dict],
+    vocab_name: str,
+    provenance_template: str,
+    repository_url: str,
+    obsoletion_reason_enum: type[Enum],
+    entity_type: str,
+) -> str:
+    """Validate and fix deprecation info for concept or collection.
+
+    This function handles:
+    - Extracting provenance URL from entity IRI
+    - Extracting deprecation info from language data
+    - Validating English prefLabel against deprecation rules
+    - Correcting prefLabel if needed (adding OBSOLETE prefix)
+    - Logging validation errors
+
+    Args:
+        entity_iri: IRI of the entity (concept or collection).
+        lang_data: Dictionary of language code -> field data.
+        vocab_name: Name of the vocabulary.
+        provenance_template: Template for provenance URL.
+        repository_url: Repository URL for provenance.
+        obsoletion_reason_enum: Enum class for valid obsoletion reasons
+            (ConceptObsoletionReason or CollectionObsoletionReason).
+        entity_type: "concept" or "collection".
+
+    Returns:
+        Provenance URL for the entity.
+
+    Side effects:
+        Modifies lang_data["en"]["preferred_label"] if validation corrects it.
+        Logs errors for deprecation validation failures.
+    """
+    # Generate provenance URL
+    entity_id = extract_entity_id_from_iri(entity_iri, vocab_name)
+    provenance_url = build_provenance_url(
+        entity_id, vocab_name, provenance_template, repository_url
+    )
+
+    # Get deprecation info from any language (it's the same for all)
+    first_lang_data = next(iter(lang_data.values()), {})
+    is_deprecated = first_lang_data.get("is_deprecated", False)
+    obsolete_reason_raw = first_lang_data.get("obsolete_reason", "")
+
+    # Validate and fix English prefLabel if needed
+    en_pref_label = lang_data.get("en", {}).get("preferred_label", "")
+    if en_pref_label:
+        corrected_label, errors = validate_deprecation(
+            pref_label=en_pref_label,
+            is_deprecated=is_deprecated,
+            history_note=obsolete_reason_raw,
+            valid_reasons=[e.value for e in obsoletion_reason_enum],
+            entity_iri=entity_iri,
+            entity_type=entity_type,
+        )
+        for error in errors:
+            logger.error(error)
+        # Update the English prefLabel in the data
+        if "en" in lang_data:
+            lang_data["en"]["preferred_label"] = corrected_label
+
+    return provenance_url

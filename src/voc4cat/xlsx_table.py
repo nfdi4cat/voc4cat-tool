@@ -14,17 +14,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from openpyxl import Workbook, load_workbook
+from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
-from openpyxl.workbook.defined_name import DefinedName
-from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import BaseModel, ValidationError
 from pydantic_core import PydanticUndefined
-
-from voc4cat.xlsx_common import EXCEL_DV_FORMULA_LIMIT
 
 from .xlsx_common import (
     MAX_SHEETNAME_LENGTH,
@@ -399,27 +395,6 @@ class XLSXTableFormatter(XLSXFormatter):
                 horizontal="center", vertical="center", wrap_text=True
             )
 
-    def _has_any_units(self, fields: list[FieldAnalysis]) -> bool:
-        """Check if any field has units defined."""
-        return any(
-            field_analysis.xlsx_metadata and field_analysis.xlsx_metadata.unit
-            for field_analysis in fields
-        )
-
-    def _has_any_descriptions(self, fields: list[FieldAnalysis]) -> bool:
-        """Check if any field has descriptions defined."""
-        return any(
-            field_analysis.xlsx_metadata and field_analysis.xlsx_metadata.description
-            for field_analysis in fields
-        )
-
-    def _has_any_meanings(self, fields: list[FieldAnalysis]) -> bool:
-        """Check if any field has meanings defined."""
-        return any(
-            field_analysis.xlsx_metadata and field_analysis.xlsx_metadata.meaning
-            for field_analysis in fields
-        )
-
     def _add_field_meanings(
         self, worksheet: Worksheet, fields: list[FieldAnalysis]
     ) -> None:
@@ -663,89 +638,11 @@ class XLSXTableFormatter(XLSXFormatter):
         for i, field_analysis in enumerate(fields):
             if field_analysis.enum_values:
                 col_letter = get_column_letter(start_col_idx + i)
-                validation_range = f"{col_letter}{data_start_row}:{col_letter}{data_start_row + data_rows - 1}"
-
-                # Check if inline formula would exceed Excel's limit
-                inline_formula = f'"{",".join(field_analysis.enum_values)}"'
-
-                if len(inline_formula) <= EXCEL_DV_FORMULA_LIMIT:
-                    # Use inline formula (shorter lists)
-                    formula1 = inline_formula
-                else:
-                    # Use named range on hidden sheet (longer lists)
-                    formula1 = self._create_validation_list_range(
-                        worksheet.parent,
-                        field_analysis.name,
-                        field_analysis.enum_values,
-                    )
-
-                dv = DataValidation(
-                    type="list",
-                    formula1=formula1,
-                    allow_blank=field_analysis.is_optional,
+                validation_range = (
+                    f"{col_letter}{data_start_row}:"
+                    f"{col_letter}{data_start_row + data_rows - 1}"
                 )
-                # Excel limits error message to 255 characters
-                error_msg = f"Invalid value. Must be one of: {', '.join(field_analysis.enum_values)}"
-                if len(error_msg) > 255:
-                    error_msg = "Invalid value. Please select from the dropdown list."
-                dv.error = error_msg
-                dv.errorTitle = "Invalid Input"
-
-                worksheet.add_data_validation(dv)
-                dv.add(validation_range)
-
-    def _create_validation_list_range(
-        self, workbook: Workbook, field_name: str, values: list[str]
-    ) -> str:
-        """Create a named range for validation values on a hidden sheet.
-
-        Args:
-            workbook: The workbook to add the hidden sheet to.
-            field_name: Name of the field (used for named range).
-            values: List of enum values.
-
-        Returns:
-            Formula referencing the named range (e.g., "=ValidationList_field").
-        """
-        # Hidden sheet name for validation lists
-        hidden_sheet_name = "_ValidationLists"
-
-        # Get or create hidden sheet
-        if hidden_sheet_name not in workbook.sheetnames:
-            hidden_sheet = workbook.create_sheet(hidden_sheet_name)
-            hidden_sheet.sheet_state = "hidden"
-            # Track which column to use next
-            hidden_sheet["A1"] = "Validation Lists (hidden)"
-            workbook._validation_list_col = 2  # Start from column B
-        else:
-            hidden_sheet = workbook[hidden_sheet_name]
-
-        # Get next available column
-        if not hasattr(workbook, "_validation_list_col"):
-            workbook._validation_list_col = 2
-        col_idx = workbook._validation_list_col
-        workbook._validation_list_col += 1
-
-        col_letter = get_column_letter(col_idx)
-
-        # Write values to column
-        for row_idx, value in enumerate(values, start=1):
-            hidden_sheet.cell(row=row_idx, column=col_idx, value=value)
-
-        # Create named range - sanitize field name for Excel
-        range_name = f"ValidationList_{field_name.replace(' ', '_')}"
-        range_ref = f"'{hidden_sheet_name}'!${col_letter}$1:${col_letter}${len(values)}"
-
-        # Remove existing definition if present (in case of regeneration)
-        if range_name in workbook.defined_names:
-            del workbook.defined_names[range_name]
-
-        workbook.defined_names[range_name] = DefinedName(
-            name=range_name, attr_text=range_ref
-        )
-
-        # Named range reference without = prefix for data validation
-        return range_name
+                self._add_enum_validation(worksheet, field_analysis, validation_range)
 
     def parse_import(
         self,
@@ -1089,30 +986,8 @@ class XLSXTableProcessor(XLSXProcessor):
         fields = list(field_analyses.values())
         filtered_fields = self._filter_and_order_fields(fields)
 
-        # Create or load workbook and worksheet
-        if filepath.exists() and filepath.stat().st_size > 0:
-            try:
-                workbook = load_workbook(filepath)
-            except Exception:
-                # If file exists but is not a valid Excel file, create new workbook
-                workbook = Workbook()
-                if "Sheet" in workbook.sheetnames:
-                    workbook.remove(workbook["Sheet"])
-        else:
-            workbook = Workbook()
-            if "Sheet" in workbook.sheetnames:
-                workbook.remove(workbook["Sheet"])
-
-        # Remove existing sheet with same name if it exists
-        if sheet_name in workbook.sheetnames:
-            workbook.remove(workbook[sheet_name])
-
-        worksheet = workbook.create_sheet(title=sheet_name)
-
-        # Format export
+        workbook, worksheet = self._prepare_workbook(filepath, sheet_name)
         self.formatter.format_export(worksheet, data, filtered_fields)
-
-        # Save workbook
         workbook.save(filepath)
 
     def import_data(
@@ -1165,30 +1040,8 @@ class XLSXJoinedTableProcessor(XLSXTableProcessor):
         fields = list(field_analyses.values())
         filtered_fields = self._filter_and_order_fields(fields)
 
-        # Create or load workbook and worksheet
-        if filepath.exists() and filepath.stat().st_size > 0:
-            try:
-                workbook = load_workbook(filepath)
-            except Exception:
-                # If file exists but is not a valid Excel file, create new workbook
-                workbook = Workbook()
-                if "Sheet" in workbook.sheetnames:
-                    workbook.remove(workbook["Sheet"])
-        else:
-            workbook = Workbook()
-            if "Sheet" in workbook.sheetnames:
-                workbook.remove(workbook["Sheet"])
-
-        # Remove existing sheet with same name if it exists
-        if sheet_name in workbook.sheetnames:
-            workbook.remove(workbook[sheet_name])
-
-        worksheet = workbook.create_sheet(title=sheet_name)
-
-        # Format export using the joined formatter
+        workbook, worksheet = self._prepare_workbook(filepath, sheet_name)
         self.formatter.format_export(worksheet, data, filtered_fields)
-
-        # Save workbook
         workbook.save(filepath)
 
     def import_data(
