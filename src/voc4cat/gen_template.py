@@ -214,6 +214,7 @@ def _export_concepts(filepath: Path) -> None:
         title=CONCEPTS_SHEET_NAME,
         freeze_panes=True,
         table_style="TableStyleMedium2",
+        bold_fields={"preferred_label"},
         metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
     )
     export_to_xlsx(
@@ -230,6 +231,7 @@ def _export_collections(filepath: Path) -> None:
     config = XLSXTableConfig(
         title=COLLECTIONS_SHEET_NAME,
         table_style="TableStyleMedium7",
+        bold_fields={"preferred_label"},
         metadata_visibility=MetadataToggleConfig(requiredness=MetadataVisibility.SHOW),
     )
     export_to_xlsx(
