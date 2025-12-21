@@ -466,14 +466,14 @@ class TestCollectionsSheetStructure:
         ws = wb["Collections"]
 
         expected_headers = [
-            "Collection IRI",
+            "Collection IRI*",
             "Language Code*",
-            "Preferred Label",
-            "Definition",
+            "Preferred Label*",
+            "Definition*",
             "Parent Collection IRIs",
-            "Ordered? Yes or No (default)",
+            "Ordered?",
             "Provenance (read-only)",
-            "Change Note*",
+            "Change Note",
             "Editorial Note",
             "Obsoletion reason",
         ]
@@ -2136,10 +2136,30 @@ class TestExtractUsedIds:
         )
 
         concepts = [
-            ConceptV1(concept_iri="https://example.org/0000001"),
-            ConceptV1(concept_iri="https://example.org/0000001"),  # Duplicate
-            ConceptV1(concept_iri="https://example.org/0000005"),
-            ConceptV1(concept_iri="https://example.org/0000010"),
+            ConceptV1(
+                concept_iri="https://example.org/0000001",
+                language_code="en",
+                preferred_label="Concept 1",
+                definition="Definition 1",
+            ),
+            ConceptV1(
+                concept_iri="https://example.org/0000001",
+                language_code="de",
+                preferred_label="Konzept 1",
+                definition="Definition 1",
+            ),  # Duplicate IRI (different language)
+            ConceptV1(
+                concept_iri="https://example.org/0000005",
+                language_code="en",
+                preferred_label="Concept 5",
+                definition="Definition 5",
+            ),
+            ConceptV1(
+                concept_iri="https://example.org/0000010",
+                language_code="en",
+                preferred_label="Concept 10",
+                definition="Definition 10",
+            ),
         ]
         collections = []
 
@@ -2159,8 +2179,18 @@ class TestExtractUsedIds:
 
         concepts = []
         collections = [
-            CollectionV1(collection_iri="https://example.org/0000020"),
-            CollectionV1(collection_iri="https://example.org/0000025"),
+            CollectionV1(
+                collection_iri="https://example.org/0000020",
+                language_code="en",
+                preferred_label="Collection 20",
+                definition="Definition 20",
+            ),
+            CollectionV1(
+                collection_iri="https://example.org/0000025",
+                language_code="en",
+                preferred_label="Collection 25",
+                definition="Definition 25",
+            ),
         ]
 
         used_ids = extract_used_ids(concepts, collections, vocab_config)
@@ -2178,11 +2208,26 @@ class TestExtractUsedIds:
         )
 
         concepts = [
-            ConceptV1(concept_iri="https://example.org/0000001"),
-            ConceptV1(concept_iri="https://example.org/0000002"),
+            ConceptV1(
+                concept_iri="https://example.org/0000001",
+                language_code="en",
+                preferred_label="Concept 1",
+                definition="Definition 1",
+            ),
+            ConceptV1(
+                concept_iri="https://example.org/0000002",
+                language_code="en",
+                preferred_label="Concept 2",
+                definition="Definition 2",
+            ),
         ]
         collections = [
-            CollectionV1(collection_iri="https://example.org/0000003"),
+            CollectionV1(
+                collection_iri="https://example.org/0000003",
+                language_code="en",
+                preferred_label="Collection 3",
+                definition="Definition 3",
+            ),
         ]
 
         used_ids = extract_used_ids(concepts, collections, vocab_config)
@@ -2200,8 +2245,18 @@ class TestExtractUsedIds:
         )
 
         concepts = [
-            ConceptV1(concept_iri="https://example.org/0000001"),
-            ConceptV1(concept_iri="https://other.org/0000002"),  # Foreign
+            ConceptV1(
+                concept_iri="https://example.org/0000001",
+                language_code="en",
+                preferred_label="Concept 1",
+                definition="Definition 1",
+            ),
+            ConceptV1(
+                concept_iri="https://other.org/0000002",
+                language_code="en",
+                preferred_label="Concept 2",
+                definition="Definition 2",
+            ),  # Foreign
         ]
         collections = []
 
@@ -2220,10 +2275,27 @@ class TestExtractUsedIds:
         )
 
         concepts = [
-            ConceptV1(concept_iri=""),
-            ConceptV1(concept_iri="https://example.org/0000001"),
+            ConceptV1(
+                concept_iri="",
+                language_code="en",
+                preferred_label="Empty Concept",
+                definition="Empty definition",
+            ),
+            ConceptV1(
+                concept_iri="https://example.org/0000001",
+                language_code="en",
+                preferred_label="Concept 1",
+                definition="Definition 1",
+            ),
         ]
-        collections = [CollectionV1(collection_iri="")]
+        collections = [
+            CollectionV1(
+                collection_iri="",
+                language_code="en",
+                preferred_label="Empty Collection",
+                definition="Empty definition",
+            )
+        ]
 
         used_ids = extract_used_ids(concepts, collections, vocab_config)
 

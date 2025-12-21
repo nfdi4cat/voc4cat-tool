@@ -244,22 +244,22 @@ class ConceptV1(BaseModel):
             display_name="Concept IRI*",
             meaning="skos:Concept",
         ),
-    ] = ""
+    ]
 
     language_code: Annotated[
         str,
         XLSXMetadata(
             display_name="Language Code*",
         ),
-    ] = ""
+    ]
 
     preferred_label: Annotated[
         str,
         XLSXMetadata(
             display_name="Preferred Label*",
-            meaning="skos:preferredLabel",
+            meaning="skos:prefLabel",
         ),
-    ] = ""
+    ]
 
     definition: Annotated[
         str,
@@ -267,7 +267,7 @@ class ConceptV1(BaseModel):
             display_name="Definition*",
             meaning="skos:definition",
         ),
-    ] = ""
+    ]
 
     alternate_labels: Annotated[
         str,
@@ -377,33 +377,33 @@ class CollectionV1(BaseModel):
     collection_iri: Annotated[
         str,
         XLSXMetadata(
-            display_name="Collection IRI",
+            display_name="Collection IRI*",
             meaning="skos:Collection,\nskos:orderedCollection",
         ),
-    ] = ""
+    ]
 
     language_code: Annotated[
         str,
         XLSXMetadata(
             display_name="Language Code*",
         ),
-    ] = ""
+    ]
 
     preferred_label: Annotated[
         str,
         XLSXMetadata(
-            display_name="Preferred Label",
-            meaning="skos:preferredLabel",
+            display_name="Preferred Label*",
+            meaning="skos:prefLabel",
         ),
-    ] = ""
+    ]
 
     definition: Annotated[
         str,
         XLSXMetadata(
-            display_name="Definition",
+            display_name="Definition*",
             meaning="skos:definition",
         ),
-    ] = ""
+    ]
 
     parent_collection_iris: Annotated[
         str,
@@ -416,9 +416,9 @@ class CollectionV1(BaseModel):
     ordered: Annotated[
         OrderedChoice | None,
         XLSXMetadata(
-            display_name="Ordered? Yes or No (default)",
+            display_name="Ordered?",
         ),
-    ] = None
+    ] = OrderedChoice.NO
 
     provenance: Annotated[
         str,
@@ -431,7 +431,7 @@ class CollectionV1(BaseModel):
     change_note: Annotated[
         str,
         XLSXMetadata(
-            display_name="Change Note*",
+            display_name="Change Note",
             meaning="skos:changeNote",
         ),
     ] = ""
@@ -467,7 +467,7 @@ class MappingV1(BaseModel):
             display_name="Concept IRI*",
             meaning="skos:Concept",
         ),
-    ] = ""
+    ]
 
     related_matches: Annotated[
         str,

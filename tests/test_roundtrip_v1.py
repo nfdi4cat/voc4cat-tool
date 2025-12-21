@@ -401,6 +401,9 @@ def build_comprehensive_test_graph() -> Graph:  # noqa: PLR0915
     g.add((ordered_coll, SKOS.prefLabel, Literal("Ordered Collection", lang="en")))
     g.add((ordered_coll, SKOS.prefLabel, Literal("Geordnete Sammlung", lang="de")))
     g.add((ordered_coll, SKOS.definition, Literal("An ordered collection", lang="en")))
+    g.add(
+        (ordered_coll, SKOS.definition, Literal("Eine geordnete Sammlung", lang="de"))
+    )
     g.add((ordered_coll, SKOS.inScheme, scheme))
     g.add((ordered_coll, RDFS.isDefinedBy, scheme))
 

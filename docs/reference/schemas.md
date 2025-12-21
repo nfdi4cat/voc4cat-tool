@@ -300,12 +300,12 @@ The main sheet where you define vocabulary concepts. Each row represents one con
 :::{table}
 :align: left
 
-| Column | Description | Example |
-|--------|-------------|---------|
-| Concept IRI* | Unique identifier | `voc4cat:0001234` |
-| Language Code* | ISO language code | `en`, `de` |
-| Preferred Label* | Main name | `Catalyst` |
-| Definition* | What the concept means | `A substance that...` |
+| Column | Description | SKOS mapping | Example |
+|--------|-------------|--------------|---------|
+| Concept IRI* | Unique identifier | - | `voc4cat:0001234` |
+| Language Code* | ISO language code | - | `en`, `de` |
+| Preferred Label* | Main name | skos:prefLabel | `Catalyst` |
+| Definition* | What the concept means | skos:definition | `A substance that...` |
 
 :::
 
@@ -378,23 +378,26 @@ Deprecated concept are marked in RDF with `owl:deprecated`.
 ### Collections sheet
 
 Collections group related concepts together without implying hierarchy.
+Members are assigned to collections in the Concepts sheet via the "Member of collection(s)" column.
 
 :::{table}
 :align: left
 
-| Column | Description |
-|--------|-------------|
-| Collection IRI | Unique identifier for the collection |
-| Language Code | ISO language code |
-| Preferred Label | Name of the collection |
-| Definition | What the collection contains |
-| Parent Collection IRIs | Nest collections within other collections (comma-separated) |
-| Ordered? | "Yes" for ordered collection, blank for unordered |
-| Change Note | Documentation of changes |
-| Editorial Note | Internal notes |
-| Obsoletion reason | Why deprecated |
+| Column | Description | SKOS mapping | Default |
+|--------|-------------|--------------|---------|
+| Collection IRI* | Unique identifier for the collection | - | |
+| Language Code* | ISO language code | - | |
+| Preferred Label* | Name of the collection | skos:prefLabel | |
+| Definition* | What the collection contains | skos:definition | |
+| Parent Collection IRIs | Nest collections within other collections (comma-separated) | skos:member | |
+| Ordered? | "Yes" for ordered collection, blank for unordered | - | No |
+| Change Note | Documentation of changes | skos:changeNote | |
+| Editorial Note | Internal notes | skos:editorialNote | |
+| Obsoletion reason | Why deprecated | owl:deprecated | |
 
 :::
+
+*Required columns are marked with `*`.
 
 ### Mappings sheet
 
