@@ -44,17 +44,16 @@ from voc4cat.checks import Voc4catError
 from voc4cat.convert_v1_helpers import (
     add_provenance_triples_to_graph,
     build_id_range_info,
-    build_provenance_url,
     derive_contributors,
     expand_curie,
     extract_creator_names,
-    extract_entity_id_from_iri,
     extract_used_ids,
     format_change_note_with_replaced_by,
     format_iri_with_label,
     generate_history_note,
     parse_replaced_by_from_change_note,
     validate_deprecation,
+    validate_entity_deprecation,
 )
 from voc4cat.models_v1 import (
     COLLECTIONS_EXPORT_CONFIG,
@@ -820,10 +819,15 @@ def rdf_concepts_to_v1(
     for concept_iri, lang_data in concepts_data.items():
         is_first_row = True
 
-        # Generate provenance URL (same for all language rows)
-        entity_id = extract_entity_id_from_iri(concept_iri, vocab_name)
-        provenance_url = build_provenance_url(
-            entity_id, vocab_name, provenance_template, repository_url
+        # Validate deprecation and get provenance URL
+        provenance_url = validate_entity_deprecation(
+            entity_iri=concept_iri,
+            lang_data=lang_data,
+            vocab_name=vocab_name,
+            provenance_template=provenance_template,
+            repository_url=repository_url,
+            obsoletion_reason_enum=ConceptObsoletionReason,
+            entity_type="concept",
         )
 
         # Get deprecation info from any language (it's the same for all)
@@ -831,23 +835,6 @@ def rdf_concepts_to_v1(
         is_deprecated = first_lang_data.get("is_deprecated", False)
         obsolete_reason_raw = first_lang_data.get("obsolete_reason", "")
         replaced_by_iri = first_lang_data.get("replaced_by_iri", "")
-
-        # Validate and fix English prefLabel if needed
-        en_pref_label = lang_data.get("en", {}).get("preferred_label", "")
-        if en_pref_label:
-            corrected_label, errors = validate_deprecation(
-                pref_label=en_pref_label,
-                is_deprecated=is_deprecated,
-                history_note=obsolete_reason_raw,
-                valid_reasons=[e.value for e in ConceptObsoletionReason],
-                entity_iri=concept_iri,
-                entity_type="concept",
-            )
-            for error in errors:
-                logger.error(error)
-            # Update the English prefLabel in the data
-            if "en" in lang_data:
-                lang_data["en"]["preferred_label"] = corrected_label
 
         for lang, data in lang_data.items():
             # Compress the concept IRI
@@ -988,10 +975,15 @@ def rdf_collections_to_v1(
     for collection_iri, lang_data in collections_data.items():
         is_first_row = True
 
-        # Generate provenance URL (same for all language rows)
-        entity_id = extract_entity_id_from_iri(collection_iri, vocab_name)
-        provenance_url = build_provenance_url(
-            entity_id, vocab_name, provenance_template, repository_url
+        # Validate deprecation and get provenance URL
+        provenance_url = validate_entity_deprecation(
+            entity_iri=collection_iri,
+            lang_data=lang_data,
+            vocab_name=vocab_name,
+            provenance_template=provenance_template,
+            repository_url=repository_url,
+            obsoletion_reason_enum=CollectionObsoletionReason,
+            entity_type="collection",
         )
 
         # Get deprecation info from any language (it's the same for all)
@@ -999,23 +991,6 @@ def rdf_collections_to_v1(
         is_deprecated = first_lang_data.get("is_deprecated", False)
         obsolete_reason_raw = first_lang_data.get("obsolete_reason", "")
         replaced_by_iri = first_lang_data.get("replaced_by_iri", "")
-
-        # Validate and fix English prefLabel if needed
-        en_pref_label = lang_data.get("en", {}).get("preferred_label", "")
-        if en_pref_label:
-            corrected_label, errors = validate_deprecation(
-                pref_label=en_pref_label,
-                is_deprecated=is_deprecated,
-                history_note=obsolete_reason_raw,
-                valid_reasons=[e.value for e in CollectionObsoletionReason],
-                entity_iri=collection_iri,
-                entity_type="collection",
-            )
-            for error in errors:
-                logger.error(error)
-            # Update the English prefLabel in the data
-            if "en" in lang_data:
-                lang_data["en"]["preferred_label"] = corrected_label
 
         for lang, data in lang_data.items():
             collection_iri_display = converter.compress(

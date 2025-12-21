@@ -19,9 +19,13 @@ from enum import Enum
 from pathlib import Path
 from typing import Annotated, Any, Union, get_args, get_origin
 
+from openpyxl import load_workbook
 from openpyxl.cell import MergedCell
 from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
+from openpyxl.workbook import Workbook
+from openpyxl.workbook.defined_name import DefinedName
+from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import BaseModel
 
@@ -1084,6 +1088,109 @@ class XLSXFormatter(ABC):
             adjusted_width = min(max(max_length + 2, 10), 50)
             worksheet.column_dimensions[column_letter].width = adjusted_width
 
+    def _create_validation_list_range(
+        self, workbook: Workbook, field_name: str, values: list[str]
+    ) -> str:
+        """Create a named range for validation values on a hidden sheet.
+
+        Args:
+            workbook: The workbook to add the hidden sheet to.
+            field_name: Name of the field (used for named range).
+            values: List of enum values.
+
+        Returns:
+            Named range reference for data validation formula.
+        """
+        # Hidden sheet name for validation lists
+        hidden_sheet_name = "_ValidationLists"
+
+        # Get or create hidden sheet
+        if hidden_sheet_name not in workbook.sheetnames:
+            hidden_sheet = workbook.create_sheet(hidden_sheet_name)
+            hidden_sheet.sheet_state = "hidden"
+            # Track which column to use next
+            hidden_sheet["A1"] = "Validation Lists (hidden)"
+            workbook._validation_list_col = 2  # Start from column B
+        else:
+            hidden_sheet = workbook[hidden_sheet_name]
+
+        # Get next available column
+        if not hasattr(workbook, "_validation_list_col"):
+            workbook._validation_list_col = 2
+        col_idx = workbook._validation_list_col
+        workbook._validation_list_col += 1
+
+        col_letter = get_column_letter(col_idx)
+
+        # Write values to column
+        for row_idx, value in enumerate(values, start=1):
+            hidden_sheet.cell(row=row_idx, column=col_idx, value=value)
+
+        # Create named range - sanitize field name for Excel
+        range_name = f"ValidationList_{field_name.replace(' ', '_')}"
+        range_ref = f"'{hidden_sheet_name}'!${col_letter}$1:${col_letter}${len(values)}"
+
+        # Remove existing definition if present (in case of regeneration)
+        if range_name in workbook.defined_names:
+            del workbook.defined_names[range_name]
+
+        workbook.defined_names[range_name] = DefinedName(
+            name=range_name, attr_text=range_ref
+        )
+
+        # Named range reference without = prefix for data validation
+        return range_name
+
+    def _add_enum_validation(
+        self,
+        worksheet: Worksheet,
+        field_analysis: FieldAnalysis,
+        validation_range: str,
+    ) -> None:
+        """Add dropdown validation for an enum field.
+
+        Handles formula length limits by creating a hidden sheet with named
+        ranges for long enum lists.
+
+        Args:
+            worksheet: The worksheet to add validation to.
+            field_analysis: Field analysis with enum_values.
+            validation_range: Cell range to apply validation (e.g., "B5" or "C3:C100").
+        """
+        if not field_analysis.enum_values:
+            return
+
+        # Check if inline formula would exceed Excel's limit
+        inline_formula = f'"{",".join(field_analysis.enum_values)}"'
+
+        if len(inline_formula) <= EXCEL_DV_FORMULA_LIMIT:
+            # Use inline formula (shorter lists)
+            formula1 = inline_formula
+        else:
+            # Use named range on hidden sheet (longer lists)
+            formula1 = self._create_validation_list_range(
+                worksheet.parent,
+                field_analysis.name,
+                field_analysis.enum_values,
+            )
+
+        dv = DataValidation(
+            type="list",
+            formula1=formula1,
+            allow_blank=field_analysis.is_optional,
+        )
+        # Excel limits error message to 255 characters
+        error_msg = (
+            f"Invalid value. Must be one of: {', '.join(field_analysis.enum_values)}"
+        )
+        if len(error_msg) > 255:
+            error_msg = "Invalid value. Please select from the dropdown list."
+        dv.error = error_msg
+        dv.errorTitle = "Invalid Input"
+
+        worksheet.add_data_validation(dv)
+        dv.add(validation_range)
+
 
 # Base processor class
 class XLSXProcessor(ABC):
@@ -1132,6 +1239,44 @@ class XLSXProcessor(ABC):
             return ordered_fields
 
         return filtered_fields
+
+    def _prepare_workbook(
+        self, filepath: Path, sheet_name: str
+    ) -> tuple[Workbook, Worksheet]:
+        """Create or load workbook and prepare worksheet for export.
+
+        Handles:
+        - Loading existing workbook or creating new one
+        - Cleaning up default "Sheet"
+        - Removing existing sheet with same name
+        - Creating new sheet with specified name
+
+        Args:
+            filepath: Path to the XLSX file.
+            sheet_name: Name for the worksheet.
+
+        Returns:
+            Tuple of (workbook, worksheet).
+        """
+        if filepath.exists() and filepath.stat().st_size > 0:
+            try:
+                workbook = load_workbook(filepath)
+            except Exception:
+                # If file exists but is not a valid Excel file, create new workbook
+                workbook = Workbook()
+                if "Sheet" in workbook.sheetnames:
+                    workbook.remove(workbook["Sheet"])
+        else:
+            workbook = Workbook()
+            if "Sheet" in workbook.sheetnames:
+                workbook.remove(workbook["Sheet"])
+
+        # Remove existing sheet with same name if it exists
+        if sheet_name in workbook.sheetnames:
+            workbook.remove(workbook[sheet_name])
+
+        worksheet = workbook.create_sheet(title=sheet_name)
+        return workbook, worksheet
 
 
 # Row calculation utilities
