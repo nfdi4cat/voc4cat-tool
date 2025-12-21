@@ -195,14 +195,10 @@ def make_vocab_config_from_rdf(graph, vocab_iri: str | None = None):
     that can be used with excel_to_rdf_v1.
     """
     # Find concept scheme
-    if vocab_iri is None:
+    if vocab_iri is None:  # pragma: no branch
         schemes = list(graph.subjects(RDF.type, SKOS.ConceptScheme))
-        if not schemes:
-            # Try to find via hasTopConcept
-            for s in graph.subjects(SKOS.hasTopConcept, None):
-                schemes.append(s)
-                break
-        vocab_iri = str(schemes[0]) if schemes else "http://example.org/"
+        assert schemes, "No ConceptScheme found in RDF graph"
+        vocab_iri = str(schemes[0])
 
     scheme_uri = URIRef(vocab_iri)
 
@@ -213,37 +209,27 @@ def make_vocab_config_from_rdf(graph, vocab_iri: str | None = None):
     creator = ""
 
     # Get title from concept scheme's prefLabel
-    for obj in graph.objects(scheme_uri, SKOS.prefLabel):
+    for obj in graph.objects(scheme_uri, SKOS.prefLabel):  # pragma: no branch
         title = str(obj)
         break
 
     # Get description from concept scheme's definition
-    for obj in graph.objects(scheme_uri, SKOS.definition):
+    for obj in graph.objects(scheme_uri, SKOS.definition):  # pragma: no branch
         description = str(obj)
         break
 
     # Get created date
-    for obj in graph.objects(scheme_uri, DCTERMS.created):
+    for obj in graph.objects(scheme_uri, DCTERMS.created):  # pragma: no branch
         created_date = str(obj)
         break
 
     # Get creator
-    for obj in graph.objects(scheme_uri, DCTERMS.creator):
+    for obj in graph.objects(scheme_uri, DCTERMS.creator):  # pragma: no branch
         creator = str(obj)
         break
 
     # Derive permanent_iri_part from vocab_iri
     permanent_iri_part = vocab_iri.rstrip("/") + "/"
-
-    # Provide defaults for mandatory fields if not found in RDF
-    if not title:
-        title = "Test Vocabulary"
-    if not description:
-        description = "Test vocabulary for unit tests"
-    if not created_date:
-        created_date = "2025-01-01"
-    if not creator:
-        creator = "https://orcid.org/0000-0001-2345-6789"
 
     return Vocab(
         id_length=7,

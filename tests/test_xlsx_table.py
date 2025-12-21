@@ -519,9 +519,11 @@ class TestTableMetadataPositioning:
         # Meanings should be in row 5 (start_row + 2)
         meaning_row = 5
         meaning_found = False
-        for col in range(1, 4):
+        for col in range(1, 4):  # pragma: no branch
             cell = worksheet.cell(row=meaning_row, column=col)
-            if cell.value and "Temperature measurement" in str(cell.value):
+            if cell.value and "Temperature measurement" in str(
+                cell.value
+            ):  # pragma: no branch
                 meaning_found = True
                 break
         assert meaning_found, "Meanings row should contain field meanings"
@@ -529,9 +531,11 @@ class TestTableMetadataPositioning:
         # Descriptions should be in row 6 (start_row + 3)
         desc_row = 6
         desc_found = False
-        for col in range(1, 4):
+        for col in range(1, 4):  # pragma: no branch
             cell = worksheet.cell(row=desc_row, column=col)
-            if cell.value and "Temperature reading" in str(cell.value):
+            if cell.value and "Temperature reading" in str(
+                cell.value
+            ):  # pragma: no branch
                 desc_found = True
                 break
         assert desc_found, "Descriptions row should contain field descriptions"
@@ -540,9 +544,9 @@ class TestTableMetadataPositioning:
         units_row = 7
         # Check that units are displayed (temp field has °C unit)
         units_found = False
-        for col in range(1, 4):  # Check first few columns
+        for col in range(1, 4):  # pragma: no branch
             cell = worksheet.cell(row=units_row, column=col)
-            if cell.value and "°C" in str(cell.value):
+            if cell.value and "°C" in str(cell.value):  # pragma: no branch
                 units_found = True
                 break
         assert units_found, "Units row should contain unit information"
@@ -584,9 +588,11 @@ class TestTableMetadataPositioning:
         # Meanings should be in row 6 (start_row + 2)
         meaning_row = 6
         meaning_found = False
-        for col in range(1, 4):
+        for col in range(1, 4):  # pragma: no branch
             cell = worksheet.cell(row=meaning_row, column=col)
-            if cell.value and "Temperature measurement" in str(cell.value):
+            if cell.value and "Temperature measurement" in str(
+                cell.value
+            ):  # pragma: no branch
                 meaning_found = True
                 break
         assert meaning_found, "Meanings row should contain field meanings"
@@ -594,9 +600,11 @@ class TestTableMetadataPositioning:
         # Descriptions should be in row 7 (start_row + 3)
         desc_row = 7
         desc_found = False
-        for col in range(1, 4):  # Check first few columns
+        for col in range(1, 4):  # pragma: no branch
             cell = worksheet.cell(row=desc_row, column=col)
-            if cell.value and "Temperature reading" in str(cell.value):
+            if cell.value and "Temperature reading" in str(
+                cell.value
+            ):  # pragma: no branch
                 desc_found = True
                 break
         assert desc_found, "Descriptions row should contain field descriptions"
@@ -604,9 +612,9 @@ class TestTableMetadataPositioning:
         # Units should be in row 8 (start_row + 4)
         units_row = 8
         units_found = False
-        for col in range(1, 4):  # Check first few columns
+        for col in range(1, 4):  # pragma: no branch
             cell = worksheet.cell(row=units_row, column=col)
-            if cell.value and "°C" in str(cell.value):
+            if cell.value and "°C" in str(cell.value):  # pragma: no branch
                 units_found = True
                 break
         assert units_found, "Units row should contain unit information"
@@ -649,9 +657,11 @@ class TestTableMetadataPositioning:
         # Meanings should be in row 7 (start_row + 2)
         meanings_row = 7
         meanings_found = False
-        for col in range(1, 4):
+        for col in range(1, 4):  # pragma: no branch
             cell = worksheet.cell(row=meanings_row, column=col)
-            if cell.value and "Temperature measurement" in str(cell.value):
+            if cell.value and "Temperature measurement" in str(
+                cell.value
+            ):  # pragma: no branch
                 meanings_found = True
                 break
         assert meanings_found, "Meanings row should contain field meanings"
@@ -659,9 +669,9 @@ class TestTableMetadataPositioning:
         # Descriptions should be in row 8 (start_row + 3)
         desc_row = 8
         desc_found = False
-        for col in range(1, 4):
+        for col in range(1, 4):  # pragma: no branch
             cell = worksheet.cell(row=desc_row, column=col)
-            if cell.value and (
+            if cell.value and (  # pragma: no branch
                 "Temperature" in str(cell.value) or "Sample" in str(cell.value)
             ):
                 desc_found = True
@@ -671,9 +681,9 @@ class TestTableMetadataPositioning:
         # Units should be in row 9 (start_row + 4)
         units_row = 9
         units_found = False
-        for col in range(1, 4):
+        for col in range(1, 4):  # pragma: no branch
             cell = worksheet.cell(row=units_row, column=col)
-            if cell.value and "°C" in str(cell.value):
+            if cell.value and "°C" in str(cell.value):  # pragma: no branch
                 units_found = True
                 break
         assert units_found, "Units row should contain unit information"
@@ -810,7 +820,7 @@ class TestTableRequirednessAndToggles:
         found_unit = False
         for row in worksheet.iter_rows(min_row=1, max_row=10):
             for cell in row:
-                if cell.value == "°C":
+                if cell.value == "°C":  # pragma: no cover
                     found_unit = True
                     break
         assert not found_unit, "Unit should NOT be shown with HIDE mode"

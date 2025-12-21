@@ -143,10 +143,10 @@ class TestExtractConcepts:
         concepts = extract_concepts_from_rdf(graph)
 
         # test02 has test01 as parent (broader)
-        if "http://example.org/test02" in concepts:
-            test02_data = concepts["http://example.org/test02"]
-            first_lang = next(iter(test02_data.keys()))
-            assert "http://example.org/test01" in test02_data[first_lang]["parent_iris"]
+        assert "http://example.org/test02" in concepts
+        test02_data = concepts["http://example.org/test02"]
+        first_lang = next(iter(test02_data.keys()))
+        assert "http://example.org/test01" in test02_data[first_lang]["parent_iris"]
 
     def test_english_language_first(self):
         """Test that English is listed first when present."""
@@ -154,7 +154,7 @@ class TestExtractConcepts:
         concepts = extract_concepts_from_rdf(graph)
 
         for iri, lang_data in concepts.items():
-            if "en" in lang_data:
+            if "en" in lang_data:  # pragma: no branch
                 # English should be first
                 first_lang = next(iter(lang_data.keys()))
                 assert first_lang == "en", f"English not first for {iri}"
@@ -197,14 +197,14 @@ class TestExtractMappings:
         mappings = extract_mappings_from_rdf(graph)
 
         # test01 has various mappings
-        if "http://example.org/test01" in mappings:
-            data = mappings["http://example.org/test01"]
-            # Check that mapping types are present
-            assert "related_matches" in data
-            assert "close_matches" in data
-            assert "exact_matches" in data
-            assert "narrower_matches" in data
-            assert "broader_matches" in data
+        assert "http://example.org/test01" in mappings
+        data = mappings["http://example.org/test01"]
+        # Check that mapping types are present
+        assert "related_matches" in data
+        assert "close_matches" in data
+        assert "exact_matches" in data
+        assert "narrower_matches" in data
+        assert "broader_matches" in data
 
     def test_only_concepts_with_mappings_included(self):
         """Test that only concepts with mappings are in the result."""
@@ -233,9 +233,9 @@ class TestConceptToCollectionsMap:
         c2c_map = build_concept_to_collections_map(graph)
 
         # test01-test04 are members of test10 collection
-        if c2c_map:
-            # At least one concept should be in a collection
-            assert any(collections for collections in c2c_map.values())
+        assert c2c_map, "c2c_map should not be empty"
+        # At least one concept should be in a collection
+        assert any(collections for collections in c2c_map.values())
 
 
 class TestModelConversion:
@@ -540,8 +540,8 @@ class TestConceptSchemeSheet:
 
         # Find vocabulary IRI row
         found = False
-        for row in range(4, 30):
-            if ws[f"A{row}"].value == "Vocabulary IRI":
+        for row in range(4, 30):  # pragma: no branch
+            if ws[f"A{row}"].value == "Vocabulary IRI":  # pragma: no branch
                 assert ws[f"B{row}"].value == "http://example.org/test/"
                 found = True
                 break
@@ -609,7 +609,7 @@ class TestMultiLanguageSupport:
         # Count rows with concept IRI
         concept_rows = []
         for row in range(5, ws.max_row + 1):
-            if ws[f"A{row}"].value:
+            if ws[f"A{row}"].value:  # pragma: no branch
                 concept_rows.append(row)
 
         # Should have 2 rows (en and de)
@@ -639,8 +639,8 @@ class TestCollectionMembership:
 
         # Check if any concept has collection membership
         has_membership = False
-        for row in range(5, ws.max_row + 1):
-            if ws[f"{member_col}{row}"].value:
+        for row in range(5, ws.max_row + 1):  # pragma: no branch
+            if ws[f"{member_col}{row}"].value:  # pragma: no branch
                 has_membership = True
                 break
 
@@ -905,14 +905,14 @@ class TestBuildOrderedCollectionMaps:
         photocat_ns = "https://w3id.org/nfdi4cat/voc4cat-photocat/"
 
         concept3 = f"{photocat_ns}0000003"
-        if concept3 in c2o_map:
-            assert f"{photocat_ns}coll002" in c2o_map[concept3]
-            assert c2o_map[concept3][f"{photocat_ns}coll002"] == 1
+        assert concept3 in c2o_map
+        assert f"{photocat_ns}coll002" in c2o_map[concept3]
+        assert c2o_map[concept3][f"{photocat_ns}coll002"] == 1
 
         concept4 = f"{photocat_ns}0000004"
-        if concept4 in c2o_map:
-            assert f"{photocat_ns}coll002" in c2o_map[concept4]
-            assert c2o_map[concept4][f"{photocat_ns}coll002"] == 2
+        assert concept4 in c2o_map
+        assert f"{photocat_ns}coll002" in c2o_map[concept4]
+        assert c2o_map[concept4][f"{photocat_ns}coll002"] == 2
 
 
 class TestV1RoundTrip:
@@ -1387,7 +1387,13 @@ class TestDeprecationRoundTrip:
         # Create concept scheme
         g.add((EX[""], RDF.type, SKOS.ConceptScheme))
         g.add((EX[""], SKOS.prefLabel, Literal("Test Scheme", lang="en")))
+        g.add(
+            (EX[""], SKOS.definition, Literal("Test scheme for deprecation", lang="en"))
+        )
         g.add((EX[""], DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+        g.add(
+            (EX[""], DCTERMS.creator, URIRef("https://orcid.org/0000-0001-2345-6789"))
+        )
 
         # Create deprecated concept with replacement
         g.add((EX.oldConcept, RDF.type, SKOS.Concept))
@@ -1455,7 +1461,17 @@ class TestDeprecationRoundTrip:
         # Create concept scheme
         g.add((EX[""], RDF.type, SKOS.ConceptScheme))
         g.add((EX[""], SKOS.prefLabel, Literal("Test Scheme", lang="en")))
+        g.add(
+            (
+                EX[""],
+                SKOS.definition,
+                Literal("Test scheme for obsolete prefix", lang="en"),
+            )
+        )
         g.add((EX[""], DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+        g.add(
+            (EX[""], DCTERMS.creator, URIRef("https://orcid.org/0000-0001-2345-6789"))
+        )
 
         # Create deprecated concept with OBSOLETE prefix
         g.add((EX.old, RDF.type, SKOS.Concept))
@@ -2057,11 +2073,11 @@ class TestRdfToExcelWithConfig:
         found_iri = False
         found_title = False
         for row in range(4, 30):
-            if ws[f"A{row}"].value == "Vocabulary IRI":
+            if ws[f"A{row}"].value == "Vocabulary IRI":  # pragma: no branch
                 # Config value should be used, not RDF value
                 assert ws[f"B{row}"].value == "https://example.org/vocab/"
                 found_iri = True
-            if ws[f"A{row}"].value == "Title":
+            if ws[f"A{row}"].value == "Title":  # pragma: no branch
                 assert ws[f"B{row}"].value == "Test Vocabulary"
                 found_title = True
 
@@ -2078,8 +2094,8 @@ class TestRdfToExcelWithConfig:
 
         # Should have RDF value (from concept-scheme-simple.ttl)
         found = False
-        for row in range(4, 30):
-            if ws[f"A{row}"].value == "Vocabulary IRI":
+        for row in range(4, 30):  # pragma: no branch
+            if ws[f"A{row}"].value == "Vocabulary IRI":  # pragma: no branch
                 assert ws[f"B{row}"].value == "http://example.org/test/"
                 found = True
                 break
