@@ -254,10 +254,11 @@ select = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = [
-  "S101",   # assert in tests is OK
   "PLR2004", # Allow numbers instead of named constants in tests
+  "S101",   # assert in tests is OK
 ]
 "example/*.py" = [
+  "PLR0915", # allow many statements in functions in example scripts
   "S101",   # assert in example scripts is OK
 ]
 
@@ -275,13 +276,3 @@ classmethod-decorators = [
 # https://mypy.readthedocs.io/en/latest/config_file.html#using-a-pyproject-toml-file
 # Suppress all missing import errors for all untyped libraries
 ignore_missing_imports = true
-
-[tool.codespell]
-skip = "*.ttl,pyproject.toml,./example,./tests/data,./tmp"
-# Note: words have to be lowercased for the ignore-words-list
-ignore-words-list = "linke"
-quiet-level = 3
-
-[tool.typos.type.demo_xlsx_joins]
-extend-glob = ["example/demo_xlsx_joins.py"]
-extend-ignore-words-re = ["\\bist"]
