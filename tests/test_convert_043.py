@@ -11,6 +11,7 @@ import pytest
 from rdflib import (
     DCAT,
     DCTERMS,
+    FOAF,
     OWL,
     PROV,
     RDF,
@@ -24,6 +25,7 @@ from rdflib import (
 
 from voc4cat.config import Vocab
 from voc4cat.convert_043 import convert_rdf_043_to_v1
+from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
 
 logger = logging.getLogger(__name__)
 EX = Namespace("http://example.org/")
@@ -69,7 +71,6 @@ class TestConvert043ToV1:
 
     def test_history_note_transformed_to_change_note(self, tmp_path):
         """Test that skos:historyNote is transformed to skos:changeNote."""
-        from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
 
         # Create test RDF with skos:historyNote
         g = Graph()
@@ -446,7 +447,6 @@ class TestFirstTimeHistoryNote043:
 
     def test_first_time_history_note_added_without_provenance(self, tmp_path):
         """Concept without prov:hadPrimarySource/wasInfluencedBy gets first-time historyNote."""
-        from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
 
         # Create test RDF with concept that has no provenance predicates
         g = Graph()
@@ -468,7 +468,7 @@ class TestFirstTimeHistoryNote043:
         assert str(history_notes[0]) == HISTORY_NOTE_FIRST_TIME
 
     @pytest.mark.parametrize(
-        "provenance_predicate,provenance_object",
+        ("provenance_predicate", "provenance_object"),
         [
             (PROV.hadPrimarySource, EX.other_vocab),
             (PROV.wasInfluencedBy, EX.other_concept),
@@ -479,7 +479,6 @@ class TestFirstTimeHistoryNote043:
         self, tmp_path, provenance_predicate, provenance_object
     ):
         """Concept with provenance predicates should NOT get first-time historyNote."""
-        from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
 
         g = Graph()
         g.bind("ex", EX)
@@ -503,7 +502,6 @@ class TestFirstTimeHistoryNote043:
 
     def test_collection_gets_first_time_history_note(self, tmp_path):
         """Collection without provenance gets first-time historyNote in 043 conversion."""
-        from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
 
         g = Graph()
         g.bind("ex", EX)
@@ -605,7 +603,6 @@ class TestConvert043EdgeCases:
 
     def test_vocab_config_homepage(self, tmp_path):
         """Test homepage handling in vocab_config."""
-        from rdflib import FOAF
 
         g = Graph()
         g.bind("ex", EX)

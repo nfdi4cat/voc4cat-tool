@@ -452,10 +452,11 @@ class XLSXKeyValueFormatter(XLSXFormatter):
                         and worksheet_unit
                         and worksheet_unit != expected_unit
                     ):
-                        raise ValueError(
+                        msg = (
                             f"Unit mismatch for field '{field_name}': "
                             f"expected '{expected_unit}', found '{worksheet_unit}'"
                         )
+                        raise ValueError(msg)
 
                 # Validate meaning consistency (if field has meaning defined and column exists)
                 if meaning_col:
@@ -469,10 +470,11 @@ class XLSXKeyValueFormatter(XLSXFormatter):
                         and worksheet_meaning
                         and worksheet_meaning != expected_meaning
                     ):
-                        raise ValueError(
+                        msg = (
                             f"Meaning mismatch for field '{field_name}': "
                             f"expected '{expected_meaning}', found '{worksheet_meaning}'"
                         )
+                        raise ValueError(msg)
 
                 try:
                     converted_value = self.serialization_engine.deserialize_value(

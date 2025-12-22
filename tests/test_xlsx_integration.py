@@ -7,10 +7,11 @@ that span multiple modules in the XLSX processing system.
 
 from datetime import date
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, get_origin
 
 import pytest
-from pydantic import BaseModel, Field
+from openpyxl import Workbook, load_workbook
+from pydantic import BaseModel, Field, field_validator
 
 from voc4cat.models_v1 import TEMPLATE_VERSION
 from voc4cat.xlsx_api import (
@@ -21,7 +22,12 @@ from voc4cat.xlsx_api import (
 )
 from voc4cat.xlsx_common import XLSXConverters, XLSXMetadata
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
-from voc4cat.xlsx_table import JoinConfiguration, XLSXTableConfig
+from voc4cat.xlsx_table import (
+    JoinConfiguration,
+    JoinedModelProcessor,
+    XLSXDeserializationError,
+    XLSXTableConfig,
+)
 
 from .conftest import Employee, Priority, Project, SimpleModel, Status
 
@@ -1035,16 +1041,14 @@ class TestXLSXApiHelpers:
             "temperature": XLSXMetadata(unit="°C", meaning="Reaction temperature"),
             "catalysts": XLSXMetadata(separator_pattern=XLSXConverters.COMMA),
         }
-        XLSXReaction = create_xlsx_wrapper(SimpleReaction, metadata_map)
+        xlsx_reaction = create_xlsx_wrapper(SimpleReaction, metadata_map)
 
         # Verify wrapper class
-        assert XLSXReaction.__name__ == "XLSXSimpleReaction"
-        assert issubclass(XLSXReaction, SimpleReaction)
+        assert xlsx_reaction.__name__ == "XLSXSimpleReaction"
+        assert issubclass(xlsx_reaction, SimpleReaction)
 
         # Verify annotations include metadata
-        from typing import Annotated, get_origin
-
-        temp_annotation = XLSXReaction.__annotations__["temperature"]
+        temp_annotation = xlsx_reaction.__annotations__["temperature"]
         assert get_origin(temp_annotation) is Annotated
 
     def test_create_xlsx_wrapper_with_inheritance(self):
@@ -1062,24 +1066,22 @@ class TestXLSXApiHelpers:
         base_metadata = {
             "temperature": XLSXMetadata(unit="°C"),
         }
-        XLSXBaseReaction = create_xlsx_wrapper(BaseReaction, base_metadata)
+        xlsx_base_reaction = create_xlsx_wrapper(BaseReaction, base_metadata)
 
         # Create derived wrapper inheriting from base
         advanced_metadata = {
             "yield_percent": XLSXMetadata(unit="%"),
         }
-        XLSXAdvancedReaction = create_xlsx_wrapper(
-            AdvancedReaction, advanced_metadata, base_wrapper=XLSXBaseReaction
+        xlsx_advanced_reaction = create_xlsx_wrapper(
+            AdvancedReaction, advanced_metadata, base_wrapper=xlsx_base_reaction
         )
 
         # Verify inheritance
-        assert issubclass(XLSXAdvancedReaction, XLSXBaseReaction)
-        assert XLSXAdvancedReaction.__name__ == "XLSXAdvancedReaction"
+        assert issubclass(xlsx_advanced_reaction, xlsx_base_reaction)
+        assert xlsx_advanced_reaction.__name__ == "XLSXAdvancedReaction"
 
         # Temperature metadata should be inherited from base
-        from typing import Annotated, get_origin
-
-        temp_annotation = XLSXAdvancedReaction.__annotations__["temperature"]
+        temp_annotation = xlsx_advanced_reaction.__annotations__["temperature"]
         assert get_origin(temp_annotation) is Annotated
 
     def test_create_joined_table_processor_default_title(self):
@@ -1113,8 +1115,6 @@ class TestXLSXTableEdgeCases:
 
     def test_header_row_color_styling(self, temp_file):
         """Test that header row color styling is applied."""
-        from openpyxl import load_workbook
-
         config = XLSXTableConfig(
             title="Test Header Color",
             header_row_color="FFCC00",  # Yellow color
@@ -1132,7 +1132,6 @@ class TestXLSXTableEdgeCases:
 
     def test_table_name_truncation(self, temp_file):
         """Test that long table names are truncated."""
-        from openpyxl import load_workbook
 
         # Create a sheet name that would result in a long table name
         very_long_sheet_name = "A" * 40  # Exceeds MAX_SHEETNAME_LENGTH
@@ -1148,7 +1147,6 @@ class TestXLSXTableEdgeCases:
 
     def test_joined_model_non_list_related_field(self, temp_file):
         """Test JoinedModelProcessor with non-list related field."""
-        from voc4cat.xlsx_table import JoinedModelProcessor
 
         class RelatedItem(BaseModel):
             id: str
@@ -1184,7 +1182,6 @@ class TestXLSXTableEdgeCases:
 
     def test_joined_model_empty_related_field(self, temp_file):
         """Test JoinedModelProcessor with empty related field."""
-        from voc4cat.xlsx_table import JoinedModelProcessor
 
         class RelatedItem(BaseModel):
             id: str
@@ -1218,7 +1215,6 @@ class TestXLSXTableEdgeCases:
 
     def test_joined_model_unmapped_field(self, temp_file):
         """Test JoinedModelProcessor with unmapped field in output."""
-        from voc4cat.xlsx_table import JoinedModelProcessor
 
         class SimpleRelated(BaseModel):
             id: str
@@ -1291,7 +1287,6 @@ class TestXLSXTableEdgeCases:
         )
 
         # Create empty file
-        from openpyxl import Workbook
 
         wb = Workbook()
         wb.save(temp_file)
@@ -1342,7 +1337,6 @@ class TestXLSXTableEdgeCases:
 
     def test_import_with_validation_error(self, temp_file):
         """Test that import handles validation errors gracefully."""
-        from openpyxl import load_workbook
 
         # Model with a required string field and a constrained int field
         class StrictModel(BaseModel):
@@ -1368,7 +1362,6 @@ class TestXLSXTableEdgeCases:
 
     def test_import_with_deserialization_error(self, temp_file):
         """Test that import handles deserialization errors gracefully."""
-        from openpyxl import load_workbook
 
         class TypedModel(BaseModel):
             name: str
@@ -1393,7 +1386,6 @@ class TestXLSXTableEdgeCases:
 
     def test_joined_processor_no_primary_key_error(self):
         """Test that reconstruct raises error when no primary key in mappings."""
-        from voc4cat.xlsx_table import JoinedModelProcessor
 
         class Primary(BaseModel):
             id: str
@@ -1421,7 +1413,6 @@ class TestXLSXTableEdgeCases:
 
     def test_joined_processor_related_model_creation_error(self):
         """Test error handling when related model creation fails."""
-        from voc4cat.xlsx_table import JoinedModelProcessor
 
         class Primary(BaseModel):
             id: str
@@ -1454,9 +1445,6 @@ class TestXLSXTableEdgeCases:
 
     def test_joined_processor_primary_model_creation_error(self):
         """Test error handling when primary model creation fails."""
-        from pydantic import field_validator
-
-        from voc4cat.xlsx_table import JoinedModelProcessor
 
         class StrictPrimary(BaseModel):
             id: str
@@ -1466,7 +1454,8 @@ class TestXLSXTableEdgeCases:
             @classmethod
             def validate_required(cls, v):
                 if not v or not v.strip():
-                    raise ValueError("required_field cannot be empty")
+                    msg = "required_field cannot be empty"
+                    raise ValueError(msg)
                 return v  # pragma: no cover
 
         class Related(BaseModel):
@@ -1496,7 +1485,6 @@ class TestXLSXTableEdgeCases:
 
     def test_joined_processor_list_field_in_primary(self):
         """Test reconstruction with list fields in primary model."""
-        from voc4cat.xlsx_table import JoinedModelProcessor
 
         class Primary(BaseModel):
             id: str
@@ -1531,7 +1519,6 @@ class TestXLSXTableEdgeCases:
 
     def test_joined_processor_list_field_in_related(self):
         """Test reconstruction with list fields in related model."""
-        from voc4cat.xlsx_table import JoinedModelProcessor
 
         class Related(BaseModel):
             id: str
@@ -1568,7 +1555,6 @@ class TestXLSXTableEdgeCases:
 
     def test_joined_processor_empty_list_field_in_related(self):
         """Test reconstruction with empty list field values in related model."""
-        from voc4cat.xlsx_table import JoinedModelProcessor
 
         class Related(BaseModel):
             id: str
@@ -1613,9 +1599,6 @@ class TestXLSXTableEdgeCases:
 
     def test_joined_import_with_deserialization_error(self, temp_file):
         """Test joined table import handles deserialization errors."""
-        from openpyxl import load_workbook
-
-        from voc4cat.xlsx_table import XLSXDeserializationError
 
         class Primary(BaseModel):
             id: str
@@ -1682,40 +1665,55 @@ class TestAutoFormatDetection:
     """Tests for auto-detection of format type."""
 
     def test_auto_detect_falls_back_to_table_invalid_kv_columns(self, tmp_path):
-        """Test auto-detect returns 'table' when Field/Value but invalid columns (lines 240-241)."""
-        from openpyxl import Workbook
+        """Test auto-detect falls back to 'table' when Field/Value have invalid metadata columns.
 
-        # Create XLSX with Field/Value headers but invalid remaining columns
+        Code coverage test for lines 240-241 in xlsx_api.py:
+        - Auto-detector finds "Field" and "Value" headers (looks like key-value format)
+        - But remaining columns are NOT valid KV metadata (Unit/Meaning/Description)
+        - So format_type is set to "table" as fallback
+
+        Note: This test focuses on exercising the specific code path, not end-to-end success.
+        The file structure deliberately triggers the fallback but may not import successfully.
+        """
         wb = Workbook()
         ws = wb.active
         ws.title = "SimpleModel"
-        ws["A1"] = "Field"
-        ws["B1"] = "Value"
-        ws["C1"] = "InvalidColumn"  # Not Unit/Meaning/Description
-        ws["D1"] = "AnotherInvalid"
-        # Add data that matches SimpleModel fields
-        ws["A2"] = "name"
-        ws["B2"] = "test"
-        ws["A3"] = "value"
-        ws["B3"] = "42"
-        ws["A4"] = "active"
-        ws["B4"] = "True"
 
-        filepath = tmp_path / "invalid_kv.xlsx"
+        # Row 1: Table-like headers
+        ws["A1"] = "name"
+        ws["B1"] = "value"
+        ws["C1"] = "active"
+
+        # Row 2: Data that won't validate
+        ws["A2"] = "test1"
+        ws["B2"] = "not_a_number"  # Invalid for int field
+        ws["C2"] = True
+
+        # Row 3: "Field" and "Value" to trigger KV detection
+        # The auto-detector scans rows 1-3, finds this, checks column C
+        # "InvalidColumn" is not in {Unit, Meaning, Description}
+        # So it sets format_type = "table" (lines 240-241) and breaks
+        ws["A3"] = "Field"
+        ws["B3"] = "Value"
+        ws["C3"] = "InvalidColumn"
+
+        filepath = tmp_path / "fallback_test.xlsx"
         wb.save(filepath)
         wb.close()
 
-        # Should fall back to table format - this will likely fail import
-        # because the structure doesn't match table format either
-        # The key is that it attempts table format (line 240-241 covered)
-        try:
-            import_from_xlsx(filepath, SimpleModel, format_type="auto")
-        except (ValueError, KeyError):
-            pass  # Expected - structure is malformed for both formats
+        # The test goal: verify auto-detection executes lines 240-241 (fallback to table)
+        # The file has "Field"/"Value" in row 3 with invalid KV columns,
+        # so auto-detector falls back to table format (lines 240-241).
+        # Table import returns a list (even if empty), while keyvalue returns None/object.
+        result = import_from_xlsx(filepath, SimpleModel, format_type="auto")
+
+        # Verify it used table format (returns list) not keyvalue format (returns None/object)
+        assert isinstance(result, list), "Should use table format (returns list)"
+        # The data is invalid so the list should be empty (validation filters out bad rows)
+        assert len(result) == 0, "Invalid data should be filtered out"
 
     def test_auto_detect_loop_completion_defaults_to_table(self, tmp_path):
         """Test auto-detect defaults to table when no headers match in rows 1-3 (line 243)."""
-        from openpyxl import Workbook
 
         wb = Workbook()
         ws = wb.active
@@ -1740,7 +1738,6 @@ class TestAutoFormatDetection:
 
     def test_auto_detect_sheet_not_found_defaults_to_table(self, tmp_path):
         """Test auto-detect defaults to table when specified sheet not found (line 247)."""
-        from openpyxl import Workbook
 
         wb = Workbook()
         ws = wb.active
@@ -1763,7 +1760,6 @@ class TestAutoFormatDetection:
 
     def test_import_invalid_format_type_error(self, tmp_path):
         """Test import raises ValueError for invalid format_type (lines 257-258)."""
-        from openpyxl import Workbook
 
         # Create a valid xlsx file first
         wb = Workbook()

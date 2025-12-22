@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+from importlib.util import find_spec
 from pathlib import Path
 from unittest import mock
 
@@ -12,12 +13,7 @@ from tests.test_cli import (
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
 
-try:
-    import pylode
-
-    HAS_PYLODE = True
-except ImportError:  # pragma: no cover
-    HAS_PYLODE = False
+HAS_PYLODE = find_spec("pylode") is not None
 
 
 @pytest.mark.skipif(not HAS_PYLODE, reason="pyLODE not installed")

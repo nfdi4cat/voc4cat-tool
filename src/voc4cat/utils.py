@@ -8,6 +8,17 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter, range_boundaries
 from openpyxl.worksheet.table import Table
 
+from voc4cat.checks import Voc4catError
+from voc4cat.models_v1 import (
+    COLLECTIONS_SHEET_NAME,
+    CONCEPT_SCHEME_SHEET_NAME,
+    CONCEPTS_SHEET_NAME,
+    ID_RANGES_SHEET_NAME,
+    MAPPINGS_SHEET_NAME,
+    PREFIXES_SHEET_NAME,
+    RESERVED_SHEET_NAMES,
+)
+
 logger = logging.getLogger(__name__)
 
 EXCEL_FILE_ENDINGS = [".xlsx"]
@@ -171,9 +182,6 @@ def validate_template_sheets(template_path: Path) -> None:
     Raises:
         Voc4catError: If template contains any reserved sheet names.
     """
-    from voc4cat.checks import Voc4catError
-    from voc4cat.models_v1 import RESERVED_SHEET_NAMES
-
     wb = load_workbook(template_path, read_only=True)
     template_sheets = set(wb.sheetnames)
     wb.close()
@@ -215,15 +223,6 @@ def reorder_sheets_with_template(
                              If provided, these sheets are placed first,
                              followed by auto-created sheets.
     """
-    from voc4cat.models_v1 import (
-        COLLECTIONS_SHEET_NAME,
-        CONCEPT_SCHEME_SHEET_NAME,
-        CONCEPTS_SHEET_NAME,
-        ID_RANGES_SHEET_NAME,
-        MAPPINGS_SHEET_NAME,
-        PREFIXES_SHEET_NAME,
-    )
-
     auto_created_order = [
         CONCEPT_SCHEME_SHEET_NAME,
         CONCEPTS_SHEET_NAME,

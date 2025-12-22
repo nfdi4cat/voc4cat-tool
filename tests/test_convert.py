@@ -1,8 +1,10 @@
+import contextlib
 import logging
 import shutil
 from pathlib import Path
 
 import pytest
+from openpyxl import Workbook, load_workbook
 from rdflib import SH
 
 from tests.test_cli import (
@@ -73,8 +75,6 @@ def test_template(monkeypatch, datadir, tmp_path, caplog):
 
 def test_template_with_conflicting_sheets(monkeypatch, datadir, tmp_path, caplog):
     """Check that templates with reserved sheet names are rejected."""
-    from openpyxl import Workbook
-
     monkeypatch.chdir(tmp_path)
     shutil.copy(datadir / CS_CYCLES_TURTLE, tmp_path)
 
@@ -97,8 +97,6 @@ def test_template_sheets_preserved_and_ordered(
     monkeypatch, datadir, tmp_path, temp_config
 ):
     """Check that template sheets are preserved and placed first."""
-    from openpyxl import Workbook, load_workbook
-
     monkeypatch.chdir(tmp_path)
     vocab_dir = tmp_path / "vocab"
     vocab_dir.mkdir()
@@ -152,8 +150,6 @@ def test_template_warning_for_xlsx_input(
     monkeypatch, datadir, tmp_path, caplog, cs_cycles_xlsx
 ):
     """Check that a warning is logged when template is used with xlsx input."""
-    from openpyxl import Workbook
-
     monkeypatch.chdir(tmp_path)
     vocab_dir = tmp_path / "vocab"
     vocab_dir.mkdir()
@@ -168,11 +164,8 @@ def test_template_warning_for_xlsx_input(
 
     # The conversion may fail for other reasons (missing config), but the warning
     # should be logged before that happens
-    with caplog.at_level(logging.WARNING):
-        try:
-            main_cli(["convert", "--template", str(template_path), str(vocab_dir)])
-        except Voc4catError:
-            pass  # Expected - conversion needs config, but warning comes first
+    with caplog.at_level(logging.WARNING), contextlib.suppress(Voc4catError):
+        main_cli(["convert", "--template", str(template_path), str(vocab_dir)])
 
     assert "Template option ignored for xlsx->RDF conversion" in caplog.text
 
@@ -219,7 +212,7 @@ class TestConvertFrom043:
 
         monkeypatch.chdir(tmp_path)
 
-        with pytest.raises(Voc4catError, match="--from 043 requires an idranges.toml"):
+        with pytest.raises(Voc4catError, match=r"--from 043 requires an idranges.toml"):
             main_cli(["convert", "--from", "043", str(tmp_path)])
 
     def test_from_043_requires_v1_config(self, tmp_path, monkeypatch):
@@ -248,7 +241,7 @@ repository = "https://github.com/example/test"
 
         monkeypatch.chdir(tmp_path)
 
-        with pytest.raises(Voc4catError, match="Pre-v1.0 idranges.toml detected"):
+        with pytest.raises(Voc4catError, match=r"Pre-v1.0 idranges.toml detected"):
             main_cli(
                 [
                     "convert",
@@ -374,11 +367,8 @@ class TestValidateWithProfile:
         """Test validation with error_level=3 only fails on violations."""
         # badfile should have violations
         ttl_file = datadir / "concept-scheme-badfile.ttl"
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(ConversionError):
-                validate_with_profile(
-                    str(ttl_file), profile="vp4cat-5.2", error_level=3
-                )
+        with caplog.at_level(logging.ERROR), pytest.raises(ConversionError):
+            validate_with_profile(str(ttl_file), profile="vp4cat-5.2", error_level=3)
 
 
 class TestXlsxToRdfConversion:
@@ -390,7 +380,7 @@ class TestXlsxToRdfConversion:
         vocab_dir.mkdir()
         shutil.copy(cs_cycles_xlsx, vocab_dir / CS_CYCLES)
 
-        with pytest.raises(Voc4catError, match="No idranges.toml config found"):
+        with pytest.raises(Voc4catError, match=r"No idranges.toml config found"):
             main_cli(["convert", str(vocab_dir)])
 
     def test_xlsx_to_rdf_with_config(

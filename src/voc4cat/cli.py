@@ -456,7 +456,7 @@ def run_cli_app(raw_args=None):
     try:
         main_cli(raw_args)
     except (Voc4catError, ConversionError) as e:
-        logger.error("Terminating with error: %s", e)
+        logger.error("Terminating with error: %s", e)  # noqa: TRY400
         sys.exit(1)
     except Exception:  # pragma: no cover
         logger.exception("Unexpected error.")

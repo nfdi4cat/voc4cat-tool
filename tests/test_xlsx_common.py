@@ -5,17 +5,20 @@ This module tests the common functionality used across the XLSX processing syste
 including field analysis, serialization engine, metadata handling, and converters.
 """
 
-from datetime import date, datetime
-from typing import Annotated, Optional, Union
+from datetime import date, datetime, timezone
+from typing import Annotated
 
 import pytest
 from openpyxl import load_workbook
 from pydantic import BaseModel, Field, HttpUrl
+from pydantic_core import PydanticUndefined
 
 from voc4cat.fields import ORCIDIdentifier, RORIdentifier
 from voc4cat.xlsx_api import export_to_xlsx, import_from_xlsx
 from voc4cat.xlsx_common import (
     FieldAnalysis,
+    MetadataToggleConfig,
+    MetadataVisibility,
     XLSXConfig,
     XLSXConverters,
     XLSXDeserializationError,
@@ -246,7 +249,7 @@ class TestXLSXConverters:
         assert from_pipe(escaped) == data
 
     @pytest.mark.parametrize(
-        "converter_method,test_data,expected_serialized",
+        ("converter_method", "test_data", "expected_serialized"),
         [
             ("newline_converters", ["a", "b", "c"], "a\nb\nc"),
             ("tab_converters", ["a", "b", "c"], "a\tb\tc"),
@@ -305,7 +308,7 @@ class TestXLSXConverters:
         assert XLSXConverters.bool_to_yes_no(False) == "No"
 
     @pytest.mark.parametrize(
-        "input_str,expected",
+        ("input_str", "expected"),
         [
             ("yes", True),
             ("Yes", True),
@@ -332,7 +335,6 @@ class TestXLSXConverters:
 
     def test_date_converters(self):
         """Test date to/from ISO string conversion."""
-        from datetime import date
 
         test_date = date(2025, 6, 15)
         iso_str = XLSXConverters.date_to_iso_string(test_date)
@@ -346,9 +348,8 @@ class TestXLSXConverters:
 
     def test_datetime_converters(self):
         """Test datetime to/from ISO string conversion."""
-        from datetime import datetime
 
-        test_dt = datetime(2025, 6, 15, 10, 30, 0)
+        test_dt = datetime(2025, 6, 15, 10, 30, 0, tzinfo=timezone.utc)
         iso_str = XLSXConverters.datetime_to_iso_string(test_dt)
         assert iso_str == "2025-06-15T10:30:00"
         assert XLSXConverters.iso_string_to_datetime(iso_str) == test_dt
@@ -412,8 +413,7 @@ class TestXLSXFieldAnalyzer:
         # The actual field_type for optional fields varies by Python version
         field_type_str = str(optional_field.field_type)
         assert (
-            field_type_str.startswith("typing.Optional")
-            or field_type_str.startswith("typing.Union")
+            field_type_str.startswith(("typing.Optional", "typing.Union"))
             or "| None" in field_type_str
         )
 
@@ -435,8 +435,7 @@ class TestXLSXFieldAnalyzer:
         # The actual field_type for optional enums varies by Python version
         field_type_str = str(priority_field.field_type)
         assert (
-            field_type_str.startswith("typing.Optional")
-            or field_type_str.startswith("typing.Union")
+            field_type_str.startswith(("typing.Optional", "typing.Union"))
             or "| None" in field_type_str
         )
         assert priority_field.enum_values == ["low", "medium", "high"]
@@ -476,8 +475,8 @@ class TestXLSXFieldAnalyzer:
     def test_validate_unit_usage_optional_numeric(self):
         """Test unit validation with optional numeric types."""
         # Should not raise for Optional numeric types
-        _validate_unit_usage("weight", Optional[float], "kg")
-        _validate_unit_usage("count", Optional[int], "units")
+        _validate_unit_usage("weight", float | None, "kg")
+        _validate_unit_usage("count", int | None, "units")
 
     def test_validate_unit_usage_invalid(self):
         """Test invalid unit usage validation."""
@@ -490,15 +489,15 @@ class TestXLSXFieldAnalyzer:
     def test_validate_unit_usage_optional_non_numeric(self):
         """Test unit validation with optional non-numeric types."""
         with pytest.raises(ValueError, match="Units are only valid for numeric fields"):
-            _validate_unit_usage("name", Optional[str], "kg")
+            _validate_unit_usage("name", str | None, "kg")
 
     def test_is_optional_type(self):
         """Test optional type detection."""
-        assert XLSXFieldAnalyzer.is_optional_type(Optional[str]) is True
-        assert XLSXFieldAnalyzer.is_optional_type(Union[str, None]) is True
+        assert XLSXFieldAnalyzer.is_optional_type(str | None) is True
+        assert XLSXFieldAnalyzer.is_optional_type(str | None) is True
         assert XLSXFieldAnalyzer.is_optional_type(str | None) is True
         assert XLSXFieldAnalyzer.is_optional_type(str) is False
-        assert XLSXFieldAnalyzer.is_optional_type(Union[str, int]) is False
+        assert XLSXFieldAnalyzer.is_optional_type(str | int) is False
 
     def test_validate_unit_usage_python310_union(self):
         """Test unit validation with Python 3.10+ union syntax (int | None)."""
@@ -666,7 +665,10 @@ class TestXLSXSerializationEngine:
 
     def test_serialize_value_with_custom_serializer(self):
         """Test serialization with custom serializer."""
-        serializer = lambda x: f"custom_{x}"
+
+        def serializer(x):
+            return f"custom_{x}"
+
         metadata = XLSXMetadata(xlsx_serializer=serializer)
         field_analysis = FieldAnalysis(
             name="test", field_type=str, xlsx_metadata=metadata
@@ -695,7 +697,10 @@ class TestXLSXSerializationEngine:
 
     def test_deserialize_value_with_custom_deserializer(self):
         """Test deserialization with custom deserializer."""
-        deserializer = lambda x: int(x) * 2
+
+        def deserializer(x):
+            return int(x) * 2
+
         metadata = XLSXMetadata(xlsx_deserializer=deserializer)
         field_analysis = FieldAnalysis(
             name="test", field_type=int, xlsx_metadata=metadata
@@ -958,11 +963,11 @@ class TestAdvancedFieldAnalysis:
         """Test unit validation with complex Union types."""
         # Union with no numeric types should raise error
         with pytest.raises(ValueError, match="Units are only valid for numeric fields"):
-            _validate_unit_usage("field", Union[str, bool], "kg")
+            _validate_unit_usage("field", str | bool, "kg")
 
         # Union with more than 2 types (non-Optional) should raise error
         with pytest.raises(ValueError, match="Units are only valid for numeric fields"):
-            _validate_unit_usage("field", Union[str, int], "kg")
+            _validate_unit_usage("field", str | int, "kg")
 
 
 # Tests for ORCID and ROR Field Types in XLSX
@@ -1109,7 +1114,7 @@ class TestRequirednessHelpers:
             "required_field", field_info, ModelWithRequired
         )
 
-        is_required, default_value = XLSXFieldAnalyzer.get_requiredness_info(
+        is_required, _ = XLSXFieldAnalyzer.get_requiredness_info(
             field_info, field_analysis
         )
 
@@ -1153,7 +1158,6 @@ class TestRequirednessHelpers:
 
     def test_format_requiredness_text_required(self):
         """Test formatting of required field."""
-        from pydantic_core import PydanticUndefined
 
         result = XLSXFieldAnalyzer.format_requiredness_text(True, PydanticUndefined)
         assert result == "Yes"
@@ -1199,7 +1203,6 @@ class TestMetadataVisibilityToggle:
 
     def test_metadata_visibility_enum_values(self):
         """Test MetadataVisibility enum has expected values."""
-        from voc4cat.xlsx_common import MetadataVisibility
 
         assert MetadataVisibility.AUTO.value == "auto"
         assert MetadataVisibility.SHOW.value == "show"
@@ -1207,7 +1210,6 @@ class TestMetadataVisibilityToggle:
 
     def test_metadata_toggle_config_defaults(self):
         """Test MetadataToggleConfig has correct defaults."""
-        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
 
         config = MetadataToggleConfig()
         assert config.unit == MetadataVisibility.AUTO
@@ -1217,7 +1219,6 @@ class TestMetadataVisibilityToggle:
 
     def test_xlsx_config_with_metadata_visibility(self):
         """Test XLSXConfig accepts metadata_visibility parameter."""
-        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
 
         toggle_config = MetadataToggleConfig(
             unit=MetadataVisibility.HIDE, requiredness=MetadataVisibility.SHOW

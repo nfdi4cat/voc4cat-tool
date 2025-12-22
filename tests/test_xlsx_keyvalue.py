@@ -12,7 +12,12 @@ from openpyxl import load_workbook
 from pydantic import BaseModel, Field
 
 from voc4cat.xlsx_api import export_to_xlsx, import_from_xlsx
-from voc4cat.xlsx_common import XLSXConverters, XLSXMetadata
+from voc4cat.xlsx_common import (
+    MetadataToggleConfig,
+    MetadataVisibility,
+    XLSXConverters,
+    XLSXMetadata,
+)
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
 
 from .conftest import DemoModelWithMetadata, Priority, Project, SimpleModel, Status
@@ -494,7 +499,6 @@ class TestKeyValueRequirednessAndToggles:
 
     def test_keyvalue_with_requiredness_column_shown(self, temp_file):
         """Test that requiredness column is shown when explicitly enabled."""
-        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
 
         class ModelForReq(BaseModel):
             required_field: str
@@ -548,7 +552,6 @@ class TestKeyValueRequirednessAndToggles:
 
     def test_keyvalue_toggle_hide_description(self, temp_file):
         """Test that HIDE toggle removes description column."""
-        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
 
         class ModelWithDesc(BaseModel):
             name: Annotated[
@@ -593,7 +596,6 @@ class TestKeyValueRequirednessAndToggles:
 
     def test_keyvalue_requiredness_values_correct(self, temp_file):
         """Test that requiredness column values are correct."""
-        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
 
         class ModelWithVariousFields(BaseModel):
             required_field: str

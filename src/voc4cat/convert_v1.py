@@ -8,12 +8,12 @@ the v1.0 Excel template structure, supporting bidirectional conversion:
 The two-way conversion is designed to be lossless (isomorphic graphs).
 """
 
+import datetime
 import logging
 import os
 import shutil
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date
 from pathlib import Path
 from typing import Literal as TypingLiteral
 
@@ -832,8 +832,6 @@ def rdf_concepts_to_v1(
 
         # Get deprecation info from any language (it's the same for all)
         first_lang_data = next(iter(lang_data.values()), {})
-        is_deprecated = first_lang_data.get("is_deprecated", False)
-        obsolete_reason_raw = first_lang_data.get("obsolete_reason", "")
         replaced_by_iri = first_lang_data.get("replaced_by_iri", "")
 
         for lang, data in lang_data.items():
@@ -988,8 +986,6 @@ def rdf_collections_to_v1(
 
         # Get deprecation info from any language (it's the same for all)
         first_lang_data = next(iter(lang_data.values()), {})
-        is_deprecated = first_lang_data.get("is_deprecated", False)
-        obsolete_reason_raw = first_lang_data.get("obsolete_reason", "")
         replaced_by_iri = first_lang_data.get("replaced_by_iri", "")
 
         for lang, data in lang_data.items():
@@ -2251,7 +2247,7 @@ def parse_name_url(line: str) -> tuple[str, str]:
 
     # Split from right: "Name with spaces https://url" -> ["Name with spaces", "https://url"]
     parts = line.rsplit(" ", 1)
-    if len(parts) == 2 and parts[1].startswith("http"):
+    if len(parts) == 2 and parts[1].startswith("http"):  # noqa: PLR2004
         return parts[0], parts[1]
     if line.startswith("http"):
         # URL only, no name
@@ -2810,7 +2806,10 @@ def excel_to_rdf_v1(
             raise Voc4catError(msg)
         concept_scheme.version = version
 
-    modified_date = os.getenv("VOC4CAT_MODIFIED") or date.today().isoformat()
+    modified_date = (
+        os.getenv("VOC4CAT_MODIFIED")
+        or datetime.datetime.now(tz=datetime.timezone.utc).date().isoformat()
+    )
     concept_scheme.modified_date = modified_date
 
     # Build inverse relationships

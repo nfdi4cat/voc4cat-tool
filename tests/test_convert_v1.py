@@ -4,6 +4,7 @@ These tests verify that the RDF to v1.0 Excel converter works correctly,
 extracting data from RDF graphs and producing valid v1.0 template Excel files.
 """
 
+import logging
 import shutil
 from pathlib import Path
 
@@ -12,11 +13,14 @@ from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter
 from pydantic import ValidationError
 from rdflib import (
+    DCAT,
     DCTERMS,
+    FOAF,
     OWL,
     PROV,
     RDF,
     RDFS,
+    SDO,
     SKOS,
     XSD,
     Graph,
@@ -35,20 +39,27 @@ from voc4cat.convert_v1 import (
     aggregate_concepts,
     build_collection_graph,
     build_concept_graph,
+    build_concept_scheme_graph,
     build_concept_to_collections_map,
     build_concept_to_ordered_collections_map,
     build_curies_converter_from_prefixes,
+    build_entity_graph,
     config_to_concept_scheme_v1,
     excel_to_rdf_v1,
     extract_collections_from_rdf,
     extract_concept_scheme_from_rdf,
     extract_concepts_from_rdf,
+    extract_identifier,
     extract_mappings_from_rdf,
+    parse_name_url,
     parse_ordered_collection_positions,
     rdf_concept_scheme_to_v1,
     rdf_concepts_to_v1,
     rdf_mappings_to_v1,
     rdf_to_excel_v1,
+    string_to_collection_obsoletion_enum,
+    string_to_concept_obsoletion_enum,
+    string_to_ordered_enum,
 )
 from voc4cat.convert_v1_helpers import (
     OBSOLETE_PREFIX,
@@ -696,7 +707,6 @@ class TestRoundTrip:
         """Test that concept-level predicates are preserved during round-trip.
 
         Note: ConceptScheme predicates may differ since scheme metadata now comes
-        from config, not RDF. This test focuses on concept/collection predicates.
         Uses v1.0 format test data (not 043 format which cannot be roundtripped).
 
         Note: Provenance predicates (dct:provenance, rdfs:seeAlso) are auto-generated
@@ -3043,7 +3053,6 @@ class TestStringToEnumConverters:
 
     def test_concept_obsoletion_valid_reason(self):
         """Test valid obsoletion reason returns enum."""
-        from voc4cat.convert_v1 import string_to_concept_obsoletion_enum
 
         result = string_to_concept_obsoletion_enum(
             ConceptObsoletionReason.UNCLEAR.value
@@ -3052,15 +3061,11 @@ class TestStringToEnumConverters:
 
     def test_concept_obsoletion_empty_string(self):
         """Test empty string returns None."""
-        from voc4cat.convert_v1 import string_to_concept_obsoletion_enum
 
         assert string_to_concept_obsoletion_enum("") is None
 
     def test_concept_obsoletion_nonstandard_logs_warning(self, caplog):
         """Test non-standard reason logs warning and returns None (lines 133-134)."""
-        import logging
-
-        from voc4cat.convert_v1 import string_to_concept_obsoletion_enum
 
         with caplog.at_level(logging.WARNING):
             result = string_to_concept_obsoletion_enum("This is not a valid reason")
@@ -3072,7 +3077,6 @@ class TestStringToEnumConverters:
 
     def test_collection_obsoletion_valid_reason(self):
         """Test valid collection obsoletion reason returns enum."""
-        from voc4cat.convert_v1 import string_to_collection_obsoletion_enum
 
         result = string_to_collection_obsoletion_enum(
             CollectionObsoletionReason.UNCLEAR.value
@@ -3081,15 +3085,11 @@ class TestStringToEnumConverters:
 
     def test_collection_obsoletion_empty_returns_none(self):
         """Test empty string returns None for collection."""
-        from voc4cat.convert_v1 import string_to_collection_obsoletion_enum
 
         assert string_to_collection_obsoletion_enum("") is None
 
     def test_collection_obsoletion_nonstandard_logs_warning(self, caplog):
         """Test non-standard collection reason logs warning (lines 154-155)."""
-        import logging
-
-        from voc4cat.convert_v1 import string_to_collection_obsoletion_enum
 
         with caplog.at_level(logging.WARNING):
             result = string_to_collection_obsoletion_enum("Invalid collection reason")
@@ -3100,7 +3100,7 @@ class TestStringToEnumConverters:
     # --- string_to_ordered_enum ---
 
     @pytest.mark.parametrize(
-        "value,expected",
+        ("value", "expected"),
         [
             (True, OrderedChoice.YES),
             (False, None),  # Boolean False -> None (line 168)
@@ -3117,7 +3117,6 @@ class TestStringToEnumConverters:
     )
     def test_string_to_ordered_enum_parameterized(self, value, expected):
         """Parameterized test for string_to_ordered_enum (lines 167-175)."""
-        from voc4cat.convert_v1 import string_to_ordered_enum
 
         result = string_to_ordered_enum(value)
         assert result == expected
@@ -3133,7 +3132,6 @@ class TestBuildEntityGraph:
 
     def test_orcid_url_creates_person(self):
         """Test ORCID URL always creates Person (lines 2371-2375)."""
-        from voc4cat.convert_v1 import SDO, build_entity_graph
 
         graph = build_entity_graph(
             "https://orcid.org/0000-0001-2345-6789",
@@ -3146,7 +3144,6 @@ class TestBuildEntityGraph:
 
     def test_ror_url_creates_organization(self):
         """Test ROR URL creates Organization (lines 2375-2383)."""
-        from voc4cat.convert_v1 import SDO, build_entity_graph
 
         graph = build_entity_graph(
             "https://ror.org/04wx23d79",
@@ -3159,7 +3156,6 @@ class TestBuildEntityGraph:
 
     def test_publisher_non_ror_creates_organization(self):
         """Test publisher field without ROR creates Organization (lines 2383-2394)."""
-        from voc4cat.convert_v1 import SDO, build_entity_graph
 
         graph = build_entity_graph(
             "https://example.org/publisher",
@@ -3172,7 +3168,6 @@ class TestBuildEntityGraph:
 
     def test_creator_non_special_creates_person(self):
         """Test creator without ORCID/ROR creates Person (lines 2395-2403)."""
-        from voc4cat.convert_v1 import SDO, build_entity_graph
 
         graph = build_entity_graph(
             "https://example.org/creator",
@@ -3185,7 +3180,6 @@ class TestBuildEntityGraph:
 
     def test_contributor_creates_person_by_default(self):
         """Test contributor field defaults to Person."""
-        from voc4cat.convert_v1 import SDO, build_entity_graph
 
         graph = build_entity_graph(
             "https://example.org/contributor",
@@ -3198,7 +3192,6 @@ class TestBuildEntityGraph:
 
     def test_custodian_creates_person_by_default(self):
         """Test custodian field defaults to Person."""
-        from voc4cat.convert_v1 import SDO, build_entity_graph
 
         graph = build_entity_graph(
             "https://example.org/custodian",
@@ -3220,7 +3213,6 @@ class TestBuildConceptSchemeGraphEntities:
 
     def test_multiple_creators_each_get_entity_graph(self):
         """Test multiple creators each generate entity graphs (lines 2414-2423)."""
-        from voc4cat.convert_v1 import SDO, build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3239,7 +3231,6 @@ class TestBuildConceptSchemeGraphEntities:
 
     def test_publisher_ror_creates_organization(self):
         """Test publisher with ROR URL creates Organization (lines 2430-2434)."""
-        from voc4cat.convert_v1 import SDO, build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3255,7 +3246,6 @@ class TestBuildConceptSchemeGraphEntities:
 
     def test_contributor_plain_text_creates_literal(self):
         """Test contributor without URL creates literal (line 2423)."""
-        from voc4cat.convert_v1 import build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3272,7 +3262,6 @@ class TestBuildConceptSchemeGraphEntities:
 
     def test_contributor_with_url_different_from_creator(self):
         """Test contributor with URL (not in creator_urls) gets entity graph (lines 2417-2420)."""
-        from voc4cat.convert_v1 import SDO, build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3295,7 +3284,6 @@ class TestBuildConceptSchemeGraphEntities:
 
     def test_duplicate_creator_publisher_entity_not_duplicated(self):
         """Test same URL as creator and publisher doesn't duplicate entity (lines 2406-2409)."""
-        from voc4cat.convert_v1 import SDO, build_concept_scheme_graph
 
         same_url = "https://orcid.org/0000-0001-2345-6789"
         cs = ConceptSchemeV1(
@@ -3315,7 +3303,6 @@ class TestBuildConceptSchemeGraphEntities:
 
     def test_custodian_with_url_creates_entity(self):
         """Test custodian with URL creates entity graph (lines 2440-2441)."""
-        from voc4cat.convert_v1 import SDO, build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3331,7 +3318,6 @@ class TestBuildConceptSchemeGraphEntities:
 
     def test_custodian_without_url_creates_literal(self):
         """Test custodian without URL creates literal contactPoint (lines 2442-2444)."""
-        from voc4cat.convert_v1 import DCAT, build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3357,7 +3343,6 @@ class TestConceptSchemeOptionalMetadata:
 
     def test_scheme_without_created_date(self):
         """Test ConceptScheme without created date (line 1717)."""
-        from voc4cat.convert_v1 import build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3374,7 +3359,6 @@ class TestConceptSchemeOptionalMetadata:
 
     def test_scheme_without_modified_date(self):
         """Test ConceptScheme without modified date (line 1856)."""
-        from voc4cat.convert_v1 import build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3391,7 +3375,6 @@ class TestConceptSchemeOptionalMetadata:
 
     def test_scheme_catalogue_pid_as_uri(self):
         """Test catalogue_pid handling as URI (lines 2447-2452)."""
-        from voc4cat.convert_v1 import build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3408,7 +3391,6 @@ class TestConceptSchemeOptionalMetadata:
 
     def test_scheme_catalogue_pid_as_literal(self):
         """Test catalogue_pid handling as literal when not URL (line 2452)."""
-        from voc4cat.convert_v1 import build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3425,9 +3407,6 @@ class TestConceptSchemeOptionalMetadata:
 
     def test_scheme_homepage_as_literal(self):
         """Test homepage handling as literal when not URL (line 2459)."""
-        from rdflib import FOAF
-
-        from voc4cat.convert_v1 import build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3444,7 +3423,6 @@ class TestConceptSchemeOptionalMetadata:
 
     def test_scheme_conforms_to_as_uri(self):
         """Test conforms_to handling as URI (lines 2467-2468)."""
-        from voc4cat.convert_v1 import build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3461,7 +3439,6 @@ class TestConceptSchemeOptionalMetadata:
 
     def test_scheme_conforms_to_as_literal(self):
         """Test conforms_to handling as literal when not URL (line 2470)."""
-        from voc4cat.convert_v1 import build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3478,7 +3455,6 @@ class TestConceptSchemeOptionalMetadata:
 
     def test_scheme_conforms_to_multiline_with_empty_lines(self):
         """Test conforms_to handling with empty lines (line 2466)."""
-        from voc4cat.convert_v1 import build_concept_scheme_graph
 
         cs = ConceptSchemeV1(
             vocabulary_iri="https://example.org/vocab/",
@@ -3504,28 +3480,24 @@ class TestIdentifierExtraction:
 
     def test_extract_identifier_hash_fragment(self):
         """Test identifier extraction from hash IRI (line 2216)."""
-        from voc4cat.convert_v1 import extract_identifier
 
         result = extract_identifier("https://example.org/vocab#concept123")
         assert result == "concept123"
 
     def test_extract_identifier_slash_path(self):
         """Test identifier extraction from slash IRI."""
-        from voc4cat.convert_v1 import extract_identifier
 
         result = extract_identifier("https://example.org/vocab/concept456")
         assert result == "concept456"
 
     def test_extract_identifier_domain_only(self):
         """Test identifier extraction from domain-only URL (lines 2226-2229)."""
-        from voc4cat.convert_v1 import extract_identifier
 
         result = extract_identifier("https://example.org/")
         assert result == "example.org"
 
     def test_parse_name_url_name_and_url(self):
         """Test parse_name_url with name and URL."""
-        from voc4cat.convert_v1 import parse_name_url
 
         name, url = parse_name_url("John Doe https://orcid.org/0000-0001-2345-6789")
         assert name == "John Doe"
@@ -3533,7 +3505,6 @@ class TestIdentifierExtraction:
 
     def test_parse_name_url_url_only(self):
         """Test parse_name_url with URL only."""
-        from voc4cat.convert_v1 import parse_name_url
 
         name, url = parse_name_url("https://orcid.org/0000-0001-2345-6789")
         assert name == ""  # Empty string, not None
@@ -3541,7 +3512,6 @@ class TestIdentifierExtraction:
 
     def test_parse_name_url_name_only(self):
         """Test parse_name_url with name only (no URL)."""
-        from voc4cat.convert_v1 import parse_name_url
 
         name, url = parse_name_url("John Doe")
         assert name == "John Doe"
@@ -3549,7 +3519,6 @@ class TestIdentifierExtraction:
 
     def test_parse_name_url_empty(self):
         """Test parse_name_url with empty string."""
-        from voc4cat.convert_v1 import parse_name_url
 
         name, url = parse_name_url("")
         assert name == ""  # Empty string

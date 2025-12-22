@@ -28,9 +28,11 @@ from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import BaseModel
+from pydantic_core import PydanticUndefined
 
 # Excel's limit for data validation formula length
 EXCEL_DV_FORMULA_LIMIT = 255
+MAX_SHEETNAME_LENGTH = 31
 
 
 # Exception classes
@@ -124,30 +126,33 @@ def _validate_unit_usage(field_name: str, field_type: type, unit: str | None) ->
         if len(args) == 2 and type(None) in args:  # noqa: PLR2004
             non_none_type = next(arg for arg in args if arg is not type(None))
             if non_none_type not in numeric_types:
-                raise ValueError(
+                msg = (
                     f"Unit '{unit}' specified for non-numeric field '{field_name}' "
                     f"of type {non_none_type}. Units are only valid for numeric fields."
                 )
+                raise ValueError(msg)
             return
 
     # Handle Python 3.10+ union syntax (numeric | None)
     elif hasattr(field_type, "__args__"):
         args = field_type.__args__
-        if len(args) == 2 and type(None) in args:
+        if len(args) == 2 and type(None) in args:  # noqa: PLR2004
             non_none_type = next(arg for arg in args if arg is not type(None))
             if non_none_type not in numeric_types:
-                raise ValueError(
+                msg = (
                     f"Unit '{unit}' specified for non-numeric field '{field_name}' "
                     f"of type {non_none_type}. Units are only valid for numeric fields."
                 )
+                raise ValueError(msg)
             return
 
     # Check if field type is numeric
     if field_type not in numeric_types:
-        raise ValueError(
+        msg = (
             f"Unit '{unit}' specified for non-numeric field '{field_name}' "
             f"of type {field_type}. Units are only valid for numeric fields."
         )
+        raise ValueError(msg)
 
 
 class XLSXFieldAnalyzer:
@@ -157,7 +162,8 @@ class XLSXFieldAnalyzer:
     def analyze_model(model: type[BaseModel]) -> dict[str, FieldAnalysis]:
         """Analyze all fields in a Pydantic model."""
         if not issubclass(model, BaseModel):
-            raise TypeError(f"Expected Pydantic BaseModel, got {type(model)}")
+            msg = f"Expected Pydantic BaseModel, got {type(model)}"
+            raise TypeError(msg)
 
         field_analyses = {}
         for field_name, field_info in model.model_fields.items():
@@ -230,13 +236,15 @@ class XLSXFieldAnalyzer:
                     return metadata_item
 
         # Fallback: check if the annotation is still Annotated (older behavior)
-        if hasattr(field_info, "annotation"):
-            if get_origin(field_info.annotation) is Annotated:
-                args = get_args(field_info.annotation)
-                if len(args) > 1:
-                    for metadata in args[1:]:
-                        if isinstance(metadata, XLSXMetadata):
-                            return metadata
+        if (
+            hasattr(field_info, "annotation")
+            and get_origin(field_info.annotation) is Annotated
+        ):
+            args = get_args(field_info.annotation)
+            if len(args) > 1:
+                for metadata in args[1:]:
+                    if isinstance(metadata, XLSXMetadata):
+                        return metadata
 
         return None
 
@@ -321,8 +329,6 @@ class XLSXFieldAnalyzer:
         Returns:
             Tuple of (is_required: bool, default_value: Any or PydanticUndefined)
         """
-        from pydantic_core import PydanticUndefined
-
         # Check if field has default value
         has_default = (
             hasattr(field_info, "default")
@@ -353,8 +359,6 @@ class XLSXFieldAnalyzer:
             - "No" or "Optional" for optional fields with no default or trivial default
             - "No/Optional (default: value)" for optional fields with non-trivial default
         """
-        from pydantic_core import PydanticUndefined
-
         required_text = "Required" if use_labels else "Yes"
         optional_text = "Optional" if use_labels else "No"
 
@@ -1176,7 +1180,7 @@ class XLSXFormatter(ABC):
         error_msg = (
             f"Invalid value. Must be one of: {', '.join(field_analysis.enum_values)}"
         )
-        if len(error_msg) > 255:
+        if len(error_msg) > EXCEL_DV_FORMULA_LIMIT:
             error_msg = "Invalid value. Please select from the dropdown list."
         dv.error = error_msg
         dv.errorTitle = "Invalid Input"
@@ -1424,11 +1428,5 @@ class XLSXRowCalculator:
             if self.config.metadata_visibility
             else MetadataVisibility.AUTO
         )
-        if visibility == MetadataVisibility.SHOW:
-            return True
         # HIDE or AUTO: don't show (backwards compatible)
-        return False
-
-
-# Constants
-MAX_SHEETNAME_LENGTH = 31
+        return visibility == MetadataVisibility.SHOW

@@ -16,7 +16,9 @@ Features demonstrated:
 - Model joins for flattening nested data
 """
 
-from datetime import date
+import sys
+import traceback
+from datetime import date, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
@@ -24,7 +26,12 @@ from typing import Annotated
 from pydantic import BaseModel, Field
 
 from voc4cat.xlsx_api import XLSXProcessorFactory, export_to_xlsx, import_from_xlsx
-from voc4cat.xlsx_common import XLSXConverters, XLSXMetadata
+from voc4cat.xlsx_common import (
+    MetadataToggleConfig,
+    MetadataVisibility,
+    XLSXConverters,
+    XLSXMetadata,
+)
 from voc4cat.xlsx_table import JoinConfiguration, XLSXTableConfig
 
 
@@ -56,9 +63,8 @@ def custom_date_serializer(value: date) -> str:
 
 def custom_date_deserializer(value: str) -> date:
     """Custom deserializer for dates from DD/MM/YYYY format."""
-    from datetime import datetime
 
-    return datetime.strptime(value, "%d/%m/%Y").date()
+    return datetime.strptime(value, "%d/%m/%Y").date()  # noqa: DTZ007
 
 
 def custom_priority_serializer(value: Priority) -> str:
@@ -954,7 +960,6 @@ def demo_auto_detection(demo_file: Path):
 
 def demo_requiredness_row(demo_file: Path):
     """Demonstrate requiredness row display in table format."""
-    from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
 
     print("\n" + "=" * 50)
     print("8. Requiredness Row Display")
@@ -992,7 +997,6 @@ def demo_requiredness_row(demo_file: Path):
 
 def demo_metadata_visibility_toggles(demo_file: Path):
     """Demonstrate metadata visibility toggle controls."""
-    from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
 
     print("\n" + "=" * 50)
     print("9. Metadata Visibility Toggles")
@@ -1110,7 +1114,6 @@ def main():
 
     except Exception as e:
         print(f"\n❌ Demo failed: {e}")
-        import traceback
 
         traceback.print_exc()
         return 1
@@ -1119,6 +1122,4 @@ def main():
 
 
 if __name__ == "__main__":
-    import sys
-
     sys.exit(main())
