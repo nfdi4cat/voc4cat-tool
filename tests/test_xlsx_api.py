@@ -272,14 +272,14 @@ class TestCreateXLSXWrapper:
         }
 
         # Create wrapper
-        XLSXSimpleModel = create_xlsx_wrapper(SimpleModel, metadata_map)
+        xlsx_simple_model = create_xlsx_wrapper(SimpleModel, metadata_map)
 
         # Test wrapper properties
-        assert XLSXSimpleModel.__name__ == "XLSXSimpleModel"
-        assert issubclass(XLSXSimpleModel, SimpleModel)
+        assert xlsx_simple_model.__name__ == "XLSXSimpleModel"
+        assert issubclass(xlsx_simple_model, SimpleModel)
 
         # Test instance creation
-        item = XLSXSimpleModel(name="TestItem", value=42, active=True)
+        item = xlsx_simple_model(name="TestItem", value=42, active=True)
         assert item.name == "TestItem"
         assert item.value == 42
         assert item.active is True
@@ -292,23 +292,23 @@ class TestCreateXLSXWrapper:
             "salary": XLSXMetadata(unit="USD", description="Base salary info"),
             "email": XLSXMetadata(description="Base email info"),
         }
-        XLSXBaseEmployee = create_xlsx_wrapper(Employee, base_metadata)
+        xlsx_base_employee = create_xlsx_wrapper(Employee, base_metadata)
 
         # Create enhanced wrapper that builds on the base wrapper
         enhanced_metadata = {
             "hire_date": XLSXMetadata(description="Date of hire"),
             "department": XLSXMetadata(description="Employee department"),
         }
-        XLSXEnhancedEmployee = create_xlsx_wrapper(
-            Employee, enhanced_metadata, base_wrapper=XLSXBaseEmployee
+        xlsx_enhanced_employee = create_xlsx_wrapper(
+            Employee, enhanced_metadata, base_wrapper=xlsx_base_employee
         )
 
         # Test inheritance relationships
-        assert XLSXEnhancedEmployee.__name__ == "XLSXEmployee"
-        assert issubclass(XLSXEnhancedEmployee, XLSXBaseEmployee)
+        assert xlsx_enhanced_employee.__name__ == "XLSXEmployee"
+        assert issubclass(xlsx_enhanced_employee, xlsx_base_employee)
 
         # Test instance creation and field access
-        employee = XLSXEnhancedEmployee(
+        employee = xlsx_enhanced_employee(
             employee_id=1,
             first_name="John",
             last_name="Doe",
@@ -331,15 +331,15 @@ class TestCreateXLSXWrapper:
 
         # Create wrapper for Employee
         employee_metadata = {"salary": XLSXMetadata(unit="USD")}
-        XLSXEmployee = create_xlsx_wrapper(Employee, employee_metadata)
+        xlsx_employee = create_xlsx_wrapper(Employee, employee_metadata)
 
         # Create second wrapper that inherits from the first
         enhanced_metadata = {"hire_date": XLSXMetadata(description="Hire date")}
-        XLSXEnhancedEmployee = create_xlsx_wrapper(
-            Employee, enhanced_metadata, base_wrapper=XLSXEmployee
+        xlsx_enhanced_employee = create_xlsx_wrapper(
+            Employee, enhanced_metadata, base_wrapper=xlsx_employee
         )
 
-        instance = XLSXEnhancedEmployee(
+        instance = xlsx_enhanced_employee(
             employee_id=1,
             first_name="John",
             last_name="Doe",
@@ -353,8 +353,8 @@ class TestCreateXLSXWrapper:
 
         # Test isinstance relationships
         assert isinstance(instance, Employee)  # Original model
-        assert isinstance(instance, XLSXEmployee)  # Base wrapper
-        assert isinstance(instance, XLSXEnhancedEmployee)  # Enhanced wrapper
+        assert isinstance(instance, xlsx_employee)  # Base wrapper
+        assert isinstance(instance, xlsx_enhanced_employee)  # Enhanced wrapper
 
     def test_wrapper_round_trip_keyvalue(self, temp_file, sample_project):
         """Test wrapper with xlsx round-trip in key-value format."""
@@ -366,16 +366,16 @@ class TestCreateXLSXWrapper:
             "priority": XLSXMetadata(description="Project priority level"),
         }
 
-        XLSXProject = create_xlsx_wrapper(Project, metadata_map)
+        xlsx_project = create_xlsx_wrapper(Project, metadata_map)
 
         # Use sample project data
-        project = XLSXProject(**sample_project.__dict__)
+        project = xlsx_project(**sample_project.__dict__)
 
         # Export to XLSX
         export_to_xlsx(project, temp_file, format_type="keyvalue")
 
         # Import from XLSX
-        imported = import_from_xlsx(temp_file, XLSXProject, format_type="keyvalue")
+        imported = import_from_xlsx(temp_file, xlsx_project, format_type="keyvalue")
 
         # Verify data integrity
         assert imported.project_id == sample_project.project_id
@@ -385,7 +385,7 @@ class TestCreateXLSXWrapper:
         assert imported.description == sample_project.description
 
         # Verify types are preserved
-        assert isinstance(imported, XLSXProject)
+        assert isinstance(imported, xlsx_project)
         assert isinstance(imported, Project)
 
     def test_wrapper_round_trip_table(
@@ -393,16 +393,16 @@ class TestCreateXLSXWrapper:
     ):
         """Test wrapper with xlsx round-trip in table format."""
 
-        XLSXEmployee = create_xlsx_wrapper(Employee, xlsx_metadata_map)
+        xlsx_employee_table = create_xlsx_wrapper(Employee, xlsx_metadata_map)
 
         # Use sample employee data
-        employees = [XLSXEmployee(**emp.__dict__) for emp in sample_employees]
+        employees = [xlsx_employee_table(**emp.__dict__) for emp in sample_employees]
 
         # Export to XLSX
         export_to_xlsx(employees, temp_file, format_type="table")
 
         # Import from XLSX
-        imported = import_from_xlsx(temp_file, XLSXEmployee, format_type="table")
+        imported = import_from_xlsx(temp_file, xlsx_employee_table, format_type="table")
 
         # Verify data integrity
         assert len(imported) == len(sample_employees)
@@ -413,7 +413,7 @@ class TestCreateXLSXWrapper:
         assert imported[1].salary == sample_employees[1].salary
 
         # Verify types
-        assert all(isinstance(emp, XLSXEmployee) for emp in imported)
+        assert all(isinstance(emp, xlsx_employee_table) for emp in imported)
         assert all(isinstance(emp, Employee) for emp in imported)
 
     def test_wrapper_preserves_field_defaults(self):
@@ -424,11 +424,11 @@ class TestCreateXLSXWrapper:
             "first_name": XLSXMetadata(description="Employee first name"),
         }
 
-        XLSXEmployee = create_xlsx_wrapper(Employee, metadata_map)
+        xlsx_employee_defaults = create_xlsx_wrapper(Employee, metadata_map)
 
         # Test instance creation with explicit values for fields with defaults
         # (Employee has defaults: department=None, is_active=True)
-        instance = XLSXEmployee(
+        instance = xlsx_employee_defaults(
             employee_id=1,
             first_name="John",
             last_name="Doe",
@@ -444,7 +444,7 @@ class TestCreateXLSXWrapper:
         assert instance.is_active is True  # default value
 
         # Test with explicit non-default values
-        instance2 = XLSXEmployee(
+        instance2 = xlsx_employee_defaults(
             employee_id=2,
             first_name="Jane",
             last_name="Smith",
@@ -462,8 +462,8 @@ class TestCreateXLSXWrapper:
         """Test wrapper creation error handling."""
 
         # Test empty metadata
-        XLSXSimpleModel = create_xlsx_wrapper(SimpleModel, {})
-        instance = XLSXSimpleModel(name="test", value=42, active=True)
+        xlsx_simple_model_empty = create_xlsx_wrapper(SimpleModel, {})
+        instance = xlsx_simple_model_empty(name="test", value=42, active=True)
         assert instance.name == "test"
         assert instance.value == 42
         assert instance.active is True
@@ -473,8 +473,8 @@ class TestCreateXLSXWrapper:
             "name": XLSXMetadata(description="Item name"),
             "non_existent_field": XLSXMetadata(description="This field doesn't exist"),
         }
-        XLSXSimpleModel2 = create_xlsx_wrapper(SimpleModel, metadata_map)
-        instance2 = XLSXSimpleModel2(name="test", value=123, active=False)
+        xlsx_simple_model2 = create_xlsx_wrapper(SimpleModel, metadata_map)
+        instance2 = xlsx_simple_model2(name="test", value=123, active=False)
         assert instance2.name == "test"
         assert instance2.value == 123
         assert instance2.active is False
@@ -525,10 +525,10 @@ class TestCreateXLSXWrapper:
             ),
         }
 
-        XLSXEmployee = create_xlsx_wrapper(Employee, metadata_map)
+        xlsx_employee_config = create_xlsx_wrapper(Employee, metadata_map)
 
         # Use sample employee data
-        employee = XLSXEmployee(**sample_employee.__dict__)
+        employee = xlsx_employee_config(**sample_employee.__dict__)
 
         # Custom config with different column headers
         config = XLSXKeyValueConfig(
@@ -545,7 +545,7 @@ class TestCreateXLSXWrapper:
 
         # Import from XLSX with same custom config
         imported = import_from_xlsx(
-            temp_file, XLSXEmployee, format_type="keyvalue", config=config
+            temp_file, xlsx_employee_config, format_type="keyvalue", config=config
         )
 
         # Verify data integrity
@@ -555,7 +555,7 @@ class TestCreateXLSXWrapper:
         assert imported.hire_date == sample_employee.hire_date
 
         # Verify types are preserved
-        assert isinstance(imported, XLSXEmployee)
+        assert isinstance(imported, xlsx_employee_config)
         assert isinstance(imported, Employee)
 
     def test_import_from_xlsx_auto_detection_kv_with_metadata(

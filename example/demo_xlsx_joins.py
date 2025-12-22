@@ -15,6 +15,7 @@ Features demonstrated:
 """
 
 import sys
+import traceback
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -71,7 +72,7 @@ def demo_joined_models(demo_file: Path):
                 language_code="de",
                 pref_label="Erstes Konzept",
                 alt_labels=["Primäres Konzept"],
-                definition="Dies ist das erste Konzept",
+                definition="Dies ist das erste Konzept",  # codespell:ignore ist
             ),
         ],
     )
@@ -247,7 +248,6 @@ def run_joins_demo():
 
     except Exception as e:
         print(f"\n❌ Joined models demo failed with error: {e}")
-        import traceback
 
         traceback.print_exc()
         return 1

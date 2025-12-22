@@ -48,8 +48,8 @@ class Concept:
 
     uri: str
     curie: str
-    prefLabel: str
-    altLabels: str
+    pref_label: str
+    alt_labels: str
     definition: str
     parents: str
 
@@ -88,13 +88,13 @@ def load_vocab(ttl_file: Path) -> dict:
         holder["curie"] = (
             str(s).split("/")[-1].replace("_", ":")
         )  # TODO use a function to convert URI to CURIE
-        holder["altLabels"] = []
+        holder["alt_labels"] = []
         holder["parents"] = []
         for p, o in vocab_graph.predicate_objects(s):
-            if p == SKOS.prefLabel:
-                holder["prefLabel"] = str(o)  # .toPython()
+            if p == SKOS.pref_label:
+                holder["pref_label"] = str(o)  # .toPython()
             if p == SKOS.altLabel:
-                holder["altLabels"].append(str(o))
+                holder["alt_labels"].append(str(o))
             if p == SKOS.definition:
                 holder["definition"] = str(o)
             if p == SKOS.broader:
@@ -123,10 +123,10 @@ class CompareVocabularies:
         ]
         self.model = None
 
-        logger.info(f"Known concepts    : {len(self.vocab_base)}")
-        logger.info(f"Submitted concepts: {len(self.vocab_new)}")
-        logger.info(f"New concepts added: {len(self.added_concepts)}")
-        logger.debug(f"idx of new concepts: {self.idx_new}")
+        logger.info("Known concepts    : %d", len(self.vocab_base))
+        logger.info("Submitted concepts: %d", len(self.vocab_new))
+        logger.info("New concepts added: %d", len(self.added_concepts))
+        logger.debug("idx of new concepts: %s", self.idx_new)
 
     def get_similarities_sbert(self, sentences, model="all-MiniLM-L6-v2") -> Tensor:
         """
@@ -139,7 +139,7 @@ class CompareVocabularies:
         if self.model is None:
             # Load the model
             self.model = SentenceTransformer(model)
-            logger.debug(f"model {model} loaded.")
+            logger.debug("model %s loaded.", model)
         # Compute embeddings
         embeddings = self.model.encode(sentences)
         logger.debug("Embeddings calculated.")
@@ -210,7 +210,12 @@ class CompareVocabularies:
                         & set(self.vocab_new[id_j].parents)
                     )
                     logger.debug(
-                        f"{sentence1} ({id_i}) - {sentence2} ({id_j}): {similarities[idx_i][idx_j]:.4f}"
+                        "%s (%s) - %s (%s): %.4f",
+                        sentence1,
+                        id_i,
+                        sentence2,
+                        id_j,
+                        similarities[idx_i][idx_j],
                     )
                     reportable_similarities.append(
                         ConceptSimilarity(
@@ -234,15 +239,15 @@ class CompareVocabularies:
         compare_all,  # true=compare all concepts, false=just new ones
     ) -> dict:
         new_vocab_labels = {
-            (k, "prefLabel"): v.prefLabel.strip() for k, v in self.vocab_new.items()
+            (k, "pref_label"): v.pref_label.strip() for k, v in self.vocab_new.items()
         }
         if include_alt_labels:
-            # Include altLabels in the comparison
-            new_vocab_altLabels = {}
+            # Include alt_labels in the comparison
+            new_vocab_alt_labels = {}
             for k, v in self.vocab_new.items():
-                for i, altLabel in enumerate(v.altLabels):
-                    new_vocab_altLabels[(k, f"altLabel-{i}")] = altLabel
-            new_vocab_labels.update(new_vocab_altLabels)
+                for i, alt_label in enumerate(v.alt_labels):
+                    new_vocab_alt_labels[(k, f"altLabel-{i}")] = alt_label
+            new_vocab_labels.update(new_vocab_alt_labels)
         sentences = list(new_vocab_labels.values())
         if method == "sbert":
             # Use Sentence Transformers for semantic similarity
@@ -251,10 +256,11 @@ class CompareVocabularies:
             # Use Levenshtein ratio for string similarity
             similarities = self.get_similarities_levenshtein(sentences)
         else:
-            raise ValueError(f"Unknown method: {method}")
-        results = {
+            msg = f"Unknown method: {method}"
+            raise ValueError(msg)
+        return {
             "method": method,
-            "uses_altlabels": "Yes" if include_alt_labels else "No",
+            "uses_alt_labels": "Yes" if include_alt_labels else "No",
             "threshold_labels": threshold_labels,
             "threshold_definitions": threshold_definitions,
             "compare_all": compare_all,
@@ -265,30 +271,29 @@ class CompareVocabularies:
                 compare_all=compare_all,
             ),
         }
-        return results
 
     def check_parents(self, method="sbert") -> dict:
         """Check if the concepts have no or more than one broader concept."""
         logger.info("Checking if concepts have no or more than one broader concept.")
         concept_problems = {}
-        for id, concept in self.vocab_new.items():
+        for id_, concept in self.vocab_new.items():
             if not concept.parents:
-                concept_problems[id] = ConceptIssue(
+                concept_problems[id_] = ConceptIssue(
                     concept_id=concept.curie,
-                    concept_label=concept.prefLabel,
+                    concept_label=concept.pref_label,
                     problem=Problem.NO_BROADER_CONCEPT,
                     problem_detail="",
                 )
             elif len(concept.parents) > 1:
                 details = " / ".join(
                     [
-                        f"[{self.vocab_new[id].prefLabel}]({base_url + id})"
-                        for id in concept.parents
+                        f"[{self.vocab_new[id_].pref_label}]({base_url + id_})"
+                        for id_ in concept.parents
                     ]
                 )
-                concept_problems[id] = ConceptIssue(
+                concept_problems[id_] = ConceptIssue(
                     concept_id=concept.curie,
-                    concept_label=concept.prefLabel,
+                    concept_label=concept.pref_label,
                     problem=Problem.MULTIPLE_BROADER_CONCEPTS,
                     problem_detail=details,
                 )
@@ -315,7 +320,7 @@ class CompareVocabularies:
             f"- Similarity threshold definitions: {results['threshold_definitions']}\n"
         )
         report.append(
-            f"- Alternate labels included in check? {results['uses_altlabels']}\n\n"
+            f"- Alternate labels included in check? {results['uses_alt_labels']}\n\n"
         )
         if not results["data"]:
             report.append("No similarities found.\n")
@@ -330,7 +335,7 @@ class CompareVocabularies:
             )
         similar_concept_pairs = []
         for rec in results["data"]:
-            # avoid repeated reporting of pairs that have prefLabel and altLabel similarity
+            # avoid repeated reporting of pairs that have pref_label and altLabel similarity
             pair = {rec.concept_id, rec.similar_concept_id}
             if pair in similar_concept_pairs:
                 continue
@@ -338,15 +343,15 @@ class CompareVocabularies:
 
             concept = self.vocab_new[rec.concept_id]
             concept_label = (
-                concept.prefLabel
-                if rec.sentence_key[1] == "prefLabel"
-                else concept.altLabels[int(rec.sentence_key[1].split("-")[-1])]
+                concept.pref_label
+                if rec.sentence_key[1] == "pref_label"
+                else concept.alt_labels[int(rec.sentence_key[1].split("-")[-1])]
             )
             similar_concept = self.vocab_new[rec.similar_concept_id]
             similar_concept_label = (
-                similar_concept.prefLabel
-                if rec.similar_sentence_key[1] == "prefLabel"
-                else similar_concept.altLabels[
+                similar_concept.pref_label
+                if rec.similar_sentence_key[1] == "pref_label"
+                else similar_concept.alt_labels[
                     int(rec.similar_sentence_key[1].split("-")[-1])
                 ]
                 + "(altLabel)"
@@ -355,8 +360,8 @@ class CompareVocabularies:
             if rec.have_same_broader_concept:
                 broader_concepts = ", ".join(
                     [
-                        f"[{self.vocab_new[id].prefLabel}]({base_url + id})"
-                        for id in concept_parents
+                        f"[{self.vocab_new[id_].pref_label}]({base_url + id_})"
+                        for id_ in concept_parents
                     ]
                 )
             else:
@@ -364,15 +369,15 @@ class CompareVocabularies:
                 broader_concepts = (
                     ", ".join(
                         [
-                            f"[{self.vocab_new[id].prefLabel}]({base_url + id})"
-                            for id in concept_parents
+                            f"[{self.vocab_new[id_].pref_label}]({base_url + id_})"
+                            for id_ in concept_parents
                         ]
                     )
                     + " / "
                     + ", ".join(
                         [
-                            f"[{self.vocab_new[id].prefLabel}]({base_url + id})"
-                            for id in similar_concept_parents
+                            f"[{self.vocab_new[id_].pref_label}]({base_url + id_})"
+                            for id_ in similar_concept_parents
                         ]
                     )
                 )
@@ -391,9 +396,9 @@ class CompareVocabularies:
                 f"| {'Problem description':<25} | {'Problem details':<20} |\n"
             )
             report.append(f"|{'-' * 17}|{'-' * 32}|{'-' * 17}|{'-' * 32}|{'-' * 22}|\n")
-            for id, rec in sorted(parent_check_report.items()):
+            for id_, rec in sorted(parent_check_report.items()):
                 report.append(
-                    f"| [{rec.concept_id}]({base_url + id}) | {rec.concept_label:<30} "
+                    f"| [{rec.concept_id}]({base_url + id_}) | {rec.concept_label:<30} "
                     f"| {rec.problem.problem_id} | {rec.problem.description:<30} | {rec.problem_detail} |\n"
                 )
         else:
@@ -406,7 +411,7 @@ class CompareVocabularies:
         )
         with open(fname, "w") as f:
             f.writelines(report)
-        logger.info(f"Similarities report written to {fname}")
+        logger.info("Similarities report written to %s", fname)
 
 
 @click.group()
@@ -425,7 +430,7 @@ def cli():
 @click.option(
     "--include-alt-labels",
     is_flag=True,
-    help="Include altLabels in the comparison",
+    help="Include alt_labels in the comparison",
     default=True,
 )
 @click.option(
@@ -445,7 +450,7 @@ def find_similarities_in_one_vocab(
     threshold_defs: float,
 ) -> None:
     """Find similarities between concepts in a single vocabulary."""
-    logger.info(f"Finding similarities in vocabulary: {vocab_src}")
+    logger.info("Finding similarities in vocabulary: %s", vocab_src)
     # Add logic for finding similarities here
     vocab = CompareVocabularies(vocab_src)
     results = vocab.compare_concept_labels(
@@ -470,7 +475,7 @@ def find_similarities_in_one_vocab(
 @click.option(
     "--include-alt-labels",
     is_flag=True,
-    help="Include altLabels in the comparison",
+    help="Include alt_labels in the comparison",
     default=True,
 )
 @click.option(
@@ -492,7 +497,9 @@ def compare_vocabularies(
 ) -> None:
     """Compare two vocabularies and check additions for similarity with existing concepts."""
     logger.info(
-        f"Checking additions made in {vocab_new_src} for similarities with concepts in {vocab_src}"
+        "Checking additions made in %s for similarities with concepts in %s",
+        vocab_new_src,
+        vocab_src,
     )
     vocab_old_new = CompareVocabularies(vocab_new_src, vocab_src)
     results = vocab_old_new.compare_concept_labels(

@@ -148,6 +148,7 @@ filterwarnings = [
 # https://coverage.readthedocs.io/en/latest/config.html
 parallel = true
 branch = true
+# dynamic_context = "test_function"
 source = ["voc4cat"]
 source_dirs = ["tests"]
 omit = [
@@ -256,6 +257,9 @@ select = [
   "S101",   # assert in tests is OK
   "PLR2004", # Allow numbers instead of named constants in tests
 ]
+"example/*.py" = [
+  "S101",   # assert in example scripts is OK
+]
 
 [tool.ruff.lint.mccabe]
 # Flake8-mccabe uses a default level of 7, ruff of 10.
@@ -277,3 +281,7 @@ skip = "*.ttl,pyproject.toml,./example,./tests/data,./tmp"
 # Note: words have to be lowercased for the ignore-words-list
 ignore-words-list = "linke"
 quiet-level = 3
+
+[tool.typos.type.demo_xlsx_joins]
+extend-glob = ["example/demo_xlsx_joins.py"]
+extend-ignore-words-re = ["\\bist"]

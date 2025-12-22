@@ -7,10 +7,12 @@ with the correct structure.
 import logging
 
 import pytest
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
 
+from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
+from voc4cat.config import Checks, Vocab
 from voc4cat.gen_template import generate_template_v1
 from voc4cat.models_v1 import (
     DEFAULT_PREFIXES,
@@ -301,7 +303,6 @@ class TestTemplateWithConfig:
     @pytest.fixture
     def base_vocab_config(self):
         """Create a base vocab config with required fields."""
-        from voc4cat.config import Checks
 
         return {
             "id_length": 4,
@@ -319,7 +320,6 @@ class TestTemplateWithConfig:
 
     def test_generate_template_with_vocab_config(self, tmp_path, base_vocab_config):
         """Test template generation with vocabulary configuration."""
-        from voc4cat.config import Vocab
 
         # Override base config with specific values
         config = base_vocab_config.copy()
@@ -383,7 +383,6 @@ class TestTemplateWithConfig:
         self, tmp_path, base_vocab_config
     ):
         """Test history note is auto-generated when not provided in config."""
-        from voc4cat.config import Vocab
 
         # Override base config
         # Creator format: "<ORCID URL> <Name>"
@@ -421,7 +420,6 @@ class TestTemplateWithConfig:
 
     def test_generate_template_with_orcid_fallback(self, tmp_path, base_vocab_config):
         """Test ID ranges uses ORCID when gh_name not available."""
-        from voc4cat.config import Vocab
 
         # Override base config - use valid ORCID with correct checksum
         # id_range must be list of dicts for the validator
@@ -530,7 +528,6 @@ class TestTemplateCLI:
 
     def test_template_cli_with_base_template(self, tmp_path, monkeypatch):
         """Test template command with --template option preserves base sheets."""
-        from openpyxl import Workbook
 
         monkeypatch.chdir(tmp_path)
 
@@ -577,9 +574,6 @@ class TestTemplateCLI:
         self, tmp_path, monkeypatch, caplog
     ):
         """Test template command rejects base template with reserved sheet names."""
-        from openpyxl import Workbook
-
-        from voc4cat.checks import Voc4catError
 
         monkeypatch.chdir(tmp_path)
 
@@ -601,7 +595,6 @@ class TestTemplateCLI:
         self, tmp_path, monkeypatch, caplog
     ):
         """Test template command rejects non-existent base template."""
-        from voc4cat.checks import Voc4catError
 
         monkeypatch.chdir(tmp_path)
 
@@ -614,7 +607,6 @@ class TestTemplateCLI:
         self, tmp_path, monkeypatch, caplog
     ):
         """Test template command rejects base template with wrong file type."""
-        from voc4cat.checks import Voc4catError
 
         monkeypatch.chdir(tmp_path)
 
@@ -695,7 +687,6 @@ repository = "https://github.com/example/other"
 
     def test_template_cli_with_missing_config_file(self, tmp_path, monkeypatch, caplog):
         """Test template command with non-existent config file raises error."""
-        from voc4cat.checks import Voc4catError
 
         monkeypatch.chdir(tmp_path)
 

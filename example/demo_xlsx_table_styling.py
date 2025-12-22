@@ -15,6 +15,8 @@ Features demonstrated:
 - Table styling and formatting
 """
 
+import sys
+import traceback
 from datetime import date
 from enum import Enum
 from pathlib import Path
@@ -658,7 +660,6 @@ def main():
 
     except Exception as e:
         print(f"\\n❌ Demo failed: {e}")
-        import traceback
 
         traceback.print_exc()
         return 1
@@ -667,6 +668,4 @@ def main():
 
 
 if __name__ == "__main__":
-    import sys
-
     sys.exit(main())

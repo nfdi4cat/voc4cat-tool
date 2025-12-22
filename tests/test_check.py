@@ -10,6 +10,7 @@ from tests.test_cli import (
 )
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
+from voc4cat.convert import get_bundled_profiles
 from voc4cat.utils import ConversionError
 
 CS_SIMPLE_TURTLE = "concept-scheme-simple.ttl"
@@ -246,8 +247,6 @@ def test_check_with_config_profile(datadir, tmp_path, caplog, monkeypatch, temp_
     shutil.copy(datadir / "idranges_with_scheme.toml", config_dir)
 
     # Create custom profile (just a valid SHACL stub - use bundled one as source)
-    from voc4cat.convert import get_bundled_profiles
-
     bundled = get_bundled_profiles()
     bundled_profile = bundled.get("vocpub-4.7")
     shutil.copy(bundled_profile, config_dir / "custom_profile.ttl")

@@ -5,13 +5,18 @@ This module tests the table format specific functionality for XLSX processing.
 """
 
 from datetime import date
+from typing import Annotated
 
 import pytest
 from openpyxl import load_workbook
 from pydantic import BaseModel
 
 from voc4cat.xlsx_api import export_to_xlsx, import_from_xlsx
-from voc4cat.xlsx_common import XLSXMetadata
+from voc4cat.xlsx_common import (
+    MetadataToggleConfig,
+    MetadataVisibility,
+    XLSXMetadata,
+)
 from voc4cat.xlsx_table import XLSXTableConfig
 
 from .conftest import DemoModelWithMetadata, Employee, Project, SimpleModel, Status
@@ -733,7 +738,6 @@ class TestTableRequirednessAndToggles:
 
     def test_table_with_requiredness_row_shown(self, temp_file, sample_employees):
         """Test that requiredness row is shown when explicitly enabled."""
-        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
 
         config = XLSXTableConfig(
             title="Employees",
@@ -780,9 +784,6 @@ class TestTableRequirednessAndToggles:
 
     def test_table_toggle_hide_units(self, temp_file):
         """Test that HIDE toggle prevents units row even when fields have units."""
-        from typing import Annotated
-
-        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
 
         class ModelWithUnits(BaseModel):
             temp: Annotated[
@@ -834,7 +835,6 @@ class TestTableRequirednessAndToggles:
         data = [SimpleModelNoDesc()]
 
         # Export with SHOW for descriptions
-        from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
 
         config = XLSXTableConfig(
             title="Force Descriptions",

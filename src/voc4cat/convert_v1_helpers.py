@@ -78,8 +78,8 @@ def extract_creator_names(creator_field: str) -> list[str]:
         return []
 
     names = []
-    for line in creator_field.strip().split("\n"):
-        line = line.strip()
+    for iline in creator_field.strip().split("\n"):
+        line = iline.strip()
         if not line:
             continue
         # Split by whitespace - name is everything after the URL
@@ -261,7 +261,7 @@ def add_provenance_triples_to_graph(
         True if provenance triples were added, False if no URL could be generated.
     """
     # Import here to avoid circular dependency
-    from rdflib import DCTERMS, RDFS, URIRef
+    from rdflib import DCTERMS, RDFS, URIRef  # noqa: PLC0415
 
     entity_id = extract_entity_id_from_iri(str(entity_iri), vocab_name)
     provenance_url = build_provenance_url(

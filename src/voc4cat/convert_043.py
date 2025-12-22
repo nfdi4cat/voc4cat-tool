@@ -464,7 +464,7 @@ def convert_rdf_043_to_v1(
     return output_path
 
 
-def _transform_triple_043_to_v1(
+def _transform_triple_043_to_v1(  # noqa: PLR0911
     s: URIRef,
     p: URIRef,
     o,

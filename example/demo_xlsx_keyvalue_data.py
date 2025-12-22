@@ -16,6 +16,8 @@ Features demonstrated:
 - Enum validation with Excel dropdown selectors (key-value format)
 """
 
+import sys
+import traceback
 from datetime import date
 from enum import Enum
 from pathlib import Path
@@ -24,7 +26,12 @@ from typing import Annotated
 from pydantic import BaseModel, Field
 
 from voc4cat.xlsx_api import export_to_xlsx, import_from_xlsx
-from voc4cat.xlsx_common import XLSXConverters, XLSXMetadata
+from voc4cat.xlsx_common import (
+    MetadataToggleConfig,
+    MetadataVisibility,
+    XLSXConverters,
+    XLSXMetadata,
+)
 from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
 
 
@@ -593,7 +600,7 @@ def demo_field_filtering(demo_file: Path):
     assert imported_project.priority == basic_project.priority
     assert imported_project.start_date == basic_project.start_date
     # Excluded fields should have default values
-    assert imported_project.is_client_project == False  # default value
+    assert not imported_project.is_client_project  # default value
     assert imported_project.client_name is None  # default value
     print("✓ Field filtering verified")
 
@@ -690,20 +697,6 @@ def demo_enum_validation(demo_file: Path):
     print("Table Format with Validation")
     print("-" * 30)
 
-    # Create a list of projects to use table format
-    projects = [
-        basic_project,
-        BasicProject(
-            project_id=102,
-            name="Second Project",
-            description="Another project for validation demo",
-            start_date=date(2024, 7, 1),
-            priority=Priority.LOW,
-            budget=50000.0,
-            status=ProjectStatus.PLANNING,
-        ),
-    ]
-
     print("✓ Exported projects with enum validation (table format)")
     print("  - Excel dropdown selectors enabled for enum fields")
     print("  - Priority field: dropdown with 'low', 'medium', 'high' options")
@@ -722,8 +715,6 @@ def demo_enum_validation(demo_file: Path):
 
 def demo_requiredness_column(demo_file: Path):
     """Demonstrate requiredness column display in key-value format."""
-    from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility
-    from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
 
     print("\n" + "=" * 50)
     print("9. Requiredness Column Display")
@@ -763,15 +754,6 @@ def demo_requiredness_column(demo_file: Path):
 
 def demo_metadata_visibility_keyvalue(demo_file: Path):
     """Demonstrate metadata visibility toggles for key-value format."""
-    from typing import Annotated
-
-    from voc4cat.xlsx_common import (
-        MetadataToggleConfig,
-        MetadataVisibility,
-        XLSXMetadata,
-    )
-    from voc4cat.xlsx_keyvalue import XLSXKeyValueConfig
-
     print("\n" + "=" * 50)
     print("10. Metadata Visibility Toggles (Key-Value)")
     print("=" * 50)
@@ -852,7 +834,6 @@ def main():
 
     except Exception as e:
         print(f"\n❌ Demo failed: {e}")
-        import traceback
 
         traceback.print_exc()
         return 1
@@ -861,6 +842,4 @@ def main():
 
 
 if __name__ == "__main__":
-    import sys
-
     sys.exit(main())

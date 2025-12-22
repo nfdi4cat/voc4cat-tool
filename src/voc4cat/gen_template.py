@@ -351,7 +351,7 @@ def template_cmd(args) -> None:
         if config_file.exists():
             load_config(config_file)
             # Import after load_config to get updated globals
-            from voc4cat.config import IDRANGES
+            from voc4cat.config import IDRANGES  # noqa: PLC0415
 
             # Look up vocabulary in config (case-insensitive)
             vocab_key = vocab_name.lower()

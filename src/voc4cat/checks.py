@@ -65,9 +65,8 @@ def validate_vocabulary_files_for_ci_workflow(vocab_dir: Path, inbox_dir: Path):
     # Test that inbox has only xlsx files and md or txt doc files
     if len(inbox_all_files) > len(inbox_files) + len(inbox_md_files):
         if os.getenv("CI_RUN"):
-            raise Voc4catError(
-                'Directory "%s" may only contain xlsx files and README.md.' % inbox_dir
-            )
+            msg = f'Directory "{inbox_dir}" may only contain xlsx files and README.md.'
+            raise Voc4catError(msg)
         logger.warning(
             'Directory "%s" should only contain xlsx files and README.md.',
             inbox_dir,
@@ -132,7 +131,7 @@ def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
     new = Graph()
     new.parse(new_vocab.resolve().as_uri(), format="turtle")
 
-    in_both, in_prev, in_new = compare.graph_diff(prev, new)
+    _, in_prev, _ = compare.graph_diff(prev, new)
     # print("Only in 1st\n", in_prev.serialize(format="turtle"))
     # print("Only in 2nd\n", in_new.serialize(format="turtle"))
 
