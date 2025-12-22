@@ -1,5 +1,40 @@
 # Change log
 
+## Release 1.0.0 (RC1) (2025-12-22)
+
+:::{important}
+This is a major release with breaking changes.
+Vocabularies and xlsx-templates must be upgraded from xlsx template v0.43 to v1.0, see [migration-to-v1.0](https://nfdi4cat.github.io/voc4cat-tool/migration-to-v1.0.html).
+:::
+
+Features:
+
+- **New xlsx template v1.0** with pydantic-backed model for improved consistency and validation. Template generator creates files dynamically from the data model. It is no longer required to provide an xlsx-template (but still an option).
+- **ConceptScheme metadata** is now read from `idranges.toml` config.
+- **New validation profile vp4cat-5.2** based on vocpub-5.2, now the default profile.
+- **Custom profile support:** Accept custom SHACL profile files for validation via CLI path or config.
+- **Improved provenance support**
+  - **Improved citation** of the concept's origin by properties `prov:wasInfluencedBy`, `prov:hadPrimarySource` and to reference its `dct:license` and the `dct:rightsHolder`. This allows to reference the source.
+  - **Git blame links:** Provenance information links to git blame URLs for traceability.
+  - **Dynamic `skos:historyNote`:** Auto-generated from `PROV.wasInfluencedBy` and source vocab references.
+- **Deprecation handling:** Support for `owl:deprecated`, replaced-by IRIs, and obsolete markers.
+- **ID ranges sheet:** New output sheet displaying ID range configuration.
+- **Python 3.14 support** added to test matrix.
+- **Sphinx documentation** including action to build and publish the docs to GitHub Pages.
+- **Improved Skosmos support** by aligning with its [data model](https://github.com/NatLibFi/Skosmos/wiki/Data-Model) when possible.
+
+Breaking changes:
+
+- **New xlsx template format v1.0** replaces template v0.43. Migration required for existing vocabularies.
+- **Removed CLI option `voc4cat transform --make-ids`**.
+- **Profile changes:** Removed vocpub pre-3.0 profile; vp4cat-5.2 is now default.
+
+Other Changes:
+
+- Code refactoring: eliminated duplication, split large modules, improved test coverage.
+- Removed all binary xlsx-files from the repository
+- Switch from codespell to typos spell checker.
+
 ## Release 0.10.1 (2025-12-15)
 
 **This is the last release of the 0.x series.**

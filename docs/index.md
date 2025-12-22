@@ -19,6 +19,11 @@ It is part of the voc4cat ecosystem:
 - **[voc4cat](https://github.com/nfdi4cat/voc4cat)** - A SKOS vocabulary for catalysis based on the template.
 
 ```{toctree}
+:hidden:
+GitHub page <https://github.com/nfdi4cat/voc4cat-tool>
+```
+
+```{toctree}
 :maxdepth: 2
 :caption: Getting Started
 

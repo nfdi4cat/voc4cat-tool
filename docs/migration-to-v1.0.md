@@ -1,6 +1,6 @@
 # Migrating from 043 to v1.0
 
-This guide explains how to migrate vocabularies created with voc4cat-tool v0.10.0 or earlier which used the "0.43"-xlsx format, to the v1.0 format.
+This guide explains how to migrate vocabularies created with voc4cat-tool v0.10.x (xlsx template "0.43") to the v1.0 format.
 
 ## What changed in v1.0
 
@@ -28,32 +28,38 @@ Start with the template from `src/voc4cat/templates/vocab/idranges.toml` and fil
 voc4cat convert --from 043 --config path/to/v1.0/idranges.toml --outdir output/ source/vocab.ttl
 ```
 
-This converts `skos:historyNote` to `skos:changeNote` and enriches the ConceptScheme with metadata from the config.
+This converts the RDF to the new v1.0 format and enriches the ConceptScheme with metadata from the config.
 
 ### Step 3: Generate v1.0 Excel template
+
+With voc4cat-tool 1.0.0, all required sheets in the xlsx template are dynamically generated.
+
+A template is no longer mandatory. You may still use a template to provide a Help-sheet for your users.
+The voc4cat-tool CLI can inject the generated sheets into any given xlsx-template.
+
+To convert your old template, delete all sheets that are now auto-generated:
+
+- Concept Scheme
+- Concepts
+- Additional Concept Features
+- Collections
+- Prefix Sheet
+
+To generate the xlsx-representation of your vocabulary run
 
 ```bash
 voc4cat convert --config path/to/v1.0/idranges.toml --outdir output/ output/vocab.ttl
 ```
 
-This creates the xlsx file with all concepts, collections, and the new v1.0 structure.
-
 ### Step 4: Verify the output
 
 Check that:
+
 - Concept and collection counts match the source
 - ConceptScheme metadata is correctly set
 - Excel ID Ranges sheet shows all contributors
 
-```bash
-# Count concepts
-grep -c "a skos:Concept" output/vocab.ttl
-
-# Count collections
-grep -c "a skos:Collection" output/vocab.ttl
-```
-
 ## Notes
 
 - The `dcterms:modified` and `owl:versionInfo` fields are auto-generated and not stored in the config.
-- Contributors in id_range entries can have an optional `name` field for display purposes.
+- Contributors in id_range entries can have an optional `name` field in v1.0 for display purposes.
