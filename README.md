@@ -26,32 +26,28 @@ voc4cat was mainly developed to be used in gh-actions but it is also useful as a
 - Check xlsx vocabulary files for errors or incorrect use of IDs (voc4cat uses pydantic for this validation).
 - Generate documentation from SKOS/turtle vocabulary file using [pyLODE](https://github.com/RDFLib/pyLODE).
 
-voc4cat works on files or folders. If a folder is given all matching files are processed at once.
+### Installation
 
-### Installation requirements
+voc4cat is platform independent and works on windows, linux and mac. It requires Python (3.10 or newer).
 
-To start you need:
+If you only want to use the command line interface it is strongly suggested to install with [uv tool](https://docs.astral.sh/uv/concepts/tools/) or [pipx](https://pypa.github.io/pipx/).
+Both simplify installing and managing python command line applications.
 
-- Python (3.10 or newer)
-
-voc4cat is platform independent and should work at least on windows, linux and mac.
-
-### Installation steps
-
-If you just want to use the command line interface it is strongly suggested to use [pipx](https://pypa.github.io/pipx/) or [uv tool](https://docs.astral.sh/uv/concepts/tools/) for the installation.
-Both make installing and managing python command line application very easy.
-
-`pipx install voc4cat`
+```bash
+uv tool install voc4cat
+```
 
 or
 
-`uv tool install voc4cat`
+```bash
+pipx install voc4cat
+```
 
-Alternatively you can `pip`-install voc4cat like any other Python package.
+To validate the successful installation, run
 
-To install including all development tools use `pip install .[dev]` for just the test tools `pip install .[tests]`. For testing we use [pytest](https://docs.pytest.org).
-
-### Typical use
+```bash
+voc4cat --version
+```
 
 The available commands and options can be explored via the help system:
 
@@ -59,13 +55,23 @@ The available commands and options can be explored via the help system:
 voc4cat --help
 ```
 
-which lists all available sub commands. These have their own help, for example:
+Optionally you may install the "assistant" which uses [sentence-transformers](https://sbert.net/) for concept similarity analysis.
+This adds >100 MB to the download so we don't include it in the default installer.
+To include it modify the command (for uv tool) to
 
 ```bash
-voc4cat transform --help
+uv tool install "voc4cat[assistant]"
 ```
 
-To create a new vocabulary, first set up a configuration file `idranges.toml` for your vocabulary.
+Alternatively you can `pip`-install voc4cat like any other Python package.
+
+To install including all development tools use `pip install .[dev]`.
+
+### Getting started
+
+See the [Documentation](https://nfdi4cat.github.io/voc4cat-tool/) for detailed guidance.
+
+To create a new vocabulary, first set up a configuration file `idranges.toml` for your vocabulary (see [example](https://nfdi4cat.github.io/voc4cat-tool/user-guide/project-setup.html#initial-configuration)).
 This file defines vocabulary metadata and ID ranges for contributors.
 Then create an xlsx-template:
 
@@ -74,22 +80,6 @@ voc4cat template --config myvocab/idranges.toml --outdir myvocab/
 ```
 
 This creates `myvocab.xlsx` (named after your vocabulary) with the structure for entering concepts.
-
-To express hierarchies in SKOS ("broader"/"narrower") voc4cat uses parent IRIs in the sheet "Concepts".
-Enter a list of parent IRIs in the Parent IRIs column to define the concept hierarchy.
-Each concept can have zero, one or even multiple parents.
-
-### Configuration file (idranges.toml)
-
-The `idranges.toml` file is central to vocabulary management. It contains:
-
-- **Vocabulary metadata**: Title, description, creator, publisher, and other ConceptScheme properties.
-- **ID ranges**: Pre-allocated ranges of concept IDs for each contributor (with ORCID, GitHub username).
-- **Vocabulary settings**: ID length, base IRI, prefix mappings.
-
-The xlsx file shows ConceptScheme metadata as read-only information derived from this config.
-
-### Converting vocabularies
 
 Convert the vocabulary file from xlsx to SKOS/turtle format:
 
@@ -105,24 +95,10 @@ The reverse is also possible. Create an xlsx file from a turtle vocabulary:
 voc4cat convert --config myvocab/idranges.toml --outdir myvocab/ myvocab/myvocab.ttl
 ```
 
-In addition to `transform` and `convert` voc4cat offers checking and validation under the sub-command `check` and documentation generation under `docs`.
-See the command line help for details.
-
-For maintainers a tool for similarity checks is provided which is based on sentence-transformer model to identify similar preferred labels and definitions.
-It also performs other consistency checks. The tool can either check a single vocabulary
-
-`voc-assistant check voc4cat.ttl`
-
-or compare the additions made against existing concepts:
-
-`voc-assistant compare voc4cat.ttl voc4cat_new.ttl`
-
-It creates reports in markdown format.
-
 ## Migrating from older versions
 
-Vocabularies created with voc4cat-tool v0.10.0 or earlier (format "043") can be converted to the v1.0 format.
-See [docs/migration-to-v1.0.md](docs/migration-to-v1.0.md) for details.
+Vocabularies created with voc4cat-tool v0.10.x or earlier (format "043") can be converted to the v1.0 format.
+See [migrating to v1.0](https://nfdi4cat.github.io/voc4cat-tool/migration-to-v1.0.html) for details.
 
 ## Feedback and code contributions
 
@@ -136,7 +112,5 @@ By contributing you agree that your contributions fall under the project´s BSD-
 
 This work was funded by the German Research Foundation (DFG) through the project "[NFDI4Cat](https://www.nfdi4cat.org) - NFDI for Catalysis-Related Sciences" (DFG project no. [441926934](https://gepris.dfg.de/gepris/projekt/441926934)), within the National Research Data Infrastructure ([NFDI](https://www.nfdi.de)) programme of the Joint Science Conference (GWK).
 
-This project uses the [vocpub](https://w3id.org/profile/vocpub) SHACL profile, which is licensed under the Creative Commons Attribution 4.0 International License (CC-BY 4.0).
-The original work was created by [Nicholas J. Car](https://github.com/nicholascar).
+This project includes the [vocpub](https://w3id.org/profile/vocpub) SHACL profile, which is licensed under the Creative Commons Attribution 4.0 International License (CC-BY 4.0) and was created by [Nicholas J. Car](https://github.com/nicholascar).
 A copy of the license can be found at: https://creativecommons.org/licenses/by/4.0/.
-Changes were made to the original work for this project.
