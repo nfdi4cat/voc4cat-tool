@@ -14,7 +14,7 @@ import json
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Annotated, Any, Union, get_args, get_origin
@@ -815,17 +815,22 @@ class XLSXConverters:
     # DateTime converters
     @staticmethod
     def datetime_to_iso_string(value: datetime) -> str:
-        """Convert datetime to ISO string."""
-        return value.isoformat()
+        """Convert datetime to ISO string without timezone offset."""
+        return value.replace(tzinfo=None).isoformat()
 
     @staticmethod
     def iso_string_to_datetime(value: str) -> datetime:
-        """Convert ISO string to datetime."""
+        """Convert ISO string to datetime, assuming UTC if no timezone."""
         try:
-            return datetime.fromisoformat(value)
+            dt = datetime.fromisoformat(value)
+            # If no timezone info, assume UTC
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
         except ValueError as e:
             msg = f"Cannot parse '{value}' as ISO datetime: {e}"
             raise ValueError(msg) from e
+        else:
+            return dt
 
 
 def _create_separator_metadata(
