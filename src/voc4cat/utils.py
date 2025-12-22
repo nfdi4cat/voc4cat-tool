@@ -5,7 +5,7 @@ from copy import copy
 from pathlib import Path
 
 from openpyxl import load_workbook
-from openpyxl.utils.cell import column_index_from_string, coordinate_from_string
+from openpyxl.utils import get_column_letter, range_boundaries
 from openpyxl.worksheet.table import Table
 
 logger = logging.getLogger(__name__)
@@ -90,11 +90,8 @@ def adjust_length_of_tables(
     for ws in wb.sheetnames:
         for t_name in list(wb[ws].tables):
             old_range = wb[ws].tables[t_name].ref  # "A2:I20"
-            start, end = old_range.split(":")
-            start_col_str, start_row = coordinate_from_string(start)
-            start_col = column_index_from_string(start_col_str)
-            end_col_str, end_row = coordinate_from_string(end)
-            end_col = column_index_from_string(end_col_str)
+            start_col, start_row, end_col, end_row = range_boundaries(old_range)
+            start = old_range.split(":")[0]
 
             # find last row with content in table
             for row in range(1, end_row + 1):
@@ -106,7 +103,7 @@ def adjust_length_of_tables(
                     break
 
             new_last_row = max(row - 1 + rows_pre_allocated[ws], wb[ws].max_row)
-            adjusted = f"{start}:{end_col_str}{new_last_row}"
+            adjusted = f"{start}:{get_column_letter(end_col)}{new_last_row}"
 
             if adjusted != old_range:
                 # Expanding the table is not possible with openpyxl. Instead a too

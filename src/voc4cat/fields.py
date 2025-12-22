@@ -43,7 +43,7 @@ def normalize_orcid_input(v: str | HttpUrl) -> str:
     if isinstance(v, HttpUrl):
         return str(v)
 
-    if isinstance(v, str):
+    if isinstance(v, str):  # pragma: no branch
         v = v.strip()
         if v.startswith(ORCID_URL):
             return v

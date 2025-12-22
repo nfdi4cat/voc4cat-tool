@@ -995,13 +995,6 @@ class XLSXFormatter(ABC):
     ) -> Any:
         """Parse Excel data for import."""
 
-    def _column_letter_to_index(self, column_letter: str) -> int:
-        """Convert column letter to index (A=1, B=2, etc.)."""
-        result = 0
-        for char in column_letter.upper():
-            result = result * 26 + (ord(char) - ord("A") + 1)
-        return result
-
     def _get_field_display_name(self, field_analysis: FieldAnalysis) -> str:
         """Get display name for a field, with fallback to auto-generated title case."""
         if field_analysis.xlsx_metadata and field_analysis.xlsx_metadata.display_name:

@@ -175,15 +175,188 @@ class TestXLSXConverters:
         with pytest.raises(ValueError, match=r"Cannot convert.*to list of integers"):
             from_int("1, abc, 3")
 
-    def test_escaped_pattern_converters(self):
-        """Test escaped pattern converters."""
+    def test_comma_escaped_converters(self):
+        """Test comma-separated converters with backslash escaping."""
         to_escaped, from_escaped = XLSXConverters.comma_escaped_converters()
 
-        # Test with embedded commas
+        # Basic serialization
+        assert to_escaped(["a", "b", "c"]) == "a, b, c"
+        assert to_escaped([]) == ""
+        assert to_escaped(None) == ""
+
+        # Basic deserialization
+        assert from_escaped("a, b, c") == ["a", "b", "c"]
+        assert from_escaped("") == []
+        assert from_escaped("   ") == []
+
+        # Test with embedded commas - the key feature
         data = ["item1", "item2, with comma", "item3"]
         escaped = to_escaped(data)
-        assert "item2\\, with comma" in escaped
+        assert escaped == "item1, item2\\, with comma, item3"
         assert from_escaped(escaped) == data
+
+        # Multiple commas in one item
+        data_multi = ["a, b, c", "simple", "d, e"]
+        escaped_multi = to_escaped(data_multi)
+        assert from_escaped(escaped_multi) == data_multi
+
+    def test_comma_quoted_converters(self):
+        """Test comma-separated converters with quote escaping."""
+        to_quoted, from_quoted = XLSXConverters.comma_quoted_converters()
+
+        # Basic serialization
+        assert to_quoted(["a", "b", "c"]) == "a, b, c"
+        assert to_quoted([]) == ""
+        assert to_quoted(None) == ""
+
+        # Basic deserialization
+        assert from_quoted("a, b, c") == ["a", "b", "c"]
+        assert from_quoted("") == []
+        assert from_quoted("   ") == []
+
+        # Test with embedded commas - items get quoted
+        data = ["item1", "item2, with comma", "item3"]
+        quoted = to_quoted(data)
+        assert quoted == 'item1, "item2, with comma", item3'
+        assert from_quoted(quoted) == data
+
+        # Multiple commas in one item
+        data_multi = ["a, b, c", "simple", "d, e"]
+        quoted_multi = to_quoted(data_multi)
+        assert from_quoted(quoted_multi) == data_multi
+
+    def test_pipe_escaped_converters(self):
+        """Test pipe-separated converters with backslash escaping."""
+        to_pipe, from_pipe = XLSXConverters.pipe_escaped_converters()
+
+        # Basic serialization (pipe pattern has spaces: " | ")
+        assert to_pipe(["a", "b", "c"]) == "a | b | c"
+        assert to_pipe([]) == ""
+        assert to_pipe(None) == ""
+
+        # Basic deserialization
+        assert from_pipe("a | b | c") == ["a", "b", "c"]
+        assert from_pipe("") == []
+        assert from_pipe("   ") == []
+
+        # Test with embedded pipes
+        data = ["item1", "item2 | with pipe", "item3"]
+        escaped = to_pipe(data)
+        assert escaped == "item1 | item2 \\| with pipe | item3"
+        assert from_pipe(escaped) == data
+
+    @pytest.mark.parametrize(
+        "converter_method,test_data,expected_serialized",
+        [
+            ("newline_converters", ["a", "b", "c"], "a\nb\nc"),
+            ("tab_converters", ["a", "b", "c"], "a\tb\tc"),
+            ("arrow_converters", ["a", "b", "c"], "a -> b -> c"),
+            ("double_colon_converters", ["a", "b", "c"], "a::b::c"),
+        ],
+    )
+    def test_separator_converter_variants(
+        self, converter_method, test_data, expected_serialized
+    ):
+        """Test various separator converter methods."""
+        to_sep, from_sep = getattr(XLSXConverters, converter_method)()
+
+        # Serialization
+        assert to_sep(test_data) == expected_serialized
+        assert to_sep([]) == ""
+        assert to_sep(None) == ""
+
+        # Deserialization roundtrip
+        assert from_sep(expected_serialized) == test_data
+        assert from_sep("") == []
+
+    def test_integer_separator_converters(self):
+        """Test comma_int_converters and pipe_int_converters."""
+        # Comma integer converters
+        to_comma_int, from_comma_int = XLSXConverters.comma_int_converters()
+        assert to_comma_int([1, 2, 3]) == "1, 2, 3"
+        assert from_comma_int("1, 2, 3") == [1, 2, 3]
+
+        # Pipe integer converters
+        to_pipe_int, from_pipe_int = XLSXConverters.pipe_int_converters()
+        assert to_pipe_int([1, 2, 3]) == "1 | 2 | 3"
+        assert from_pipe_int("1 | 2 | 3") == [1, 2, 3]
+
+    def test_list_to_json_string(self):
+        """Test list to JSON string conversion."""
+        assert XLSXConverters.list_to_json_string([1, 2, 3]) == "[1, 2, 3]"
+        assert XLSXConverters.list_to_json_string([]) == "[]"
+        assert XLSXConverters.list_to_json_string(None) == ""
+
+    def test_json_string_to_list(self):
+        """Test JSON string to list conversion."""
+        assert XLSXConverters.json_string_to_list("[1, 2, 3]") == [1, 2, 3]
+        assert XLSXConverters.json_string_to_list("[]") == []
+        assert XLSXConverters.json_string_to_list("") == []
+        assert XLSXConverters.json_string_to_list("   ") == []
+
+    def test_json_string_to_list_error(self):
+        """Test error handling in JSON string to list conversion."""
+        with pytest.raises(ValueError, match=r"Cannot parse.*as JSON"):
+            XLSXConverters.json_string_to_list("not valid json")
+
+    def test_bool_to_yes_no(self):
+        """Test boolean to Yes/No string conversion."""
+        assert XLSXConverters.bool_to_yes_no(True) == "Yes"
+        assert XLSXConverters.bool_to_yes_no(False) == "No"
+
+    @pytest.mark.parametrize(
+        "input_str,expected",
+        [
+            ("yes", True),
+            ("Yes", True),
+            ("YES", True),
+            ("y", True),
+            ("true", True),
+            ("1", True),
+            ("no", False),
+            ("No", False),
+            ("NO", False),
+            ("n", False),
+            ("false", False),
+            ("0", False),
+        ],
+    )
+    def test_yes_no_to_bool(self, input_str, expected):
+        """Test Yes/No string to boolean conversion."""
+        assert XLSXConverters.yes_no_to_bool(input_str) == expected
+
+    def test_yes_no_to_bool_error(self):
+        """Test error handling for invalid Yes/No input."""
+        with pytest.raises(ValueError, match=r"Cannot convert.*to boolean"):
+            XLSXConverters.yes_no_to_bool("maybe")
+
+    def test_date_converters(self):
+        """Test date to/from ISO string conversion."""
+        from datetime import date
+
+        test_date = date(2025, 6, 15)
+        iso_str = XLSXConverters.date_to_iso_string(test_date)
+        assert iso_str == "2025-06-15"
+        assert XLSXConverters.iso_string_to_date(iso_str) == test_date
+
+    def test_iso_string_to_date_error(self):
+        """Test error handling for invalid date string."""
+        with pytest.raises(ValueError, match=r"Cannot parse.*as ISO date"):
+            XLSXConverters.iso_string_to_date("not-a-date")
+
+    def test_datetime_converters(self):
+        """Test datetime to/from ISO string conversion."""
+        from datetime import datetime
+
+        test_dt = datetime(2025, 6, 15, 10, 30, 0)
+        iso_str = XLSXConverters.datetime_to_iso_string(test_dt)
+        assert iso_str == "2025-06-15T10:30:00"
+        assert XLSXConverters.iso_string_to_datetime(iso_str) == test_dt
+
+    def test_iso_string_to_datetime_error(self):
+        """Test error handling for invalid datetime string."""
+        with pytest.raises(ValueError, match=r"Cannot parse.*as ISO datetime"):
+            XLSXConverters.iso_string_to_datetime("not-a-datetime")
 
     def test_dict_to_json_string(self):
         """Test dictionary to JSON string conversion."""
@@ -326,6 +499,96 @@ class TestXLSXFieldAnalyzer:
         assert XLSXFieldAnalyzer.is_optional_type(str | None) is True
         assert XLSXFieldAnalyzer.is_optional_type(str) is False
         assert XLSXFieldAnalyzer.is_optional_type(Union[str, int]) is False
+
+    def test_validate_unit_usage_python310_union(self):
+        """Test unit validation with Python 3.10+ union syntax (int | None)."""
+        # Should not raise for int | None with valid unit
+        _validate_unit_usage("count", int | None, "units")
+        _validate_unit_usage("weight", float | None, "kg")
+
+        # Should raise for str | None with unit
+        with pytest.raises(ValueError, match="Units are only valid for numeric fields"):
+            _validate_unit_usage("name", str | None, "kg")
+
+    def test_get_field_display_name(self):
+        """Test display name extraction."""
+        # With custom display name in metadata
+        metadata = XLSXMetadata(display_name="Custom Name")
+        assert (
+            XLSXFieldAnalyzer.get_field_display_name("field_name", metadata)
+            == "Custom Name"
+        )
+
+        # Without metadata - converts underscores to spaces and title-cases
+        assert (
+            XLSXFieldAnalyzer.get_field_display_name("field_name", None) == "Field Name"
+        )
+        assert (
+            XLSXFieldAnalyzer.get_field_display_name("some_long_field", None)
+            == "Some Long Field"
+        )
+
+    def test_get_field_description(self):
+        """Test description extraction."""
+        # From metadata
+        metadata = XLSXMetadata(description="Meta description")
+        assert (
+            XLSXFieldAnalyzer.get_field_description(None, metadata)
+            == "Meta description"
+        )
+
+        # Without metadata returns None
+        assert XLSXFieldAnalyzer.get_field_description(None, None) is None
+
+    def test_get_field_unit(self):
+        """Test unit extraction."""
+        metadata = XLSXMetadata(unit="kg")
+        assert XLSXFieldAnalyzer.get_field_unit(metadata) == "kg"
+        assert XLSXFieldAnalyzer.get_field_unit(None) is None
+
+    def test_get_field_meaning(self):
+        """Test meaning extraction."""
+        metadata = XLSXMetadata(meaning="http://example.org/term")
+        assert (
+            XLSXFieldAnalyzer.get_field_meaning(metadata) == "http://example.org/term"
+        )
+        assert XLSXFieldAnalyzer.get_field_meaning(None) is None
+
+    def test_has_custom_serializers(self):
+        """Test custom serializer detection."""
+        # Both serializers present
+        metadata = XLSXMetadata(
+            xlsx_serializer=lambda x: str(x),
+            xlsx_deserializer=lambda x: x,
+        )
+        assert XLSXFieldAnalyzer.has_custom_serializers(metadata) is True
+
+        # Only one serializer - returns False
+        metadata_partial = XLSXMetadata(xlsx_serializer=lambda x: str(x))
+        assert XLSXFieldAnalyzer.has_custom_serializers(metadata_partial) is False
+
+        # No metadata
+        assert XLSXFieldAnalyzer.has_custom_serializers(None) is False
+
+    def test_get_custom_serializer(self):
+        """Test custom serializer extraction."""
+        serializer = lambda x: str(x)  # noqa: E731
+        metadata = XLSXMetadata(xlsx_serializer=serializer)
+        assert XLSXFieldAnalyzer.get_custom_serializer(metadata) is serializer
+        assert XLSXFieldAnalyzer.get_custom_serializer(None) is None
+
+    def test_get_custom_deserializer(self):
+        """Test custom deserializer extraction."""
+        deserializer = lambda x: int(x)  # noqa: E731
+        metadata = XLSXMetadata(xlsx_deserializer=deserializer)
+        assert XLSXFieldAnalyzer.get_custom_deserializer(metadata) is deserializer
+        assert XLSXFieldAnalyzer.get_custom_deserializer(None) is None
+
+    def test_get_separator_pattern(self):
+        """Test separator pattern extraction."""
+        metadata = XLSXMetadata(separator_pattern=XLSXConverters.COMMA)
+        assert XLSXFieldAnalyzer.get_separator_pattern(metadata) == XLSXConverters.COMMA
+        assert XLSXFieldAnalyzer.get_separator_pattern(None) is None
 
 
 # Tests for FieldAnalysis
@@ -600,6 +863,46 @@ class TestConfiguration:
         # Test with no restrictions
         config_open = XLSXConfig()
         assert config_open.should_include_field("any_field") is True
+
+    def test_config_exclude_fields_only(self):
+        """Test field filtering with exclude_fields only (no include_fields)."""
+        config = XLSXConfig(exclude_fields={"field2", "field3"})
+
+        assert config.should_include_field("field1") is True
+        assert config.should_include_field("field2") is False  # Excluded
+        assert config.should_include_field("field3") is False  # Excluded
+        assert config.should_include_field("field4") is True  # Not excluded
+
+    def test_get_ordered_fields_custom_order(self):
+        """Test field ordering with custom field_order."""
+        config = XLSXConfig(field_order=["c", "a", "b"])
+        available = ["a", "b", "c", "d", "e"]
+
+        ordered = config.get_ordered_fields(available)
+
+        # Should start with specified order, then remaining fields
+        assert ordered == ["c", "a", "b", "d", "e"]
+
+    def test_get_ordered_fields_with_filtering(self):
+        """Test field ordering combined with filtering."""
+        config = XLSXConfig(
+            field_order=["c", "a", "b"],
+            exclude_fields={"d"},
+        )
+        available = ["a", "b", "c", "d", "e"]
+
+        ordered = config.get_ordered_fields(available)
+
+        # Should order and filter
+        assert ordered == ["c", "a", "b", "e"]
+
+    def test_get_ordered_fields_no_order(self):
+        """Test field ordering without custom order."""
+        config = XLSXConfig()
+        available = ["a", "b", "c"]
+
+        ordered = config.get_ordered_fields(available)
+        assert ordered == ["a", "b", "c"]
 
 
 # Tests for Advanced Field Analysis and Edge Cases
