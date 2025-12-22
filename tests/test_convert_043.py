@@ -522,3 +522,288 @@ class TestFirstTimeHistoryNote043:
         history_notes = list(converted.objects(EX.collection1, SKOS.historyNote))
         assert len(history_notes) == 1
         assert str(history_notes[0]) == HISTORY_NOTE_FIRST_TIME
+
+
+class TestConvert043EdgeCases:
+    """Additional tests for convert_043 edge cases."""
+
+    def _convert_and_parse(self, tmp_path, graph, *, vocab_config=None):
+        """Convert graph via 043->v1 pipeline and return parsed result."""
+        input_path = tmp_path / "test_043.ttl"
+        graph.serialize(destination=str(input_path), format="turtle")
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(
+            input_path,
+            output_path,
+            vocab_config=vocab_config,
+            output_format="turtle",
+        )
+        return Graph().parse(output_path, format="turtle"), output_path
+
+    def test_no_concept_scheme_warning(self, tmp_path, caplog):
+        """Test warning when graph has no ConceptScheme."""
+        # Create RDF without ConceptScheme
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+        g.add((EX.concept1, RDF.type, SKOS.Concept))
+        g.add((EX.concept1, SKOS.prefLabel, Literal("Test", lang="en")))
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="http://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="http://example.org/scheme",
+            title="Test",
+            description="Test",
+            created_date="2024-01-01",
+            creator="https://orcid.org/0000-0001-2345-6789",
+            repository="https://github.com/test/repo",
+        )
+
+        input_path = tmp_path / "test_043.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+        output_path = tmp_path / "test_v1.ttl"
+
+        with caplog.at_level(logging.WARNING):
+            convert_rdf_043_to_v1(input_path, output_path, vocab_config=vocab_config)
+
+        assert "No ConceptScheme found" in caplog.text
+
+    def test_voc4cat_version_env_var(self, tmp_path, monkeypatch):
+        """Test VOC4CAT_VERSION environment variable overrides version."""
+
+        monkeypatch.setenv("VOC4CAT_VERSION", "2.0.0-test")
+
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+        g.add((EX.scheme, OWL.versionInfo, Literal("1.0.0")))
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="http://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="http://example.org/scheme",
+            title="Test",
+            description="Test",
+            created_date="2024-01-01",
+            creator="https://orcid.org/0000-0001-2345-6789",
+            repository="https://github.com/test/repo",
+        )
+
+        converted, _ = self._convert_and_parse(tmp_path, g, vocab_config=vocab_config)
+
+        versions = list(converted.objects(EX.scheme, OWL.versionInfo))
+        assert len(versions) == 1
+        assert str(versions[0]) == "2.0.0-test"
+
+    def test_vocab_config_homepage(self, tmp_path):
+        """Test homepage handling in vocab_config."""
+        from rdflib import FOAF
+
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="http://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="http://example.org/scheme",
+            title="Test",
+            description="Test",
+            created_date="2024-01-01",
+            creator="https://orcid.org/0000-0001-2345-6789",
+            repository="https://github.com/test/repo",
+            homepage="https://example.org/home",
+        )
+
+        converted, _ = self._convert_and_parse(tmp_path, g, vocab_config=vocab_config)
+
+        homepages = list(converted.objects(EX.scheme, FOAF.homepage))
+        assert len(homepages) == 1
+        assert str(homepages[0]) == "https://example.org/home"
+
+    def test_vocab_config_catalogue_pid(self, tmp_path):
+        """Test catalogue_pid handling in vocab_config."""
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="http://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="http://example.org/scheme",
+            title="Test",
+            description="Test",
+            created_date="2024-01-01",
+            creator="https://orcid.org/0000-0001-2345-6789",
+            repository="https://github.com/test/repo",
+            catalogue_pid="https://doi.org/10.1234/example",
+        )
+
+        converted, _ = self._convert_and_parse(tmp_path, g, vocab_config=vocab_config)
+
+        identifiers = list(converted.objects(EX.scheme, DCTERMS.identifier))
+        assert len(identifiers) == 1
+        assert str(identifiers[0]) == "https://doi.org/10.1234/example"
+
+        see_also = list(converted.objects(EX.scheme, RDFS.seeAlso))
+        assert len(see_also) == 1
+        assert str(see_also[0]) == "https://doi.org/10.1234/example"
+
+    def test_vocab_config_conforms_to_multiline(self, tmp_path):
+        """Test conforms_to multi-line handling in vocab_config."""
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="http://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="http://example.org/scheme",
+            title="Test",
+            description="Test",
+            created_date="2024-01-01",
+            creator="https://orcid.org/0000-0001-2345-6789",
+            repository="https://github.com/test/repo",
+            conforms_to="https://w3id.org/profile/vocpub\nhttps://w3id.org/profile/skos",
+        )
+
+        converted, _ = self._convert_and_parse(tmp_path, g, vocab_config=vocab_config)
+
+        conforms_to = list(converted.objects(EX.scheme, DCTERMS.conformsTo))
+        assert len(conforms_to) == 2
+        conforms_to_strs = [str(c) for c in conforms_to]
+        assert "https://w3id.org/profile/vocpub" in conforms_to_strs
+        assert "https://w3id.org/profile/skos" in conforms_to_strs
+
+    def test_invalid_file_extension(self, tmp_path):
+        """Test error when input file has invalid extension."""
+        invalid_file = tmp_path / "vocab.txt"
+        invalid_file.write_text("# Not an RDF file")
+
+        with pytest.raises(ValueError, match="RDF file formats"):
+            convert_rdf_043_to_v1(invalid_file)
+
+    def test_vocab_config_prefix_map(self, tmp_path):
+        """Test prefix_map from vocab_config is applied (code path coverage)."""
+        # Use a namespace that will be referenced by concept IRI
+        MYVOC = Namespace("http://example.org/vocab/")  # noqa: N806
+
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+        # Add a concept using the custom namespace so prefix appears in output
+        g.add((MYVOC.concept1, RDF.type, SKOS.Concept))
+        g.add((MYVOC.concept1, SKOS.prefLabel, Literal("Test Concept", lang="en")))
+        g.add((MYVOC.concept1, SKOS.inScheme, EX.scheme))
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="http://example.org/vocab/",
+            checks={},
+            prefix_map={"myvoc": "http://example.org/vocab/"},
+            vocabulary_iri="http://example.org/scheme",
+            title="Test",
+            description="Test",
+            created_date="2024-01-01",
+            creator="https://orcid.org/0000-0001-2345-6789",
+            repository="https://github.com/test/repo",
+        )
+
+        _, output_path = self._convert_and_parse(tmp_path, g, vocab_config=vocab_config)
+
+        # Verify the prefix binding shows in serialized output
+        content = output_path.read_text()
+        assert "@prefix myvoc:" in content or "myvoc:concept1" in content
+
+    def test_output_format_jsonld(self, tmp_path):
+        """Test conversion to JSON-LD format with default output path."""
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        input_path = tmp_path / "test.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+
+        # Convert to JSON-LD without specifying output path
+        result_path = convert_rdf_043_to_v1(input_path, output_format="json-ld")
+
+        assert result_path.suffix == ".jsonld"
+        assert result_path.stem == "test_v1"
+        assert result_path.exists()
+
+    def test_output_format_xml_default_path(self, tmp_path):
+        """Test conversion to XML format with default output path."""
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        input_path = tmp_path / "test.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+
+        # Convert to XML without specifying output path
+        result_path = convert_rdf_043_to_v1(input_path, output_format="xml")
+
+        assert result_path.suffix == ".rdf"
+        assert result_path.stem == "test_v1"
+        assert result_path.exists()
+
+    def test_influenced_by_history_note(self, tmp_path):
+        """Test that wasInfluencedBy generates appropriate historyNote."""
+
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+        g.bind("prov", PROV)
+
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test Scheme", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        # Add concept with prov:wasInfluencedBy (but no hadPrimarySource)
+        g.add((EX.concept1, RDF.type, SKOS.Concept))
+        g.add((EX.concept1, SKOS.prefLabel, Literal("Test Concept", lang="en")))
+        g.add((EX.concept1, SKOS.inScheme, EX.scheme))
+        g.add((EX.concept1, PROV.wasInfluencedBy, EX.other_concept))
+
+        input_path = tmp_path / "test_043.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(input_path, output_path)
+        converted = Graph().parse(output_path, format="turtle")
+
+        # Should have influenced-by history note
+        history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
+        assert len(history_notes) == 1
+        assert str(EX.other_concept) in str(history_notes[0])

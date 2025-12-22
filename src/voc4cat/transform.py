@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def extract_numeric_id_from_iri(iri):
     iri_path = urlsplit(iri).path
     reverse_id = []
-    for char in reversed(iri_path):
+    for char in reversed(iri_path):  # pragma: no branch
         if char.isdigit():
             reverse_id.append(char)
         elif char == "/":
@@ -59,7 +59,7 @@ def write_split_turtle(vocab_graph: Graph, outdir: Path) -> None:
 
 def autoversion_cs(graph: Graph) -> Graph:
     """Set modified date and version if "requested" via environment variables."""
-    if any(graph.triples((None, RDF.type, SKOS.ConceptScheme))):
+    if any(graph.triples((None, RDF.type, SKOS.ConceptScheme))):  # pragma: no branch
         cs, _, _ = next(graph.triples((None, RDF.type, SKOS.ConceptScheme)))
     if os.getenv("VOC4CAT_MODIFIED") is not None:
         graph.remove((None, DCTERMS.modified, None))

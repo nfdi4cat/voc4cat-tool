@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+from rdflib import SH
 
 from tests.test_cli import (
     CS_CYCLES,
@@ -10,6 +11,8 @@ from tests.test_cli import (
 )
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
+from voc4cat.convert import format_log_msg, resolve_profile, validate_with_profile
+from voc4cat.utils import ConversionError
 
 
 @pytest.mark.parametrize(
@@ -172,3 +175,263 @@ def test_template_warning_for_xlsx_input(
             pass  # Expected - conversion needs config, but warning comes first
 
     assert "Template option ignored for xlsx->RDF conversion" in caplog.text
+
+
+class TestResolveProfile:
+    """Tests for resolve_profile function."""
+
+    def test_resolve_bundled_profile(self):
+        """Test resolving a bundled profile token."""
+        # Use an actual bundled profile
+        path, name = resolve_profile("vocpub-4.7")
+        assert path.exists()
+        assert name == "vocpub-4.7"
+
+    def test_resolve_custom_profile_file(self, tmp_path):
+        """Test resolving a custom SHACL profile file."""
+        # Create a dummy profile file
+        custom_profile = tmp_path / "my_profile.ttl"
+        custom_profile.write_text("# Custom SHACL profile")
+
+        path, name = resolve_profile(str(custom_profile))
+        assert path == custom_profile
+        assert name == "my_profile"
+
+    def test_resolve_profile_file_not_found(self, tmp_path):
+        """Test error when profile file doesn't exist."""
+        with pytest.raises(Voc4catError, match="SHACL profile file not found"):
+            resolve_profile(str(tmp_path / "nonexistent.ttl"))
+
+    def test_resolve_profile_unknown_token(self):
+        """Test error when unknown profile token is given."""
+        with pytest.raises(Voc4catError, match="Unknown profile"):
+            resolve_profile("unknown_profile_xyz")
+
+
+class TestConvertFrom043:
+    """Tests for --from 043 conversion path."""
+
+    def test_from_043_requires_config(self, tmp_path, monkeypatch):
+        """Test that --from 043 requires idranges.toml config."""
+        # Create a dummy RDF file
+        rdf_file = tmp_path / "test.ttl"
+        rdf_file.write_text("# Dummy RDF")
+
+        monkeypatch.chdir(tmp_path)
+
+        with pytest.raises(Voc4catError, match="--from 043 requires an idranges.toml"):
+            main_cli(["convert", "--from", "043", str(tmp_path)])
+
+    def test_from_043_requires_v1_config(self, tmp_path, monkeypatch):
+        """Test that --from 043 requires v1.0 config format."""
+        # Create a dummy RDF file
+        rdf_file = tmp_path / "test.ttl"
+        rdf_file.write_text("# Dummy RDF")
+
+        # Create an old-style config (no config_version)
+        config_content = """
+[vocabs.test]
+id_length = 4
+permanent_iri_part = "https://example.org/test/"
+prefix_map = {}
+vocabulary_iri = "https://example.org/test/"
+title = "Test"
+description = "Test"
+created_date = "2025-01-01"
+creator = "https://orcid.org/0000-0001-5000-0007 Test"
+repository = "https://github.com/example/test"
+
+[vocabs.test.checks]
+"""
+        config_file = tmp_path / "idranges.toml"
+        config_file.write_text(config_content)
+
+        monkeypatch.chdir(tmp_path)
+
+        with pytest.raises(Voc4catError, match="Pre-v1.0 idranges.toml detected"):
+            main_cli(
+                [
+                    "convert",
+                    "--config",
+                    str(config_file),
+                    "--from",
+                    "043",
+                    str(tmp_path),
+                ]
+            )
+
+    def test_from_043_converts_rdf(self, datadir, tmp_path, monkeypatch, temp_config):
+        """Test that --from 043 converts RDF files successfully."""
+        # Copy test file
+        shutil.copy(datadir / "vocab-043-test.ttl", tmp_path)
+
+        # Create v1.0 config (creator is just the ORCID URL)
+        config_content = """
+config_version = "v1.0"
+single_vocab = true
+
+[vocabs.vocab-043-test]
+id_length = 7
+permanent_iri_part = "http://example.org/test-vocab/"
+vocabulary_iri = "http://example.org/test-vocab/"
+title = "Test Vocabulary 043"
+description = "Test vocabulary"
+created_date = "2023-06-29"
+creator = "Test Author https://orcid.org/0000-0001-5000-0007"
+repository = "https://github.com/example/test"
+
+[vocabs.vocab-043-test.checks]
+
+[vocabs.vocab-043-test.prefix_map]
+ex = "http://example.org/"
+"""
+        config_file = tmp_path / "idranges.toml"
+        config_file.write_text(config_content)
+
+        monkeypatch.chdir(tmp_path)
+
+        main_cli(
+            ["convert", "--config", str(config_file), "--from", "043", str(tmp_path)]
+        )
+
+        # Check output was created
+        assert (tmp_path / "vocab-043-test.ttl").exists()
+
+
+class TestFormatLogMsg:
+    """Tests for format_log_msg function."""
+
+    def test_format_info_message(self):
+        """Test formatting INFO severity message."""
+        result_dict = {
+            "sourceConstraintComponent": f"{SH}MinCountConstraintComponent",
+            "resultSeverity": str(SH.Info),
+            "sourceShape": "http://example.org/shape",
+            "focusNode": "http://example.org/node",
+            "resultMessage": "Test info message",
+        }
+        msg = format_log_msg(result_dict, colored=True)
+        assert "INFO:" in msg
+        assert "Test info message" in msg
+
+    def test_format_warning_message(self):
+        """Test formatting WARNING severity message."""
+        result_dict = {
+            "sourceConstraintComponent": f"{SH}MinCountConstraintComponent",
+            "resultSeverity": str(SH.Warning),
+            "sourceShape": "http://example.org/shape",
+            "focusNode": "http://example.org/node",
+            "resultMessage": "Test warning message",
+        }
+        msg = format_log_msg(result_dict, colored=True)
+        assert "WARNING:" in msg
+        assert "Test warning message" in msg
+
+    def test_format_violation_message(self):
+        """Test formatting VIOLATION severity message."""
+        result_dict = {
+            "sourceConstraintComponent": f"{SH}MinCountConstraintComponent",
+            "resultSeverity": str(SH.Violation),
+            "sourceShape": "http://example.org/shape",
+            "focusNode": "http://example.org/node",
+            "resultMessage": "Test violation message",
+        }
+        msg = format_log_msg(result_dict, colored=True)
+        assert "VIOLATION:" in msg
+        assert "Test violation message" in msg
+
+    def test_format_message_with_value(self):
+        """Test formatting message that includes a value node."""
+        result_dict = {
+            "sourceConstraintComponent": f"{SH}MinCountConstraintComponent",
+            "resultSeverity": str(SH.Info),
+            "sourceShape": "http://example.org/shape",
+            "focusNode": "http://example.org/node",
+            "value": "test-value",
+            "resultMessage": "Test message with value",
+        }
+        msg = format_log_msg(result_dict)
+        assert "test-value" in msg
+
+
+class TestValidateWithProfile:
+    """Tests for validate_with_profile function."""
+
+    def test_validate_valid_vocabulary(self, datadir):
+        """Test validation of a valid vocabulary passes."""
+        # concept-scheme-simple.ttl should be valid
+        ttl_file = datadir / "concept-scheme-simple.ttl"
+        # Should not raise
+        validate_with_profile(str(ttl_file), profile="vp4cat-5.2")
+
+    def test_validate_invalid_vocabulary_raises(self, datadir):
+        """Test validation of invalid vocabulary raises ConversionError."""
+        ttl_file = datadir / "concept-scheme-badfile.ttl"
+        with pytest.raises(ConversionError, match="not valid according to"):
+            validate_with_profile(str(ttl_file), profile="vp4cat-5.2")
+
+    def test_validate_with_error_level_3(self, datadir, caplog):
+        """Test validation with error_level=3 only fails on violations."""
+        # badfile should have violations
+        ttl_file = datadir / "concept-scheme-badfile.ttl"
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(ConversionError):
+                validate_with_profile(
+                    str(ttl_file), profile="vp4cat-5.2", error_level=3
+                )
+
+
+class TestXlsxToRdfConversion:
+    """Tests for xlsx to RDF conversion path."""
+
+    def test_xlsx_to_rdf_requires_config(self, tmp_path, cs_cycles_xlsx, caplog):
+        """Test that xlsx to RDF conversion requires vocab config."""
+        vocab_dir = tmp_path / "vocab"
+        vocab_dir.mkdir()
+        shutil.copy(cs_cycles_xlsx, vocab_dir / CS_CYCLES)
+
+        with pytest.raises(Voc4catError, match="No idranges.toml config found"):
+            main_cli(["convert", str(vocab_dir)])
+
+    def test_xlsx_to_rdf_with_config(
+        self, datadir, tmp_path, monkeypatch, cs_cycles_xlsx, temp_config
+    ):
+        """Test xlsx to RDF conversion with proper config."""
+        vocab_dir = tmp_path / "vocab"
+        vocab_dir.mkdir()
+        shutil.copy(cs_cycles_xlsx, vocab_dir / CS_CYCLES)
+
+        # Load config for the vocabulary
+        config = temp_config
+        vocab_name = "concept-scheme-with-cycles"
+        config.CURIES_CONVERTER_MAP[vocab_name] = config.curies_converter
+
+        # Create a v1.0 config file (creator is just the ORCID URL)
+        config_content = """
+config_version = "v1.0"
+single_vocab = true
+
+[vocabs.concept-scheme-with-cycles]
+id_length = 7
+permanent_iri_part = "http://example.org/test/"
+vocabulary_iri = "http://example.org/test/"
+title = "Test Vocabulary"
+description = "Test vocabulary"
+created_date = "2022-12-01"
+creator = "Test Author https://orcid.org/0000-0001-5000-0007"
+repository = "https://github.com/example/test"
+
+[vocabs.concept-scheme-with-cycles.checks]
+
+[vocabs.concept-scheme-with-cycles.prefix_map]
+ex = "http://example.org/"
+"""
+        config_file = tmp_path / "idranges.toml"
+        config_file.write_text(config_content)
+
+        monkeypatch.chdir(tmp_path)
+
+        main_cli(["convert", "--config", str(config_file), str(vocab_dir)])
+
+        # Check output was created
+        assert (vocab_dir / "concept-scheme-with-cycles.ttl").exists()

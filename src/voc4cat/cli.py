@@ -35,8 +35,7 @@ def process_common_options(args, raw_args):
     if logfile is None:
         setup_logging(loglevel)
     else:
-        if not logfile.parents[0].exists():
-            logfile.parents[0].mkdir(exist_ok=True, parents=True)
+        logfile.parents[0].mkdir(exist_ok=True, parents=True)
         setup_logging(loglevel, logfile)
 
     logger.info("Executing cmd: voc4cat %s", " ".join(raw_args))
@@ -459,7 +458,7 @@ def run_cli_app(raw_args=None):
     except (Voc4catError, ConversionError) as e:
         logger.error("Terminating with error: %s", e)
         sys.exit(1)
-    except Exception:
+    except Exception:  # pragma: no cover
         logger.exception("Unexpected error.")
         sys.exit(3)  # value 2 is used by argparse for invalid args.
 

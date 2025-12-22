@@ -295,6 +295,172 @@ class TestModels:
         )
 
 
+class TestTemplateWithConfig:
+    """Tests for template generation with vocab config."""
+
+    @pytest.fixture
+    def base_vocab_config(self):
+        """Create a base vocab config with required fields."""
+        from voc4cat.config import Checks
+
+        return {
+            "id_length": 4,
+            "permanent_iri_part": "https://example.org/",
+            "checks": Checks(),
+            "prefix_map": {},
+            # Mandatory ConceptScheme fields
+            "vocabulary_iri": "https://example.org/base/",
+            "title": "Base Title",
+            "description": "Base description",
+            "created_date": "2025-01-01",
+            "creator": "Base Creator",
+            "repository": "https://github.com/example/repo",
+        }
+
+    def test_generate_template_with_vocab_config(self, tmp_path, base_vocab_config):
+        """Test template generation with vocabulary configuration."""
+        from voc4cat.config import Vocab
+
+        # Override base config with specific values
+        config = base_vocab_config.copy()
+        config.update(
+            {
+                "vocabulary_iri": "https://example.org/myvocab/",
+                "prefix": "myvoc",
+                "title": "My Vocabulary",
+                "description": "A test vocabulary",
+                "created_date": "2025-01-15",
+                "creator": "https://orcid.org/0000-0001-5000-0007 Test Author",
+                "publisher": "Test Publisher",
+                "custodian": "Test Custodian",
+                "history_note": "Created for testing purposes",
+                # Pass id_range as list of dicts (before validation)
+                "id_range": [
+                    {
+                        "gh_name": "testuser",
+                        "first_id": 1,
+                        "last_id": 100,
+                    }
+                ],
+            }
+        )
+        vocab_config = Vocab(**config)
+        # Add custom prefix
+        vocab_config.prefix_map["custom"] = "https://custom.example.org/"
+
+        output_path = tmp_path / "test_vocab.xlsx"
+        wb = generate_template_v1(output_path, vocab_config=vocab_config)
+
+        # Verify Concept Scheme values from config
+        ws = wb["Concept Scheme"]
+        found_values = {}
+        for row in range(4, ws.max_row + 1):
+            field = ws[f"A{row}"].value
+            value = ws[f"B{row}"].value
+            if field:  # pragma: no branch
+                found_values[field] = value
+
+        assert found_values.get("Vocabulary IRI") == "https://example.org/myvocab/"
+        assert found_values.get("Prefix") == "myvoc"
+        assert found_values.get("Title") == "My Vocabulary"
+        assert found_values.get("History Note") == "Created for testing purposes"
+
+        # Verify ID Ranges from config
+        ws_id = wb["ID Ranges"]
+        assert ws_id["A4"].value == "testuser"
+        assert ws_id["B4"].value == "1 - 100"
+
+        # Verify Prefixes include custom prefix from config
+        ws_pfx = wb["Prefixes"]
+        found_prefixes = set()
+        for row in range(4, ws_pfx.max_row + 1):
+            prefix = ws_pfx[f"A{row}"].value
+            if prefix:  # pragma: no branch
+                found_prefixes.add(prefix)
+        assert "custom" in found_prefixes
+
+    def test_generate_template_with_history_note_auto_generation(
+        self, tmp_path, base_vocab_config
+    ):
+        """Test history note is auto-generated when not provided in config."""
+        from voc4cat.config import Vocab
+
+        # Override base config
+        # Creator format: "<ORCID URL> <Name>"
+        config = base_vocab_config.copy()
+        config.update(
+            {
+                "vocabulary_iri": "https://example.org/autogen/",
+                "prefix": "auto",
+                "title": "Auto History Test",
+                "description": "Testing auto-generation",
+                "created_date": "2025-06-15",
+                "creator": "https://orcid.org/0000-0001-5000-0007 Jane Doe",
+            }
+        )
+        vocab_config = Vocab(**config)
+
+        output_path = tmp_path / "autogen.xlsx"
+        wb = generate_template_v1(output_path, vocab_config=vocab_config)
+
+        # Verify history note was auto-generated
+        ws = wb["Concept Scheme"]
+        history_note_row = next(
+            (
+                row
+                for row in range(4, ws.max_row + 1)
+                if ws[f"A{row}"].value == "History Note"
+            ),
+            None,
+        )
+        assert history_note_row is not None, "History Note field not found"
+        history_note = ws[f"B{history_note_row}"].value
+        # Should contain date and creator name
+        assert "2025-06-15" in history_note
+        assert "Jane Doe" in history_note
+
+    def test_generate_template_with_orcid_fallback(self, tmp_path, base_vocab_config):
+        """Test ID ranges uses ORCID when gh_name not available."""
+        from voc4cat.config import Vocab
+
+        # Override base config - use valid ORCID with correct checksum
+        # id_range must be list of dicts for the validator
+        config = base_vocab_config.copy()
+        config.update(
+            {
+                "vocabulary_iri": "https://example.org/orcid/",
+                "prefix": "orc",
+                "title": "ORCID Test",
+                "id_range": [
+                    {
+                        # Valid ORCID: 0000-0001-5000-0007 has correct checksum
+                        "orcid": "https://orcid.org/0000-0001-5000-0007",
+                        "first_id": 200,
+                        "last_id": 299,
+                    }
+                ],
+            }
+        )
+        vocab_config = Vocab(**config)
+
+        output_path = tmp_path / "orcid.xlsx"
+        wb = generate_template_v1(output_path, vocab_config=vocab_config)
+
+        ws_id = wb["ID Ranges"]
+        # Should use ORCID as the name since gh_name is not provided
+        assert "0000-0001-5000-0007" in str(ws_id["A4"].value)
+
+    def test_generate_template_without_output_path(self):
+        """Test template generation returns workbook when no output path."""
+        # When output_path is None, should still return valid workbook
+        wb = generate_template_v1(output_path=None)
+
+        # Verify workbook has expected sheets
+        assert "Concept Scheme" in wb.sheetnames
+        assert "Concepts" in wb.sheetnames
+        assert "Prefixes" in wb.sheetnames
+
+
 class TestTemplateCLI:
     """CLI integration tests for the template command."""
 
@@ -460,3 +626,81 @@ class TestTemplateCLI:
             main_cli(["template", "--template", str(bad_template), "myvocab"])
 
         assert 'Template file must be of type ".xlsx"' in caplog.text
+
+    def test_template_cli_with_config_vocab_found(self, tmp_path, monkeypatch, caplog):
+        """Test template command with config file where vocab is found."""
+        monkeypatch.chdir(tmp_path)
+
+        # Create a full idranges.toml config with all required fields
+        config_content = """
+[vocabs.testvocab]
+id_length = 4
+permanent_iri_part = "https://example.org/testvocab/"
+prefix_map = {}
+vocabulary_iri = "https://example.org/testvocab/"
+prefix = "test"
+title = "Test Vocabulary"
+description = "A test vocabulary from config"
+created_date = "2025-01-01"
+creator = "Test Creator"
+repository = "https://github.com/example/testvocab"
+
+[vocabs.testvocab.checks]
+"""
+        config_file = tmp_path / "idranges.toml"
+        config_file.write_text(config_content)
+
+        with caplog.at_level(logging.INFO):
+            main_cli(["template", "--config", str(config_file), "testvocab"])
+
+        # Verify template was created
+        assert (tmp_path / "testvocab.xlsx").exists()
+
+        # Verify config was used
+        assert "Using config for vocabulary" in caplog.text
+
+    def test_template_cli_with_config_vocab_not_found(
+        self, tmp_path, monkeypatch, caplog
+    ):
+        """Test template command with config file where vocab is not found."""
+        monkeypatch.chdir(tmp_path)
+
+        # Create a config without the requested vocabulary
+        config_content = """
+[vocabs.othervocab]
+id_length = 4
+permanent_iri_part = "https://example.org/other/"
+prefix_map = {}
+vocabulary_iri = "https://example.org/other/"
+prefix = "other"
+title = "Other Vocabulary"
+description = "Other description"
+created_date = "2025-01-01"
+creator = "Other Creator"
+repository = "https://github.com/example/other"
+
+[vocabs.othervocab.checks]
+"""
+        config_file = tmp_path / "idranges.toml"
+        config_file.write_text(config_content)
+
+        with caplog.at_level(logging.WARNING):
+            main_cli(["template", "--config", str(config_file), "myvocab"])
+
+        # Template should still be created (with example data)
+        assert (tmp_path / "myvocab.xlsx").exists()
+
+        # Warning should be logged
+        assert "not found in config file" in caplog.text
+
+    def test_template_cli_with_missing_config_file(self, tmp_path, monkeypatch, caplog):
+        """Test template command with non-existent config file raises error."""
+        from voc4cat.checks import Voc4catError
+
+        monkeypatch.chdir(tmp_path)
+
+        with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
+            main_cli(["template", "--config", "nonexistent.toml", "myvocab"])
+
+        # Error should be logged
+        assert "Config file not found" in caplog.text
