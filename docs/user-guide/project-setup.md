@@ -152,7 +152,8 @@ While most sheets in the xlsx vocdabulary are created automatically, you can sti
 This could for example be used to provide a help sheet.
 
 Drop a custom template file `template_myvocab.xlsx` to the folder `templates/`.
-The sheets that you put into this template may not have the same name as any of the auto-generated sheets.
+The sheets that you put into this template may not have the same name as any of the auto-generated sheets
+(see {ref}`list in migration guide <step-3-generate-v1-0-excel-template>`).
 
 (keeping-in-sync-with-the-template)=
 ## Keeping in sync with the template

@@ -30,6 +30,7 @@ voc4cat convert --from 043 --config path/to/v1.0/idranges.toml --outdir output/ 
 
 This converts the RDF to the new v1.0 format and enriches the ConceptScheme with metadata from the config.
 
+(step-3-generate-v1-0-excel-template)=
 ### Step 3: Generate v1.0 Excel template
 
 With voc4cat-tool 1.0.0, all required sheets in the xlsx template are dynamically generated.
