@@ -104,9 +104,21 @@ See [migrating to v1.0](https://nfdi4cat.github.io/voc4cat-tool/migration-to-v1.
 
 We highly appreciate your feedback. Please create an [issue on GitHub](https://github.com/nfdi4cat/voc4cat-tool/issues).
 
-If you plan to contribute code, we suggest to also create an issue first to get early feedback on your ideas before you spend too much time.
+Before you contribute code, we suggest to first create an issue to get early feedback on your ideas before you spend too much time.
 
 By contributing you agree that your contributions fall under the project´s BSD-3-Clause [license](LICENSE).
+
+## Contributors
+
+For details see the [Zenodo record](https://doi.org/10.5281/zenodo.8277925).
+
+**A big thanks to our GitHub contributors:**
+
+<a href="https://github.com/nfdi4cat/voc4cat/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=nfdi4cat/voc4cat-tool" alt="Voc4Cat-tool contributors"/>
+</a>
+
+*Figure made with [contrib.rocks](https://contrib.rocks).*
 
 ## Acknowledgement
 

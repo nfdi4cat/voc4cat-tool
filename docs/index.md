@@ -9,8 +9,8 @@ A toolbox for collaboratively maintaining SKOS vocabularies on GitHub using Exce
 - Bidirectional conversion between Excel (xlsx) and SKOS/RDF (turtle) formats
 - Validation with SHACL profiles and additional consistency checks
 - Vocabulary metadata management via configuration files
-- ID range allocation for contributors
-- HTML documentation generation from vocabularies
+- ID range allocation for contributors for opaque URIs
+- HTML documentation generation from SKOS/RDF vocabularies
 
 It is part of the voc4cat ecosystem:
 
@@ -21,6 +21,7 @@ It is part of the voc4cat ecosystem:
 ```{toctree}
 :hidden:
 GitHub page <https://github.com/nfdi4cat/voc4cat-tool>
+about
 ```
 
 ```{toctree}
