@@ -10,6 +10,7 @@ A toolbox for collaboratively maintaining SKOS vocabularies on GitHub using Exce
 - Validation with SHACL profiles and additional consistency checks
 - Vocabulary metadata management via configuration files
 - ID range allocation for contributors for opaque URIs
+- Extract provenance information from git history
 - HTML documentation generation from SKOS/RDF vocabularies
 
 It is part of the voc4cat ecosystem:

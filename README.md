@@ -22,6 +22,7 @@ voc4cat was mainly developed to be used in gh-actions but it is also useful as a
 - Convert between SKOS-vocabularies in Excel/xlsx format and rdf-format (turtle) in both directions.
 - Check/validate SKOS-vocabularies in rdf/turtle format with the [vocpub](https://w3id.org/profile/vocpub) SHACL-profile.
 - Manage vocabulary metadata (title, description, creator, publisher, etc.) via configuration file.
+- Extract provenance information from git history (created, updated).
 - Allocate ID ranges to contributors and track their contributions.
 - Check xlsx vocabulary files for errors or incorrect use of IDs (voc4cat uses pydantic for this validation).
 - Generate documentation from SKOS/turtle vocabulary file using [pyLODE](https://github.com/RDFLib/pyLODE).
