@@ -275,7 +275,7 @@ def add_check_subparser(subparsers, options):
     parser = subparsers.add_parser(
         "check",
         description=(
-            "Perform checks of vocabulary files in xlsx or in SKOS/turtle format."
+            "Perform checks of vocabulary files in xlsx or in SKOS/turtle format. "
             "You can also validate the state of directories in a CI vocabulary pipeline."
         ),
         help="Check vocabularies or validate vocabulary pipelines.",
@@ -290,7 +290,7 @@ def add_check_subparser(subparsers, options):
         default=False,
         action="store_true",
     )
-    shacl = parser.add_argument_group("SHACL profile validation")
+    shacl = parser.add_argument_group("RDF validation")
     shacl.add_argument(
         "-p",
         "--profile",
@@ -321,6 +321,15 @@ def add_check_subparser(subparsers, options):
             "-p (--profile) flag."
         ),
         action="store_true",
+    )
+    shacl.add_argument(
+        "--detect-hierarchy-redundancy",
+        help=(
+            "Detect redundant hierarchical relationships where a concept has "
+            "skos:broader to both a parent and an ancestor of that parent."
+        ),
+        action="store_true",
+        default=False,
     )
     workflow = parser.add_argument_group("Workflow options")
     workflow.add_argument(

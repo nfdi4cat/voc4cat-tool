@@ -7,11 +7,12 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-from rdflib import RDF, SKOS, Graph
+from rdflib import RDF, SKOS, Graph, Literal, Namespace, URIRef
 
 from voc4cat.checks import (
     Voc4catError,
     check_for_removed_iris,
+    check_hierarchical_redundancy,
     check_number_of_files_in_inbox,
     validate_config_has_idrange,
     validate_vocabulary_files_for_ci_workflow,
@@ -296,3 +297,87 @@ def test_check_for_removed_iris(  # noqa: PLR0913
     assert log_text in caplog.text
     # no log message for adding content
     assert check_for_removed_iris(reduced, original) is None
+
+
+def test_check_hierarchical_redundancy_with_redundancy(tmp_path):
+    """Test detection of redundant hierarchical relationships."""
+    # Create a vocabulary with redundant hierarchy:
+    # C -> broader -> B -> broader -> A
+    # C -> broader -> A  (redundant! A is ancestor of B)
+    EX = Namespace("http://example.org/")
+    g = Graph()
+    g.bind("skos", SKOS)
+    g.bind("ex", EX)  # Bind prefix for CURIE output
+
+    # Add concept scheme
+    cs = URIRef("http://example.org/scheme")
+    g.add((cs, RDF.type, SKOS.ConceptScheme))
+    g.add((cs, SKOS.prefLabel, Literal("Test Scheme", lang="en")))
+
+    # Add concepts A, B, C
+    for concept_id in ["A", "B", "C"]:
+        concept = EX[concept_id]
+        g.add((concept, RDF.type, SKOS.Concept))
+        g.add((concept, SKOS.prefLabel, Literal(f"Concept {concept_id}", lang="en")))
+        g.add((concept, SKOS.inScheme, cs))
+
+    # A is top concept
+    g.add((cs, SKOS.hasTopConcept, EX.A))
+
+    # B -> broader -> A
+    g.add((EX.B, SKOS.broader, EX.A))
+
+    # C -> broader -> B (direct parent)
+    g.add((EX.C, SKOS.broader, EX.B))
+
+    # C -> broader -> A (redundant! A is already reachable via B)
+    g.add((EX.C, SKOS.broader, EX.A))
+
+    vocab_file = tmp_path / "redundant_vocab.ttl"
+    g.serialize(destination=vocab_file, format="turtle")
+
+    redundancies = check_hierarchical_redundancy(vocab_file)
+
+    assert len(redundancies) == 1
+    concept, ancestor, parent = redundancies[0]
+    # Results are now in CURIE format
+    assert concept == "ex:C"
+    assert ancestor == "ex:A"
+    assert parent == "ex:B"
+
+
+def test_check_hierarchical_redundancy_without_redundancy(tmp_path):
+    """Test that clean hierarchies produce no warnings."""
+    # Create a vocabulary without redundancy:
+    # C -> broader -> B -> broader -> A (clean chain)
+    EX = Namespace("http://example.org/")
+    g = Graph()
+    g.bind("skos", SKOS)
+
+    # Add concept scheme
+    cs = URIRef("http://example.org/scheme")
+    g.add((cs, RDF.type, SKOS.ConceptScheme))
+    g.add((cs, SKOS.prefLabel, Literal("Test Scheme", lang="en")))
+
+    # Add concepts A, B, C
+    for concept_id in ["A", "B", "C"]:
+        concept = EX[concept_id]
+        g.add((concept, RDF.type, SKOS.Concept))
+        g.add((concept, SKOS.prefLabel, Literal(f"Concept {concept_id}", lang="en")))
+        g.add((concept, SKOS.inScheme, cs))
+
+    # A is top concept
+    g.add((cs, SKOS.hasTopConcept, EX.A))
+
+    # B -> broader -> A
+    g.add((EX.B, SKOS.broader, EX.A))
+
+    # C -> broader -> B (only direct parent, no redundancy)
+    g.add((EX.C, SKOS.broader, EX.B))
+
+    vocab_file = tmp_path / "clean_vocab.ttl"
+    g.serialize(destination=vocab_file, format="turtle")
+
+    redundancies = check_hierarchical_redundancy(vocab_file)
+
+    assert len(redundancies) == 0

@@ -10,6 +10,7 @@ from voc4cat import config
 from voc4cat.checks import (
     Voc4catError,
     check_for_removed_iris,
+    check_hierarchical_redundancy,
     check_number_of_files_in_inbox,
     validate_vocabulary_files_for_ci_workflow,
 )
@@ -219,6 +220,7 @@ def check(args):
         check_xlsx(file, outfile)
 
     # validate rdf files with profile/pyshacl
+    all_redundancies = {}  # file -> list of redundancies
     for file in rdf_files:
         logger.debug("Running SHACL validation for file %s", file)
         # Priority: CLI --profile (highest) > config profile_local_path > default
@@ -250,3 +252,30 @@ def check(args):
         # Get profile name for log message
         _, profile_name = resolve_profile(effective_profile)
         logger.info("-> The file is valid according to the %s profile.", profile_name)
+
+        # Check for redundant hierarchical relationships if requested
+        if args.detect_hierarchy_redundancy:
+            redundancies = check_hierarchical_redundancy(file)
+            if redundancies:
+                all_redundancies[file] = redundancies
+
+    # Report all redundant hierarchical relationships at the end
+    if args.detect_hierarchy_redundancy:
+        logger.info("Checking for redundant hierarchical relationships.")
+    if all_redundancies:
+        for file, redundancies in all_redundancies.items():
+            logger.error("File: %s", file.name)
+            for concept, ancestor, via_parent in redundancies:
+                logger.error(
+                    "  From %s remove Parent IRI (skos:broader) %s",
+                    concept,
+                    ancestor,
+                )
+                logger.error(
+                    "       (already reachable via %s)",
+                    via_parent,
+                )
+        total = sum(len(r) for r in all_redundancies.values())
+        logger.error("Total: %d redundant relationship(s) to remove", total)
+    else:
+        logger.info("-> No redundant hierarchical relationships detected.")
