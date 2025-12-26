@@ -9,6 +9,7 @@ import os
 from itertools import chain
 from pathlib import Path
 
+from curies import Converter
 from rdflib import RDF, SKOS, Graph, compare
 
 from voc4cat import config
@@ -158,3 +159,42 @@ def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
             raise Voc4catError(msg)
     else:
         logger.debug("-> No removals detected.")
+
+
+def check_hierarchical_redundancy(vocab_path: Path) -> list[tuple[str, str, str]]:
+    """
+    Detect redundant hierarchical relationships in a SKOS vocabulary.
+
+    A redundant relationship exists when concept C has skos:broader to both
+    B and A, where A is already an ancestor of B (reachable via skos:broader).
+
+    Returns list of tuples (concept_curie, redundant_ancestor_curie, intermediate_parent_curie)
+    for each redundant relationship found. The triple to eliminate is:
+    <concept> skos:broader <redundant_ancestor>
+    """
+    logger.debug("-> Checking for hierarchical redundancy in %s", vocab_path)
+
+    g = Graph()
+    g.parse(vocab_path.resolve().as_uri(), format="turtle")
+
+    # Build curies converter from graph's namespace bindings
+    converter = Converter.from_prefix_map(
+        {prefix: str(uri) for prefix, uri in g.namespaces()}
+    )
+
+    redundancies = []
+    for concept, parent1 in sorted(g.subject_objects(SKOS.broader)):
+        for parent2 in sorted(g.objects(concept, SKOS.broader)):
+            if parent1 == parent2:
+                continue  # must be different parents
+            # Check if parent2 is an ancestor of parent1 (reachable via broader)
+            if parent2 in g.transitive_objects(parent1, SKOS.broader):
+                redundancies.append(
+                    (
+                        converter.compress(str(concept), passthrough=True),
+                        converter.compress(str(parent2), passthrough=True),
+                        converter.compress(str(parent1), passthrough=True),
+                    )
+                )
+
+    return redundancies
