@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import subprocess
 from unittest import mock
 
 import pytest
@@ -166,3 +167,259 @@ def test_join_with_invalid_envvar(monkeypatch, datadir, tmp_path, caplog):
     ):
         main_cli(cmd)
     assert 'Invalid environment variable VOC4CAT_VERSION "2.0"' in caplog.text
+
+
+# ===== Tests for option --prov-from-git =====
+
+
+@pytest.fixture
+def git_repo_with_split_files(tmp_path, datadir):
+    """Create a git repo with split turtle files."""
+    # Initialize git repo
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+
+    # Copy and split the turtle file
+    shutil.copy(datadir / CS_SIMPLE_TURTLE, tmp_path)
+    main_cli(["transform", "--split", "--inplace", str(tmp_path)])
+
+    # The split files are in a subdirectory
+    vocdir = (tmp_path / CS_SIMPLE_TURTLE).with_suffix("")
+
+    # Add and commit the split files
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Initial commit"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+
+    return tmp_path, vocdir
+
+
+def test_prov_from_git_adds_dates(git_repo_with_split_files, monkeypatch, caplog):
+    """Test that --prov-from-git adds dct:created and dct:modified."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    with caplog.at_level(logging.INFO):
+        main_cli(["transform", "-v", "--prov-from-git", "--inplace", str(vocdir)])
+    assert "-> added provenance from git to" in caplog.text
+
+    # Check that dct:created and dct:modified were added to a concept file
+    concept_files = [f for f in vocdir.glob("*.ttl") if f.name != "concept_scheme.ttl"]
+    assert len(concept_files) > 0
+
+    graph = Graph().parse(concept_files[0], format="turtle")
+    concepts = list(graph.subjects(None, SKOS.Concept))
+    assert len(concepts) == 1
+    concept_iri = concepts[0]
+
+    # Check dct:created exists
+    created_values = list(graph.objects(concept_iri, DCTERMS.created))
+    assert len(created_values) == 1
+
+    # Check dct:modified exists
+    modified_values = list(graph.objects(concept_iri, DCTERMS.modified))
+    assert len(modified_values) == 1
+
+
+def test_prov_from_git_error_untracked(tmp_path, datadir, monkeypatch, caplog):
+    """Test that --prov-from-git fails if files are not tracked in git."""
+    # Initialize git repo but don't add files
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Test User"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+
+    # Copy and split the turtle file (but don't commit)
+    shutil.copy(datadir / CS_SIMPLE_TURTLE, tmp_path)
+    main_cli(["transform", "--split", "--inplace", str(tmp_path)])
+    vocdir = (tmp_path / CS_SIMPLE_TURTLE).with_suffix("")
+
+    monkeypatch.chdir(tmp_path)
+
+    with (
+        caplog.at_level(logging.ERROR),
+        pytest.raises(Voc4catError, match="is not tracked in git"),
+    ):
+        main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+
+
+def test_prov_from_git_error_not_directory(tmp_path, datadir, monkeypatch, caplog):
+    """Test that --prov-from-git fails if input is not a directory with .ttl files."""
+    # Initialize git repo
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+
+    # Copy a single turtle file (not split)
+    shutil.copy(datadir / CS_SIMPLE_TURTLE, tmp_path)
+
+    monkeypatch.chdir(tmp_path)
+
+    with (
+        caplog.at_level(logging.ERROR),
+        pytest.raises(Voc4catError, match="--prov-from-git requires a directory"),
+    ):
+        main_cli(
+            [
+                "transform",
+                "--prov-from-git",
+                "--inplace",
+                str(tmp_path / CS_SIMPLE_TURTLE),
+            ]
+        )
+
+
+def test_prov_from_git_preserves_existing_created(
+    git_repo_with_split_files, monkeypatch, caplog
+):
+    """Test that --prov-from-git preserves existing dct:created."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    # First, add provenance
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+
+    # Modify a file to add a custom dct:created date
+    concept_files = [f for f in vocdir.glob("*.ttl") if f.name != "concept_scheme.ttl"]
+    test_file = concept_files[0]
+    graph = Graph().parse(test_file, format="turtle")
+
+    concept_iri = list(graph.subjects(None, SKOS.Concept))[0]
+    original_created = list(graph.objects(concept_iri, DCTERMS.created))[0]
+
+    # Commit the changes so git sees a modification
+    subprocess.run(["git", "add", "."], cwd=repo_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Add provenance"],
+        cwd=repo_path,
+        check=True,
+        capture_output=True,
+    )
+
+    # Run again - dct:created should not change
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+
+    graph2 = Graph().parse(test_file, format="turtle")
+    created_after = list(graph2.objects(concept_iri, DCTERMS.created))[0]
+
+    assert str(original_created) == str(created_after)
+
+
+def test_prov_from_git_updates_modified(git_repo_with_split_files, monkeypatch, caplog):
+    """Test that --prov-from-git updates dct:modified when it differs from git."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    # First, add provenance
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+
+    # Commit the changes
+    subprocess.run(["git", "add", "."], cwd=repo_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Add provenance"],
+        cwd=repo_path,
+        check=True,
+        capture_output=True,
+    )
+
+    # Manually set a different dct:modified date in the file
+    # (simulating an old date that differs from the current git modified date)
+    concept_files = [f for f in vocdir.glob("*.ttl") if f.name != "concept_scheme.ttl"]
+    test_file = concept_files[0]
+    graph = Graph().parse(test_file, format="turtle")
+
+    concept_iri = list(graph.subjects(None, SKOS.Concept))[0]
+
+    # Remove existing dct:modified and add an old date
+    graph.remove((concept_iri, DCTERMS.modified, None))
+    old_date = "2020-01-01"
+    graph.add((concept_iri, DCTERMS.modified, Literal(old_date, datatype=XSD.date)))
+    graph.serialize(destination=test_file, format="longturtle")
+
+    # Commit the change with the old date
+    subprocess.run(["git", "add", "."], cwd=repo_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "Set old modified date"],
+        cwd=repo_path,
+        check=True,
+        capture_output=True,
+    )
+
+    # Run again - dct:modified should update from 2020-01-01 to today's git commit date
+    with caplog.at_level(logging.INFO):
+        main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+
+    # Check log message for update
+    assert "Updated dct:modified" in caplog.text
+    assert old_date in caplog.text  # The old date should be mentioned in the log
+
+
+def test_prov_from_git_error_no_inplace_or_outdir(
+    git_repo_with_split_files, monkeypatch, caplog
+):
+    """Test that --prov-from-git fails without --inplace or --outdir."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    with (
+        caplog.at_level(logging.ERROR),
+        pytest.raises(Voc4catError, match="requires either --inplace or --outdir"),
+    ):
+        main_cli(["transform", "--prov-from-git", str(vocdir)])
+
+
+def test_prov_from_git_with_outdir(git_repo_with_split_files, monkeypatch, caplog):
+    """Test that --prov-from-git with --outdir copies files to output directory."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    outdir = repo_path / "output"
+    outdir.mkdir()
+
+    with caplog.at_level(logging.INFO):
+        main_cli(["transform", "--prov-from-git", "--outdir", str(outdir), str(vocdir)])
+    assert "-> added provenance from git to" in caplog.text
+
+    # Check that files were copied to outdir
+    target_dir = outdir / vocdir.name
+    assert target_dir.is_dir()
+    assert (target_dir / "concept_scheme.ttl").exists()
+
+    # Check that original files were NOT modified (no dct:created/modified)
+    original_concept_files = [
+        f for f in vocdir.glob("*.ttl") if f.name != "concept_scheme.ttl"
+    ]
+    graph_original = Graph().parse(original_concept_files[0], format="turtle")
+    concept_iri = list(graph_original.subjects(None, SKOS.Concept))[0]
+    assert len(list(graph_original.objects(concept_iri, DCTERMS.created))) == 0
+
+    # Check that copied files HAVE dct:created/modified
+    copied_concept_files = [
+        f for f in target_dir.glob("*.ttl") if f.name != "concept_scheme.ttl"
+    ]
+    graph_copied = Graph().parse(copied_concept_files[0], format="turtle")
+    concept_iri_copied = list(graph_copied.subjects(None, SKOS.Concept))[0]
+    assert len(list(graph_copied.objects(concept_iri_copied, DCTERMS.created))) == 1
+    assert len(list(graph_copied.objects(concept_iri_copied, DCTERMS.modified))) == 1

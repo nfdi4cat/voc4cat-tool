@@ -200,6 +200,16 @@ def add_transform_subparser(subparsers, options):
         ),
         action="store_true",
     )
+    skosopt.add_argument(
+        "--prov-from-git",
+        help=(
+            "Add dct:created and dct:modified dates to split turtle files "
+            "based on git history. dct:created is added only if missing; "
+            "dct:modified is updated if different from git. "
+            "Requires files to be tracked in git."
+        ),
+        action="store_true",
+    )
     parser.add_argument(
         "--inplace",  # was "--no-warn"
         help=(
