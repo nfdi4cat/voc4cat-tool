@@ -804,3 +804,123 @@ class TestConvert043EdgeCases:
         history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
         assert len(history_notes) == 1
         assert str(EX.other_concept) in str(history_notes[0])
+
+
+class TestIdentifierTransformation:
+    """Tests for identifier transformation from prefix_ID to just ID format."""
+
+    def test_identifier_transformed_from_prefix_format(self, tmp_path):
+        """Test that identifiers are transformed from 'prefix_ID' to just 'ID'."""
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+        # ConceptScheme identifier should NOT be transformed
+        g.add(
+            (EX.scheme, DCTERMS.identifier, Literal("test_scheme", datatype=XSD.token))
+        )
+
+        # Concept with prefix_ID format identifier
+        g.add((EX.concept1, RDF.type, SKOS.Concept))
+        g.add((EX.concept1, SKOS.prefLabel, Literal("Test Concept", lang="en")))
+        g.add((EX.concept1, SKOS.inScheme, EX.scheme))
+        g.add(
+            (
+                EX.concept1,
+                DCTERMS.identifier,
+                Literal("test_0000001", datatype=XSD.token),
+            )
+        )
+
+        # Collection with prefix_ID format identifier
+        g.add((EX.coll1, RDF.type, SKOS.Collection))
+        g.add((EX.coll1, SKOS.prefLabel, Literal("Test Collection", lang="en")))
+        g.add((EX.coll1, SKOS.inScheme, EX.scheme))
+        g.add(
+            (EX.coll1, DCTERMS.identifier, Literal("test_0000101", datatype=XSD.token))
+        )
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="http://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="http://example.org/scheme",
+            title="Test",
+            description="Test",
+            created_date="2024-01-01",
+            creator="https://orcid.org/0000-0001-2345-6789",
+            repository="https://github.com/test/repo",
+        )
+
+        input_path = tmp_path / "test_043.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+        output_path = tmp_path / "test_v1.ttl"
+        convert_rdf_043_to_v1(input_path, output_path, vocab_config=vocab_config)
+        converted = Graph().parse(output_path, format="turtle")
+
+        # ConceptScheme identifier should be unchanged
+        scheme_id = list(converted.objects(EX.scheme, DCTERMS.identifier))
+        assert len(scheme_id) == 1
+        assert str(scheme_id[0]) == "test_scheme"
+
+        # Concept identifier should be transformed to just the numeric ID
+        concept_id = list(converted.objects(EX.concept1, DCTERMS.identifier))
+        assert len(concept_id) == 1
+        assert str(concept_id[0]) == "0000001"
+
+        # Collection identifier should be transformed to just the numeric ID
+        coll_id = list(converted.objects(EX.coll1, DCTERMS.identifier))
+        assert len(coll_id) == 1
+        assert str(coll_id[0]) == "0000101"
+
+    def test_identifier_without_pattern_match_preserved(self, tmp_path, caplog):
+        """Test that identifiers without pattern match are preserved with warning."""
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+
+        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
+        g.add((EX.scheme, SKOS.prefLabel, Literal("Test", lang="en")))
+        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+
+        # Concept with non-matching identifier format
+        g.add((EX.concept1, RDF.type, SKOS.Concept))
+        g.add((EX.concept1, SKOS.prefLabel, Literal("Test Concept", lang="en")))
+        g.add((EX.concept1, SKOS.inScheme, EX.scheme))
+        g.add(
+            (EX.concept1, DCTERMS.identifier, Literal("concept1", datatype=XSD.token))
+        )
+
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="http://example.org/",
+            checks={},
+            prefix_map={},
+            vocabulary_iri="http://example.org/scheme",
+            title="Test",
+            description="Test",
+            created_date="2024-01-01",
+            creator="https://orcid.org/0000-0001-2345-6789",
+            repository="https://github.com/test/repo",
+        )
+
+        input_path = tmp_path / "test_043.ttl"
+        g.serialize(destination=str(input_path), format="turtle")
+        output_path = tmp_path / "test_v1.ttl"
+
+        with caplog.at_level(logging.WARNING):
+            convert_rdf_043_to_v1(input_path, output_path, vocab_config=vocab_config)
+
+        # Should warn about non-matching identifier
+        assert "Could not extract ID from identifier" in caplog.text
+
+        converted = Graph().parse(output_path, format="turtle")
+
+        # Identifier should be preserved (original value)
+        concept_id = list(converted.objects(EX.concept1, DCTERMS.identifier))
+        assert len(concept_id) == 1
+        assert str(concept_id[0]) == "concept1"

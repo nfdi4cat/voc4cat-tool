@@ -1,4 +1,5 @@
 # Common pytest fixtures for all test modules
+import re
 import shutil
 import tempfile
 from datetime import date
@@ -188,11 +189,18 @@ def mandatory_fields():
     }
 
 
-def make_vocab_config_from_rdf(graph, vocab_iri: str | None = None):
+def make_vocab_config_from_rdf(
+    graph, vocab_iri: str | None = None, vocab_name: str | None = None
+):
     """Create a Vocab config from RDF graph for testing roundtrips.
 
     This extracts ConceptScheme metadata from the RDF and creates a Vocab config
     that can be used with excel_to_rdf_v1.
+
+    Args:
+        graph: RDF graph containing the ConceptScheme.
+        vocab_iri: Optional vocabulary IRI to use.
+        vocab_name: Optional vocab name to register in config.ID_PATTERNS.
     """
     # Find concept scheme
     if vocab_iri is None:  # pragma: no branch
@@ -231,8 +239,9 @@ def make_vocab_config_from_rdf(graph, vocab_iri: str | None = None):
     # Derive permanent_iri_part from vocab_iri
     permanent_iri_part = vocab_iri.rstrip("/") + "/"
 
-    return Vocab(
-        id_length=7,
+    id_length = 7
+    vocab_config = Vocab(
+        id_length=id_length,
         permanent_iri_part=permanent_iri_part,
         checks=Checks(allow_delete=False),
         prefix_map={"ex": permanent_iri_part},
@@ -243,6 +252,14 @@ def make_vocab_config_from_rdf(graph, vocab_iri: str | None = None):
         creator=creator,
         repository="https://github.com/test/vocab",  # Always provide default
     )
+
+    # Register ID pattern in config if vocab_name provided
+    if vocab_name:
+        config.ID_PATTERNS[vocab_name] = re.compile(
+            rf"(?P<identifier>[0-9]{{{id_length}}})$"
+        )
+
+    return vocab_config
 
 
 # XLSX Testing Fixtures

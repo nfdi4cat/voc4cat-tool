@@ -5,6 +5,7 @@ extracting data from RDF graphs and producing valid v1.0 template Excel files.
 """
 
 import logging
+import re
 import shutil
 from pathlib import Path
 
@@ -716,7 +717,10 @@ class TestRoundTrip:
         original = Graph().parse(V1_COMPREHENSIVE_TTL, format="turtle")
 
         # Create vocab config from RDF for roundtrip
-        vocab_config = make_vocab_config_from_rdf(original)
+        # Pass vocab_name to register ID pattern in config.ID_PATTERNS
+        vocab_config = make_vocab_config_from_rdf(
+            original, vocab_name="v1_comprehensive"
+        )
 
         # RDF -> XLSX -> RDF
         xlsx_path = tmp_path / "v1_comprehensive.xlsx"
@@ -2917,7 +2921,9 @@ class TestFirstTimeExpressedHistoryNote:
         )
         scheme_iri = URIRef("http://example.org/")
 
-        graph = build_concept_graph(concept, scheme_iri, narrower_map={})
+        graph = build_concept_graph(
+            concept, scheme_iri, narrower_map={}, id_pattern=None
+        )
 
         history_notes = list(
             graph.objects(URIRef("http://example.org/concept1"), SKOS.historyNote)
@@ -2935,7 +2941,9 @@ class TestFirstTimeExpressedHistoryNote:
         )
         scheme_iri = URIRef("http://example.org/")
 
-        graph = build_concept_graph(concept, scheme_iri, narrower_map={})
+        graph = build_concept_graph(
+            concept, scheme_iri, narrower_map={}, id_pattern=None
+        )
 
         history_notes = list(
             graph.objects(URIRef("http://example.org/concept1"), SKOS.historyNote)
@@ -2952,7 +2960,9 @@ class TestFirstTimeExpressedHistoryNote:
         )
         scheme_iri = URIRef("http://example.org/")
 
-        graph = build_concept_graph(concept, scheme_iri, narrower_map={})
+        graph = build_concept_graph(
+            concept, scheme_iri, narrower_map={}, id_pattern=None
+        )
 
         history_notes = list(
             graph.objects(URIRef("http://example.org/concept1"), SKOS.historyNote)
@@ -2972,7 +2982,9 @@ class TestFirstTimeExpressedHistoryNote:
         )
         scheme_iri = URIRef("http://example.org/")
 
-        graph = build_concept_graph(concept, scheme_iri, narrower_map={})
+        graph = build_concept_graph(
+            concept, scheme_iri, narrower_map={}, id_pattern=None
+        )
 
         history_notes = list(
             graph.objects(URIRef("http://example.org/concept1"), SKOS.historyNote)
@@ -2989,7 +3001,9 @@ class TestFirstTimeExpressedHistoryNote:
         )
         scheme_iri = URIRef("http://example.org/")
 
-        graph = build_concept_graph(concept, scheme_iri, narrower_map={})
+        graph = build_concept_graph(
+            concept, scheme_iri, narrower_map={}, id_pattern=None
+        )
 
         history_notes = list(
             graph.objects(URIRef("http://example.org/concept1"), SKOS.historyNote)
@@ -3009,7 +3023,11 @@ class TestFirstTimeExpressedHistoryNote:
         scheme_iri = URIRef("http://example.org/")
 
         graph = build_collection_graph(
-            collection, scheme_iri, collection_members={}, ordered_collection_members={}
+            collection,
+            scheme_iri,
+            collection_members={},
+            ordered_collection_members={},
+            id_pattern=None,
         )
 
         history_notes = list(
@@ -3029,7 +3047,11 @@ class TestFirstTimeExpressedHistoryNote:
         scheme_iri = URIRef("http://example.org/")
 
         graph = build_collection_graph(
-            collection, scheme_iri, collection_members={}, ordered_collection_members={}
+            collection,
+            scheme_iri,
+            collection_members={},
+            ordered_collection_members={},
+            id_pattern=None,
         )
 
         history_notes = list(
@@ -3221,7 +3243,7 @@ class TestBuildConceptSchemeGraphEntities:
             creator="Alice https://orcid.org/0000-0001-1111-1111\nBob https://orcid.org/0000-0002-2222-2222",
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         # Both should be Person entities
         alice_uri = URIRef("https://orcid.org/0000-0001-1111-1111")
@@ -3239,7 +3261,7 @@ class TestBuildConceptSchemeGraphEntities:
             publisher="University https://ror.org/04wx23d79",
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         ror_uri = URIRef("https://ror.org/04wx23d79")
         assert (ror_uri, RDF.type, SDO.Organization) in graph
@@ -3254,7 +3276,7 @@ class TestBuildConceptSchemeGraphEntities:
             contributor="Plain Text Contributor",  # No URL
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         scheme_uri = URIRef("https://example.org/vocab/")
         contributors = list(graph.objects(scheme_uri, DCTERMS.contributor))
@@ -3271,7 +3293,7 @@ class TestBuildConceptSchemeGraphEntities:
             contributor="Contributor Person https://orcid.org/0000-0002-2222-2222",  # Different URL
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         # Contributor should have entity graph created
         contrib_uri = URIRef("https://orcid.org/0000-0002-2222-2222")
@@ -3294,7 +3316,7 @@ class TestBuildConceptSchemeGraphEntities:
             publisher=f"Alice {same_url}",  # Same URL as creator
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         entity_uri = URIRef(same_url)
         # Count Person type triples - should be exactly 1
@@ -3311,7 +3333,7 @@ class TestBuildConceptSchemeGraphEntities:
             custodian="Admin Person https://orcid.org/0000-0003-3333-3333",
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         custodian_uri = URIRef("https://orcid.org/0000-0003-3333-3333")
         assert (custodian_uri, RDF.type, SDO.Person) in graph
@@ -3326,7 +3348,7 @@ class TestBuildConceptSchemeGraphEntities:
             custodian="contact@example.org",  # No URL, email only
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         scheme_uri = URIRef("https://example.org/vocab/")
         contacts = list(graph.objects(scheme_uri, DCAT.contactPoint))
@@ -3351,7 +3373,7 @@ class TestConceptSchemeOptionalMetadata:
             created_date="",  # No created date
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         scheme_uri = URIRef("https://example.org/vocab/")
         created_dates = list(graph.objects(scheme_uri, DCTERMS.created))
@@ -3367,7 +3389,7 @@ class TestConceptSchemeOptionalMetadata:
             modified_date="",  # No modified date
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         scheme_uri = URIRef("https://example.org/vocab/")
         modified_dates = list(graph.objects(scheme_uri, DCTERMS.modified))
@@ -3383,7 +3405,7 @@ class TestConceptSchemeOptionalMetadata:
             catalogue_pid="https://doi.org/10.5281/zenodo.12345",
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         scheme_uri = URIRef("https://example.org/vocab/")
         see_also = list(graph.objects(scheme_uri, RDFS.seeAlso))
@@ -3399,7 +3421,7 @@ class TestConceptSchemeOptionalMetadata:
             catalogue_pid="DOI:10.5281/zenodo.12345",  # Not starting with http
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         scheme_uri = URIRef("https://example.org/vocab/")
         see_also = list(graph.objects(scheme_uri, RDFS.seeAlso))
@@ -3415,7 +3437,7 @@ class TestConceptSchemeOptionalMetadata:
             homepage="not-a-url",  # Not starting with http
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         scheme_uri = URIRef("https://example.org/vocab/")
         homepages = list(graph.objects(scheme_uri, FOAF.homepage))
@@ -3431,7 +3453,7 @@ class TestConceptSchemeOptionalMetadata:
             conforms_to="https://example.org/profile",
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         scheme_uri = URIRef("https://example.org/vocab/")
         conforms = list(graph.objects(scheme_uri, DCTERMS.conformsTo))
@@ -3447,7 +3469,7 @@ class TestConceptSchemeOptionalMetadata:
             conforms_to="SHACL Profile v1",  # Not starting with http
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         scheme_uri = URIRef("https://example.org/vocab/")
         conforms = list(graph.objects(scheme_uri, DCTERMS.conformsTo))
@@ -3463,7 +3485,7 @@ class TestConceptSchemeOptionalMetadata:
             conforms_to="https://example.org/profile1\n\nhttps://example.org/profile2",
         )
 
-        graph = build_concept_scheme_graph(cs, {})
+        graph = build_concept_scheme_graph(cs, {}, id_pattern=None)
 
         scheme_uri = URIRef("https://example.org/vocab/")
         conforms = list(graph.objects(scheme_uri, DCTERMS.conformsTo))
@@ -3476,25 +3498,41 @@ class TestConceptSchemeOptionalMetadata:
 
 
 class TestIdentifierExtraction:
-    """Tests for extract_identifier edge cases."""
+    """Tests for extract_identifier with ID patterns."""
 
-    def test_extract_identifier_hash_fragment(self):
-        """Test identifier extraction from hash IRI (line 2216)."""
+    def test_extract_identifier_7_digits(self):
+        """Test identifier extraction with 7-digit pattern."""
 
-        result = extract_identifier("https://example.org/vocab#concept123")
-        assert result == "concept123"
+        pattern = re.compile(r"(?P<identifier>[0-9]{7})$")
+        result = extract_identifier("https://example.org/vocab_0000123", pattern)
+        assert result == "0000123"
 
-    def test_extract_identifier_slash_path(self):
-        """Test identifier extraction from slash IRI."""
+    def test_extract_identifier_from_underscore_format(self):
+        """Test identifier extraction from prefix_ID format."""
 
-        result = extract_identifier("https://example.org/vocab/concept456")
-        assert result == "concept456"
+        pattern = re.compile(r"(?P<identifier>[0-9]{7})$")
+        result = extract_identifier(
+            "https://w3id.org/nfdi4cat/voc4cat_0000195", pattern
+        )
+        assert result == "0000195"
 
-    def test_extract_identifier_domain_only(self):
-        """Test identifier extraction from domain-only URL (lines 2226-2229)."""
+    def test_extract_identifier_no_match_logs_error(self):
+        """Test that non-matching IRI returns empty string and logs error."""
 
-        result = extract_identifier("https://example.org/")
-        assert result == "example.org"
+        pattern = re.compile(r"(?P<identifier>[0-9]{7})$")
+        result = extract_identifier("https://example.org/concept", pattern)
+        assert result == ""
+
+    def test_extract_identifier_different_lengths(self):
+        """Test identifier extraction with different digit lengths."""
+
+        pattern_5 = re.compile(r"(?P<identifier>[0-9]{5})$")
+        result = extract_identifier("https://example.org/vocab_00123", pattern_5)
+        assert result == "00123"
+
+        pattern_4 = re.compile(r"(?P<identifier>[0-9]{4})$")
+        result = extract_identifier("https://example.org/vocab_1234", pattern_4)
+        assert result == "1234"
 
     def test_parse_name_url_name_and_url(self):
         """Test parse_name_url with name and URL."""
