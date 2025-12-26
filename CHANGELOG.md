@@ -1,5 +1,20 @@
 # Change log
 
+## Release 1.0.0 (RC2) (2025-12-27)
+
+The following changes were made to RC1 based on testing it with the voc4cat vocabulary and Skosmos 3.0.
+
+Features:
+
+- **New transform option `--prov-from-git`:** Adds `dct:created` and `dct:modified` dates to split turtle files based on git history. Created date is only added if missing; modified date is updated when different.
+- **New check option `--detect-hierarchy-redundancy`:** Detects redundant hierarchical relationships where a concept has `skos:broader` to both a parent and an ancestor of that parent.
+- **Added `dct:isReplacedBy` columns** to Concepts and Collections sheets for specifying replacement IRIs when deprecating concepts.
+
+Changes:
+
+- **Changed `dct:identifier` format:** Now uses just the local numeric ID (e.g., `0000123` instead of `voc4cat_0000123`).
+- **`skos:historyNote` solely for obsoletion:** History notes are no longer generated from provenance data; they are now exclusively used for documenting concept obsoletion.
+
 ## Release 1.0.0 (RC1) (2025-12-22)
 
 :::{important}
