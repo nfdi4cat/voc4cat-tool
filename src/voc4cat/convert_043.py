@@ -36,8 +36,6 @@ from rdflib import (
 
 from voc4cat import config
 from voc4cat.convert_v1 import (
-    HISTORY_NOTE_FIRST_TIME,
-    HISTORY_NOTE_INFLUENCED_BY,
     build_entity_graph,
     config_to_concept_scheme_v1,
     extract_concept_scheme_from_rdf,
@@ -301,45 +299,6 @@ def _add_provenance_triples(
     )
 
 
-def _add_first_time_history_notes(
-    graph: Graph,
-    concepts: set[URIRef],
-    collections: set[URIRef],
-) -> None:
-    """Add historyNote for concepts/collections based on provenance.
-
-    - If prov:hadPrimarySource exists: no historyNote added (satisfies SHACL)
-    - If prov:wasInfluencedBy exists (but no hadPrimarySource): add influenced-by note
-    - If neither exists: add first-time expressed note
-
-    Args:
-        graph: The RDF graph to modify.
-        concepts: Set of concept IRIs.
-        collections: Set of collection IRIs.
-    """
-    for entity_iri in concepts | collections:
-        has_primary_source = any(graph.objects(entity_iri, PROV.hadPrimarySource))
-        if has_primary_source:
-            # prov:hadPrimarySource satisfies the SHACL provenance requirement
-            continue
-
-        influenced_by_iris = list(graph.objects(entity_iri, PROV.wasInfluencedBy))
-        if influenced_by_iris:
-            # Generate historyNote with influenced-by IRIs
-            iris_str = ", ".join(str(iri) for iri in influenced_by_iris)
-            note = HISTORY_NOTE_INFLUENCED_BY.format(iris=iris_str)
-            graph.add((entity_iri, SKOS.historyNote, Literal(note, lang="en")))
-        else:
-            # First-time expressed (no external source or influence)
-            graph.add(
-                (
-                    entity_iri,
-                    SKOS.historyNote,
-                    Literal(HISTORY_NOTE_FIRST_TIME, lang="en"),
-                )
-            )
-
-
 def convert_rdf_043_to_v1(
     input_path: Path,
     output_path: Path | None = None,
@@ -452,9 +411,6 @@ def convert_rdf_043_to_v1(
         _add_provenance_triples(
             output_graph, concepts, collections, vocab_name, vocab_config
         )
-
-    # Add historyNote for first-time expressed concepts and collections
-    _add_first_time_history_notes(output_graph, concepts, collections)
 
     # Determine output path
     if output_path is None:

@@ -25,7 +25,6 @@ from rdflib import (
 
 from voc4cat.config import Vocab
 from voc4cat.convert_043 import convert_rdf_043_to_v1
-from voc4cat.convert_v1 import HISTORY_NOTE_FIRST_TIME
 
 logger = logging.getLogger(__name__)
 EX = Namespace("http://example.org/")
@@ -95,10 +94,9 @@ class TestConvert043ToV1:
         assert len(change_notes) == 1
         assert "Created by author" in str(change_notes[0])
 
-        # Concept should also have the first-time historyNote (no provenance)
+        # No historyNote should be added for non-deprecated concepts
         history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
-        assert len(history_notes) == 1
-        assert str(history_notes[0]) == HISTORY_NOTE_FIRST_TIME
+        assert len(history_notes) == 0
 
     def test_is_defined_by_on_concept_transformed(self, tmp_path):
         """Test that rdfs:isDefinedBy on concepts becomes prov:hadPrimarySource."""
@@ -445,8 +443,8 @@ class TestFirstTimeHistoryNote043:
         convert_rdf_043_to_v1(input_path, output_path)
         return Graph().parse(output_path, format="turtle")
 
-    def test_first_time_history_note_added_without_provenance(self, tmp_path):
-        """Concept without prov:hadPrimarySource/wasInfluencedBy gets first-time historyNote."""
+    def test_no_history_note_added_without_deprecation(self, tmp_path):
+        """Concept without deprecation gets no historyNote."""
 
         # Create test RDF with concept that has no provenance predicates
         g = Graph()
@@ -463,45 +461,12 @@ class TestFirstTimeHistoryNote043:
 
         converted = self._convert_and_parse(tmp_path, g)
 
+        # Non-deprecated concepts get no historyNote
         history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
-        assert len(history_notes) == 1
-        assert str(history_notes[0]) == HISTORY_NOTE_FIRST_TIME
+        assert len(history_notes) == 0
 
-    @pytest.mark.parametrize(
-        ("provenance_predicate", "provenance_object"),
-        [
-            (PROV.hadPrimarySource, EX.other_vocab),
-            (PROV.wasInfluencedBy, EX.other_concept),
-        ],
-        ids=["hadPrimarySource", "wasInfluencedBy"],
-    )
-    def test_first_time_history_note_not_added_with_provenance(
-        self, tmp_path, provenance_predicate, provenance_object
-    ):
-        """Concept with provenance predicates should NOT get first-time historyNote."""
-
-        g = Graph()
-        g.bind("ex", EX)
-        g.bind("skos", SKOS)
-        g.bind("prov", PROV)
-
-        g.add((EX.scheme, RDF.type, SKOS.ConceptScheme))
-        g.add((EX.scheme, SKOS.prefLabel, Literal("Test Scheme", lang="en")))
-        g.add((EX.scheme, DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
-
-        g.add((EX.concept1, RDF.type, SKOS.Concept))
-        g.add((EX.concept1, SKOS.prefLabel, Literal("Test Concept", lang="en")))
-        g.add((EX.concept1, SKOS.inScheme, EX.scheme))
-        g.add((EX.concept1, provenance_predicate, provenance_object))
-
-        converted = self._convert_and_parse(tmp_path, g)
-
-        history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
-        note_values = [str(n) for n in history_notes]
-        assert HISTORY_NOTE_FIRST_TIME not in note_values
-
-    def test_collection_gets_first_time_history_note(self, tmp_path):
-        """Collection without provenance gets first-time historyNote in 043 conversion."""
+    def test_collection_no_history_note_without_deprecation(self, tmp_path):
+        """Collection without deprecation gets no historyNote in 043 conversion."""
 
         g = Graph()
         g.bind("ex", EX)
@@ -517,9 +482,9 @@ class TestFirstTimeHistoryNote043:
 
         converted = self._convert_and_parse(tmp_path, g)
 
+        # Non-deprecated collections get no historyNote
         history_notes = list(converted.objects(EX.collection1, SKOS.historyNote))
-        assert len(history_notes) == 1
-        assert str(history_notes[0]) == HISTORY_NOTE_FIRST_TIME
+        assert len(history_notes) == 0
 
 
 class TestConvert043EdgeCases:
@@ -776,8 +741,8 @@ class TestConvert043EdgeCases:
         assert result_path.stem == "test_v1"
         assert result_path.exists()
 
-    def test_influenced_by_history_note(self, tmp_path):
-        """Test that wasInfluencedBy generates appropriate historyNote."""
+    def test_influenced_by_no_history_note(self, tmp_path):
+        """Test that wasInfluencedBy does NOT generate historyNote (only deprecated concepts get historyNote)."""
 
         g = Graph()
         g.bind("ex", EX)
@@ -800,10 +765,9 @@ class TestConvert043EdgeCases:
         convert_rdf_043_to_v1(input_path, output_path)
         converted = Graph().parse(output_path, format="turtle")
 
-        # Should have influenced-by history note
+        # Non-deprecated concepts get no historyNote (only deprecated concepts do)
         history_notes = list(converted.objects(EX.concept1, SKOS.historyNote))
-        assert len(history_notes) == 1
-        assert str(EX.other_concept) in str(history_notes[0])
+        assert len(history_notes) == 0
 
 
 class TestIdentifierTransformation:
