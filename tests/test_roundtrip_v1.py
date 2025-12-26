@@ -11,6 +11,8 @@ Test coverage:
 - Roundtrip testing (RDF -> xlsx -> RDF)
 """
 
+import re
+
 import curies
 import pytest
 from rdflib import (
@@ -29,6 +31,7 @@ from rdflib import (
 from rdflib import compare as rdf_compare
 from rdflib.collection import Collection as RDFCollection
 
+from voc4cat import config
 from voc4cat.config import Checks, Vocab
 from voc4cat.convert_v1 import (
     aggregate_collections,
@@ -147,10 +150,10 @@ def build_multi_lang_collection_graph() -> Graph:
     g.add((scheme, SKOS.hasTopConcept, c1))
     g.add((c1, SKOS.topConceptOf, scheme))
 
-    # Multi-language collection
-    coll = TEST["coll001"]
+    # Multi-language collection (use 7-digit ID)
+    coll = TEST["0000101"]
     g.add((coll, RDF.type, SKOS.Collection))
-    g.add((coll, DCTERMS.identifier, Literal("coll001", datatype=XSD.token)))
+    g.add((coll, DCTERMS.identifier, Literal("0000101", datatype=XSD.token)))
     g.add((coll, SKOS.inScheme, scheme))
     g.add((coll, RDFS.isDefinedBy, scheme))
     g.add((coll, SKOS.member, c1))
@@ -197,9 +200,9 @@ def build_ordered_collection_graph() -> Graph:
         g.add((c, SKOS.topConceptOf, scheme))
 
     # Ordered collection with specific order: 2, 3, 1 (to test non-sequential)
-    coll = TEST["coll001"]
+    coll = TEST["0000101"]
     g.add((coll, RDF.type, SKOS.OrderedCollection))
-    g.add((coll, DCTERMS.identifier, Literal("coll001", datatype=XSD.token)))
+    g.add((coll, DCTERMS.identifier, Literal("0000101", datatype=XSD.token)))
     g.add((coll, SKOS.prefLabel, Literal("Ordered Test Collection", lang="en")))
     g.add(
         (coll, SKOS.definition, Literal("A collection with ordered members", lang="en"))
@@ -221,8 +224,8 @@ def build_collection_hierarchy_graph() -> Graph:
 
     Structure:
     - ConceptScheme
-    - Parent collection (coll001) containing child collection (coll002)
-    - Child collection (coll002) containing concepts (0000001, 0000002)
+    - Parent collection (0000101) containing child collection (0000102)
+    - Child collection (0000102) containing concepts (0000001, 0000002)
     """
     g = Graph()
     g.bind("test", TEST)
@@ -245,10 +248,10 @@ def build_collection_hierarchy_graph() -> Graph:
         g.add((scheme, SKOS.hasTopConcept, c))
         g.add((c, SKOS.topConceptOf, scheme))
 
-    # Parent collection
-    parent = TEST["coll001"]
+    # Parent collection (use 7-digit ID)
+    parent = TEST["0000101"]
     g.add((parent, RDF.type, SKOS.Collection))
-    g.add((parent, DCTERMS.identifier, Literal("coll001", datatype=XSD.token)))
+    g.add((parent, DCTERMS.identifier, Literal("0000101", datatype=XSD.token)))
     g.add((parent, SKOS.prefLabel, Literal("Parent Collection", lang="en")))
     g.add(
         (
@@ -260,10 +263,10 @@ def build_collection_hierarchy_graph() -> Graph:
     g.add((parent, SKOS.inScheme, scheme))
     g.add((parent, RDFS.isDefinedBy, scheme))
 
-    # Child collection (member of parent)
-    child = TEST["coll002"]
+    # Child collection (member of parent, use 7-digit ID)
+    child = TEST["0000102"]
     g.add((child, RDF.type, SKOS.Collection))
-    g.add((child, DCTERMS.identifier, Literal("coll002", datatype=XSD.token)))
+    g.add((child, DCTERMS.identifier, Literal("0000102", datatype=XSD.token)))
     g.add((child, SKOS.prefLabel, Literal("Child Collection", lang="en")))
     g.add(
         (child, SKOS.definition, Literal("Child collection with concepts", lang="en"))
@@ -285,9 +288,9 @@ def build_three_level_hierarchy_graph() -> Graph:
     """Build RDF graph with 3-level collection hierarchy.
 
     Structure:
-    - Grandparent collection (coll001) containing parent (coll002)
-    - Parent collection (coll002) containing child (coll003)
-    - Child collection (coll003) containing concept (0000001)
+    - Grandparent collection (0000101) containing parent (0000102)
+    - Parent collection (0000102) containing child (0000103)
+    - Child collection (0000103) containing concept (0000001)
     """
     g = Graph()
     g.bind("test", TEST)
@@ -309,26 +312,26 @@ def build_three_level_hierarchy_graph() -> Graph:
     g.add((scheme, SKOS.hasTopConcept, c1))
     g.add((c1, SKOS.topConceptOf, scheme))
 
-    # Grandparent collection
-    grandparent = TEST["coll001"]
+    # Grandparent collection (use 7-digit ID)
+    grandparent = TEST["0000101"]
     g.add((grandparent, RDF.type, SKOS.Collection))
-    g.add((grandparent, DCTERMS.identifier, Literal("coll001", datatype=XSD.token)))
+    g.add((grandparent, DCTERMS.identifier, Literal("0000101", datatype=XSD.token)))
     g.add((grandparent, SKOS.prefLabel, Literal("Grandparent Collection", lang="en")))
     g.add((grandparent, SKOS.inScheme, scheme))
     g.add((grandparent, RDFS.isDefinedBy, scheme))
 
-    # Parent collection
-    parent = TEST["coll002"]
+    # Parent collection (use 7-digit ID)
+    parent = TEST["0000102"]
     g.add((parent, RDF.type, SKOS.Collection))
-    g.add((parent, DCTERMS.identifier, Literal("coll002", datatype=XSD.token)))
+    g.add((parent, DCTERMS.identifier, Literal("0000102", datatype=XSD.token)))
     g.add((parent, SKOS.prefLabel, Literal("Parent Collection", lang="en")))
     g.add((parent, SKOS.inScheme, scheme))
     g.add((parent, RDFS.isDefinedBy, scheme))
 
-    # Child collection
-    child = TEST["coll003"]
+    # Child collection (use 7-digit ID)
+    child = TEST["0000103"]
     g.add((child, RDF.type, SKOS.Collection))
-    g.add((child, DCTERMS.identifier, Literal("coll003", datatype=XSD.token)))
+    g.add((child, DCTERMS.identifier, Literal("0000103", datatype=XSD.token)))
     g.add((child, SKOS.prefLabel, Literal("Child Collection", lang="en")))
     g.add((child, SKOS.inScheme, scheme))
     g.add((child, RDFS.isDefinedBy, scheme))
@@ -394,10 +397,10 @@ def build_comprehensive_test_graph() -> Graph:  # noqa: PLR0915
         g.add((c, SKOS.prefLabel, Literal(f"Konzept {i}", lang="de")))
         g.add((c, SKOS.definition, Literal(f"Definition für Konzept {i}", lang="de")))
 
-    # Ordered collection
-    ordered_coll = TEST["coll001"]
+    # Ordered collection (use 7-digit ID: 0000101)
+    ordered_coll = TEST["0000101"]
     g.add((ordered_coll, RDF.type, SKOS.OrderedCollection))
-    g.add((ordered_coll, DCTERMS.identifier, Literal("coll001", datatype=XSD.token)))
+    g.add((ordered_coll, DCTERMS.identifier, Literal("0000101", datatype=XSD.token)))
     g.add((ordered_coll, SKOS.prefLabel, Literal("Ordered Collection", lang="en")))
     g.add((ordered_coll, SKOS.prefLabel, Literal("Geordnete Sammlung", lang="de")))
     g.add((ordered_coll, SKOS.definition, Literal("An ordered collection", lang="en")))
@@ -413,19 +416,19 @@ def build_comprehensive_test_graph() -> Graph:  # noqa: PLR0915
     RDFCollection(g, list_node, member_refs)
     g.add((ordered_coll, SKOS.memberList, list_node))
 
-    # Parent collection (unordered)
-    parent_coll = TEST["coll002"]
+    # Parent collection (unordered, use 7-digit ID: 0000102)
+    parent_coll = TEST["0000102"]
     g.add((parent_coll, RDF.type, SKOS.Collection))
-    g.add((parent_coll, DCTERMS.identifier, Literal("coll002", datatype=XSD.token)))
+    g.add((parent_coll, DCTERMS.identifier, Literal("0000102", datatype=XSD.token)))
     g.add((parent_coll, SKOS.prefLabel, Literal("Parent Collection", lang="en")))
     g.add((parent_coll, SKOS.definition, Literal("A parent collection", lang="en")))
     g.add((parent_coll, SKOS.inScheme, scheme))
     g.add((parent_coll, RDFS.isDefinedBy, scheme))
 
-    # Child collection (member of parent)
-    child_coll = TEST["coll003"]
+    # Child collection (member of parent, use 7-digit ID: 0000103)
+    child_coll = TEST["0000103"]
     g.add((child_coll, RDF.type, SKOS.Collection))
-    g.add((child_coll, DCTERMS.identifier, Literal("coll003", datatype=XSD.token)))
+    g.add((child_coll, DCTERMS.identifier, Literal("0000103", datatype=XSD.token)))
     g.add((child_coll, SKOS.prefLabel, Literal("Child Collection", lang="en")))
     g.add((child_coll, SKOS.definition, Literal("A child collection", lang="en")))
     g.add((child_coll, SKOS.inScheme, scheme))
@@ -446,8 +449,9 @@ def build_comprehensive_test_graph() -> Graph:  # noqa: PLR0915
 @pytest.fixture
 def minimal_vocab_config():
     """Minimal Vocab config for testing."""
-    return Vocab(
-        id_length=7,
+    id_length = 7
+    vocab_config = Vocab(
+        id_length=id_length,
         permanent_iri_part="https://example.org/test/",
         checks=Checks(allow_delete=False),
         prefix_map={"test": "https://example.org/test/"},
@@ -458,6 +462,20 @@ def minimal_vocab_config():
         creator="https://orcid.org/0000-0001-2345-6789",
         repository="https://github.com/test/vocab",
     )
+
+    # Register ID patterns for all vocab names used in tests
+    id_pattern = re.compile(rf"(?P<identifier>[0-9]{{{id_length}}})$")
+    for vocab_name in [
+        "multi_lang",
+        "alt_labels",
+        "coll_multi_lang",
+        "ordered",
+        "hierarchy",
+        "comprehensive",
+    ]:
+        config.ID_PATTERNS[vocab_name] = id_pattern
+
+    return vocab_config
 
 
 @pytest.fixture
@@ -610,7 +628,7 @@ def test_collection_multi_language_labels_definitions(
     monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
 
     collections_data = extract_collections_from_rdf(multi_lang_collection_graph)
-    coll_iri = "https://example.org/test/coll001"
+    coll_iri = "https://example.org/test/0000101"
 
     assert coll_iri in collections_data
     assert "en" in collections_data[coll_iri]
@@ -662,7 +680,7 @@ def test_ordered_collection_position_one_indexed(ordered_collection_graph):
 
     c2o_map = build_concept_to_ordered_collections_map(ordered_collection_graph)
 
-    coll_iri = "https://example.org/test/coll001"
+    coll_iri = "https://example.org/test/0000101"
 
     # Order was: 0000002 at pos 1, 0000003 at pos 2, 0000001 at pos 3
     assert c2o_map["https://example.org/test/0000002"][coll_iri] == 1
@@ -673,7 +691,7 @@ def test_ordered_collection_position_one_indexed(ordered_collection_graph):
 def test_ordered_collection_memberlist_rdf_structure(ordered_collection_graph):
     """Test that OrderedCollection uses skos:memberList with RDF List."""
     g = ordered_collection_graph
-    coll_iri = "https://example.org/test/coll001"
+    coll_iri = "https://example.org/test/0000101"
     coll = URIRef(coll_iri)
 
     # Verify it's an OrderedCollection
@@ -711,7 +729,7 @@ def test_ordered_collection_roundtrip_order_preserved(
     )
 
     # Verify order preserved
-    coll = URIRef("https://example.org/test/coll001")
+    coll = URIRef("https://example.org/test/0000101")
     member_list = roundtrip.value(coll, SKOS.memberList)
     assert member_list is not None
 
@@ -728,7 +746,7 @@ def test_ordered_collection_extraction(ordered_collection_graph):
     """Test that ordered collections are correctly identified and extracted."""
 
     collections_data = extract_collections_from_rdf(ordered_collection_graph)
-    coll_iri = "https://example.org/test/coll001"
+    coll_iri = "https://example.org/test/0000101"
 
     assert coll_iri in collections_data
     # Check the ordered flag
@@ -752,8 +770,8 @@ def test_collection_in_collection_via_parent_iris(collection_hierarchy_graph):
     hierarchy_map = build_collection_hierarchy_map(collection_hierarchy_graph)
 
     # Child collection should have parent
-    child_iri = "https://example.org/test/coll002"
-    parent_iri = "https://example.org/test/coll001"
+    child_iri = "https://example.org/test/0000102"
+    parent_iri = "https://example.org/test/0000101"
 
     assert child_iri in hierarchy_map
     assert parent_iri in hierarchy_map[child_iri]
@@ -763,9 +781,9 @@ def test_multi_level_collection_hierarchy(three_level_hierarchy_graph):
     """Test 3-level collection hierarchy: grandparent -> parent -> child."""
     hierarchy_map = build_collection_hierarchy_map(three_level_hierarchy_graph)
 
-    grandparent_iri = "https://example.org/test/coll001"
-    parent_iri = "https://example.org/test/coll002"
-    child_iri = "https://example.org/test/coll003"
+    grandparent_iri = "https://example.org/test/0000101"
+    parent_iri = "https://example.org/test/0000102"
+    child_iri = "https://example.org/test/0000103"
 
     # Parent should have grandparent as parent
     assert parent_iri in hierarchy_map
@@ -798,8 +816,8 @@ def test_collection_hierarchy_roundtrip(
     )
 
     # Verify hierarchy preserved: parent should have child as member
-    parent = URIRef("https://example.org/test/coll001")
-    child = URIRef("https://example.org/test/coll002")
+    parent = URIRef("https://example.org/test/0000101")
+    child = URIRef("https://example.org/test/0000102")
 
     members = list(roundtrip.objects(parent, SKOS.member))
     assert child in members, (
@@ -848,7 +866,7 @@ def test_concept_v1_to_aggregated_to_rdf():
     # Build RDF graph
     scheme_iri = URIRef("https://example.org/test/")
     narrower_map = build_narrower_map(concepts)
-    graph = build_concept_graph(concept, scheme_iri, narrower_map)
+    graph = build_concept_graph(concept, scheme_iri, narrower_map, id_pattern=None)
 
     c = URIRef(iri)
 
@@ -869,14 +887,14 @@ def test_collection_v1_to_aggregated_to_rdf():
 
     collection_rows = [
         CollectionV1(
-            collection_iri="test:coll001",
+            collection_iri="test:0000101",
             language_code="en",
             preferred_label="Test Collection",
             definition="A test collection",
             ordered="Yes",
         ),
         CollectionV1(
-            collection_iri="test:coll001",
+            collection_iri="test:0000101",
             language_code="de",
             preferred_label="Testsammlung",
             definition="Eine Testsammlung",
@@ -886,7 +904,7 @@ def test_collection_v1_to_aggregated_to_rdf():
     collections = aggregate_collections(collection_rows, converter)
 
     # Verify aggregation
-    iri = "https://example.org/test/coll001"
+    iri = "https://example.org/test/0000101"
     assert iri in collections
     coll = collections[iri]
     assert coll.ordered is True
@@ -896,7 +914,9 @@ def test_collection_v1_to_aggregated_to_rdf():
     # Build RDF graph
     scheme_iri = URIRef("https://example.org/test/")
     ordered_members = {iri: ["https://example.org/test/0000001"]}
-    graph = build_collection_graph(coll, scheme_iri, {}, ordered_members)
+    graph = build_collection_graph(
+        coll, scheme_iri, {}, ordered_members, id_pattern=None
+    )
 
     c = URIRef(iri)
 

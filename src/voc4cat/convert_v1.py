@@ -11,6 +11,7 @@ The two-way conversion is designed to be lossless (isomorphic graphs).
 import datetime
 import logging
 import os
+import re
 import shutil
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -2196,35 +2197,30 @@ def build_collection_hierarchy_members(
 # --- Identifier Extraction ---
 
 
-def extract_identifier(iri: str) -> str:
-    """Extract dcterms:identifier value from IRI.
+def extract_identifier(iri: str, id_pattern: "re.Pattern[str]") -> str:
+    """Extract local ID from IRI for dcterms:identifier.
 
-    For 'https://example.org/0000004' -> '0000004'
-    For 'https://example.org/' -> 'example.org'
+    Uses the vocabulary's ID pattern to extract digits from the end of the IRI.
+
+    For 'https://example.org/vocab_0000004' with 7-digit pattern -> '0000004'
+    For 'https://example.org/0000004' with 7-digit pattern -> '0000004'
 
     Args:
         iri: Full IRI string.
+        id_pattern: Compiled regex pattern with 'identifier' named group.
 
     Returns:
-        Identifier string suitable for dcterms:identifier.
+        Local ID string (digits only) suitable for dcterms:identifier,
+        or empty string if extraction fails.
     """
-    if "#" in iri:
-        return iri.split("#")[-1]
+    match = id_pattern.search(iri)
+    if match:
+        return match.group("identifier")
 
-    # Remove trailing slash for processing
-    cleaned = iri.rstrip("/")
-    last_segment = cleaned.split("/")[-1]
-
-    # If the last segment is empty (e.g., just "https://example.org/"),
-    # use the domain
-    if not last_segment:
-        # Extract domain from URL
-        parts = cleaned.split("//")
-        if len(parts) > 1:
-            return parts[1].split("/")[0]
-        return cleaned
-
-    return last_segment
+    logger.error(
+        "Could not extract ID from IRI using pattern %s: %s", id_pattern.pattern, iri
+    )
+    return ""
 
 
 # --- RDF Graph Building Functions ---
@@ -2340,12 +2336,14 @@ def build_entity_graph(url: str, name: str, field_type: str) -> Graph:
 def build_concept_scheme_graph(
     cs: ConceptSchemeV1,
     concepts: dict[str, AggregatedConcept],
+    id_pattern: "re.Pattern[str] | None",
 ) -> Graph:
     """Build RDF graph for ConceptScheme.
 
     Args:
         cs: ConceptSchemeV1 data.
         concepts: Aggregated concepts (to compute hasTopConcept).
+        id_pattern: Compiled regex pattern for extracting IDs.
 
     Returns:
         Graph with ConceptScheme triples.
@@ -2357,9 +2355,16 @@ def build_concept_scheme_graph(
     g.add((scheme_iri, RDF.type, SKOS.ConceptScheme))
 
     # Identifier - use catalogue_pid if provided, otherwise extract from vocabulary IRI
-    if not cs.catalogue_pid:
-        identifier = extract_identifier(cs.vocabulary_iri)
-        g.add((scheme_iri, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
+    if not cs.catalogue_pid and id_pattern:
+        identifier = extract_identifier(cs.vocabulary_iri, id_pattern)
+        if identifier:
+            g.add(
+                (
+                    scheme_iri,
+                    DCTERMS.identifier,
+                    Literal(identifier, datatype=XSD.token),
+                )
+            )
 
     # Basic metadata
     if cs.title:
@@ -2480,6 +2485,7 @@ def build_concept_graph(
     concept: AggregatedConcept,
     scheme_iri: URIRef,
     narrower_map: dict[str, list[str]],
+    id_pattern: "re.Pattern[str] | None",
     vocab_name: str = "",
     provenance_template: str = "",
     repository_url: str = "",
@@ -2490,6 +2496,7 @@ def build_concept_graph(
         concept: Aggregated concept data.
         scheme_iri: URIRef of the ConceptScheme.
         narrower_map: Map of parent -> children for narrower relationships.
+        id_pattern: Compiled regex pattern for extracting IDs.
         vocab_name: Vocabulary name for provenance URL generation.
         provenance_template: Jinja template for provenance URLs.
         repository_url: Repository URL from config for GitHub auto-detection.
@@ -2504,8 +2511,10 @@ def build_concept_graph(
     g.add((c, RDF.type, SKOS.Concept))
 
     # Identifier
-    identifier = extract_identifier(concept.iri)
-    g.add((c, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
+    if id_pattern:
+        identifier = extract_identifier(concept.iri, id_pattern)
+        if identifier:
+            g.add((c, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
 
     # Labels per language
     for lang, label in concept.pref_labels.items():
@@ -2586,6 +2595,7 @@ def build_collection_graph(
     scheme_iri: URIRef,
     collection_members: dict[str, list[str]],
     ordered_collection_members: dict[str, list[str]] | None = None,
+    id_pattern: "re.Pattern[str] | None" = None,
     vocab_name: str = "",
     provenance_template: str = "",
     repository_url: str = "",
@@ -2598,6 +2608,7 @@ def build_collection_graph(
         collection_members: Map of collection -> member IRIs (unordered).
         ordered_collection_members: Map of ordered collection -> member IRIs
             in order. Used for building skos:memberList.
+        id_pattern: Compiled regex pattern for extracting IDs.
         vocab_name: Vocabulary name for provenance URL generation.
         provenance_template: Jinja template for provenance URLs.
         repository_url: Repository URL from config for GitHub auto-detection.
@@ -2616,8 +2627,10 @@ def build_collection_graph(
         g.add((c, RDF.type, SKOS.Collection))
 
     # Identifier
-    identifier = extract_identifier(collection.iri)
-    g.add((c, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
+    if id_pattern:
+        identifier = extract_identifier(collection.iri, id_pattern)
+        if identifier:
+            g.add((c, DCTERMS.identifier, Literal(identifier, datatype=XSD.token)))
 
     # Labels per language
     for lang, label in collection.pref_labels.items():
@@ -2828,17 +2841,26 @@ def excel_to_rdf_v1(
     provenance_template = vocab_config.provenance_url_template if vocab_config else ""
     repository_url = vocab_config.repository if vocab_config else ""
 
+    # Get ID pattern for identifier extraction
+    id_pattern = config.ID_PATTERNS.get(vocab_name)
+    if not id_pattern:
+        logger.warning(
+            "No ID pattern found for vocab '%s', identifiers will be skipped",
+            vocab_name,
+        )
+
     # Build the complete graph
     logger.debug("Building RDF graph...")
     scheme_iri = URIRef(concept_scheme.vocabulary_iri)
 
-    graph = build_concept_scheme_graph(concept_scheme, concepts)
+    graph = build_concept_scheme_graph(concept_scheme, concepts, id_pattern)
 
     for concept in concepts.values():
         graph += build_concept_graph(
             concept,
             scheme_iri,
             narrower_map,
+            id_pattern,
             vocab_name,
             provenance_template,
             repository_url,
@@ -2850,6 +2872,7 @@ def excel_to_rdf_v1(
             scheme_iri,
             collection_members,
             ordered_collection_members,
+            id_pattern,
             vocab_name,
             provenance_template,
             repository_url,

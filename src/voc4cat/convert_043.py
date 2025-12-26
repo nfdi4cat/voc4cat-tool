@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Literal as TypingLiteral
@@ -33,6 +34,7 @@ from rdflib import (
     URIRef,
 )
 
+from voc4cat import config
 from voc4cat.convert_v1 import (
     HISTORY_NOTE_FIRST_TIME,
     HISTORY_NOTE_INFLUENCED_BY,
@@ -409,10 +411,24 @@ def convert_rdf_043_to_v1(
     # Track unknown predicates for warning
     unknown_predicates: set[URIRef] = set()
 
+    # Get ID pattern for identifier transformation
+    vocab_name = input_path.stem.lower()
+    id_pattern = config.ID_PATTERNS.get(vocab_name)
+    if not id_pattern and vocab_config:
+        # Fall back to compiling pattern from vocab_config.id_length
+        id_pattern = re.compile(rf"(?P<identifier>[0-9]{{{vocab_config.id_length}}})$")
+
     # Process each triple
     for s, p, o in input_graph:
         new_triple = _transform_triple_043_to_v1(
-            s, p, o, concepts, collections, concept_schemes, unknown_predicates
+            s,
+            p,
+            o,
+            concepts,
+            collections,
+            concept_schemes,
+            unknown_predicates,
+            id_pattern,
         )
         if new_triple:
             output_graph.add(new_triple)
@@ -472,6 +488,7 @@ def _transform_triple_043_to_v1(  # noqa: PLR0911
     collections: set[URIRef],
     concept_schemes: set[URIRef],
     unknown_predicates: set[URIRef],
+    id_pattern: re.Pattern[str] | None = None,
 ) -> tuple | None:
     """Transform a single triple from 043 to v1.0 format.
 
@@ -483,6 +500,7 @@ def _transform_triple_043_to_v1(  # noqa: PLR0911
         collections: Set of collection IRIs (for dcterms:isPartOf handling)
         concept_schemes: Set of ConceptScheme IRIs (for dcterms:hasPart handling)
         unknown_predicates: Set to collect unknown predicates
+        id_pattern: Compiled regex pattern for extracting IDs from identifiers.
 
     Returns:
         Transformed triple (s, p, o) or None if dropped.
@@ -503,6 +521,22 @@ def _transform_triple_043_to_v1(  # noqa: PLR0911
         PROV.wasDerivedFrom,
     ):
         return None
+
+    # Transform dcterms:identifier from "prefix_ID" to just "ID"
+    # Only for concepts and collections, not for ConceptScheme
+    if p == DCTERMS.identifier and s not in concept_schemes and id_pattern:
+        old_value = str(o)
+        match = id_pattern.search(old_value)
+        if match:
+            new_value = match.group("identifier")
+            return (s, p, Literal(new_value, datatype=XSD.token))
+        # Pattern didn't match - log warning and keep original
+        logger.warning(
+            "Could not extract ID from identifier '%s' using pattern %s",
+            old_value,
+            id_pattern.pattern,
+        )
+        return (s, p, o)
 
     # Special case: rdfs:isDefinedBy on concepts -> prov:hadPrimarySource
     # For non-concepts (collections, scheme), preserve rdfs:isDefinedBy as-is
