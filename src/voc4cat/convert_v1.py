@@ -49,10 +49,8 @@ from voc4cat.convert_v1_helpers import (
     expand_curie,
     extract_creator_names,
     extract_used_ids,
-    format_change_note_with_replaced_by,
     format_iri_with_label,
     generate_history_note,
-    parse_replaced_by_from_change_note,
     validate_deprecation,
     validate_entity_deprecation,
 )
@@ -878,16 +876,13 @@ def rdf_concepts_to_v1(
                 source_vocab_license = data.get("source_vocab_license", "")
                 source_vocab_rights_holder = data.get("source_vocab_rights_holder", "")
 
-                # Notes - handle replaced_by_iri
+                # Notes
                 change_note = data.get("change_note", "")
-                if replaced_by_iri:
-                    # Format change_note with replaced_by notation
-                    compressed_replacement = converter.compress(
-                        replaced_by_iri, passthrough=True
-                    )
-                    change_note = format_change_note_with_replaced_by(
-                        compressed_replacement
-                    )
+                replaced_by = (
+                    converter.compress(replaced_by_iri, passthrough=True)
+                    if replaced_by_iri
+                    else ""
+                )
                 obsolete_reason = string_to_concept_obsoletion_enum(
                     data.get("obsolete_reason", "")
                 )
@@ -909,6 +904,7 @@ def rdf_concepts_to_v1(
                 source_vocab_license = ""
                 source_vocab_rights_holder = ""
                 change_note = ""
+                replaced_by = ""
                 obsolete_reason = None
                 influenced_by_iris_str = ""
                 provenance = ""
@@ -926,11 +922,12 @@ def rdf_concepts_to_v1(
                     provenance=provenance,
                     change_note=change_note,
                     editorial_note=editorial_note,
-                    obsolete_reason=obsolete_reason,
                     influenced_by_iris=influenced_by_iris_str,
                     source_vocab_iri=source_vocab_iri,
                     source_vocab_license=source_vocab_license,
                     source_vocab_rights_holder=source_vocab_rights_holder,
+                    obsolete_reason=obsolete_reason,
+                    replaced_by=replaced_by,
                 )
             )
 
@@ -1009,16 +1006,13 @@ def rdf_collections_to_v1(
                 # Ordered flag
                 ordered = string_to_ordered_enum(data.get("ordered", False))
 
-                # Notes - handle replaced_by_iri
+                # Notes
                 change_note = data.get("change_note", "")
-                if replaced_by_iri:
-                    # Format change_note with replaced_by notation
-                    compressed_replacement = converter.compress(
-                        replaced_by_iri, passthrough=True
-                    )
-                    change_note = format_change_note_with_replaced_by(
-                        compressed_replacement
-                    )
+                replaced_by = (
+                    converter.compress(replaced_by_iri, passthrough=True)
+                    if replaced_by_iri
+                    else ""
+                )
                 obsolete_reason = string_to_collection_obsoletion_enum(
                     data.get("obsolete_reason", "")
                 )
@@ -1029,6 +1023,7 @@ def rdf_collections_to_v1(
                 parent_iris_str = ""
                 ordered = None
                 change_note = ""
+                replaced_by = ""
                 obsolete_reason = None
                 provenance = ""
 
@@ -1044,6 +1039,7 @@ def rdf_collections_to_v1(
                     change_note=change_note,
                     editorial_note=editorial_note,
                     obsolete_reason=obsolete_reason,
+                    replaced_by=replaced_by,
                 )
             )
 
@@ -1941,11 +1937,9 @@ def aggregate_concepts(
 
         if iri not in concepts:
             # First row for this concept - create new entry with structural data
-            # Parse replaced_by from change_note
             change_note = row.change_note or ""
-            replaced_by_curie = parse_replaced_by_from_change_note(change_note)
             replaced_by_iri = (
-                expand_curie(replaced_by_curie, converter) if replaced_by_curie else ""
+                expand_curie(row.replaced_by, converter) if row.replaced_by else ""
             )
 
             concepts[iri] = AggregatedConcept(
@@ -2042,11 +2036,9 @@ def aggregate_collections(
             # Parse ordered flag (now an enum)
             is_ordered = row.ordered == OrderedChoice.YES if row.ordered else False
 
-            # Parse replaced_by from change_note
             change_note = row.change_note or ""
-            replaced_by_curie = parse_replaced_by_from_change_note(change_note)
             replaced_by_iri = (
-                expand_curie(replaced_by_curie, converter) if replaced_by_curie else ""
+                expand_curie(row.replaced_by, converter) if row.replaced_by else ""
             )
 
             collections[iri] = AggregatedCollection(
