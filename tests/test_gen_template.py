@@ -92,11 +92,12 @@ class TestTemplateGeneration:
             "Provenance (read-only)",
             "Change Note",
             "Editorial Note",
-            "Obsoletion reason",
             "Influenced by IRIs",
             "Source Vocab IRI or URL",
             "Source Vocab License",
             "Source Vocab Rights Holder",
+            "Obsoletion reason",
+            "dct:isReplacedBy",
         ]
 
         for col, expected_header in enumerate(expected_headers, 1):

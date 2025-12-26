@@ -560,43 +560,6 @@ def derive_contributors(
 OBSOLETE_PREFIX = "OBSOLETE "
 
 
-def parse_replaced_by_from_change_note(change_note: str) -> str | None:
-    """Extract IRI from 'replaced_by <IRI>' notation in change note.
-
-    The change note may contain other text. Only lines starting with
-    'replaced_by ' are parsed. Returns the first match.
-
-    Args:
-        change_note: The change note text to parse.
-
-    Returns:
-        The IRI/CURIE string if found, None otherwise.
-    """
-    if not change_note:
-        return None
-
-    for iline in change_note.split("\n"):
-        line = iline.strip()
-        if line.lower().startswith("replaced_by "):
-            # Extract the IRI (everything after "replaced_by ")
-            parts = line.split(maxsplit=1)
-            if len(parts) == 2:  # noqa: PLR2004
-                return parts[1].strip()
-    return None
-
-
-def format_change_note_with_replaced_by(replaced_by_iri: str) -> str:
-    """Format a change note with replaced_by notation.
-
-    Args:
-        replaced_by_iri: The IRI of the replacement concept/collection.
-
-    Returns:
-        Formatted change note string.
-    """
-    return f"replaced_by {replaced_by_iri}"
-
-
 def validate_deprecation(
     pref_label: str,
     is_deprecated: bool,

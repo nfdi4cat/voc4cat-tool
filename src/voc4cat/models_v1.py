@@ -326,14 +326,6 @@ class ConceptV1(BaseModel):
         ),
     ] = ""
 
-    obsolete_reason: Annotated[
-        ConceptObsoletionReason | None,
-        XLSXMetadata(
-            display_name="Obsoletion reason",
-            meaning="owl:deprecated,\nskos:historyNote",
-        ),
-    ] = None
-
     influenced_by_iris: Annotated[
         str,
         XLSXMetadata(
@@ -363,6 +355,22 @@ class ConceptV1(BaseModel):
         XLSXMetadata(
             display_name="Source Vocab Rights Holder",
             meaning="dct:rightsHolder",
+        ),
+    ] = ""
+
+    obsolete_reason: Annotated[
+        ConceptObsoletionReason | None,
+        XLSXMetadata(
+            display_name="Obsoletion reason",
+            meaning="owl:deprecated,\nskos:historyNote",
+        ),
+    ] = None
+
+    replaced_by: Annotated[
+        str,
+        XLSXMetadata(
+            display_name="dct:isReplacedBy",
+            meaning="dct:isReplacedBy",
         ),
     ] = ""
 
@@ -452,6 +460,14 @@ class CollectionV1(BaseModel):
             meaning="owl:deprecated,\nskos:historyNote",
         ),
     ] = None
+
+    replaced_by: Annotated[
+        str,
+        XLSXMetadata(
+            display_name="dct:isReplacedBy",
+            meaning="dct:isReplacedBy",
+        ),
+    ] = ""
 
 
 # === Mappings (table format) ===

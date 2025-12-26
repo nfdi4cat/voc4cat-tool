@@ -70,9 +70,7 @@ from voc4cat.convert_v1_helpers import (
     extract_entity_id_from_iri,
     extract_github_repo_from_url,
     extract_used_ids,
-    format_change_note_with_replaced_by,
     format_contributor_string,
-    parse_replaced_by_from_change_note,
     validate_deprecation,
 )
 from voc4cat.models_v1 import (
@@ -430,11 +428,12 @@ class TestConceptsSheetStructure:
             "Provenance (read-only)",
             "Change Note",
             "Editorial Note",
-            "Obsoletion reason",
             "Influenced by IRIs",
             "Source Vocab IRI or URL",
             "Source Vocab License",
             "Source Vocab Rights Holder",
+            "Obsoletion reason",
+            "dct:isReplacedBy",
         ]
 
         for col, expected in enumerate(expected_headers, 1):
@@ -1109,54 +1108,6 @@ class TestAlternateLabelSeparator:
 # =============================================================================
 
 
-class TestParseReplacedByFromChangeNote:
-    """Tests for parse_replaced_by_from_change_note function."""
-
-    def test_parse_simple_replaced_by(self):
-        """Test parsing simple replaced_by notation."""
-        note = "replaced_by ex:newConcept"
-        result = parse_replaced_by_from_change_note(note)
-        assert result == "ex:newConcept"
-
-    def test_parse_replaced_by_full_iri(self):
-        """Test parsing replaced_by with full IRI."""
-        note = "replaced_by https://example.org/newConcept"
-        result = parse_replaced_by_from_change_note(note)
-        assert result == "https://example.org/newConcept"
-
-    def test_parse_replaced_by_case_insensitive(self):
-        """Test that replaced_by is case-insensitive."""
-        note = "Replaced_By ex:newConcept"
-        result = parse_replaced_by_from_change_note(note)
-        assert result == "ex:newConcept"
-
-    def test_parse_replaced_by_multiline(self):
-        """Test parsing replaced_by from multiline note."""
-        note = "Some other text\nreplaced_by ex:newConcept\nMore text"
-        result = parse_replaced_by_from_change_note(note)
-        assert result == "ex:newConcept"
-
-    def test_parse_empty_note(self):
-        """Test parsing empty note returns None."""
-        assert parse_replaced_by_from_change_note("") is None
-        assert parse_replaced_by_from_change_note(None) is None
-
-    def test_parse_note_without_replaced_by(self):
-        """Test parsing note without replaced_by returns None."""
-        note = "This is a regular change note"
-        result = parse_replaced_by_from_change_note(note)
-        assert result is None
-
-
-class TestFormatChangeNoteWithReplacedBy:
-    """Tests for format_change_note_with_replaced_by function."""
-
-    def test_format_simple(self):
-        """Test formatting replaced_by notation."""
-        result = format_change_note_with_replaced_by("ex:newConcept")
-        assert result == "replaced_by ex:newConcept"
-
-
 class TestValidateDeprecation:
     """Tests for validate_deprecation function."""
 
@@ -1319,8 +1270,8 @@ class TestDeprecationRdfExtraction:
 class TestDeprecationXlsxAggregation:
     """Tests for deprecation handling in XLSX aggregation."""
 
-    def test_aggregate_concepts_parses_replaced_by(self):
-        """Test that aggregate_concepts parses replaced_by from change_note."""
+    def test_aggregate_concepts_reads_replaced_by(self):
+        """Test that aggregate_concepts reads replaced_by from explicit field."""
         prefixes = [
             PrefixV1(prefix="ex", namespace="http://example.org/"),
         ]
@@ -1333,7 +1284,7 @@ class TestDeprecationXlsxAggregation:
                 preferred_label="OBSOLETE Old Concept",
                 definition="An old concept",
                 obsolete_reason=ConceptObsoletionReason.UNCLEAR,
-                change_note="replaced_by ex:newConcept",
+                replaced_by="ex:newConcept",
             ),
         ]
 
@@ -1365,8 +1316,8 @@ class TestDeprecationXlsxAggregation:
         concept = concepts["http://example.org/oldConcept"]
         assert concept.pref_labels["en"].startswith(OBSOLETE_PREFIX)
 
-    def test_aggregate_collections_parses_replaced_by(self):
-        """Test that aggregate_collections parses replaced_by from change_note."""
+    def test_aggregate_collections_reads_replaced_by(self):
+        """Test that aggregate_collections reads replaced_by from explicit field."""
         prefixes = [
             PrefixV1(prefix="ex", namespace="http://example.org/"),
         ]
@@ -1379,7 +1330,7 @@ class TestDeprecationXlsxAggregation:
                 preferred_label="OBSOLETE Old Collection",
                 definition="An old collection",
                 obsolete_reason=CollectionObsoletionReason.UNCLEAR,
-                change_note="replaced_by ex:newColl",
+                replaced_by="ex:newColl",
             ),
         ]
 
