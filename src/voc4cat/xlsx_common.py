@@ -11,8 +11,10 @@ This module contains shared infrastructure including:
 """
 
 import json
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from copy import copy
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from enum import Enum
@@ -22,13 +24,16 @@ from typing import Annotated, Any, Union, get_args, get_origin
 from openpyxl import load_workbook
 from openpyxl.cell import MergedCell
 from openpyxl.styles import Alignment, Font
-from openpyxl.utils import get_column_letter
+from openpyxl.utils import get_column_letter, range_boundaries
 from openpyxl.workbook import Workbook
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.worksheet.table import Table
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import BaseModel
 from pydantic_core import PydanticUndefined
+
+logger = logging.getLogger(__name__)
 
 # Excel's limit for data validation formula length
 EXCEL_DV_FORMULA_LIMIT = 255
@@ -1435,3 +1440,115 @@ class XLSXRowCalculator:
         )
         # HIDE or AUTO: don't show (backwards compatible)
         return visibility == MetadataVisibility.SHOW
+
+
+# =============================================================================
+# Table Length Adjustment
+# =============================================================================
+
+
+def adjust_table_length(
+    worksheet: Worksheet,
+    table_name: str,
+    rows_pre_allocated: int = 0,
+) -> None:
+    """Expand a single table to include all filled rows plus pre-allocated rows.
+
+    The table is expanded to include the last row with content plus a number of
+    additional empty rows specified by rows_pre_allocated.
+
+    Note that tables are not shrunk by this method if they contain empty rows
+    at the end.
+
+    Args:
+        worksheet: The worksheet containing the table (in-memory).
+        table_name: The name of the table to adjust.
+        rows_pre_allocated: Number of empty rows to add after last content row.
+
+    Note:
+        Caller is responsible for saving the workbook after calling this function.
+    """
+    if table_name not in worksheet.tables:
+        logger.warning(
+            'Table "%s" not found in worksheet "%s".', table_name, worksheet.title
+        )
+        return
+
+    old_range = worksheet.tables[table_name].ref
+    start_col, start_row, end_col, end_row = range_boundaries(old_range)
+    start = old_range.split(":")[0]
+
+    # Find last row with content in table
+    last_content_row = start_row  # At minimum, keep header row
+    for row in range(start_row + 1, end_row + 1):
+        row_has_content = any(
+            worksheet.cell(row=row, column=col).value
+            for col in range(start_col, end_col + 1)
+        )
+        if row_has_content:
+            last_content_row = row
+
+    new_last_row = max(last_content_row + rows_pre_allocated, worksheet.max_row)
+    adjusted = f"{start}:{get_column_letter(end_col)}{new_last_row}"
+
+    if adjusted != old_range:
+        # Expanding the table is not possible with openpyxl. Instead a too
+        # short table is removed, and a new adjusted table is created.
+        style = copy(worksheet.tables[table_name].tableStyleInfo)
+        del worksheet.tables[table_name]
+        newtab = Table(displayName=table_name, ref=adjusted)
+        newtab.tableStyleInfo = style
+        worksheet.add_table(newtab)
+        logger.debug(
+            'Adjusted table "%s" in sheet "%s" from {%s} to {%s}.',
+            table_name,
+            worksheet.title,
+            old_range,
+            adjusted,
+        )
+
+    # Reset row height for all table rows including header to default
+    for row in range(start_row, new_last_row + 1):
+        worksheet.row_dimensions[row].height = None
+
+
+def adjust_all_tables_length(
+    wb_path: Path,
+    rows_pre_allocated: dict[str, int] | int = 0,
+    active_sheet: str | None = None,
+) -> None:
+    """Adjust length of all tables in a workbook file.
+
+    This is a convenience wrapper that loads a workbook, adjusts all tables,
+    and saves the workbook.
+
+    Args:
+        wb_path: Path to the Excel workbook file.
+        rows_pre_allocated: Either:
+            - int: same value applied to all sheets
+            - dict[str, int]: per-sheet values where keys are sheet names
+              (missing sheets get 0)
+        active_sheet: Sheet name to set as active (visible when file opens).
+            If None or sheet doesn't exist, no change is made.
+    """
+    wb = load_workbook(wb_path)
+
+    # Normalize rows_pre_allocated to dict
+    if isinstance(rows_pre_allocated, int):
+        rows_dict = dict.fromkeys(wb.sheetnames, rows_pre_allocated)
+    elif isinstance(rows_pre_allocated, dict):
+        rows_dict = {sheet: rows_pre_allocated.get(sheet, 0) for sheet in wb.sheetnames}
+    else:
+        msg = "rows_pre_allocated must be an int or a dict"
+        raise TypeError(msg)
+
+    for ws in wb.worksheets:
+        for table_name in list(ws.tables):
+            adjust_table_length(ws, table_name, rows_pre_allocated=rows_dict[ws.title])
+
+    # Set active sheet before saving
+    if active_sheet and active_sheet in wb.sheetnames:
+        wb.active = wb[active_sheet]
+
+    wb.save(wb_path)
+    wb.close()

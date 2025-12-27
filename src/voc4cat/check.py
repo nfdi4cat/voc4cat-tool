@@ -20,14 +20,17 @@ from voc4cat.convert import (
     resolve_profile,
     validate_with_profile,
 )
-from voc4cat.models_v1 import CONCEPTS_READ_CONFIG, ConceptV1
+from voc4cat.models_v1 import CONCEPTS_READ_CONFIG, CONCEPTS_SHEET_NAME, ConceptV1
 from voc4cat.transform import join_split_turtle
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
     RDF_FILE_ENDINGS,
-    adjust_length_of_tables,
 )
-from voc4cat.xlsx_common import XLSXFieldAnalyzer, XLSXRowCalculator
+from voc4cat.xlsx_common import (
+    XLSXFieldAnalyzer,
+    XLSXRowCalculator,
+    adjust_all_tables_length,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -104,8 +107,10 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
         wb.save(outfile)
         logger.info("-> Saved file with highlighted errors as %s", outfile)
         # Extend size (length) of tables in all sheets
-        adjust_length_of_tables(
-            outfile, rows_pre_allocated=config.xlsx_rows_pre_allocated
+        adjust_all_tables_length(
+            outfile,
+            rows_pre_allocated=config.xlsx_rows_pre_allocated,
+            active_sheet=CONCEPTS_SHEET_NAME,
         )
         return
 

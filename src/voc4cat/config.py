@@ -40,9 +40,9 @@ curies_converter: Converter = Converter.from_prefix_map(
 # Number of empty rows appended to the tables. The keys in the dict must match
 # the table names exactly.
 xlsx_rows_pre_allocated = {
-    "Concepts": 25,
-    "Additional Concept Features": 25,
-    "Collections": 25,
+    "Concepts": 20,
+    "Mappings": 15,
+    "Collections": 10,
 }
 
 # === Configuration imported from idranges.toml stored as pydantic model ===

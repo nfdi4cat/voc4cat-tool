@@ -44,6 +44,7 @@ class XLSXTableConfig(XLSXConfig):
     header_row_color: str | None = None
     freeze_panes: bool = True
     bold_fields: set[str] = field(default_factory=set)
+    rows_pre_allocated: int = 0
 
 
 # Join configuration for complex relationships

@@ -5,11 +5,13 @@ This module tests the common functionality used across the XLSX processing syste
 including field analysis, serialization engine, metadata handling, and converters.
 """
 
+import logging
 from datetime import date, datetime, timezone
 from typing import Annotated
 
 import pytest
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
+from openpyxl.worksheet.table import Table
 from pydantic import BaseModel, Field, HttpUrl
 from pydantic_core import PydanticUndefined
 
@@ -27,6 +29,8 @@ from voc4cat.xlsx_common import (
     XLSXSerializationEngine,
     XLSXSerializationError,
     _validate_unit_usage,
+    adjust_all_tables_length,
+    adjust_table_length,
 )
 
 from .conftest import DemoModelWithMetadata, Priority, SimpleModel, Status
@@ -1229,6 +1233,170 @@ class TestMetadataVisibilityToggle:
         assert config.metadata_visibility is not None
         assert config.metadata_visibility.unit == MetadataVisibility.HIDE
         assert config.metadata_visibility.requiredness == MetadataVisibility.SHOW
+
+
+class TestAdjustTableLength:
+    """Tests for adjust_table_length and adjust_all_tables_length functions."""
+
+    def test_adjust_table_length_single(self, tmp_path, caplog):
+        """Test adjust_table_length for a single table."""
+        caplog.set_level(logging.DEBUG)
+        test_wb = tmp_path / "table.xlsx"
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Sheet1"
+        ws.append(["Letter", "value"])  # table header
+        data = [
+            ["A", 1],
+            ["B", 2],
+        ]
+        for row in data:
+            ws.append(row)
+        tab = Table(displayName="Table1", ref="A1:B3")
+        ws.add_table(tab)
+        ws["A5"] = "X"  # Content outside initial table range
+        wb.save(test_wb)
+
+        # Test with no pre-allocated rows
+        wb = load_workbook(test_wb)
+        ws = wb.active
+        adjust_table_length(ws, "Table1", rows_pre_allocated=0)
+        wb.save(test_wb)
+        wb.close()
+
+        wb = load_workbook(test_wb)
+        name, table_range = wb.active.tables.items()[0]
+        assert name == "Table1"
+        assert table_range == "A1:B5"
+        assert "from {A1:B3} to {A1:B5}" in caplog.text
+        wb.close()
+
+        caplog.clear()
+
+        # Test with pre-allocated rows
+        wb = load_workbook(test_wb)
+        ws = wb.active
+        adjust_table_length(ws, "Table1", rows_pre_allocated=3)
+        wb.save(test_wb)
+        wb.close()
+
+        wb = load_workbook(test_wb)
+        name, table_range = wb.active.tables.items()[0]
+        assert name == "Table1"
+        # After first adjustment, table is A1:B5 with content at row 5 ("X")
+        # Last content row is now 5 (includes the "X" at A5)
+        # So with rows_pre_allocated=3: 5 + 3 = 8
+        assert table_range == "A1:B8"
+        assert "from {A1:B5} to {A1:B8}" in caplog.text
+        wb.close()
+
+    def test_adjust_table_length_missing_table(self, tmp_path, caplog):
+        """Test that adjust_table_length logs warning for missing table."""
+        caplog.set_level(logging.WARNING)
+        test_wb = tmp_path / "table.xlsx"
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Sheet1"
+        ws.append(["A", 1])
+        tab = Table(displayName="Table1", ref="A1:B1")
+        ws.add_table(tab)
+        wb.save(test_wb)
+        wb.close()
+
+        wb = load_workbook(test_wb)
+        ws = wb.active
+        adjust_table_length(ws, "NonExistentTable", rows_pre_allocated=5)
+        wb.close()
+
+        assert 'Table "NonExistentTable" not found' in caplog.text
+
+    @pytest.mark.parametrize(
+        ("rows_pre_allocated", "expected_range"),
+        [
+            (5, "A1:B8"),  # int: 3 + 5 = 8
+            ({"Concepts": 10}, "A1:B13"),  # dict: 3 + 10 = 13
+        ],
+    )
+    def test_adjust_all_tables_length(
+        self, tmp_path, caplog, rows_pre_allocated, expected_range
+    ):
+        """Test adjust_all_tables_length with int or dict rows_pre_allocated."""
+        caplog.set_level(logging.DEBUG)
+        test_wb = tmp_path / "table.xlsx"
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Concepts"
+        ws.append(["Letter", "value"])  # table header
+        for row in [["A", 1], ["B", 2]]:
+            ws.append(row)
+        tab = Table(displayName="Table1", ref="A1:B3")
+        ws.add_table(tab)
+        ws["A5"] = "X"
+        wb.save(test_wb)
+
+        adjust_all_tables_length(test_wb, rows_pre_allocated=rows_pre_allocated)
+
+        wb = load_workbook(test_wb)
+        name, table_range = wb.active.tables.items()[0]
+        assert name == "Table1"
+        assert table_range == expected_range
+        wb.close()
+
+    def test_adjust_all_tables_length_no_change_on_repeat(self, tmp_path, caplog):
+        """Test that running adjustment again doesn't change if content is same."""
+        caplog.set_level(logging.DEBUG)
+        test_wb = tmp_path / "table.xlsx"
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Sheet"
+        ws.append(["Letter", "value"])
+        ws.append(["A", 1])
+        tab = Table(displayName="Table1", ref="A1:B2")
+        ws.add_table(tab)
+        wb.save(test_wb)
+
+        adjust_all_tables_length(test_wb, rows_pre_allocated={"Sheet": 5})
+        wb = load_workbook(test_wb)
+        assert wb.active.tables.items()[0][1] == "A1:B7"
+        wb.close()
+
+        caplog.clear()
+
+        # Second adjustment - should not change
+        adjust_all_tables_length(test_wb, rows_pre_allocated={"Sheet": 5})
+        wb = load_workbook(test_wb)
+        assert wb.active.tables.items()[0][1] == "A1:B7"
+        assert not caplog.text  # No log because no change
+        wb.close()
+
+    @pytest.mark.parametrize(
+        ("active_sheet", "expected_active"),
+        [
+            ("Concepts", "Concepts"),  # Existing sheet becomes active
+            ("NonExistent", "Sheet1"),  # Missing sheet ignored, stays on Sheet1
+            (None, "Sheet1"),  # None leaves default active
+        ],
+    )
+    def test_adjust_all_tables_length_active_sheet(
+        self, tmp_path, active_sheet, expected_active
+    ):
+        """Test active_sheet parameter sets the active worksheet."""
+        test_wb = tmp_path / "table.xlsx"
+        wb = Workbook()
+        ws1 = wb.active
+        ws1.title = "Sheet1"
+        ws2 = wb.create_sheet("Concepts")
+        ws2.append(["A", 1])
+        tab = Table(displayName="Table1", ref="A1:B1")
+        ws2.add_table(tab)
+        wb.save(test_wb)
+        wb.close()
+
+        adjust_all_tables_length(test_wb, active_sheet=active_sheet)
+
+        wb = load_workbook(test_wb)
+        assert wb.active.title == expected_active
+        wb.close()
 
 
 if __name__ == "__main__":

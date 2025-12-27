@@ -14,14 +14,15 @@ from voc4cat.convert_v1 import (
     excel_to_rdf_v1,
     rdf_to_excel_v1,
 )
+from voc4cat.models_v1 import CONCEPTS_SHEET_NAME
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
     RDF_FILE_ENDINGS,
     ConversionError,
-    adjust_length_of_tables,
     has_file_in_multiple_formats,
     validate_template_sheets,
 )
+from voc4cat.xlsx_common import adjust_all_tables_length
 
 logger = logging.getLogger(__name__)
 
@@ -342,6 +343,8 @@ def convert(args):
             )
             logger.info("-> successfully converted to %s", output_file_path)
             # Extend size (length) of tables in all sheets
-            adjust_length_of_tables(
-                output_file_path, rows_pre_allocated=config.xlsx_rows_pre_allocated
+            adjust_all_tables_length(
+                output_file_path,
+                rows_pre_allocated=config.xlsx_rows_pre_allocated,
+                active_sheet=CONCEPTS_SHEET_NAME,
             )
