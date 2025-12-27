@@ -10,10 +10,10 @@ PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX dash: <http://datashapes.org/dash#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-BASE <https://w3id.org/nfdi4cat/voc4cat/profile>
+BASE <https://w3id.org/nfdi4cat/voc4cat/profile/vp4cat/>
 
 
-<https://w3id.org/nfdi4cat/voc4cat/profile>
+<https://w3id.org/nfdi4cat/voc4cat/profile/vp4cat>
     a owl:Ontology ;
     schema:name "Vocabulary profile 'vp4Cat' Validator"@en ;
     schema:definition "SHACL validator for the vp4Cat Profile (based on VocPub Profile)"@en ;
@@ -21,12 +21,13 @@ BASE <https://w3id.org/nfdi4cat/voc4cat/profile>
     schema:contributor <https://orcid.org/0000-0002-5898-1820> ;
     schema:publisher <https://w3id.org/nfdi4cat> ;
     schema:dateCreated "2020-06-14"^^xsd:date ;
-    schema:dateModified "2025-12-20"^^xsd:date ;
-    owl:versionIRI <https://w3id.org/nfdi4cat/voc4cat/profile/4.7> ;
+    schema:dateModified "2025-12-27"^^xsd:date ;
+    owl:versionIRI <https://w3id.org/nfdi4cat/voc4cat/profile/5.2/> ;
     owl:versionInfo """vp4cat-5.2 has following modification vs. vocpub
 
 - Modified Requirement-2.4.3b to allow schema:url as alternative to schema:email for Persons
 - Modified Requirement-2.3.4 to also accept prov:hadPrimarySource as alternative
+- Modified Requirement-2.2.2 to also accept <IRI> for dcterms:provenance
 - Changed IRI to https://w3id.org/nfdi4cat/voc4cat/profile
 - Added contributor David Linke
 - Updated publisher to NFDI4Cat
@@ -565,6 +566,7 @@ Vocpub 5.2 ChangeLog:
     sh:path dcterms:provenance ;
     sh:minCount 1 ;
     sh:or (
+        [ sh:nodeKind sh:IRI ]
         [ sh:datatype rdf:langString ]
         [ sh:datatype xsd:string ]
     ) ;
