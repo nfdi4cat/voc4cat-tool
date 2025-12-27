@@ -189,7 +189,7 @@ voc4cat check [options] [VOCAB]
 | `-p, --profile PROFILE` | SHACL profile token or path to a SHACL file (default: `vp4cat-5.2`) |
 | `--fail-at-level {1,2,3}` | Minimum severity to fail: 1=info, 2=warning, 3=violation |
 | `--listprofiles` | List available SHACL profiles |
-| `--detect-hierarchy-redundancy` | Detect redundant hierarchical relationships |
+| `--redundant-hierarchies` | Detect redundant hierarchical relationships |
 | `--ci-pre INBOX` | Pre-merge CI check comparing INBOX to VOCAB |
 | `--ci-post EXISTING` | Post-merge CI check comparing EXISTING to VOCAB |
 
@@ -220,12 +220,12 @@ voc4cat check --config idranges.toml --ci-pre inbox/ vocabularies/
 voc4cat check --config idranges.toml --ci-post existing/ vocabularies/
 
 # Check for redundant broader relationships
-voc4cat check --config idranges.toml --detect-hierarchy-redundancy myvocab.ttl
+voc4cat check --config idranges.toml --redundant-hierarchies myvocab.ttl
 ```
 
 ### Hierarchy redundancy check
 
-The `--detect-hierarchy-redundancy` option detects redundant hierarchical relationships where a concept has `skos:broader` links to both a parent and an ancestor of that parent. For example, if concept C has broader B, and B has broader A, then C should not also have broader A directly. While such redundancies are OK in SKOS they causes problems for [Skosmos](https://https://skosmos.org/). So we suggest to remove them if you plan to host your vocabulary with Skosmos.
+The `--redundant-hierarchies` option detects redundant hierarchical relationships where a concept has `skos:broader` links to both a parent and an ancestor of that parent. For example, if concept C has broader B, and B has broader A, then C should not also have broader A directly. While such redundancies are OK in SKOS they causes problems for [Skosmos](https://https://skosmos.org/). So we suggest to remove them if you plan to host your vocabulary with Skosmos.
 
 ## docs
 

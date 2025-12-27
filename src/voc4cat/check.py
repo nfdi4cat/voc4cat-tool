@@ -254,13 +254,13 @@ def check(args):
         logger.info("-> The file is valid according to the %s profile.", profile_name)
 
         # Check for redundant hierarchical relationships if requested
-        if args.detect_hierarchy_redundancy:
+        if args.redundant_hierarchies:
             redundancies = check_hierarchical_redundancy(file)
             if redundancies:
                 all_redundancies[file] = redundancies
 
     # Report all redundant hierarchical relationships at the end
-    if args.detect_hierarchy_redundancy:
+    if args.redundant_hierarchies:
         logger.info("Checking for redundant hierarchical relationships.")
     if all_redundancies:
         for file, redundancies in all_redundancies.items():

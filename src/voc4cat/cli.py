@@ -333,7 +333,7 @@ def add_check_subparser(subparsers, options):
         action="store_true",
     )
     shacl.add_argument(
-        "--detect-hierarchy-redundancy",
+        "--redundant-hierarchies",
         help=(
             "Detect redundant hierarchical relationships where a concept has "
             "skos:broader to both a parent and an ancestor of that parent."
