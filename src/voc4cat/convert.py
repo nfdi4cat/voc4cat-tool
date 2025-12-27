@@ -219,16 +219,19 @@ def _get_vocab_config(vocab_name: str) -> "config.Vocab | None":
 
 def _check_convert_args(args):
     if args.template is not None:
-        msg = ""
         if not args.template.exists():
-            msg = f"Template file not found: {args.template}"
+            logger.warning(
+                "Template file not found: %s. Continuing without template.",
+                args.template,
+            )
+            args.template = None
         elif args.template.suffix.lower() not in EXCEL_FILE_ENDINGS:
             msg = 'Template file must be of type ".xlsx".'
-        if msg:
-            logging.error(msg)
+            logger.error(msg)
             raise Voc4catError(msg)
-        # Validate template doesn't contain reserved sheet names
-        validate_template_sheets(args.template)
+        else:
+            # Validate template doesn't contain reserved sheet names
+            validate_template_sheets(args.template)
     # Option outputformat is validated by argparse since its restricted by choices.
 
     # Add check if files of the same name are present in different formats.

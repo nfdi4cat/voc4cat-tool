@@ -58,15 +58,22 @@ def test_duplicates(datadir, tmp_path, caplog, cs_cycles_xlsx):
     assert "Files may only be present in one format." in caplog.text
 
 
-def test_template(monkeypatch, datadir, tmp_path, caplog):
-    """Check template option error handling."""
+def test_template_missing_warns_and_continues(monkeypatch, datadir, tmp_path, caplog):
+    """Check that missing template logs warning and continues without template."""
     monkeypatch.chdir(tmp_path)
     shutil.copy(datadir / CS_CYCLES_TURTLE, tmp_path)
-    with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
+    with caplog.at_level(logging.WARNING):
         main_cli(["convert", "--template", "missing.xlsx", str(tmp_path)])
-    assert "Template file not found: " in caplog.text
+    assert "Template file not found:" in caplog.text
+    assert "Continuing without template" in caplog.text
+    # Conversion should succeed
+    assert (tmp_path / CS_CYCLES_TURTLE).with_suffix(".xlsx").exists()
 
-    caplog.clear()
+
+def test_template_wrong_extension_raises_error(monkeypatch, datadir, tmp_path, caplog):
+    """Check that template with wrong extension raises error."""
+    monkeypatch.chdir(tmp_path)
+    shutil.copy(datadir / CS_CYCLES_TURTLE, tmp_path)
     Path(tmp_path / "template.txt").touch()
     with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
         main_cli(["convert", "--template", "template.txt", str(tmp_path)])
