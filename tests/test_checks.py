@@ -304,10 +304,10 @@ def test_check_hierarchical_redundancy_with_redundancy(tmp_path):
     # Create a vocabulary with redundant hierarchy:
     # C -> broader -> B -> broader -> A
     # C -> broader -> A  (redundant! A is ancestor of B)
-    EX = Namespace("http://example.org/")
+    ex = Namespace("http://example.org/")
     g = Graph()
     g.bind("skos", SKOS)
-    g.bind("ex", EX)  # Bind prefix for CURIE output
+    g.bind("ex", ex)  # Bind prefix for CURIE output
 
     # Add concept scheme
     cs = URIRef("http://example.org/scheme")
@@ -316,22 +316,22 @@ def test_check_hierarchical_redundancy_with_redundancy(tmp_path):
 
     # Add concepts A, B, C
     for concept_id in ["A", "B", "C"]:
-        concept = EX[concept_id]
+        concept = ex[concept_id]
         g.add((concept, RDF.type, SKOS.Concept))
         g.add((concept, SKOS.prefLabel, Literal(f"Concept {concept_id}", lang="en")))
         g.add((concept, SKOS.inScheme, cs))
 
     # A is top concept
-    g.add((cs, SKOS.hasTopConcept, EX.A))
+    g.add((cs, SKOS.hasTopConcept, ex.A))
 
     # B -> broader -> A
-    g.add((EX.B, SKOS.broader, EX.A))
+    g.add((ex.B, SKOS.broader, ex.A))
 
     # C -> broader -> B (direct parent)
-    g.add((EX.C, SKOS.broader, EX.B))
+    g.add((ex.C, SKOS.broader, ex.B))
 
     # C -> broader -> A (redundant! A is already reachable via B)
-    g.add((EX.C, SKOS.broader, EX.A))
+    g.add((ex.C, SKOS.broader, ex.A))
 
     vocab_file = tmp_path / "redundant_vocab.ttl"
     g.serialize(destination=vocab_file, format="turtle")
@@ -350,7 +350,7 @@ def test_check_hierarchical_redundancy_without_redundancy(tmp_path):
     """Test that clean hierarchies produce no warnings."""
     # Create a vocabulary without redundancy:
     # C -> broader -> B -> broader -> A (clean chain)
-    EX = Namespace("http://example.org/")
+    ex = Namespace("http://example.org/")
     g = Graph()
     g.bind("skos", SKOS)
 
@@ -361,19 +361,19 @@ def test_check_hierarchical_redundancy_without_redundancy(tmp_path):
 
     # Add concepts A, B, C
     for concept_id in ["A", "B", "C"]:
-        concept = EX[concept_id]
+        concept = ex[concept_id]
         g.add((concept, RDF.type, SKOS.Concept))
         g.add((concept, SKOS.prefLabel, Literal(f"Concept {concept_id}", lang="en")))
         g.add((concept, SKOS.inScheme, cs))
 
     # A is top concept
-    g.add((cs, SKOS.hasTopConcept, EX.A))
+    g.add((cs, SKOS.hasTopConcept, ex.A))
 
     # B -> broader -> A
-    g.add((EX.B, SKOS.broader, EX.A))
+    g.add((ex.B, SKOS.broader, ex.A))
 
     # C -> broader -> B (only direct parent, no redundancy)
-    g.add((EX.C, SKOS.broader, EX.B))
+    g.add((ex.C, SKOS.broader, ex.B))
 
     vocab_file = tmp_path / "clean_vocab.ttl"
     g.serialize(destination=vocab_file, format="turtle")
