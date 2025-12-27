@@ -19,6 +19,37 @@ from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS
 logger = logging.getLogger(__name__)
 
 
+def _run_git(cmd: list[str], repo_dir: Path) -> subprocess.CompletedProcess[str]:
+    """Run a constrained git command in a repo directory."""
+    if not cmd or cmd[0] != "git":
+        msg = "Only 'git' commands are allowed."
+        raise Voc4catError(msg)
+    if shutil.which("git") is None:
+        msg = "git executable not found in PATH."
+        raise Voc4catError(msg)
+    return subprocess.run(  # noqa: S603
+        cmd,
+        cwd=repo_dir,
+        capture_output=True,
+        text=True,
+        check=True,
+        shell=False,
+    )
+
+
+def _repo_relative_path(path: Path, repo_dir: Path) -> str:
+    """Return a repo-relative POSIX path and reject paths outside the repo."""
+    repo_dir = repo_dir.resolve()
+    path = path if path.is_absolute() else (repo_dir / path)
+    path = path.resolve()
+    try:
+        rel = path.relative_to(repo_dir)
+    except ValueError as exc:
+        msg = f'Path "{path}" is outside git repo "{repo_dir}".'
+        raise Voc4catError(msg) from exc
+    return rel.as_posix()
+
+
 # ===== Git history utilities =====
 
 
@@ -35,7 +66,7 @@ class FileGitInfo:
 
 
 def get_directory_git_info(
-    directory: Path, repo_dir: Path = None
+    directory: Path, repo_dir: Path | None = None
 ) -> dict[str, FileGitInfo]:
     """Get git info for all tracked files in a directory.
 
@@ -49,15 +80,10 @@ def get_directory_git_info(
     repo_dir = Path(repo_dir) if repo_dir else Path.cwd()
     directory = Path(directory)
 
-    # Step 1: Get all tracked files in the directory
-    ls_cmd = ["git", "ls-files", str(directory)]
-    ls_result = subprocess.run(
-        ls_cmd,
-        cwd=repo_dir,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    # Step 1: Get all tracked files in the directory (validate directory is within repo)
+    rel_directory = _repo_relative_path(directory, repo_dir)
+    ls_cmd = ["git", "ls-files", "--", rel_directory]
+    ls_result = _run_git(ls_cmd, repo_dir)
 
     filepaths = [f for f in ls_result.stdout.strip().split("\n") if f]
     if not filepaths:
@@ -72,13 +98,7 @@ def get_directory_git_info(
         "--",
         *filepaths,
     ]
-    log_result = subprocess.run(
-        log_cmd,
-        cwd=repo_dir,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    log_result = _run_git(log_cmd, repo_dir)
 
     # Parse: track first and last commit per file
     first_commit = {}  # oldest
@@ -119,7 +139,7 @@ def get_directory_git_info(
 
 
 def add_prov_from_git(
-    vocab_dir: Path, repo_dir: Path = None, source_dir: Path = None
+    vocab_dir: Path, repo_dir: Path | None = None, source_dir: Path | None = None
 ) -> None:
     """Add dct:created and dct:modified to RDF files based on git history.
 
@@ -397,28 +417,43 @@ def transform(args):
 
     # Handle --prov-from-git option
     if getattr(args, "prov_from_git", False):
-        if not args.VOCAB.is_dir() or not any(args.VOCAB.glob("*.ttl")):
-            msg = f'--prov-from-git requires a directory with .ttl files, got: "{args.VOCAB}"'
-            logger.error(msg)
-            raise Voc4catError(msg)
-
         if not args.inplace and not args.outdir:
             msg = "--prov-from-git requires either --inplace or --outdir"
             logger.error(msg)
             raise Voc4catError(msg)
 
-        if args.outdir:
-            # Copy directory to outdir, then modify the copy
-            target_dir = args.outdir / args.VOCAB.name
-            if target_dir.exists():
-                shutil.rmtree(target_dir)
-            shutil.copytree(args.VOCAB, target_dir)
-            logger.debug("Copied %s to %s", args.VOCAB, target_dir)
-            # Pass source_dir so git lookup uses original files
-            add_prov_from_git(target_dir, source_dir=args.VOCAB)
-            logger.info("-> added provenance from git to: %s", target_dir)
+        if not args.VOCAB.is_dir():
+            msg = f'--prov-from-git requires a directory, got: "{args.VOCAB}"'
+            logger.error(msg)
+            raise Voc4catError(msg)
+
+        # Determine vocabulary directories to process:
+        # - If VOCAB contains .ttl files directly, it's a single vocabulary directory
+        # - Otherwise, look for subdirectories containing .ttl files (like vocabularies/)
+        if any(args.VOCAB.glob("*.ttl")):
+            vocab_dirs = [args.VOCAB]
         else:
-            # --inplace: modify files in place
-            logger.debug("Adding provenance from git to %s", args.VOCAB)
-            add_prov_from_git(args.VOCAB)
-            logger.info("-> added provenance from git to: %s", args.VOCAB)
+            vocab_dirs = [
+                d for d in args.VOCAB.iterdir() if d.is_dir() and any(d.glob("*.ttl"))
+            ]
+            if not vocab_dirs:
+                msg = f'--prov-from-git requires a directory with .ttl files or subdirectories containing .ttl files, got: "{args.VOCAB}"'
+                logger.error(msg)
+                raise Voc4catError(msg)
+
+        for vocab_dir in vocab_dirs:
+            if args.outdir:
+                # Copy directory to outdir, then modify the copy
+                target_dir = args.outdir / vocab_dir.name
+                if target_dir.exists():
+                    shutil.rmtree(target_dir)
+                shutil.copytree(vocab_dir, target_dir)
+                logger.debug("Copied %s to %s", vocab_dir, target_dir)
+                # Pass source_dir so git lookup uses original files
+                add_prov_from_git(target_dir, source_dir=vocab_dir)
+                logger.info("-> added provenance from git to: %s", target_dir)
+            else:
+                # --inplace: modify files in place
+                logger.debug("Adding provenance from git to %s", vocab_dir)
+                add_prov_from_git(vocab_dir)
+                logger.info("-> added provenance from git to: %s", vocab_dir)
