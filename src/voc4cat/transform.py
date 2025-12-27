@@ -2,12 +2,16 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from rdflib import DCTERMS, OWL, RDF, SDO, SKOS, XSD, Graph, Literal
+
+if sys.version_info < (3, 11):
+    import isodate
 
 from voc4cat.checks import Voc4catError
 from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS
@@ -81,14 +85,18 @@ def get_directory_git_info(
     last_commit = {}  # most recent
     current_commit = None
 
-    for line in log_result.stdout.split("\n"):
-        line = line.strip()
+    for iline in log_result.stdout.split("\n"):
+        line = iline.strip()
         if not line:
             continue
 
         if line.startswith("COMMIT\x00"):
             _, name, email, date_str = line.split("\x00")
-            current_commit = (name, email, datetime.fromisoformat(date_str))
+            if sys.version_info >= (3, 11):
+                date_commit = datetime.fromisoformat(date_str)
+            else:
+                date_commit = isodate.parse_datetime(date_str)
+            current_commit = (name, email, date_commit)
         else:
             # Filename - log outputs newest→oldest
             first_commit[line] = current_commit  # keeps getting overwritten → oldest
