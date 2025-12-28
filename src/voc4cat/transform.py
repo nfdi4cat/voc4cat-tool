@@ -8,11 +8,12 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from rdflib import DCTERMS, OWL, RDF, SDO, SKOS, XSD, Graph, Literal
+from rdflib import DCTERMS, OWL, RDF, SDO, SKOS, XSD, Graph, Literal, Namespace
 
 if sys.version_info < (3, 11):
     import isodate
 
+from voc4cat import config
 from voc4cat.checks import Voc4catError
 from voc4cat.utils import EXCEL_FILE_ENDINGS, RDF_FILE_ENDINGS
 
@@ -263,6 +264,35 @@ def add_prov_from_git(
 # ===== Split/join utilities =====
 
 
+def bind_namespaces(
+    target_graph: Graph,
+    source_graph: Graph | None = None,
+    vocab_name: str | None = None,
+) -> None:
+    """Bind namespace prefixes to a graph from source graph and/or config.
+
+    Copies namespace bindings from source_graph (if provided) and enriches
+    with prefixes from the vocabulary config (if vocab_name is provided and
+    config is loaded).
+
+    Args:
+        target_graph: The graph to bind namespaces to (mutated in place).
+        source_graph: Optional source graph to copy namespace bindings from.
+        vocab_name: Optional vocabulary name to look up prefix_map in config.
+    """
+    # Copy namespace bindings from source graph
+    if source_graph is not None:
+        for prefix, namespace in source_graph.namespaces():
+            target_graph.bind(prefix, namespace)
+
+    # Enrich with prefixes from config if vocab_name provided and config loaded
+    if vocab_name and not config.IDRANGES.default_config:
+        vocab_config = config.IDRANGES.vocabs.get(vocab_name.lower())
+        if vocab_config and vocab_config.prefix_map:
+            for prefix, namespace_uri in vocab_config.prefix_map.items():
+                target_graph.bind(prefix, Namespace(str(namespace_uri)))
+
+
 def extract_numeric_id_from_iri(iri):
     iri_path = urlsplit(iri).path
     reverse_id = []
@@ -276,12 +306,20 @@ def extract_numeric_id_from_iri(iri):
     return "".join(reversed(reverse_id))
 
 
-def write_split_turtle(vocab_graph: Graph, outdir: Path) -> None:
+def write_split_turtle(
+    vocab_graph: Graph, outdir: Path, vocab_name: str | None = None
+) -> None:
     """
     Write each concept, collection and concept scheme to a separate turtle file.
 
     The ids are used as filenames. Schema:Person and schema:Organization entities
     are included in the concept_scheme.ttl file.
+
+    Args:
+        vocab_graph: The vocabulary graph to split.
+        outdir: Directory to write split files to.
+        vocab_name: Optional vocabulary name for enriching namespace bindings
+            from config.
     """
     outdir.mkdir(exist_ok=True)
     query = "SELECT ?iri WHERE {?iri a %s.}"
@@ -293,6 +331,8 @@ def write_split_turtle(vocab_graph: Graph, outdir: Path) -> None:
         for qresult in qresults:
             iri = qresult["iri"]
             tmp_graph = Graph()
+            # Bind namespaces from source graph enriched with config prefixes
+            bind_namespaces(tmp_graph, source_graph=vocab_graph, vocab_name=vocab_name)
             tmp_graph += vocab_graph.triples((iri, None, None))
             id_part = extract_numeric_id_from_iri(iri)
             if skos_class == "skos:ConceptScheme":
@@ -329,25 +369,40 @@ def autoversion_cs(graph: Graph) -> Graph:
     return graph
 
 
-def join_split_turtle(vocab_dir: Path) -> Graph:
+def join_split_turtle(vocab_dir: Path, vocab_name: str | None = None) -> Graph:
     """Join split turtle files back into a single graph.
 
     The schema:Person and schema:Organization entities are included in
     concept_scheme.ttl and will be joined automatically.
+
+    Args:
+        vocab_dir: Directory containing split turtle files.
+        vocab_name: Optional vocabulary name for enriching namespace bindings
+            from config.
+
+    Returns:
+        Merged graph with all triples and namespace bindings.
     """
     # Search recursively all turtle files belonging to the concept scheme
-    turtle_files = vocab_dir.rglob("*.ttl")
+    turtle_files = list(vocab_dir.rglob("*.ttl"))
     # Create an empty RDF graph to hold the concept scheme
     cs_graph = Graph()
+
     # Load each turtle file into a separate graph and merge it into the concept scheme graph
     for file in turtle_files:
         graph = Graph().parse(file, format="turtle")
+        # Copy namespace bindings from each file to the merged graph
+        for prefix, namespace in graph.namespaces():
+            cs_graph.bind(prefix, namespace)
         # Set modified date if "requested" via environment variable.
         if file.name == "concept_scheme.ttl" or any(
             graph.triples((None, RDF.type, SKOS.ConceptScheme))
         ):
             graph = autoversion_cs(graph)
         cs_graph += graph
+
+    # Enrich with prefixes from config (applied last to ensure they take precedence)
+    bind_namespaces(cs_graph, vocab_name=vocab_name)
 
     return cs_graph
 
@@ -364,7 +419,9 @@ def _transform_rdf(file, args):
             else file.with_suffix("")
         )
         vocab_dir.mkdir(exist_ok=True)
-        write_split_turtle(vocab_graph, vocab_dir)
+        # Derive vocab_name from file stem for namespace enrichment from config
+        vocab_name = file.stem
+        write_split_turtle(vocab_graph, vocab_dir, vocab_name=vocab_name)
         logger.info("-> wrote split vocabulary to: %s", vocab_dir)
         if args.inplace:
             logger.debug("-> going to remove %s", file)
@@ -401,7 +458,9 @@ def transform(args):
         logger.debug('Processing rdf files in "%s"', rdf_dir)
         # The if..else is not required now. It is a frame for future additions.
         if args.join:
-            vocab_graph = join_split_turtle(rdf_dir)
+            # Derive vocab_name from directory name for namespace enrichment from config
+            vocab_name = rdf_dir.name
+            vocab_graph = join_split_turtle(rdf_dir, vocab_name=vocab_name)
             dest = (
                 (args.outdir / rdf_dir.name).with_suffix(".ttl")
                 if args.outdir
