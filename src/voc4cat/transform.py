@@ -144,7 +144,7 @@ def add_prov_from_git(
 ) -> None:
     """Add dct:created and dct:modified to RDF files based on git history.
 
-    For each .ttl file in vocab_dir:
+    For each .ttl file in vocab_dir (including subdirectories):
     - dct:created: Add only if missing (from git first commit date)
     - dct:modified: Update if different from git last commit date (logs info message)
 
@@ -161,8 +161,8 @@ def add_prov_from_git(
     vocab_dir = Path(vocab_dir)
     git_lookup_dir = Path(source_dir) if source_dir else vocab_dir
 
-    # Get all .ttl files in the directory
-    ttl_files = list(vocab_dir.glob("*.ttl"))
+    # Get all .ttl files in the directory (including subdirectories)
+    ttl_files = list(vocab_dir.rglob("*.ttl"))
     if not ttl_files:
         logger.warning("No .ttl files found in %s", vocab_dir)
         return
@@ -170,10 +170,11 @@ def add_prov_from_git(
     # Get git info from the source directory (or vocab_dir if no source specified)
     git_info = get_directory_git_info(git_lookup_dir, repo_dir)
 
-    # Check that all .ttl files are tracked in git (by filename)
+    # Check that all .ttl files are tracked in git (by relative path)
     for ttl_file in ttl_files:
-        # Build the path as it would appear in the source directory
-        source_file = git_lookup_dir / ttl_file.name
+        # Preserve subdirectory structure when looking up in source directory
+        rel_to_vocab = ttl_file.relative_to(vocab_dir)
+        source_file = git_lookup_dir / rel_to_vocab
         try:
             rel_path = source_file.relative_to(repo_dir)
         except ValueError:
@@ -186,8 +187,9 @@ def add_prov_from_git(
 
     # Process each .ttl file
     for ttl_file in ttl_files:
-        # Build the path as it would appear in the source directory for git lookup
-        source_file = git_lookup_dir / ttl_file.name
+        # Preserve subdirectory structure when looking up in source directory
+        rel_to_vocab = ttl_file.relative_to(vocab_dir)
+        source_file = git_lookup_dir / rel_to_vocab
         try:
             rel_path = source_file.relative_to(repo_dir)
         except ValueError:
@@ -306,6 +308,30 @@ def extract_numeric_id_from_iri(iri):
     return "".join(reversed(reverse_id))
 
 
+PARTITION_SIZE = 1000  # Number of IDs per subdirectory partition
+
+
+def get_partition_dir_name(numeric_id_str: str, id_length: int = 7) -> str:
+    """Compute subdirectory name for a given numeric ID.
+
+    Partitions IDs into subdirectories of PARTITION_SIZE (1000) IDs each.
+    Directory name padding matches vocabulary's id_length:
+    - 7-digit IDs: IDs0000xxx, IDs0001xxx, ...
+    - 6-digit IDs: IDs000xxx, IDs001xxx, ...
+
+    Args:
+        numeric_id_str: String representation of the numeric ID (e.g., "0000016")
+        id_length: The configured ID length for the vocabulary (default 7)
+
+    Returns:
+        Partition directory name (e.g., "IDs0000xxx" for 7-digit IDs)
+    """
+    numeric_value = int(numeric_id_str) if numeric_id_str else 0
+    partition_num = numeric_value // PARTITION_SIZE
+    prefix_width = id_length - 3  # 'xxx' represents last 3 digits
+    return f"IDs{partition_num:0{prefix_width}d}xxx"
+
+
 def write_split_turtle(
     vocab_graph: Graph, outdir: Path, vocab_name: str | None = None
 ) -> None:
@@ -313,7 +339,8 @@ def write_split_turtle(
     Write each concept, collection and concept scheme to a separate turtle file.
 
     The ids are used as filenames. Schema:Person and schema:Organization entities
-    are included in the concept_scheme.ttl file.
+    are included in the concept_scheme.ttl file. Concepts and collections are
+    partitioned into subdirectories by ID range (1000 IDs per directory).
 
     Args:
         vocab_graph: The vocabulary graph to split.
@@ -323,6 +350,13 @@ def write_split_turtle(
     """
     outdir.mkdir(exist_ok=True)
     query = "SELECT ?iri WHERE {?iri a %s.}"
+
+    # Get id_length from config (default 7 if not configured)
+    id_length = 7
+    if vocab_name:
+        vocab_config = config.IDRANGES.vocabs.get(vocab_name.lower())
+        if vocab_config:
+            id_length = vocab_config.id_length
 
     for skos_class in ["skos:Concept", "skos:Collection", "skos:ConceptScheme"]:
         qresults = vocab_graph.query(query % skos_class, initNs={"skos": SKOS})
@@ -343,7 +377,11 @@ def write_split_turtle(
                         tmp_graph += vocab_graph.triples((entity_iri, None, None))
                 outfile = outdir / "concept_scheme.ttl"
             else:
-                outfile = outdir / f"{id_part}.ttl"
+                # Partition concepts and collections into subdirectories by ID range
+                partition_dir = get_partition_dir_name(id_part, id_length)
+                partition_path = outdir / partition_dir
+                partition_path.mkdir(exist_ok=True)
+                outfile = partition_path / f"{id_part}.ttl"
             tmp_graph.serialize(destination=outfile, format="longturtle")
         logger.debug("-> wrote %i %ss-file(s).", len(qresults), skos_class)
 
@@ -442,7 +480,7 @@ def transform(args):
         logger.warning("Unsupported filetype: %s", args.VOCAB)
 
     if args.join:
-        rdf_dirs = [d for d in Path(args.VOCAB).iterdir() if any(d.glob("*.ttl"))]
+        rdf_dirs = [d for d in Path(args.VOCAB).iterdir() if any(d.rglob("*.ttl"))]
     else:
         rdf_dirs = []
 
@@ -489,11 +527,11 @@ def transform(args):
         # Determine vocabulary directories to process:
         # - If VOCAB contains .ttl files directly, it's a single vocabulary directory
         # - Otherwise, look for subdirectories containing .ttl files (like vocabularies/)
-        if any(args.VOCAB.glob("*.ttl")):
+        if any(args.VOCAB.rglob("*.ttl")):
             vocab_dirs = [args.VOCAB]
         else:
             vocab_dirs = [
-                d for d in args.VOCAB.iterdir() if d.is_dir() and any(d.glob("*.ttl"))
+                d for d in args.VOCAB.iterdir() if d.is_dir() and any(d.rglob("*.ttl"))
             ]
             if not vocab_dirs:
                 msg = f'--prov-from-git requires a directory with .ttl files or subdirectories containing .ttl files, got: "{args.VOCAB}"'

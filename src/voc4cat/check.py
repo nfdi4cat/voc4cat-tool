@@ -126,7 +126,7 @@ def ci_post(args):
         if (
             prev_split_voc.exists()
             and prev_split_voc.is_dir()
-            and any(prev_split_voc.glob("*.ttl"))
+            and any(prev_split_voc.rglob("*.ttl"))
         ):
             # Create a single vocab out of the directory
             logger.debug("-> previous version is a split vocabulary, joining...")

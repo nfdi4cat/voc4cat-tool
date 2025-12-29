@@ -1,5 +1,11 @@
 # Change log
 
+## Unreleased
+
+Features:
+
+- **Partitioned split structure:** The `--split` option now organizes concept files into subdirectories by ID range (1000 IDs per directory, e.g., `IDs0001xxx/`). This avoids GitHub UI limitations with large directories. The `--join` option supports both the new partitioned structure and the previous flat structure.
+
 ## Release 1.0.0 (RC2) (2025-12-27)
 
 The following changes were made to RC1 based on testing it with the voc4cat vocabulary and Skosmos 3.0.
