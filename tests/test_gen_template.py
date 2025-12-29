@@ -1,6 +1,6 @@
 """Tests for the gen_template module.
 
-These tests verify that the v1.0 template generator creates Excel templates
+These tests verify that the v1.0 template generator creates xlsx templates
 with the correct structure.
 """
 

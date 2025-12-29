@@ -86,7 +86,7 @@ This outputs `voc4cat.ttl` in v1.0 RDF format with:
 
 ---
 
-### Step 3: Generate v1.0 Excel version
+### Step 3: Generate v1.0 xlsx version
 
 ```bash
 voc4cat convert --config example/voc4cat-v1.0/idranges.toml --outdir example/voc4cat-v1.0 example/voc4cat-v1.0/voc4cat.ttl
@@ -105,8 +105,8 @@ Check the following:
 - [ ] `voc4cat.ttl` contains all concepts from source (should be 540)
 - [ ] `voc4cat.ttl` contains all collections from source (should be 6)
 - [ ] ConceptScheme metadata is correctly set from `idranges.toml`
-- [ ] Excel ID Ranges sheet shows all contributors with their ranges
-- [ ] Excel Concept Scheme sheet shows contributor field (auto-derived)
+- [ ] xlsx ID Ranges sheet shows all contributors with their ranges
+- [ ] xlsx Concept Scheme sheet shows contributor field (auto-derived)
 
 **Verification commands:**
 ```bash
@@ -126,7 +126,7 @@ grep -A 30 "a skos:ConceptScheme" example/voc4cat-v1.0/voc4cat.ttl
 
 ### Step 5: Validate roundtrip
 
-Convert Excel back to TTL and compare:
+Convert xlsx back to TTL and compare:
 
 ```bash
 # Save step 2 output for comparison

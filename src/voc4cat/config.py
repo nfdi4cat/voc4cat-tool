@@ -96,7 +96,7 @@ class Vocab(BaseModel):
     prefix_map: dict[str, AnyHttpUrl]
     id_range: list[IdrangeItem] = []
 
-    # Scheme metadata fields (all optional, used for ConceptScheme in Excel)
+    # Scheme metadata fields (all optional, used for ConceptScheme in xlsx)
     vocabulary_iri: str = ""
     prefix: str = ""
     title: str = ""

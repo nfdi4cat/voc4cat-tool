@@ -138,13 +138,13 @@ def demo_joined_models(demo_file: Path):
     processor.export(vocabulary_concepts, demo_file, sheet_name)
     print(f"✓ Exported vocabulary to sheet '{sheet_name}' using joined table format")
 
-    # 4. Import vocabulary back from Excel
+    # 4. Import vocabulary back from xlsx
     print("\n4. Import and Verify Round-trip Consistency")
     print("-" * 40)
 
     try:
         imported_concepts = processor.import_data(demo_file, sheet_name=sheet_name)
-        print(f"✓ Imported {len(imported_concepts)} concepts from Excel")
+        print(f"✓ Imported {len(imported_concepts)} concepts from xlsx")
 
         # Display imported data
         for concept in imported_concepts:
@@ -220,7 +220,7 @@ def run_joins_demo():
     print("XLSX UNIFIED PROCESSOR - JOINED MODELS DEMO")
     print("=" * 60)
     print("This demo specifically showcases the joined models functionality")
-    print("for handling related Pydantic models in Excel format.")
+    print("for handling related Pydantic models in xlsx format.")
 
     # Demo file for joined models
     demo_file = Path("xlsx_unified_joins_demo.xlsx")
@@ -243,7 +243,7 @@ def run_joins_demo():
         print("• Vocabulary_Joined - Basic joined models demonstration")
         print("• Vocabulary_Custom_Joined - Custom styling example")
 
-        print("\nTotal: 2 Excel sheets demonstrating joined models functionality")
+        print("\nTotal: 2 xlsx sheets demonstrating joined models functionality")
         print("\nThe joined models feature is ready for vocabulary management!")
 
     except Exception as e:

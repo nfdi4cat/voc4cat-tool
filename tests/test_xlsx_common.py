@@ -1086,7 +1086,7 @@ class TestORCIDRORXLSXIntegration:
 
         export_to_xlsx(sample_researcher, temp_file, format_type="keyvalue")
 
-        # Now manually corrupt the Excel file by reading and modifying
+        # Now manually corrupt the xlsx file by reading and modifying
         workbook = load_workbook(temp_file)
         worksheet = workbook.active
 

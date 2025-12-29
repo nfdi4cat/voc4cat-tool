@@ -1,6 +1,6 @@
 """Template generator for voc4cat v1.0 vocabulary templates.
 
-This module generates Excel templates for v1.0 vocabularies using the
+This module generates xlsx templates for v1.0 vocabularies using the
 xlsx infrastructure (xlsx_api, xlsx_table, xlsx_keyvalue).
 """
 
@@ -63,7 +63,7 @@ def generate_template_v1(
 ) -> Workbook:
     """Generate a complete v1.0 vocabulary template workbook.
 
-    Creates an Excel workbook with the following sheets:
+    Creates an xlsx workbook with the following sheets:
     - Concept Scheme (key-value format)
     - Concepts (table format with example data)
     - Collections (table format with example data)
@@ -148,7 +148,7 @@ def _export_concept_scheme(filepath: Path, vocab_config: Vocab | None = None) ->
     """Export Concept Scheme sheet in key-value format (read-only).
 
     Args:
-        filepath: Path to the Excel file.
+        filepath: Path to the xlsx file.
         vocab_config: Optional vocabulary configuration. If provided, uses
                      config values for scheme metadata instead of example data.
     """
@@ -235,7 +235,7 @@ def _export_id_ranges(filepath: Path, vocab_config: Vocab | None = None) -> None
     """Export ID Ranges sheet in table format (read-only).
 
     Args:
-        filepath: Path to the Excel file.
+        filepath: Path to the xlsx file.
         vocab_config: Optional vocabulary configuration. If provided, populates
                      the ID ranges from the config's id_range entries.
     """
@@ -271,7 +271,7 @@ def _export_prefixes(filepath: Path, vocab_config: Vocab | None = None) -> None:
     """Export Prefixes sheet in table format (read-only).
 
     Args:
-        filepath: Path to the Excel file.
+        filepath: Path to the xlsx file.
         vocab_config: Optional vocabulary configuration. If provided, includes
                      prefix_map entries from the config in addition to defaults.
     """

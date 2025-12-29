@@ -232,7 +232,7 @@ class TestKeyValueFormat:
         imported = import_from_xlsx(temp_file, ModelWithUnion, format_type="keyvalue")
 
         assert imported.name == "test"
-        # Union types get converted to string in Excel
+        # Union types get converted to string in xlsx
         assert str(imported.value) == "42"
 
     def test_keyvalue_with_nested_optional(self, temp_file):
@@ -329,9 +329,9 @@ class TestKeyValueConfiguration:
 
 # Key-Value Positioning Tests
 class TestKeyValuePositioning:
-    """Tests for validating the position of title and elements in key-value Excel files.
+    """Tests for validating the position of title and elements in key-value xlsx files.
 
-    These tests use openpyxl to directly inspect the Excel file structure and verify that:
+    These tests use openpyxl to directly inspect the xlsx file structure and verify that:
     - Titles are positioned correctly at the specified start_row when present
     - Headers (Field, Value, etc.) appear at the correct row when title is present/absent
     - Data starts at the expected row based on title configuration

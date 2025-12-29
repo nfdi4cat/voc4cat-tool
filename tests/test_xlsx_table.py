@@ -189,7 +189,7 @@ class TestTableFormat:
 
         assert len(imported) == 2
         assert imported[0].name == "test1"
-        # Union types get converted to string in Excel
+        # Union types get converted to string in xlsx
         assert str(imported[0].value) == "42"
         assert imported[1].name == "test2"
         assert str(imported[1].value) == "text"
@@ -396,9 +396,9 @@ class TestTableFormatEdgeCases:
 
 # Metadata Positioning Tests
 class TestTableMetadataPositioning:
-    """Tests for validating the position of title and metadata in Excel files.
+    """Tests for validating the position of title and metadata in xlsx files.
 
-    These tests use openpyxl to directly inspect the Excel file structure and verify that:
+    These tests use openpyxl to directly inspect the xlsx file structure and verify that:
     - Titles are positioned correctly at the specified start_row
     - There's proper spacing (empty rows) between title and content
     - Field descriptions appear in the correct row when enabled

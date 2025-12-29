@@ -4,7 +4,7 @@ Demo: Table Data Representations and Serialization
 
 This demo focuses on data representations, joins, and serialization for table format.
 It demonstrates how to handle complex data structures and convert between Python
-types and Excel-compatible formats.
+types and xlsx-compatible formats.
 
 Features demonstrated:
 - Table format for multiple records
@@ -910,7 +910,7 @@ def demo_multi_row_joins(demo_file: Path):
     print(
         f"  - {len(employees_with_skills)} employees with {total_skills} total skills"
     )
-    print(f"  - Results in {total_skills} rows in the Excel table")
+    print(f"  - Results in {total_skills} rows in the xlsx table")
 
     # Note: Import back would require custom logic to reconstruct the nested structure
     # This is typically used for export/reporting scenarios rather than round-trip
