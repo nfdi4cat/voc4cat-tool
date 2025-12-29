@@ -267,20 +267,20 @@ def check(args):
     # Report all redundant hierarchical relationships at the end
     if args.redundant_hierarchies:
         logger.info("Checking for redundant hierarchical relationships.")
-    if all_redundancies:
-        for file, redundancies in all_redundancies.items():
-            logger.error("File: %s", file.name)
-            for concept, ancestor, via_parent in redundancies:
-                logger.error(
-                    "  From %s remove Parent IRI (skos:broader) %s",
-                    concept,
-                    ancestor,
-                )
-                logger.error(
-                    "       (already reachable via %s)",
-                    via_parent,
-                )
-        total = sum(len(r) for r in all_redundancies.values())
-        logger.error("Total: %d redundant relationship(s) to remove", total)
-    else:
-        logger.info("-> No redundant hierarchical relationships detected.")
+        if all_redundancies:
+            for file, redundancies in all_redundancies.items():
+                logger.error("File: %s", file.name)
+                for concept, ancestor, via_parent in redundancies:
+                    logger.error(
+                        "  From %s remove Parent IRI (skos:broader) %s",
+                        concept,
+                        ancestor,
+                    )
+                    logger.error(
+                        "       (already reachable via %s)",
+                        via_parent,
+                    )
+            total = sum(len(r) for r in all_redundancies.values())
+            logger.error("Total: %d redundant relationship(s) to remove", total)
+        else:
+            logger.info("-> No redundant hierarchical relationships detected.")
