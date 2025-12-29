@@ -86,7 +86,7 @@ This outputs `voc4cat.ttl` in v1.0 RDF format with:
 
 ---
 
-### Step 3: Generate v1.0 Excel template
+### Step 3: Generate v1.0 Excel version
 
 ```bash
 voc4cat convert --config example/voc4cat-v1.0/idranges.toml --outdir example/voc4cat-v1.0 example/voc4cat-v1.0/voc4cat.ttl
@@ -138,24 +138,13 @@ voc4cat convert \
   --outdir example/voc4cat-v1.0 \
   example/voc4cat-v1.0/voc4cat.xlsx
 
-# Compare (will show serialization differences, not semantic differences)
+# Compare
 diff example/voc4cat-v1.0/voc4cat_reference.ttl example/voc4cat-v1.0/voc4cat.ttl
 ```
 
 **Expected differences (acceptable):**
-- CURIE vs full URI serialization (e.g., `voc4cat:0000016` vs `<https://w3id.org/nfdi4cat/voc4cat_0000016>`)
+
 - Prefix declarations may differ
 - Triple count may differ slightly (5130 vs 5127) due to serialization
 
 **Semantic equivalence:** Concept/collection counts must match.
-
----
-
-## Checklist
-
-- [ ] Step 1: Create v1.0 `idranges.toml` with metadata and name fields
-- [ ] Step 2: Convert 043 TTL to v1.0 TTL
-- [ ] Step 3: Generate v1.0 Excel
-- [ ] Step 4: Verify output (540 concepts, 6 collections)
-- [ ] Step 5: Validate roundtrip
-- [ ] Clean up temporary files (e.g., `voc4cat_reference.ttl`)
