@@ -117,14 +117,19 @@ voc4cat transform [options] VOCAB
 
 ### Split/Join workflow
 
-Large turtle files produce difficult-to-review git diffs. The split format stores each concept in a separate file, making changes easier to review:
+Large turtle files produce difficult-to-review git diffs. The split format stores each concept in a separate file, making changes easier to review.
+
+Concepts are partitioned into subdirectories by ID range (1000 IDs per directory) to avoid GitHub UI limitations with large directories:
 
 ```
 vocabularies/myvocab/
 ├── concept_scheme.ttl
-├── 0001001.ttl
-└── 0001002.ttl
+└── IDs0001xxx/
+    ├── 0001001.ttl
+    └── 0001002.ttl
 ```
+
+The directory name padding matches the vocabulary's `id_length` setting (e.g., `IDs0001xxx` for 7-digit IDs, `IDs001xxx` for 6-digit IDs).
 
 The voc4cat-template workflows use split format for storage and join files when needed for documentation or export.
 
