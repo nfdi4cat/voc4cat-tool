@@ -1297,7 +1297,7 @@ class TestAdjustTableLength:
         wb = Workbook()
         ws = wb.active
         ws.title = "Sheet1"
-        ws.append(["A", 1])
+        ws.append(["A", "B"])
         tab = Table(displayName="Table1", ref="A1:B1")
         ws.add_table(tab)
         wb.save(test_wb)
@@ -1386,7 +1386,7 @@ class TestAdjustTableLength:
         ws1 = wb.active
         ws1.title = "Sheet1"
         ws2 = wb.create_sheet("Concepts")
-        ws2.append(["A", 1])
+        ws2.append(["A", "B"])
         tab = Table(displayName="Table1", ref="A1:B1")
         ws2.add_table(tab)
         wb.save(test_wb)
