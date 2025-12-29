@@ -66,10 +66,61 @@ class FileGitInfo:
     modified_at: datetime = None
 
 
+def _get_file_git_info(filepath: str, repo_dir: Path) -> FileGitInfo | None:
+    """Get git info for a single file, following renames.
+
+    Args:
+        filepath: Repo-relative POSIX path to the file.
+        repo_dir: Git repository root directory.
+
+    Returns:
+        FileGitInfo with creation/modification info, or None if no history found.
+    """
+    log_cmd = [
+        "git",
+        "log",
+        "--follow",
+        "--format=%an%x00%ae%x00%aI",
+        "--",
+        filepath,
+    ]
+    try:
+        log_result = _run_git(log_cmd, repo_dir)
+    except subprocess.CalledProcessError:
+        return None
+
+    lines = [line.strip() for line in log_result.stdout.split("\n") if line.strip()]
+    if not lines:
+        return None
+
+    def parse_commit(line: str) -> tuple[str, str, datetime]:
+        name, email, date_str = line.split("\x00")
+        if sys.version_info >= (3, 11):
+            date_commit = datetime.fromisoformat(date_str)
+        else:
+            date_commit = isodate.parse_datetime(date_str)
+        return name, email, date_commit
+
+    # First line = most recent (modified), last line = oldest following renames (created)
+    modified_name, modified_email, modified_at = parse_commit(lines[0])
+    created_name, created_email, created_at = parse_commit(lines[-1])
+
+    return FileGitInfo(
+        created_by=created_name,
+        created_email=created_email,
+        created_at=created_at,
+        modified_by=modified_name,
+        modified_email=modified_email,
+        modified_at=modified_at,
+    )
+
+
 def get_directory_git_info(
     directory: Path, repo_dir: Path | None = None
 ) -> dict[str, FileGitInfo]:
     """Get git info for all tracked files in a directory.
+
+    Uses git log --follow for each file to track history across renames.
 
     Args:
         directory: Directory containing files to get git info for.
@@ -90,53 +141,14 @@ def get_directory_git_info(
     if not filepaths:
         return {}
 
-    # Step 2: Get history for all files in one call
-    log_cmd = [
-        "git",
-        "log",
-        "--format=COMMIT%x00%an%x00%ae%x00%aI",
-        "--name-only",
-        "--",
-        *filepaths,
-    ]
-    log_result = _run_git(log_cmd, repo_dir)
+    # Step 2: Get history for each file individually (to support --follow)
+    result = {}
+    for filepath in filepaths:
+        info = _get_file_git_info(filepath, repo_dir)
+        if info is not None:
+            result[filepath] = info
 
-    # Parse: track first and last commit per file
-    first_commit = {}  # oldest
-    last_commit = {}  # most recent
-    current_commit = None
-
-    for iline in log_result.stdout.split("\n"):
-        line = iline.strip()
-        if not line:
-            continue
-
-        if line.startswith("COMMIT\x00"):
-            _, name, email, date_str = line.split("\x00")
-            if sys.version_info >= (3, 11):
-                date_commit = datetime.fromisoformat(date_str)
-            else:
-                date_commit = isodate.parse_datetime(date_str)
-            current_commit = (name, email, date_commit)
-        else:
-            # Filename - log outputs newest→oldest
-            first_commit[line] = current_commit  # keeps getting overwritten → oldest
-            if line not in last_commit:
-                last_commit[line] = current_commit  # first seen → most recent
-
-    # Build results
-    return {
-        fp: FileGitInfo(
-            created_by=first_commit[fp][0],
-            created_email=first_commit[fp][1],
-            created_at=first_commit[fp][2],
-            modified_by=last_commit[fp][0],
-            modified_email=last_commit[fp][1],
-            modified_at=last_commit[fp][2],
-        )
-        for fp in filepaths
-        if fp in first_commit
-    }
+    return result
 
 
 def add_prov_from_git(

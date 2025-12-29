@@ -420,6 +420,70 @@ def test_prov_from_git_parent_directory(git_repo_with_split_files, monkeypatch, 
     assert len(modified_values) == 1
 
 
+def test_prov_from_git_follows_renames(tmp_path, datadir, monkeypatch, caplog):
+    """Test that --prov-from-git tracks file history across renames."""
+    # Initialize git repo
+    _run_git(["git", "init"], tmp_path)
+    _run_git(["git", "config", "user.email", "creator@example.com"], tmp_path)
+    _run_git(["git", "config", "user.name", "Original Creator"], tmp_path)
+
+    # Copy and split the turtle file
+    shutil.copy(datadir / CS_SIMPLE_TURTLE, tmp_path)
+    main_cli(["transform", "--split", "--inplace", str(tmp_path)])
+    vocdir = (tmp_path / CS_SIMPLE_TURTLE).with_suffix("")
+
+    # Commit the original files with a specific date
+    _run_git(["git", "add", "."], tmp_path)
+    _run_git(
+        ["git", "commit", "-m", "Initial commit", "--date", "2020-01-15T10:00:00"],
+        tmp_path,
+    )
+
+    # Get one of the concept files from partition
+    partition_dirs = [d for d in vocdir.iterdir() if d.is_dir()]
+    assert len(partition_dirs) > 0
+    partition_dir = partition_dirs[0]
+    concept_files = [
+        f for f in partition_dir.glob("*.ttl") if f.name != "concept_scheme.ttl"
+    ]
+    assert len(concept_files) > 0
+    old_file = concept_files[0]
+    new_filename = "renamed_" + old_file.name
+    new_file = partition_dir / new_filename
+
+    # Rename the file using git mv
+    old_rel = old_file.relative_to(tmp_path)
+    new_rel = new_file.relative_to(tmp_path)
+    _run_git(["git", "mv", str(old_rel), str(new_rel)], tmp_path)
+
+    # Change committer for the rename
+    _run_git(["git", "config", "user.email", "renamer@example.com"], tmp_path)
+    _run_git(["git", "config", "user.name", "File Renamer"], tmp_path)
+
+    # Commit the rename with a different date
+    _run_git(
+        ["git", "commit", "-m", "Rename file", "--date", "2025-06-15T10:00:00"],
+        tmp_path,
+    )
+
+    monkeypatch.chdir(tmp_path)
+
+    # Run prov-from-git
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+
+    # Parse the renamed file and check dates
+    graph = Graph().parse(new_file, format="turtle")
+    concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
+
+    # dct:created should be from the ORIGINAL commit (2020-01-15), not the rename
+    created = str(next(iter(graph.objects(concept_iri, DCTERMS.created))))
+    assert created == "2020-01-15"
+
+    # dct:modified should be from the most recent commit (the rename)
+    modified = str(next(iter(graph.objects(concept_iri, DCTERMS.modified))))
+    assert modified == "2025-06-15"
+
+
 # ===== Tests for partitioned split structure =====
 
 
