@@ -51,7 +51,7 @@ Concepts can also have non-hierarchical relationships using `skos:related`.
 
 ## The voc4cat approach
 
-### Excel as interface
+### Excel/Spreadsheet as interface
 
 voc4cat uses Excel/xlsx spreadsheets as a user-friendly interface for editing vocabularies:
 

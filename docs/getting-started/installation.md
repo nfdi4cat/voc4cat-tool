@@ -117,4 +117,4 @@ To make the check pass:
 ## Next steps
 
 - {doc}`core-principles` - Understand SKOS and the voc4cat approach
-- {doc}`../reference/schemas` - Configuration and Excel format specifications
+- {doc}`../reference/schemas` - Configuration and xlsx format specifications

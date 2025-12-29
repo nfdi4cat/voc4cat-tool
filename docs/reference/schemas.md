@@ -1,6 +1,6 @@
 # Schemas
 
-Technical specifications for configuration and Excel template formats.
+Technical specifications for configuration and xlsx template formats.
 
 ## Configuration (idranges.toml)
 
@@ -264,11 +264,11 @@ ror_id = "https://ror.org/029hg0311"
 
 ---
 
-## Excel template (v1.0)
+## Excel/xlsx template (v1.0)
 
-Template version: `1.0.rev-2025-06a`
+Template version: `v1.0.rev-2025-12a`
 
-The voc4cat v1.0 Excel template contains six sheets for entering and viewing vocabulary data.
+The voc4cat v1.0 xlsx vocabularies contain six sheets for entering and viewing vocabulary data.
 
 ### Sheets overview
 
@@ -286,10 +286,12 @@ The voc4cat v1.0 Excel template contains six sheets for entering and viewing voc
 
 :::
 
+Any changes in read-only sheets will be ignored.
+
 ### Concept Scheme sheet
 
 This sheet displays vocabulary metadata from your `idranges.toml` configuration and dynamically generated data.
-It is read-only in Excel. Edit the configuration file to change these values.
+It is read-only in xlsx. Edit the configuration file to change these values.
 
 ### Concepts sheet
 
@@ -437,4 +439,4 @@ The prefixes come the `idranges.toml` configuration enriched with the default pr
 ### Tips
 
 - **Use CURIEs**: Write `voc4cat:0001234` instead of full IRIs for readability
-- **Save before converting**: Make sure to save your Excel file before running `voc4cat convert`
+- **Save before converting**: Make sure to save your xlsx file before running `voc4cat convert`

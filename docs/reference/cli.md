@@ -279,7 +279,7 @@ voc4cat docs --force --outdir docs/ myvocab.ttl
 
 ## template
 
-Generate blank Excel templates.
+Generate blank xlsx vocabulary templates.
 
 ```bash
 voc4cat template [options] [VOCAB]
