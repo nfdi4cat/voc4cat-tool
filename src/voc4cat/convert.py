@@ -334,7 +334,7 @@ def convert(args):
             logger.info("-> successfully converted to %s", output_file_path)
         elif file in rdf_files:
             output_file_path = outfile.with_suffix(".xlsx")
-            # RDF to Excel always uses v1.0 format
+            # RDF to xlsx always uses v1.0 format
             rdf_to_excel_v1(
                 file,
                 output_file_path,

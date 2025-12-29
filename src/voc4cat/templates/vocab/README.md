@@ -18,7 +18,7 @@ ConceptScheme metadata is now managed in `idranges.toml` and shown as read-only 
 Older config files lack the `config_version` field and do not include vocabulary metadata.
 See [v0.10.0](https://github.com/nfdi4cat/voc4cat-tool/tree/v0.10.0/src/voc4cat/templates/vocab) for an example.
 
-## Excel templates
+## Excel/xlsx templates
 
 ### Version 1.0
 

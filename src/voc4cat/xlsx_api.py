@@ -163,7 +163,7 @@ def export_to_xlsx(
 
     Args:
         data: Data to export (single model or sequence of models)
-        filepath: Path to save the Excel file
+        filepath: Path to save the xlsx file
         format_type: Format type ("table", "keyvalue").
                     Defaults to "table" format.
         config: Optional configuration object
@@ -195,7 +195,7 @@ def import_from_xlsx(
     """Universal import function.
 
     Args:
-        filepath: Path to the Excel file
+        filepath: Path to the xlsx file
         model_class: Pydantic model class to import into
         format_type: Format type ("auto", "table", "keyvalue")
         config: Optional configuration object

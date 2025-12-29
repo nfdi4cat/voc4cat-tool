@@ -43,7 +43,7 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     and can therefore not be easily done in models.py with pydantic.
     However, SHACL validation does also catch the problem, at least in pre-
     liminary testing. So this function may get removed later. Doing the check
-    in Excel has the advantage that the cell position can be added to the
+    in xlsx has the advantage that the cell position can be added to the
     validation message which would not work with SHACL validation.
 
     For concepts:

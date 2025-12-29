@@ -1,6 +1,6 @@
 """Pydantic models for voc4cat v1.0 template.
 
-These models define the structure of the v1.0 Excel template using XLSXMetadata
+These models define the structure of the v1.0 xlsx template using XLSXMetadata
 annotations to specify column headers, SKOS meanings, and field descriptions.
 """
 
@@ -52,7 +52,7 @@ CONCEPT_SCHEME_SHEET_TITLE = "Concept Scheme (read-only)"
 
 
 class ConceptSchemeV1(BaseModel):
-    """Concept Scheme metadata - rendered as key-value pairs in Excel."""
+    """Concept Scheme metadata - rendered as key-value pairs in xlsx."""
 
     template_version: Annotated[
         str,

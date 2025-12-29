@@ -97,7 +97,7 @@ def create_root_parser():
     parser = argparse.ArgumentParser(
         prog="voc4cat",
         description=(
-            "A command-line tool to support using Excel (xlsx) to edit and "
+            "A command-line tool to support using Excel/xlsx to edit and "
             "maintain SKOS (turtle/rdf) vocabularies."
         ),
         allow_abbrev=False,

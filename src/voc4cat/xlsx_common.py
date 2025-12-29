@@ -4,7 +4,7 @@ Common XLSX functionality shared by both table and key-value formats.
 This module contains shared infrastructure including:
 - Base classes for configuration, formatting, and processing
 - Field analysis and metadata handling
-- Serialization engine for converting Python objects to/from Excel values
+- Serialization engine for converting Python objects to/from xlsx values
 - Converters for common data patterns
 - Exception classes
 - Pre-configured type aliases
@@ -351,7 +351,7 @@ class XLSXFieldAnalyzer:
     def format_requiredness_text(
         is_required: bool, default_value: Any, use_labels: bool = False
     ) -> str:
-        """Format requiredness text for display in Excel.
+        """Format requiredness text for display in xlsx.
 
         Args:
             is_required: Whether the field is required
@@ -410,7 +410,7 @@ class XLSXSerializationEngine:
         if isinstance(value, Enum):
             return value.value
 
-        # Handle basic types that Excel supports natively
+        # Handle basic types that xlsx supports natively
         if isinstance(value, bool | int | float | str | date | datetime):
             return value
 
@@ -987,7 +987,7 @@ class XLSXConfig:
 
 # Base formatter class
 class XLSXFormatter(ABC):
-    """Base formatter interface for different Excel layouts."""
+    """Base formatter interface for different xlsx layouts."""
 
     def __init__(self, config: XLSXConfig):
         self.config = config
@@ -998,7 +998,7 @@ class XLSXFormatter(ABC):
     def format_export(
         self, worksheet: Worksheet, data: Any, fields: list[FieldAnalysis]
     ) -> None:
-        """Format data for export to Excel."""
+        """Format data for export to xlsx."""
 
     @abstractmethod
     def parse_import(
@@ -1007,7 +1007,7 @@ class XLSXFormatter(ABC):
         fields: list[FieldAnalysis],
         model_class: type[BaseModel],
     ) -> Any:
-        """Parse Excel data for import."""
+        """Parse xlsx data for import."""
 
     def _get_field_display_name(self, field_analysis: FieldAnalysis) -> str:
         """Get display name for a field, with fallback to auto-generated title case."""
@@ -1030,7 +1030,7 @@ class XLSXFormatter(ABC):
         # Text wrapping: enabled for string fields
         wrap_text = self._should_wrap_text(field_analysis.field_type)
 
-        # Apply formatting (preserve Excel's default horizontal alignment)
+        # Apply formatting (preserve xlsx's default horizontal alignment)
         cell.alignment = Alignment(vertical=vertical_align, wrap_text=wrap_text)
 
     def _should_wrap_text(self, field_type: type | None) -> bool:
@@ -1133,7 +1133,7 @@ class XLSXFormatter(ABC):
         for row_idx, value in enumerate(values, start=1):
             hidden_sheet.cell(row=row_idx, column=col_idx, value=value)
 
-        # Create named range - sanitize field name for Excel
+        # Create named range - sanitize field name for xlsx
         range_name = f"ValidationList_{field_name.replace(' ', '_')}"
         range_ref = f"'{hidden_sheet_name}'!${col_letter}$1:${col_letter}${len(values)}"
 
@@ -1269,7 +1269,7 @@ class XLSXProcessor(ABC):
             try:
                 workbook = load_workbook(filepath)
             except Exception:
-                # If file exists but is not a valid Excel file, create new workbook
+                # If file exists but is not a valid xlsx file, create new workbook
                 workbook = Workbook()
                 if "Sheet" in workbook.sheetnames:
                     workbook.remove(workbook["Sheet"])
@@ -1351,13 +1351,13 @@ class XLSXRowCalculator:
         return self.get_header_row(fields) + 1
 
     def get_table_start_row(self, fields: list[FieldAnalysis] | None = None) -> int:
-        """Get the starting row for Excel table (same as header row)."""
+        """Get the starting row for xlsx table (same as header row)."""
         return self.get_header_row(fields)
 
     def get_table_end_row(
         self, fields: list[FieldAnalysis] | None = None, data_rows: int = 0
     ) -> int:
-        """Get the ending row for Excel table (header + data rows)."""
+        """Get the ending row for xlsx table (header + data rows)."""
         return self.get_table_start_row(fields) + data_rows
 
     @staticmethod
@@ -1523,7 +1523,7 @@ def adjust_all_tables_length(
     and saves the workbook.
 
     Args:
-        wb_path: Path to the Excel workbook file.
+        wb_path: Path to the xlsx workbook file.
         rows_pre_allocated: Either:
             - int: same value applied to all sheets
             - dict[str, int]: per-sheet values where keys are sheet names

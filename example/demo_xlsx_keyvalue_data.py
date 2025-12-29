@@ -13,7 +13,7 @@ Features demonstrated:
 - Ontology meaning support with URIs
 - Field filtering and selection
 - Round-trip data integrity
-- Enum validation with Excel dropdown selectors (key-value format)
+- Enum validation with xlsx dropdown selectors (key-value format)
 """
 
 import sys
@@ -630,7 +630,7 @@ def demo_enum_validation(demo_file: Path):
     )
     print("✓ Exported project without enum validation (key-value format)")
     print("  - Enum fields are serialized as string values")
-    print("  - Excel dropdown validation always available")
+    print("  - xlsx dropdown validation always available")
 
     # Import back
     imported_project = import_from_xlsx(
@@ -666,7 +666,7 @@ def demo_enum_validation(demo_file: Path):
         sheet_name=sheet_name_validation,
     )
     print("✓ Exported project with enum validation (key-value format)")
-    print("  - Enum fields have Excel dropdown selectors!")
+    print("  - Enum fields have xlsx dropdown selectors!")
     print("  - Priority field: dropdown with 'low', 'medium', 'high' options")
     print(
         "  - Status field: dropdown with 'planning', 'active', 'on_hold', 'completed', 'cancelled' options"
@@ -698,18 +698,18 @@ def demo_enum_validation(demo_file: Path):
     print("-" * 30)
 
     print("✓ Exported projects with enum validation (table format)")
-    print("  - Excel dropdown selectors enabled for enum fields")
+    print("  - xlsx dropdown selectors enabled for enum fields")
     print("  - Priority field: dropdown with 'low', 'medium', 'high' options")
     print(
         "  - Status field: dropdown with 'planning', 'active', 'on_hold', 'completed', 'cancelled' options"
     )
 
     print("✓ Table format created with enum validation dropdowns")
-    print("  - Open Excel to see dropdown selectors in enum columns")
+    print("  - Open xlsx to see dropdown selectors in enum columns")
     print("  - Validation prevents invalid enum values from being entered")
 
     print("\n🔍 Key Insights:")
-    print("  - Key-value format: Always supports Excel dropdown validation")
+    print("  - Key-value format: Always supports xlsx dropdown validation")
     print("  - Enum fields can be serialized as strings or with dropdowns")
 
 
@@ -824,10 +824,10 @@ def main():
         print("• Project_Filtered - Field filtering demo")
         print("• Enum_KeyValue_NoValidation - Enum fields without validation")
         print(
-            "• Enum_KeyValue_WithValidation - Enum fields with Excel dropdowns (key-value format)"
+            "• Enum_KeyValue_WithValidation - Enum fields with xlsx dropdowns (key-value format)"
         )
         print(
-            "• Enum_Table_Validation - Enum validation with Excel dropdowns (table format)"
+            "• Enum_Table_Validation - Enum validation with xlsx dropdowns (table format)"
         )
         print("• Requiredness_KV - Requiredness column display")
         print("• KV_Visibility - Metadata visibility toggles")

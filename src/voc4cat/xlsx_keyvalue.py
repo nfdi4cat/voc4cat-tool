@@ -78,7 +78,7 @@ class XLSXKeyValueFormatter(XLSXFormatter):
         # Write field data
         self._write_field_data(worksheet, data, fields, config)
 
-        # Create and add Excel table
+        # Create and add xlsx table
         table = self._create_kv_table(worksheet, len(fields), config, fields)
         worksheet.add_table(table)
 
@@ -283,7 +283,7 @@ class XLSXKeyValueFormatter(XLSXFormatter):
         config: XLSXKeyValueConfig,
         fields: list[FieldAnalysis],
     ) -> Table:
-        """Create Excel table for key-value data."""
+        """Create xlsx table for key-value data."""
         # Calculate number of columns from layout
         col_layout = self._get_column_layout(fields)
         num_columns = len(col_layout)

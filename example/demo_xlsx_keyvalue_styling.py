@@ -3,7 +3,7 @@
 Demo: Key-Value Visual Formatting and Styling
 
 This demo focuses on visual presentation, formatting, and styling for key-value format.
-It demonstrates how to customize the appearance and layout of Excel key-value sheets.
+It demonstrates how to customize the appearance and layout of xlsx key-value sheets.
 
 Features demonstrated:
 - Custom sheet titles and headers

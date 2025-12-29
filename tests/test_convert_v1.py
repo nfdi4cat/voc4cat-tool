@@ -1,7 +1,7 @@
 """Tests for the convert_v1 module.
 
-These tests verify that the RDF to v1.0 Excel converter works correctly,
-extracting data from RDF graphs and producing valid v1.0 template Excel files.
+These tests verify that the RDF to v1.0 xlsx converter works correctly,
+extracting data from RDF graphs and producing valid v1.0 template xlsx files.
 """
 
 import logging
@@ -349,7 +349,7 @@ class TestModelConversion:
         assert models[0].exact_matches != ""
 
 
-class TestRdfToExcelV1:
+class TestRdfToXlsxV1:
     """Tests for the main rdf_to_excel_v1 function."""
 
     def test_convert_simple_ttl(self, tmp_path, temp_config):
@@ -443,7 +443,7 @@ class TestConceptsSheetStructure:
             )
 
     def test_concepts_sheet_has_table(self, tmp_path, temp_config):
-        """Test that Concepts sheet has a proper Excel table."""
+        """Test that Concepts sheet has a proper xlsx table."""
         output_path = tmp_path / "output.xlsx"
         rdf_to_excel_v1(CS_SIMPLE_TTL, output_path)
 
@@ -2018,7 +2018,7 @@ class TestConfigToConceptSchemeV1:
         assert "Mandatory ConceptScheme fields are empty" in error_msg
 
 
-class TestRdfToExcelWithConfig:
+class TestRdfToXlsxWithConfig:
     """Tests for rdf_to_excel_v1() with vocab_config parameter."""
 
     def test_config_used_for_scheme_metadata(self, tmp_path, datadir, temp_config):
@@ -2068,17 +2068,17 @@ class TestRdfToExcelWithConfig:
         assert found, "Vocabulary IRI field not found"
 
 
-class TestExcelToRdfWithConfig:
+class TestXlsxToRdfWithConfig:
     """Tests for excel_to_rdf_v1() with vocab_config parameter."""
 
     def test_config_used_ignores_excel_scheme(self, tmp_path, datadir, temp_config):
-        """Test that config is used and Excel scheme is ignored."""
+        """Test that config is used and xlsx scheme is ignored."""
 
         config = temp_config
         config.load_config(datadir / "idranges_with_scheme.toml")
         vocab = config.IDRANGES.vocabs["myvocab"]
 
-        # First create an Excel file with RDF data
+        # First create an xlsx file with RDF data
         xlsx_path = tmp_path / "test.xlsx"
         rdf_to_excel_v1(CS_SIMPLE_TTL, xlsx_path)  # Without config
 
@@ -2394,7 +2394,7 @@ class TestBuildIdRangeInfo:
 
 
 class TestIdRangesSheetExport:
-    """Tests for ID Ranges sheet in exported Excel files."""
+    """Tests for ID Ranges sheet in exported xlsx files."""
 
     def test_id_ranges_sheet_created(self, tmp_path, temp_config, datadir):
         """Test that ID Ranges sheet is created when vocab_config has id_range."""

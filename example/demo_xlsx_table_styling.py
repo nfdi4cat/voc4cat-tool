@@ -3,7 +3,7 @@
 Demo: Table Visual Formatting and Styling
 
 This demo focuses on visual presentation, formatting, and styling for table format.
-It demonstrates how to customize the appearance and layout of Excel tables.
+It demonstrates how to customize the appearance and layout of xlsx tables.
 
 Features demonstrated:
 - Custom table titles and headers

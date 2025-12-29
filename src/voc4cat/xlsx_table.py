@@ -77,7 +77,7 @@ class JoinedModelProcessor:
     def flatten_joined_data(
         data: Sequence[BaseModel], join_config: JoinConfiguration
     ) -> list[dict[str, Any]]:
-        """Convert hierarchical model data to flattened rows for Excel."""
+        """Convert hierarchical model data to flattened rows for xlsx."""
         flattened_rows = []
 
         for primary_item in data:
@@ -181,7 +181,7 @@ class JoinedModelProcessor:
     def reconstruct_joined_data(
         flattened_data: list[dict[str, Any]], join_config: JoinConfiguration
     ) -> list[BaseModel]:
-        """Convert flattened Excel data back to hierarchical models."""
+        """Convert flattened xlsx data back to hierarchical models."""
         # Group rows by primary key (typically concept_uri)
         primary_key = None
         for field_name in join_config.flattened_fields:
@@ -591,7 +591,7 @@ class XLSXTableFormatter(XLSXFormatter):
     def _create_table(
         self, worksheet: Worksheet, fields: list[FieldAnalysis], data_rows: int
     ) -> Table:
-        """Create Excel table."""
+        """Create xlsx table."""
         start_col_idx = self.config.start_column
         end_col_idx = start_col_idx + len(fields) - 1
         end_col_letter = get_column_letter(end_col_idx)

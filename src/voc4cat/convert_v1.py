@@ -1,7 +1,7 @@
-"""Converter for RDF vocabularies to/from v1.0 Excel template format.
+"""Converter for RDF vocabularies to/from v1.0 xlsx template format.
 
 This module provides functions to convert between RDF vocabularies and
-the v1.0 Excel template structure, supporting bidirectional conversion:
+the v1.0 xlsx template structure, supporting bidirectional conversion:
 - RDF -> XLSX: Extract data from RDF graphs into v1.0 template
 - XLSX -> RDF: Read v1.0 template and generate RDF graph
 
@@ -1116,7 +1116,7 @@ def build_prefixes_v1() -> list[PrefixV1]:
 
 
 # =============================================================================
-# Excel Export Function
+# xlsx Export Function
 # =============================================================================
 
 
@@ -1356,7 +1356,7 @@ def export_vocabulary_v1(
     id_ranges: list[IDRangeInfoV1] | None = None,
     template_path: Path | None = None,
 ) -> None:
-    """Export v1.0 vocabulary data to Excel.
+    """Export v1.0 vocabulary data to xlsx.
 
     Uses export_to_xlsx() for each sheet.
 
@@ -1366,7 +1366,7 @@ def export_vocabulary_v1(
         collections: List of CollectionV1 model instances.
         mappings: List of MappingV1 model instances.
         prefixes: List of PrefixV1 model instances.
-        output_path: Path to save the Excel file.
+        output_path: Path to save the xlsx file.
         id_ranges: Optional list of IDRangeInfoV1 model instances. If provided,
                   an "ID Ranges" sheet is added showing contributor allocations.
         template_path: Optional path to an xlsx template file. If provided,
@@ -1507,7 +1507,7 @@ def rdf_to_excel_v1(
     vocab_config: "config.Vocab | None" = None,
     template_path: Path | None = None,
 ) -> Path:
-    """Convert an RDF vocabulary to v1.0 Excel template.
+    """Convert an RDF vocabulary to v1.0 xlsx template.
 
     If vocab_config is provided, ConceptScheme metadata is merged from config
     (config values override RDF, RDF fills gaps). The "Concept Scheme (read-only)"
@@ -1515,7 +1515,7 @@ def rdf_to_excel_v1(
 
     Args:
         file_to_convert_path: Path to the RDF file (.ttl, .rdf, etc.).
-        output_file_path: Optional path for output Excel file.
+        output_file_path: Optional path for output xlsx file.
                          Defaults to same name with .xlsx extension.
         vocab_config: Optional Vocab config from idranges.toml. If provided,
                      scheme metadata is merged (config overrides RDF).
@@ -1524,7 +1524,7 @@ def rdf_to_excel_v1(
                       the auto-generated vocabulary sheets.
 
     Returns:
-        Path to the generated Excel file.
+        Path to the generated xlsx file.
 
     Raises:
         ValueError: If the input file is not a supported RDF format.
@@ -1627,8 +1627,8 @@ def rdf_to_excel_v1(
     if output_file_path is None:
         output_file_path = file_to_convert_path.with_suffix(".xlsx")
 
-    # Export to Excel
-    logger.info("Exporting to Excel: %s", output_file_path)
+    # Export to xlsx
+    logger.info("Exporting to xlsx: %s", output_file_path)
     export_vocabulary_v1(
         concept_scheme_v1,
         concepts_v1,
@@ -2716,10 +2716,10 @@ def excel_to_rdf_v1(
     *,
     vocab_config: "config.Vocab",
 ) -> Path | Graph:
-    """Convert a v1.0 Excel template to RDF vocabulary.
+    """Convert a v1.0 xlsx template to RDF vocabulary.
 
     ConceptScheme metadata is read from vocab_config (idranges.toml).
-    The "Concept Scheme" sheet in Excel is read-only and never read.
+    The "Concept Scheme" sheet in xlsx is read-only and never read.
 
     Args:
         file_to_convert_path: Path to the XLSX file.
@@ -2733,11 +2733,11 @@ def excel_to_rdf_v1(
         Path to the generated RDF file, or Graph object if output_type="graph".
 
     Raises:
-        ValueError: If the input file is not a supported Excel format.
+        ValueError: If the input file is not a supported xlsx format.
     """
     if file_to_convert_path.suffix.lower() not in EXCEL_FILE_ENDINGS:
         msg = (
-            "Files for conversion must end with one of the Excel file formats: "
+            "Files for conversion must end with one of the xlsx file formats: "
             f"'{', '.join(EXCEL_FILE_ENDINGS)}'"
         )
         raise ValueError(msg)
@@ -2776,7 +2776,7 @@ def excel_to_rdf_v1(
         used_ids = extract_used_ids(concept_rows, collection_rows, vocab_config)
         derived_contributors = derive_contributors(vocab_config, used_ids)
 
-    # Build ConceptScheme from config (Excel sheet is read-only, never read)
+    # Build ConceptScheme from config (xlsx sheet is read-only, never read)
     concept_scheme = config_to_concept_scheme_v1(
         vocab_config, derived_contributors=derived_contributors
     )
