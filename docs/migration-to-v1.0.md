@@ -5,7 +5,7 @@ This guide explains how to migrate vocabularies created with voc4cat-tool v0.10.
 ## What changed in v1.0
 
 - **Configuration file**: The `idranges.toml` now includes a `config_version = "v1.0"` field and stores all vocabulary metadata (title, description, creator, publisher, etc.).
-- **ConceptScheme metadata**: No longer editable in xlsx; managed via `idranges.toml` and shown as read-only in Excel.
+- **ConceptScheme metadata**: No longer editable in xlsx; managed via `idranges.toml` and shown as read-only in xlsx.
 - **RDF changes**: `skos:historyNote` converted to `skos:changeNote`.
 - **Excel template**: Dynamically generated based on config; no longer distributed as a static file.
 
@@ -66,7 +66,7 @@ voc4cat transform --join --config path/to/v1.0/idranges.toml --logfile outbox/vo
 ```
 
 (step-3-generate-v1-0-excel-template)=
-### Step 3: Generate v1.0 Excel template
+### Step 3: Generate v1.0 xlsx template
 
 With voc4cat-tool 1.0.0, all required sheets in the xlsx template are dynamically generated.
 
@@ -95,11 +95,11 @@ voc4cat convert --config path/to/v1.0/idranges.toml --template templates/your-te
 
 ### Step 4: Verify the output
 
-Check that:
+Check that in xlsx:
 
 - Concept and collection counts match the source
 - ConceptScheme metadata is correctly set
-- Excel ID Ranges sheet shows all contributors
+- ID Ranges sheet shows all contributors
 
 ## Notes
 

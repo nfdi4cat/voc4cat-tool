@@ -14,7 +14,7 @@ You can contribute to vocabularies in two ways:
 1. **Excel-based** (recommended): Edit an xlsx file and submit via pull request
 2. **Turtle-based** (advanced): Edit RDF/Turtle files directly
 
-This guide covers the Excel-based workflow, which is suitable for most contributors.
+This guide covers the Excel/Spreadsheet-based workflow, which is suitable for most contributors.
 
 ## Get the current vocabulary
 
@@ -147,7 +147,7 @@ For local testing before submitting a PR, see {doc}`local-development`.
 Quick workflow summary:
 
 1. Download current vocabulary (xlsx from gh-pages)
-2. Edit in Excel
+2. Edit in your Spreadsheet software
 3. Place in `inbox-excel-vocabs/`
 4. Submit PR
 5. Review CI results

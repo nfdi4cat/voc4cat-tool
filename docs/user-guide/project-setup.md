@@ -29,7 +29,7 @@ my-vocabulary/
 ├── README_TEMPLATE.md         # Template documentation
 ├── inbox-excel-vocabs/        # Drop xlsx files here for PRs
 ├── vocabularies/              # Converted turtle files
-├── templates/                 # Excel template
+├── templates/                 # xlsx template
 └── .github/
     ├── workflows/             # CI/CD pipelines
     │   ├── ci-pr.yml         # Pull request validation
@@ -86,7 +86,7 @@ git push
 First, add the configuration for your vocabularies to the repository:
 
 ```bash
-# Generate Excel template from configuration
+# Generate xlsx template from configuration
 voc4cat template --config idranges.toml --outdir vocabularies/
 
 # Edit the xlsx file in Excel or LibreOffice
