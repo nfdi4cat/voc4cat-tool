@@ -161,11 +161,11 @@ The sheets that you put into this template may not have the same name as any of 
 It is suggested to merge the changes from the template repository before every new release of your vocabulary.
 This ensures that the centrally maintained features and best practices trickle into your project.
 
-To review the changes made in the template after you last pulled it use:
+To review the changes made in a new template version 1.x.y and compare to when you last pulled it use:
 
 ```bash
 # View changes
-git fetch https://github.com/nfdi4cat/voc4cat-template
+git fetch https://github.com/nfdi4cat/voc4cat-template tag v1.x.y
 git diff ...FETCH_HEAD
 ```
 
@@ -173,16 +173,19 @@ If you decide to take over the changes, pull them into your repository and push 
 
 ```bash
 # Apply changes
-git pull https://github.com/nfdi4cat/voc4cat-template
+git pull https://github.com/nfdi4cat/voc4cat-template tag v1.x.y
+# -- resolve any conflicts --
 git push
 ```
+
+Conflicts may occur if you and the template-maintainers have changed the same files since the last template-update.
 
 ### Handling merge conflicts
 
 If conflicts occur during sync:
 
 1. Resolve conflicts in your editor
-2. Keep your customizations (README.md, idranges.toml)
+2. Be careful to keep your customizations (README.md, idranges.toml)
 3. Accept template updates for workflows and justfile
 4. Commit the merge
 
@@ -203,6 +206,8 @@ https://w3id.org/yourorg/myvocab_0000001
 ```
 
 This allows content negotiation (HTML for browsers, RDF for machines).
+
+See also [IRI design](https://github.com/nfdi4cat/voc4cat-template/blob/main/iri-design.md) (in voc4cat-template).
 
 ## Next steps
 
