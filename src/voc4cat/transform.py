@@ -466,7 +466,7 @@ def transform(args):
                 if args.outdir
                 else rdf_dir.with_suffix(".ttl")
             )
-            vocab_graph.serialize(destination=str(dest), format="turtle")
+            vocab_graph.serialize(destination=str(dest), format="longturtle")
             logger.info("-> joined vocabulary into: %s", dest)
             if args.inplace:
                 logger.debug("-> going to remove %s", rdf_dir)

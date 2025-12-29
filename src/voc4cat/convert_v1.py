@@ -2874,7 +2874,9 @@ def excel_to_rdf_v1(
         output_file_path = file_to_convert_path.with_suffix(suffix)
 
     logger.info("Serializing to: %s", output_file_path)
-    graph.serialize(destination=str(output_file_path), format=output_format)
+    # Use longturtle for better git diffability
+    rdf_format = "longturtle" if output_format == "turtle" else output_format
+    graph.serialize(destination=str(output_file_path), format=rdf_format)
 
     logger.info("Conversion complete: %s", output_file_path)
     return output_file_path

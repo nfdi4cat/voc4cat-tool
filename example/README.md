@@ -19,3 +19,7 @@ Demos for the pydantic-to-xlsx interface included in voc4cat-tool.
 | `demo_xlsx_keyvalue_styling.py` | Key-value table styling |
 | `demo_xlsx_joins.py` | Joining data across sheets |
 | `demo_xlsx_adapt_to_model.py` | Adding xlsx support to existing models |
+
+## voc4cat* directories
+
+Snapshots from voc4cat vocabulary data to test the migration from 043 to v1.0 format.

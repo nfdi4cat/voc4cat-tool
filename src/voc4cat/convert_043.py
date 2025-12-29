@@ -423,9 +423,10 @@ def convert_rdf_043_to_v1(
         # Add _v1 suffix before extension
         output_path = input_path.with_stem(f"{input_path.stem}_v1").with_suffix(suffix)
 
-    # Serialize
+    # Serialize (use longturtle for better git diffability)
     logger.info("Writing v1.0 RDF to: %s", output_path)
-    output_graph.serialize(destination=str(output_path), format=output_format)
+    rdf_format = "longturtle" if output_format == "turtle" else output_format
+    output_graph.serialize(destination=str(output_path), format=rdf_format)
 
     logger.info(
         "Conversion complete: %d triples in, %d triples out",
