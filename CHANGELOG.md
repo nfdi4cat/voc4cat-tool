@@ -4,11 +4,21 @@
 
 Features:
 
-- **Partitioned split structure:** The `--split` option now organizes concept files into subdirectories by ID range (1000 IDs per directory, e.g., `IDs0001xxx/`). This avoids GitHub UI limitations with large directories. The `--join` option supports both the new partitioned structure and the previous flat structure.
+- **Partitioned storage:** The `--split` option now organizes concept files into subdirectories by ID range (1000 IDs per directory, e.g., `IDs0001xxx/`). This avoids GitHub UI limitations with large directories. The `--join` option supports both the new partitioned structure and the previous flat structure. [#328](https://github.com/nfdi4cat/voc4cat-tool/pull/328)
+- **Namespace prefixes in RDF:** The `transform` command now uses namespace bindings/prefixes in output (as convert already did). [#327](https://github.com/nfdi4cat/voc4cat-tool/pull/327)
+- **Longturtle format:** Turtle files are now written in longturtle format everywhere (this was not the case in rc1/2). [#327](https://github.com/nfdi4cat/voc4cat-tool/pull/327)
+- **Improved `--prov-from-git`:** Git history evaluation now follows file moves/renames. [#329](https://github.com/nfdi4cat/voc4cat-tool/pull/329)
 
 Changes:
 
+- Improved migration guide and template update guide.
+
 Fixes:
+
+- Fix BASE declaration in vp4cat profile; allow `dct:provenance` with IRI value (Req. 2.2.2). [#325](https://github.com/nfdi4cat/voc4cat-tool/pull/325), [#326](https://github.com/nfdi4cat/voc4cat-tool/issues/326)
+- Fix reporting for `check --detect-hierarchy-redundancy`. [#323](https://github.com/nfdi4cat/voc4cat-tool/pull/323)
+- Fix openpyxl warning about worksheet selection.
+- Fix xlsx generation to mark only one sheet as selected.
 
 
 ## Release 1.0.0 (RC2) (2025-12-27)
