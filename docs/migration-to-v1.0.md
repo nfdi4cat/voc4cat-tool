@@ -8,8 +8,11 @@ This guide explains how to migrate vocabularies created with voc4cat-tool v0.10.
 - **ConceptScheme metadata**: No longer editable in xlsx; managed via `idranges.toml` and shown as read-only in xlsx.
 - **RDF changes**: `skos:historyNote` converted to `skos:changeNote`.
 - **Excel template**: Dynamically generated based on config; no longer distributed as a static file.
+- **Partitioned file storage**: Files are stored in folders with at most 1000 entries named IDx0000xxx (for IDs 001 - 999), IDx0001xxx (for IDs 1000 - 1999), etc.
 
 ## Migration steps
+
+Make sure you have a version 1.0.x of voc4cat-tool installed before
 
 ### Step 0: Upgrade to latest release of voc4cat-template
 
@@ -27,46 +30,61 @@ Start with the template from `src/voc4cat/templates/vocab/idranges.toml` and fil
 
 The `idrange.toml` files now include a mandatory version number (`config_version = "v1.0"`) to help with future updates.
 
-### Step 2: Convert RDF from 043 to v1.0
+### Step 2: Convert to new partitioned storage
 
-**Step 2a** Convert RDF to new v1.0 format
+To convert a 043 repository, join and split the vocabulary. The files may not change.
+This is important to make git detect this as file move.
+The files will only be unmodified, if NO config is passed (which would trigger prefix-substitution and a large diff).
 
-This requires a turtle file `vocab.ttl` containing the current version of the complete vocabulary.
+```bash
+$ voc4cat transform --join --logfile outbox/voc4cat.log --outdir outbox vocabularies/
+$ voc4cat transform --split --logfile outbox/voc4cat.log --outdir vocabularies/ outbox/
+```
+
+Next, delete all `0*.ttl` files in `vocabularies\your-vocab` (the files were re-created into the new folder structure).
+
+Make sure that git detects the operation as pure file-moves, then commit.
+
+### Step 3: Convert RDF from 043 to v1.0
+
+**Step 3a** Convert RDF to new v1.0 format
+
+This requires a turtle file `vocab.ttl` (in old 043 format) containing the complete vocabulary.
 
 ```bash
 voc4cat convert --from 043 --config path/to/v1.0/idranges.toml --outdir outbox/ source/vocab.ttl
 ```
 
-In this step the ConceptScheme is also enriched with metadata from the config.
+In this step the ConceptScheme is also enriched with metadata from the new config.
 
-**Step 2b**
+**Step 3b**
 
-Split the v1.0 vocab.ttl from step 2a into individual version-tracked RDF files.
+Split the v1.0 vocab.ttl from step 3a into individual version-tracked RDF files.
 
 ```bash
-voc4cat transform --split --config path/to/v1.0/idranges.toml --logfile outbox/voc4cat.log -O vocabularies/ outbox/
+voc4cat transform --split --config path/to/v1.0/idranges.toml --logfile outbox/voc4cat.log --outdir vocabularies/ outbox/
 ```
 
 This command assumes that your version-tracked files are stored in the `vocabularies/` folder which is the default for `voc4cat-template`-based repositories.
 
-**Step 2c**
+**Step 3c**
 
-Add provenance info based on git history (dct:created and dct:updated) to the split RDF files from step 2b.
+Add provenance info based on git history (dct:created and dct:updated) to the split RDF files from Step 3b.
 
 ```bash
 voc4cat transform --prov-from-git --inplace --config path/to/v1.0/idranges.toml --logfile outbox/voc4cat.log vocabularies/
 ```
 
-**Step 2d**
+**Step 3d**
 
-Create a provenance-enriched new "joined" vocab.ttl file from the individual RDF files from step 2c.
+Create a provenance-enriched new "joined" vocab.ttl file from the individual RDF files from Step 3c.
 
 ```bash
-voc4cat transform --join --config path/to/v1.0/idranges.toml --logfile outbox/voc4cat.log -O outbox/ vocabularies/
+voc4cat transform --join --config path/to/v1.0/idranges.toml --logfile outbox/voc4cat.log --outdir outbox/ vocabularies/
 ```
 
-(step-3-generate-v1-0-excel-template)=
-### Step 3: Generate v1.0 xlsx template
+(step-4-generate-v1-0-excel-template)=
+### Step 4: Generate v1.0 xlsx template
 
 With voc4cat-tool 1.0.0, all required sheets in the xlsx template are dynamically generated.
 
@@ -93,7 +111,7 @@ If you want to use an xlsx-template, the command to run is
 voc4cat convert --config path/to/v1.0/idranges.toml --template templates/your-template.xlsx --outdir outbox/ outbox/vocab.ttl
 ```
 
-### Step 4: Verify the output
+### Step 5: Verify the output
 
 Check that in xlsx:
 
