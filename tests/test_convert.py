@@ -150,6 +150,18 @@ def test_template_sheets_preserved_and_ordered(
     cs_idx = sheets.index("Concept Scheme")
     assert cover_idx < cs_idx
 
+    # Verify only one sheet is active (Concepts) - regression test for template
+    # sheets leaving multiple sheets selected which confuses Excel
+    assert result_wb.active.title == "Concepts"
+    selected_sheets = [
+        ws.title
+        for ws in result_wb.worksheets
+        if any(view.tabSelected for view in ws.views.sheetView)
+    ]
+    assert selected_sheets == ["Concepts"], (
+        f"Expected only 'Concepts' selected, got {selected_sheets}"
+    )
+
     result_wb.close()
 
 

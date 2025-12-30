@@ -1547,8 +1547,16 @@ def adjust_all_tables_length(
             adjust_table_length(ws, table_name, rows_pre_allocated=rows_dict[ws.title])
 
     # Set active sheet before saving
+    # Clear tabSelected from all sheets first to avoid multiple selected sheets
+    # (can happen when loading from templates that have a sheet selected)
+    for ws in wb.worksheets:
+        for view in ws.views.sheetView:
+            view.tabSelected = False
     if active_sheet and active_sheet in wb.sheetnames:
         wb.active = wb[active_sheet]
+        # Ensure the active sheet's view is marked as selected
+        for view in wb[active_sheet].views.sheetView:
+            view.tabSelected = True
 
     wb.save(wb_path)
     wb.close()
