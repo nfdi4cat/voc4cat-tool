@@ -105,7 +105,7 @@ To generate the xlsx-representation of your vocabulary run
 voc4cat convert --config path/to/v1.0/idranges.toml --outdir outbox/ outbox/vocab.ttl
 ```
 
-If you want to use an xlsx-template, the command to run is
+You can include additional sheets from an xlsx-template by modifying the command to
 
 ```bash
 voc4cat convert --config path/to/v1.0/idranges.toml --template templates/your-template.xlsx --outdir outbox/ outbox/vocab.ttl

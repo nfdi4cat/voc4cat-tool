@@ -9,9 +9,9 @@
 For **[voc4cat](https://github.com/nfdi4cat/voc4cat)**, a term collection for catalysis created in [NFDI4Cat](https://www.nfdi4cat.org), we developed a **toolbox for collaboratively maintaining SKOS vocabularies on GitHub using Excel** (xlsx-files) as user-friendly interface. It consists of several parts:
 
 - **voc4cat-tool** (this package)
-  - A command-line tool to convert vocabularies from Excel/xlsx to SKOS (turtle/rdf) and validate the vocabulary. Validation includes formal validation with SHACL-profiles but also additional checks. The `voc4cat` tool can be run locally but is also well suited for integration in CI-pipelines. It was inspired by [RDFlib/VocExcel](https://github.com/nfdi4cat/VocExcel). Parts of the vocexcel code base were merged into this repository (see git history).
+  - A command-line tool to convert vocabularies from Excel/xlsx to SKOS (turtle/rdf) and validate the vocabulary. Validation includes formal SHACL profile checks as well as additional custom validation. The `voc4cat` tool can be run locally but is also well suited for integration in CI-pipelines. It was inspired by [RDFLib/VocExcel](https://github.com/nfdi4cat/VocExcel). Parts of the VocExcel codebase were merged into this repository (see git history).
 - **[voc4cat-template](https://github.com/nfdi4cat/voc4cat-template)**
-  - A github project template for managing SKOS-vocabularies using a GitHub-based workflows including automation by gh-actions.
+  - A GitHub project template for managing SKOS-vocabularies using a GitHub-based workflows including automation by gh-actions.
 - **[voc4cat](https://github.com/nfdi4cat/voc4cat)**
   - A SKOS vocabulary for the catalysis disciplines that uses the voc4cat workflow for real work.
 
@@ -27,12 +27,15 @@ voc4cat was mainly developed to be used in gh-actions but it is also useful as a
 - Check xlsx vocabulary files for errors or incorrect use of IDs (voc4cat uses pydantic for this validation).
 - Generate documentation from SKOS/turtle vocabulary file using [pyLODE](https://github.com/RDFLib/pyLODE).
 
+The RDF produced by 1.x version of voc4cat-tool is well aligned with the data model of [Skosmos 3](https://skosmos.org/) (even deprecations are correctly visualized).
+We recommend Skosmos for providing an API to your vocabulary or if you want as a richer user interface than the static HTML documentation.
+
 ### Installation
 
-voc4cat is platform independent and works on windows, linux and mac. It requires Python (3.10 or newer).
+voc4cat is platform independent and works on Windows, Linux, and macOS. It requires Python (3.10 or newer).
 
-If you only want to use the command line interface it is strongly suggested to install with [uv tool](https://docs.astral.sh/uv/concepts/tools/) or [pipx](https://pypa.github.io/pipx/).
-Both simplify installing and managing python command line applications.
+If you only want to use the command-line interface, it is strongly suggested to install with [uv tool](https://docs.astral.sh/uv/concepts/tools/) or [pipx](https://pypa.github.io/pipx/).
+Both simplify installing and managing Python command-line applications.
 
 ```bash
 uv tool install voc4cat
@@ -56,15 +59,15 @@ The available commands and options can be explored via the help system:
 voc4cat --help
 ```
 
-Optionally you may install the "assistant" which uses [sentence-transformers](https://sbert.net/) for concept similarity analysis.
-This adds >100 MB to the download so we don't include it in the default installer.
+You can optionally install the "assistant" which uses [sentence-transformers](https://sbert.net/) for concept similarity analysis.
+This adds over 100 MB to the download so we don't include it in the default installer.
 To include it modify the command (for uv tool) to
 
 ```bash
 uv tool install "voc4cat[assistant]"
 ```
 
-Alternatively you can `pip`-install voc4cat like any other Python package.
+Alternatively, you can install voc4cat using `pip` like any other Python package.
 
 To install including all development tools use `pip install .[dev]`.
 
@@ -107,11 +110,11 @@ We highly appreciate your feedback. Please create an [issue on GitHub](https://g
 
 Before you contribute code, we suggest to first create an issue to get early feedback on your ideas before you spend too much time.
 
-By contributing you agree that your contributions fall under the project´s BSD-3-Clause [license](LICENSE).
+By contributing, you agree that your contributions are licensed under the project's BSD-3-Clause [license](LICENSE).
 
 ## Contributors
 
-For details see the [Zenodo record](https://doi.org/10.5281/zenodo.8277925).
+For details, see the [Zenodo record](https://doi.org/10.5281/zenodo.8277925).
 
 **A big thanks to our GitHub contributors:**
 
