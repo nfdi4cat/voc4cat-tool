@@ -776,6 +776,7 @@ def rdf_concepts_to_v1(
     vocab_name: str = "",
     provenance_template: str = "",
     repository_url: str = "",
+    id_length: int = 7,
 ) -> list[ConceptV1]:
     """Convert extracted concepts to ConceptV1 models.
 
@@ -799,6 +800,7 @@ def rdf_concepts_to_v1(
         vocab_name: Vocabulary name for provenance URL generation.
         provenance_template: Jinja template for provenance URLs.
         repository_url: Repository URL from config for GitHub auto-detection.
+        id_length: The configured ID length for the vocabulary (default 7).
 
     Returns:
         List of ConceptV1 model instances.
@@ -822,6 +824,7 @@ def rdf_concepts_to_v1(
             repository_url=repository_url,
             obsoletion_reason_enum=ConceptObsoletionReason,
             entity_type="concept",
+            id_length=id_length,
         )
 
         # Get deprecation info from any language (it's the same for all)
@@ -936,6 +939,7 @@ def rdf_collections_to_v1(
     vocab_name: str = "",
     provenance_template: str = "",
     repository_url: str = "",
+    id_length: int = 7,
 ) -> list[CollectionV1]:
     """Convert extracted collections to CollectionV1 models.
 
@@ -955,6 +959,7 @@ def rdf_collections_to_v1(
         vocab_name: Vocabulary name for provenance URL generation.
         provenance_template: Jinja template for provenance URLs.
         repository_url: Repository URL from config for GitHub auto-detection.
+        id_length: The configured ID length for the vocabulary (default 7).
 
     Returns:
         List of CollectionV1 model instances.
@@ -975,6 +980,7 @@ def rdf_collections_to_v1(
             repository_url=repository_url,
             obsoletion_reason_enum=CollectionObsoletionReason,
             entity_type="collection",
+            id_length=id_length,
         )
 
         # Get deprecation info from any language (it's the same for all)
@@ -1588,6 +1594,7 @@ def rdf_to_excel_v1(
     # Get provenance URL config
     provenance_template = vocab_config.provenance_url_template if vocab_config else ""
     repository_url = vocab_config.repository if vocab_config else ""
+    id_length = vocab_config.id_length if vocab_config else 7
 
     concepts_v1 = rdf_concepts_to_v1(
         concepts_data,
@@ -1597,6 +1604,7 @@ def rdf_to_excel_v1(
         vocab_name,
         provenance_template,
         repository_url,
+        id_length,
     )
     collections_v1 = rdf_collections_to_v1(
         collections_data,
@@ -1605,6 +1613,7 @@ def rdf_to_excel_v1(
         vocab_name,
         provenance_template,
         repository_url,
+        id_length,
     )
     mappings_v1 = rdf_mappings_to_v1(mappings_data, concepts_data)
     prefixes_v1 = build_prefixes_v1()
@@ -2476,6 +2485,7 @@ def build_concept_graph(
     vocab_name: str = "",
     provenance_template: str = "",
     repository_url: str = "",
+    id_length: int = 7,
 ) -> Graph:
     """Build RDF graph for a single Concept.
 
@@ -2487,6 +2497,7 @@ def build_concept_graph(
         vocab_name: Vocabulary name for provenance URL generation.
         provenance_template: Jinja template for provenance URLs.
         repository_url: Repository URL from config for GitHub auto-detection.
+        id_length: The configured ID length for the vocabulary (default 7).
 
     Returns:
         Graph with Concept triples.
@@ -2560,7 +2571,7 @@ def build_concept_graph(
 
     # Provenance (git blame URL)
     add_provenance_triples_to_graph(
-        g, c, vocab_name, provenance_template, repository_url
+        g, c, vocab_name, provenance_template, repository_url, id_length
     )
 
     return g
@@ -2575,6 +2586,7 @@ def build_collection_graph(
     vocab_name: str = "",
     provenance_template: str = "",
     repository_url: str = "",
+    id_length: int = 7,
 ) -> Graph:
     """Build RDF graph for a single Collection.
 
@@ -2588,6 +2600,7 @@ def build_collection_graph(
         vocab_name: Vocabulary name for provenance URL generation.
         provenance_template: Jinja template for provenance URLs.
         repository_url: Repository URL from config for GitHub auto-detection.
+        id_length: The configured ID length for the vocabulary (default 7).
 
     Returns:
         Graph with Collection triples.
@@ -2654,7 +2667,7 @@ def build_collection_graph(
 
     # Provenance (git blame URL)
     add_provenance_triples_to_graph(
-        g, c, vocab_name, provenance_template, repository_url
+        g, c, vocab_name, provenance_template, repository_url, id_length
     )
 
     return g
@@ -2813,6 +2826,7 @@ def excel_to_rdf_v1(
     # Get provenance URL config
     provenance_template = vocab_config.provenance_url_template if vocab_config else ""
     repository_url = vocab_config.repository if vocab_config else ""
+    id_length = vocab_config.id_length if vocab_config else 7
 
     # Get ID pattern for identifier extraction
     id_pattern = config.ID_PATTERNS.get(vocab_name)
@@ -2837,6 +2851,7 @@ def excel_to_rdf_v1(
             vocab_name,
             provenance_template,
             repository_url,
+            id_length,
         )
 
     for collection in collections.values():
@@ -2849,6 +2864,7 @@ def excel_to_rdf_v1(
             vocab_name,
             provenance_template,
             repository_url,
+            id_length,
         )
 
     graph += build_mappings_graph(mapping_rows, converter)

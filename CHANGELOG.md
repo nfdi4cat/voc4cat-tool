@@ -1,5 +1,11 @@
 # Change log
 
+## Unreleased
+
+Fixes:
+
+- Fix git blame URLs to include partition subdirectory (e.g., `IDs0000xxx/`) matching the new partitioned storage structure. [#335](https://github.com/nfdi4cat/voc4cat-tool/pull/335)
+
 ## Release 1.0.0 (2025-12-31)
 
 Features:
@@ -12,8 +18,6 @@ Features:
 Changes:
 
 - Improved migration guide and template update guide.
-
-Fixes:
 
 - Fix BASE declaration in vp4cat profile; allow `dct:provenance` with IRI value (Req. 2.2.2). [#325](https://github.com/nfdi4cat/voc4cat-tool/pull/325), [#326](https://github.com/nfdi4cat/voc4cat-tool/issues/326)
 - Fix reporting for `check --detect-hierarchy-redundancy`. [#323](https://github.com/nfdi4cat/voc4cat-tool/pull/323)

@@ -279,17 +279,28 @@ def _add_provenance_triples(
     """
     repository_url = vocab_config.repository or ""
     provenance_template = vocab_config.provenance_url_template or ""
+    id_length = vocab_config.id_length
 
     # Add provenance for concepts
     for concept_iri in concepts:
         add_provenance_triples_to_graph(
-            graph, concept_iri, vocab_name, provenance_template, repository_url
+            graph,
+            concept_iri,
+            vocab_name,
+            provenance_template,
+            repository_url,
+            id_length,
         )
 
     # Add provenance for collections
     for collection_iri in collections:
         add_provenance_triples_to_graph(
-            graph, collection_iri, vocab_name, provenance_template, repository_url
+            graph,
+            collection_iri,
+            vocab_name,
+            provenance_template,
+            repository_url,
+            id_length,
         )
 
     logger.debug(
