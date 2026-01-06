@@ -147,8 +147,34 @@ def extract_github_repo_from_url(repository_url: str) -> str:
 # Default Jinja template for GitHub blame URLs
 DEFAULT_PROVENANCE_TEMPLATE = (
     "https://github.com/{{ github_repo }}/blame/{{ version }}"
-    "/vocabularies/{{ vocab_name }}/{{ entity_id }}.ttl"
+    "/vocabularies/{{ vocab_name }}/{{ partition_dir }}/{{ entity_id }}.ttl"
 )
+
+
+def get_partition_dir_name(entity_id: str, id_length: int = 7) -> str:
+    """Compute subdirectory name for a given entity ID.
+
+    Partitions IDs into subdirectories of 1000 IDs each.
+    Directory name padding matches vocabulary's id_length:
+    - 7-digit IDs: IDs0000xxx, IDs0001xxx, ...
+    - 6-digit IDs: IDs000xxx, IDs001xxx, ...
+
+    Args:
+        entity_id: String representation of the entity ID (e.g., "0000016").
+            For non-numeric IDs, returns "IDs0000xxx" (first partition).
+        id_length: The configured ID length for the vocabulary (default 7)
+
+    Returns:
+        Partition directory name (e.g., "IDs0000xxx" for 7-digit IDs)
+    """
+    try:
+        numeric_value = int(entity_id) if entity_id else 0
+    except ValueError:
+        # For non-numeric IDs, default to first partition
+        numeric_value = 0
+    partition_num = numeric_value // 1000  # 1000 IDs per subdirectory
+    prefix_width = id_length - 3  # 'xxx' represents last 3 digits
+    return f"IDs{partition_num:0{prefix_width}d}xxx"
 
 
 def build_provenance_url(
@@ -156,6 +182,7 @@ def build_provenance_url(
     vocab_name: str,
     provenance_template: str = "",
     repository_url: str = "",
+    id_length: int = 7,
 ) -> str:
     """Build a provenance URL using Jinja template.
 
@@ -169,12 +196,15 @@ def build_provenance_url(
             this template is used instead of the default GitHub format.
         repository_url: Optional repository URL from idranges.toml. Used for
             GitHub auto-detection when GITHUB_REPOSITORY env var is not set.
+        id_length: The configured ID length for the vocabulary (default 7).
+            Used to compute the partition directory for the default template.
 
     Template variables available:
         entity_id: The concept/collection ID
         vocab_name: The vocabulary name
         version: Git version/tag (from VOC4CAT_VERSION env var, or "main")
         github_repo: The GitHub owner/repo (if detected from env var or URL)
+        partition_dir: The partition subdirectory (e.g., "IDs0000xxx")
 
     Returns:
         The provenance URL, or empty string if no template is provided and
@@ -188,6 +218,9 @@ def build_provenance_url(
     github_repo = os.getenv("GITHUB_REPOSITORY", "")
     if not github_repo and repository_url:
         github_repo = extract_github_repo_from_url(repository_url)
+
+    # Compute partition directory for the entity
+    partition_dir = get_partition_dir_name(entity_id, id_length)
 
     # Select template
     if provenance_template:
@@ -204,6 +237,7 @@ def build_provenance_url(
         vocab_name=vocab_name,
         version=version,
         github_repo=github_repo,
+        partition_dir=partition_dir,
     )
 
 
@@ -244,6 +278,7 @@ def add_provenance_triples_to_graph(
     vocab_name: str,
     provenance_template: str = "",
     repository_url: str = "",
+    id_length: int = 7,
 ) -> bool:
     """Add provenance triples (dcterms:provenance, rdfs:seeAlso) for an entity.
 
@@ -256,6 +291,7 @@ def add_provenance_triples_to_graph(
         vocab_name: The vocabulary name from idranges.toml.
         provenance_template: Optional Jinja template for the provenance URL.
         repository_url: Optional repository URL for GitHub auto-detection.
+        id_length: The configured ID length for the vocabulary (default 7).
 
     Returns:
         True if provenance triples were added, False if no URL could be generated.
@@ -265,7 +301,7 @@ def add_provenance_triples_to_graph(
 
     entity_id = extract_entity_id_from_iri(str(entity_iri), vocab_name)
     provenance_url = build_provenance_url(
-        entity_id, vocab_name, provenance_template, repository_url
+        entity_id, vocab_name, provenance_template, repository_url, id_length
     )
     if provenance_url:
         provenance_uri = URIRef(provenance_url)
@@ -620,6 +656,7 @@ def validate_entity_deprecation(
     repository_url: str,
     obsoletion_reason_enum: type[Enum],
     entity_type: str,
+    id_length: int = 7,
 ) -> str:
     """Validate and fix deprecation info for concept or collection.
 
@@ -639,6 +676,7 @@ def validate_entity_deprecation(
         obsoletion_reason_enum: Enum class for valid obsoletion reasons
             (ConceptObsoletionReason or CollectionObsoletionReason).
         entity_type: "concept" or "collection".
+        id_length: The configured ID length for the vocabulary (default 7).
 
     Returns:
         Provenance URL for the entity.
@@ -650,7 +688,7 @@ def validate_entity_deprecation(
     # Generate provenance URL
     entity_id = extract_entity_id_from_iri(entity_iri, vocab_name)
     provenance_url = build_provenance_url(
-        entity_id, vocab_name, provenance_template, repository_url
+        entity_id, vocab_name, provenance_template, repository_url, id_length
     )
 
     # Get deprecation info from any language (it's the same for all)

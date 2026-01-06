@@ -1530,7 +1530,7 @@ class TestBuildProvenanceUrl:
 
         url = build_provenance_url("0000004", "voc4cat")
 
-        expected = "https://github.com/nfdi4cat/voc4cat/blame/v2025-10-14/vocabularies/voc4cat/0000004.ttl"
+        expected = "https://github.com/nfdi4cat/voc4cat/blame/v2025-10-14/vocabularies/voc4cat/IDs0000xxx/0000004.ttl"
         assert url == expected
 
     def test_no_version_uses_main(self, monkeypatch):
@@ -1566,9 +1566,9 @@ class TestBuildProvenanceUrl:
         monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/test-vocab")
         monkeypatch.setenv("VOC4CAT_VERSION", "v1.0.0")
 
-        url = build_provenance_url("test123", "myvocab")
+        url = build_provenance_url("0001234", "myvocab")
 
-        expected = "https://github.com/nfdi4cat/test-vocab/blame/v1.0.0/vocabularies/myvocab/test123.ttl"
+        expected = "https://github.com/nfdi4cat/test-vocab/blame/v1.0.0/vocabularies/myvocab/IDs0001xxx/0001234.ttl"
         assert url == expected
 
     def test_repository_url_fallback_when_env_not_set(self, monkeypatch):
@@ -1582,7 +1582,7 @@ class TestBuildProvenanceUrl:
             repository_url="https://github.com/nfdi4cat/voc4cat",
         )
 
-        expected = "https://github.com/nfdi4cat/voc4cat/blame/main/vocabularies/voc4cat/0000004.ttl"
+        expected = "https://github.com/nfdi4cat/voc4cat/blame/main/vocabularies/voc4cat/IDs0000xxx/0000004.ttl"
         assert url == expected
 
     def test_env_var_takes_precedence_over_repository_url(self, monkeypatch):
@@ -1610,7 +1610,7 @@ class TestBuildProvenanceUrl:
             repository_url="https://github.com/nfdi4cat/voc4cat.git",
         )
 
-        expected = "https://github.com/nfdi4cat/voc4cat/blame/main/vocabularies/voc4cat/0000004.ttl"
+        expected = "https://github.com/nfdi4cat/voc4cat/blame/main/vocabularies/voc4cat/IDs0000xxx/0000004.ttl"
         assert url == expected
 
     def test_repository_url_with_trailing_slash(self, monkeypatch):
@@ -1624,7 +1624,7 @@ class TestBuildProvenanceUrl:
             repository_url="https://github.com/nfdi4cat/voc4cat/",
         )
 
-        expected = "https://github.com/nfdi4cat/voc4cat/blame/main/vocabularies/voc4cat/0000004.ttl"
+        expected = "https://github.com/nfdi4cat/voc4cat/blame/main/vocabularies/voc4cat/IDs0000xxx/0000004.ttl"
         assert url == expected
 
     def test_non_github_repository_url_returns_empty(self, monkeypatch):
@@ -1688,6 +1688,50 @@ class TestBuildProvenanceUrl:
 
         assert url == "https://custom.example.com/0000004"
         assert "github.com" not in url
+
+    def test_partition_directory_boundary(self, monkeypatch):
+        """Test partition directory changes at 1000 boundary."""
+        monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/voc4cat")
+        monkeypatch.setenv("VOC4CAT_VERSION", "v1.0.0")
+
+        # ID 999 -> IDs0000xxx
+        url_999 = build_provenance_url("0000999", "voc4cat")
+        assert "/IDs0000xxx/" in url_999
+
+        # ID 1000 -> IDs0001xxx
+        url_1000 = build_provenance_url("0001000", "voc4cat")
+        assert "/IDs0001xxx/" in url_1000
+
+        # ID 2500 -> IDs0002xxx
+        url_2500 = build_provenance_url("0002500", "voc4cat")
+        assert "/IDs0002xxx/" in url_2500
+
+    def test_id_length_affects_partition_padding(self, monkeypatch):
+        """Test that id_length affects partition directory padding."""
+        monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/voc4cat")
+        monkeypatch.setenv("VOC4CAT_VERSION", "v1.0.0")
+
+        # Default 7-digit: IDs0000xxx
+        url_7 = build_provenance_url("0001000", "voc4cat", id_length=7)
+        assert "/IDs0001xxx/" in url_7
+
+        # 6-digit: IDs001xxx
+        url_6 = build_provenance_url("001000", "voc4cat", id_length=6)
+        assert "/IDs001xxx/" in url_6
+
+        # 5-digit: IDs01xxx
+        url_5 = build_provenance_url("01000", "voc4cat", id_length=5)
+        assert "/IDs01xxx/" in url_5
+
+    def test_custom_template_with_partition_dir(self, monkeypatch):
+        """Test custom template can use partition_dir variable."""
+        monkeypatch.setenv("GITHUB_REPOSITORY", "nfdi4cat/voc4cat")
+        monkeypatch.setenv("VOC4CAT_VERSION", "v1.0.0")
+
+        template = "https://custom.example.com/{{ partition_dir }}/{{ entity_id }}.ttl"
+        url = build_provenance_url("0001234", "voc4cat", provenance_template=template)
+
+        assert url == "https://custom.example.com/IDs0001xxx/0001234.ttl"
 
 
 class TestExtractGithubRepoFromUrl:
