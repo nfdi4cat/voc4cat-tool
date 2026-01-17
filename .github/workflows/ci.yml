@@ -32,6 +32,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      with:
+        # The full history is required for sphinx_sitemap
+        fetch-depth: 0
 
     - uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548
       with:
