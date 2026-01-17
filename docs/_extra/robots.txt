@@ -1,0 +1,3 @@
+user-agent: *
+
+sitemap: https://nfdi4cat.github.io/voc4cat-tool/sitemap.xml

@@ -1,3 +1,10 @@
+---
+hide-toc: true
+myst:
+  html_meta:
+    "description lang=en": "A Python package for collaboratively maintaining SKOS vocabularies on GitHub using Excel (xlsx-files) as a user-friendly interface. Learn more here."
+---
+
 # voc4cat-tool Documentation
 
 A toolbox for collaboratively maintaining SKOS vocabularies on GitHub using Excel (xlsx-files) as a user-friendly interface.

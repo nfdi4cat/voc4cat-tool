@@ -35,6 +35,7 @@ version = ".".join(release.split(".")[:3])
 extensions = [
     "myst_parser",
     "sphinx.ext.githubpages",
+    "sphinx_sitemap",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -50,17 +51,26 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
+
 html_theme = "furo"
-html_last_updated_fmt = "%Y-%m-%d"
-
-# Favicon for browser tabs / bookmarks
+html_baseurl = "https://nfdi4cat.github.io/voc4cat-tool/"  # canonical base URL
+html_static_path = ["_static"]  # files to copy to output _static
+html_extra_path = ["_extra"]  # files to copy to output root
 html_favicon = "_static/favicon.ico"
+html_last_updated_fmt = "%Y-%m-%d"
+# -- Options for MyST parser -------------------------------------------------
+# https://myst-parser.readthedocs.io/en/latest/configuration.html
 
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
+myst_enable_extensions = [
+    "colon_fence",  # allow ::: for directives
+]
+
+
+# -- Options for sitemap extension -------------------------------------------
+# https://sphinx-sitemap.readthedocs.io/en/latest/configuration.html
+sitemap_url_scheme = "{link}"  # use html_baseurl as is, without language code prefix
+sitemap_show_lastmod = True
+sitemap_indent = 2
 
 # -- Options for Furo theme ---------------------------------------------------
 # https://pradyunsg.me/furo/customisation/
@@ -100,10 +110,3 @@ html_theme_options = {
     # "announcement":
     #     '<em>News: Voc4Cat-tool 1.0.0 released on 2025-mm-dd! </em>',
 }
-
-# -- Options for MyST parser -------------------------------------------------
-# https://myst-parser.readthedocs.io/en/latest/configuration.html
-
-myst_enable_extensions = [
-    "colon_fence",  # allow ::: for directives
-]
