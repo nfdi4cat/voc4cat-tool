@@ -71,6 +71,7 @@ docs = [
   "sphinx",
   "myst-parser",
   "furo",
+  "sphinx-sitemap",
 ]
 dev = [
     # Recursively including the project's own optional dependencies requires pip>=21.2
