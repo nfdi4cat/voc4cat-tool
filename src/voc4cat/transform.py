@@ -166,8 +166,7 @@ def add_prov_from_git(
         source_dir: Directory to look up git history from (if different from vocab_dir).
             Used when files have been copied to a new location.
 
-    Raises:
-        Voc4catError: If any .ttl file is not tracked in git.
+    Untracked .ttl files are skipped with an informational log message.
     """
     repo_dir = Path(repo_dir) if repo_dir else Path.cwd()
     vocab_dir = Path(vocab_dir)
@@ -182,21 +181,6 @@ def add_prov_from_git(
     # Get git info from the source directory (or vocab_dir if no source specified)
     git_info = get_directory_git_info(git_lookup_dir, repo_dir)
 
-    # Check that all .ttl files are tracked in git (by relative path)
-    for ttl_file in ttl_files:
-        # Preserve subdirectory structure when looking up in source directory
-        rel_to_vocab = ttl_file.relative_to(vocab_dir)
-        source_file = git_lookup_dir / rel_to_vocab
-        try:
-            rel_path = source_file.relative_to(repo_dir)
-        except ValueError:
-            rel_path = source_file
-        # Normalize path separators (git uses forward slashes)
-        rel_path_str = str(rel_path).replace("\\", "/")
-        if rel_path_str not in git_info:
-            msg = f'File "{ttl_file}" is not tracked in git. Cannot add provenance.'
-            raise Voc4catError(msg)
-
     # Process each .ttl file
     for ttl_file in ttl_files:
         # Preserve subdirectory structure when looking up in source directory
@@ -207,6 +191,11 @@ def add_prov_from_git(
         except ValueError:
             rel_path = source_file
         rel_path_str = str(rel_path).replace("\\", "/")
+        if rel_path_str not in git_info:
+            logger.info(
+                'File "%s" is not tracked in git. Skipping provenance.', ttl_file
+            )
+            continue
         info = git_info[rel_path_str]
 
         # Parse the RDF graph

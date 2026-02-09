@@ -222,8 +222,8 @@ def test_prov_from_git_adds_dates(git_repo_with_split_files, monkeypatch, caplog
     assert len(modified_values) == 1
 
 
-def test_prov_from_git_error_untracked(tmp_path, datadir, monkeypatch, caplog):
-    """Test that --prov-from-git fails if files are not tracked in git."""
+def test_prov_from_git_skips_untracked(tmp_path, datadir, monkeypatch, caplog):
+    """Test that --prov-from-git skips untracked files with a warning."""
     # Initialize git repo but don't add files
     _run_git(["git", "init"], tmp_path)
     _run_git(["git", "config", "user.email", "test@example.com"], tmp_path)
@@ -236,11 +236,19 @@ def test_prov_from_git_error_untracked(tmp_path, datadir, monkeypatch, caplog):
 
     monkeypatch.chdir(tmp_path)
 
-    with (
-        caplog.at_level(logging.ERROR),
-        pytest.raises(Voc4catError, match="is not tracked in git"),
-    ):
+    contents_before = {f: f.read_bytes() for f in vocdir.rglob("*.ttl")}
+
+    with caplog.at_level(logging.INFO):
         main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+
+    assert "is not tracked in git" in caplog.text
+    assert "Skipping provenance" in caplog.text
+
+    # Verify that untracked files were not modified (no provenance added)
+    ttl_files = list(vocdir.rglob("*.ttl"))
+    assert len(ttl_files) > 0
+    contents_after = {f: f.read_bytes() for f in ttl_files}
+    assert contents_after == contents_before
 
 
 def test_prov_from_git_error_not_directory(tmp_path, datadir, monkeypatch, caplog):
