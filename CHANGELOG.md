@@ -1,5 +1,11 @@
 # Change log
 
+## Release 1.0.2 (2026-02-09)
+
+Fixes:
+
+- Allow untracked .ttl files in `--prov-from-git`. Skip them with an info log instead of raising an error. [#339](https://github.com/nfdi4cat/voc4cat-tool/issues/339)
+
 ## Release 1.0.1 (2026-01-06)
 
 Fixes:
