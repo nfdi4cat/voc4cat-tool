@@ -1,5 +1,11 @@
 # Change log
 
+## Release 1.0.3 (2026-02-14)
+
+Fixes:
+
+- Reject IDs with wrong digit count during `voc4cat convert`. Previously, IDs with more digits than configured (e.g. 8 digits with `id_length: 7`) were silently accepted because the regex matched only the trailing digits. [#341](https://github.com/nfdi4cat/voc4cat-tool/issues/341)
+
 ## Release 1.0.2 (2026-02-09)
 
 Fixes:
