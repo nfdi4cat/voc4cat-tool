@@ -2836,6 +2836,26 @@ def excel_to_rdf_v1(
             vocab_name,
         )
 
+    # Validate that IRIs with numeric-looking IDs conform to the configured
+    # ID length. Only flag IRIs whose digit sequence is longer than the
+    # configured id_length.
+    if id_pattern:
+        _trailing_digits = re.compile(r"\d+$")
+        non_conforming_iris = []
+        for iri in [c.iri for c in concepts.values()] + [
+            c.iri for c in collections.values()
+        ]:
+            m = _trailing_digits.search(iri)
+            if m and len(m.group()) > id_length and not id_pattern.search(iri):
+                non_conforming_iris.append(iri)
+        if non_conforming_iris:
+            iri_list = "\n  ".join(non_conforming_iris)
+            msg = (
+                f"Found {len(non_conforming_iris)} non-conforming IRI(s) that do not "
+                f"match the configured ID pattern ({id_pattern.pattern}):\n  {iri_list}"
+            )
+            raise Voc4catError(msg)
+
     # Build the complete graph
     logger.debug("Building RDF graph...")
     scheme_iri = URIRef(concept_scheme.vocabulary_iri)

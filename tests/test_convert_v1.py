@@ -2137,6 +2137,62 @@ class TestXlsxToRdfWithConfig:
         assert str(titles[0]) == "Test Vocabulary"
 
 
+class TestNonConformingIdAbort:
+    """Tests that excel_to_rdf_v1 aborts on non-conforming IDs."""
+
+    def test_excel_to_rdf_raises_on_too_many_digits(self, tmp_path, temp_config):
+        """excel_to_rdf_v1 should raise when xlsx contains 8-digit IDs with 7-digit config."""
+        from voc4cat import config as config_module
+        from voc4cat.checks import Voc4catError
+
+        g = Graph()
+        g.bind("ex", EX)
+        g.bind("skos", SKOS)
+
+        # Create concept scheme
+        g.add((EX[""], RDF.type, SKOS.ConceptScheme))
+        g.add((EX[""], SKOS.prefLabel, Literal("Test Scheme", lang="en")))
+        g.add((EX[""], SKOS.definition, Literal("Test scheme", lang="en")))
+        g.add((EX[""], DCTERMS.created, Literal("2024-01-01", datatype=XSD.date)))
+        g.add(
+            (EX[""], DCTERMS.creator, URIRef("https://orcid.org/0000-0001-2345-6789"))
+        )
+
+        # Create concept with 8-digit IRI (non-conforming for 7-digit config)
+        concept_iri = URIRef("http://example.org/00008210")
+        g.add((concept_iri, RDF.type, SKOS.Concept))
+        g.add((concept_iri, SKOS.prefLabel, Literal("Bad ID Concept", lang="en")))
+        g.add((concept_iri, SKOS.definition, Literal("Has too many digits", lang="en")))
+        g.add((concept_iri, SKOS.inScheme, EX[""]))
+
+        # Save to TTL, then convert to xlsx
+        input_ttl = tmp_path / "test.ttl"
+        g.serialize(destination=str(input_ttl), format="turtle")
+        xlsx_path = tmp_path / "test.xlsx"
+        rdf_to_excel_v1(input_ttl, xlsx_path)
+
+        # Create 7-digit config and register ID pattern
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="http://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "http://example.org/"},
+            vocabulary_iri="http://example.org/",
+            title="Test Scheme",
+            description="Test scheme",
+            created_date="2024-01-01",
+            creator="https://orcid.org/0000-0001-2345-6789",
+            repository="https://github.com/test/vocab",
+        )
+        config_module.ID_PATTERNS["test"] = re.compile(
+            r"(?<![0-9])(?P<identifier>[0-9]{7})$"
+        )
+
+        # Convert xlsx -> RDF should raise due to non-conforming ID
+        with pytest.raises(Voc4catError, match="non-conforming"):
+            excel_to_rdf_v1(xlsx_path, output_type="graph", vocab_config=vocab_config)
+
+
 # =============================================================================
 # ID Ranges Tests (Step 7)
 # =============================================================================
@@ -2288,6 +2344,36 @@ class TestExtractUsedIds:
         used_ids = extract_used_ids(concepts, collections, vocab_config)
 
         assert used_ids == {1}
+
+    def test_rejects_ids_with_too_many_digits(self, temp_config, mandatory_fields):
+        """8-digit IDs should not be extracted when 7 digits are configured."""
+        vocab_config = Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks=Checks(allow_delete=False),
+            prefix_map={"ex": "https://example.org/"},
+            **mandatory_fields,
+        )
+
+        concepts = [
+            ConceptV1(
+                concept_iri="https://example.org/00008210",
+                language_code="en",
+                preferred_label="Too Long ID",
+                definition="This ID has 8 digits",
+            ),
+            ConceptV1(
+                concept_iri="https://example.org/0000001",
+                language_code="en",
+                preferred_label="Valid ID",
+                definition="This ID has 7 digits",
+            ),
+        ]
+        collections = []
+
+        used_ids = extract_used_ids(concepts, collections, vocab_config)
+
+        assert used_ids == {1}, "8-digit ID should not be extracted with 7-digit config"
 
     def test_handles_empty_iris(self, temp_config, mandatory_fields):
         """Test that empty IRIs are handled gracefully."""
@@ -3431,14 +3517,14 @@ class TestIdentifierExtraction:
     def test_extract_identifier_7_digits(self):
         """Test identifier extraction with 7-digit pattern."""
 
-        pattern = re.compile(r"(?P<identifier>[0-9]{7})$")
+        pattern = re.compile(r"(?<![0-9])(?P<identifier>[0-9]{7})$")
         result = extract_identifier("https://example.org/vocab_0000123", pattern)
         assert result == "0000123"
 
     def test_extract_identifier_from_underscore_format(self):
         """Test identifier extraction from prefix_ID format."""
 
-        pattern = re.compile(r"(?P<identifier>[0-9]{7})$")
+        pattern = re.compile(r"(?<![0-9])(?P<identifier>[0-9]{7})$")
         result = extract_identifier(
             "https://w3id.org/nfdi4cat/voc4cat_0000195", pattern
         )
@@ -3447,20 +3533,34 @@ class TestIdentifierExtraction:
     def test_extract_identifier_no_match_logs_error(self):
         """Test that non-matching IRI returns empty string and logs error."""
 
-        pattern = re.compile(r"(?P<identifier>[0-9]{7})$")
+        pattern = re.compile(r"(?<![0-9])(?P<identifier>[0-9]{7})$")
         result = extract_identifier("https://example.org/concept", pattern)
         assert result == ""
 
     def test_extract_identifier_different_lengths(self):
         """Test identifier extraction with different digit lengths."""
 
-        pattern_5 = re.compile(r"(?P<identifier>[0-9]{5})$")
+        pattern_5 = re.compile(r"(?<![0-9])(?P<identifier>[0-9]{5})$")
         result = extract_identifier("https://example.org/vocab_00123", pattern_5)
         assert result == "00123"
 
-        pattern_4 = re.compile(r"(?P<identifier>[0-9]{4})$")
+        pattern_4 = re.compile(r"(?<![0-9])(?P<identifier>[0-9]{4})$")
         result = extract_identifier("https://example.org/vocab_1234", pattern_4)
         assert result == "1234"
+
+    def test_extract_identifier_rejects_too_many_digits(self):
+        """8-digit IRI must not match a 7-digit pattern."""
+
+        pattern = re.compile(r"(?<![0-9])(?P<identifier>[0-9]{7})$")
+        result = extract_identifier("https://example.org/vocab_00008210", pattern)
+        assert result == "", "8-digit ID should not match 7-digit pattern"
+
+    def test_extract_identifier_rejects_too_few_digits(self):
+        """6-digit IRI must not match a 7-digit pattern."""
+
+        pattern = re.compile(r"(?<![0-9])(?P<identifier>[0-9]{7})$")
+        result = extract_identifier("https://example.org/vocab_000082", pattern)
+        assert result == "", "6-digit ID should not match 7-digit pattern"
 
     def test_parse_name_url_name_and_url(self):
         """Test parse_name_url with name and URL."""

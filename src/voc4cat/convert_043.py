@@ -386,7 +386,9 @@ def convert_rdf_043_to_v1(
     id_pattern = config.ID_PATTERNS.get(vocab_name)
     if not id_pattern and vocab_config:
         # Fall back to compiling pattern from vocab_config.id_length
-        id_pattern = re.compile(rf"(?P<identifier>[0-9]{{{vocab_config.id_length}}})$")
+        id_pattern = re.compile(
+            rf"(?<![0-9])(?P<identifier>[0-9]{{{vocab_config.id_length}}})$"
+        )
 
     # Process each triple
     for s, p, o in input_graph:

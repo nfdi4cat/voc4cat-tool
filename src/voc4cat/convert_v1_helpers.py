@@ -381,7 +381,7 @@ def extract_used_ids(
     # Build regex pattern for extracting numeric IDs
     # IDs are at the end of the IRI and have a fixed length
     id_length = vocab_config.id_length
-    pattern = re.compile(rf"(\d{{{id_length}}})$")
+    pattern = re.compile(rf"(?<!\d)(\d{{{id_length}}})$")
 
     # Get permanent IRI part for filtering
     permanent_iri = str(vocab_config.permanent_iri_part).rstrip("/")
@@ -408,6 +408,12 @@ def extract_used_ids(
         match = pattern.search(expanded_iri)
         if match:
             used_ids.add(int(match.group(1)))
+        else:
+            logger.warning(
+                "IRI belongs to vocabulary but does not match ID pattern '%s': %s",
+                pattern.pattern,
+                expanded_iri,
+            )
 
     # Process collections - extract from collection_iri field
     seen_iris.clear()
@@ -428,6 +434,12 @@ def extract_used_ids(
         match = pattern.search(expanded_iri)
         if match:
             used_ids.add(int(match.group(1)))
+        else:
+            logger.warning(
+                "IRI belongs to vocabulary but does not match ID pattern '%s': %s",
+                pattern.pattern,
+                expanded_iri,
+            )
 
     return used_ids
 
