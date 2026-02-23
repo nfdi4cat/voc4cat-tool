@@ -91,7 +91,7 @@ def load_vocab(ttl_file: Path) -> dict:
         holder["alt_labels"] = []
         holder["parents"] = []
         for p, o in vocab_graph.predicate_objects(s):
-            if p == SKOS.pref_label:
+            if p == SKOS.prefLabel:
                 holder["pref_label"] = str(o)  # .toPython()
             if p == SKOS.altLabel:
                 holder["alt_labels"].append(str(o))
