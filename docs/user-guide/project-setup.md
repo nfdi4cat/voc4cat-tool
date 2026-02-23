@@ -161,11 +161,11 @@ The sheets that you put into this template may not have the same name as any of 
 It is suggested to merge the changes from the template repository before every new release of your vocabulary.
 This ensures that the centrally maintained features and best practices trickle into your project.
 
-To review the changes made in a new template version 1.x.y and compare to when you last pulled it use:
+To review the changes made in a new template version 26.x and compare to when you last pulled it use:
 
 ```bash
 # View changes
-git fetch https://github.com/nfdi4cat/voc4cat-template tag v1.x.y
+git fetch https://github.com/nfdi4cat/voc4cat-template tag v26.x
 git diff ...FETCH_HEAD
 ```
 
@@ -173,7 +173,7 @@ If you decide to take over the changes, pull them into your repository and push 
 
 ```bash
 # Apply changes
-git pull https://github.com/nfdi4cat/voc4cat-template tag v1.x.y
+git pull https://github.com/nfdi4cat/voc4cat-template tag v26.x
 # -- resolve any conflicts --
 git push
 ```
