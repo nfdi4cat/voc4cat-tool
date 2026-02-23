@@ -1,5 +1,11 @@
 # Change log
 
+## Unreleased
+
+Features:
+
+- Add `--diff-base REF` option for `transform --prov-from-git`. Only concepts with actual content changes compared to the given git ref get updated dates; unchanged concepts keep their dates from the base version. [#345](https://github.com/nfdi4cat/voc4cat-tool/issues/345)
+
 ## Release 1.0.3 (2026-02-14)
 
 Fixes:
