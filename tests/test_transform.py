@@ -637,3 +637,356 @@ def test_join_flat_structure_backward_compat(monkeypatch, datadir, tmp_path, cap
 
     # The joined file should exist
     assert (tmp_path / "flat-vocab.ttl").exists()
+
+
+# ===== Tests for --diff-base option =====
+
+
+def test_diff_base_unchanged_keeps_dates(git_repo_with_split_files, monkeypatch):
+    """Unchanged concept keeps original dates from base version."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    # Add provenance dates and commit -> this is the "base" state
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
+
+    # Record original dates from a concept file
+    concept_files = sorted(
+        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
+    )
+    test_file = concept_files[0]
+    graph = Graph().parse(test_file, format="turtle")
+    concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
+    original_created = str(next(iter(graph.objects(concept_iri, DCTERMS.created))))
+    original_modified = str(next(iter(graph.objects(concept_iri, DCTERMS.modified))))
+
+    # Simulate CI stripping dates: remove dct:created/modified, re-serialize, commit
+    for ttl_file in vocdir.rglob("*.ttl"):
+        g = Graph().parse(ttl_file, format="turtle")
+        g.remove((None, DCTERMS.created, None))
+        g.remove((None, DCTERMS.modified, None))
+        g.serialize(destination=ttl_file, format="longturtle")
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(
+        [
+            "git",
+            "commit",
+            "-m",
+            "CI strips dates",
+            "--date",
+            "2030-06-15T10:00:00",
+        ],
+        repo_path,
+    )
+
+    # Run --prov-from-git --diff-base HEAD~1 (compare against base with dates)
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD~1",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    # Content hasn't changed (only dates were stripped), so dates should be restored
+    graph2 = Graph().parse(test_file, format="turtle")
+    assert (
+        str(next(iter(graph2.objects(concept_iri, DCTERMS.created))))
+        == original_created
+    )
+    assert (
+        str(next(iter(graph2.objects(concept_iri, DCTERMS.modified))))
+        == original_modified
+    )
+
+
+def test_diff_base_changed_gets_git_dates(git_repo_with_split_files, monkeypatch):
+    """Changed concept gets dates updated from git history."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    # Add provenance dates and commit
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
+
+    # Get concept files
+    concept_files = sorted(
+        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
+    )
+    changed_file = concept_files[0]
+    unchanged_file = concept_files[1]
+
+    # Record dates from unchanged file
+    graph_unch = Graph().parse(unchanged_file, format="turtle")
+    unch_iri = next(iter(graph_unch.subjects(None, SKOS.Concept)))
+    unch_created = str(next(iter(graph_unch.objects(unch_iri, DCTERMS.created))))
+    unch_modified = str(next(iter(graph_unch.objects(unch_iri, DCTERMS.modified))))
+
+    # Modify the changed file's content (add a new triple)
+    graph_ch = Graph().parse(changed_file, format="turtle")
+    ch_iri = next(iter(graph_ch.subjects(None, SKOS.Concept)))
+    graph_ch.add((ch_iri, SKOS.note, Literal("A new note", lang="en")))
+    graph_ch.serialize(destination=changed_file, format="longturtle")
+
+    # Commit the change with a specific date
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(
+        [
+            "git",
+            "commit",
+            "-m",
+            "Modify concept",
+            "--date",
+            "2030-06-15T10:00:00",
+        ],
+        repo_path,
+    )
+
+    # Run --prov-from-git --diff-base HEAD~1
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD~1",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    # Unchanged file should keep base dates
+    graph_unch2 = Graph().parse(unchanged_file, format="turtle")
+    assert (
+        str(next(iter(graph_unch2.objects(unch_iri, DCTERMS.created)))) == unch_created
+    )
+    assert (
+        str(next(iter(graph_unch2.objects(unch_iri, DCTERMS.modified))))
+        == unch_modified
+    )
+
+    # Changed file should get new git dates (dct:modified from most recent commit)
+    graph_ch2 = Graph().parse(changed_file, format="turtle")
+    ch_modified = str(next(iter(graph_ch2.objects(ch_iri, DCTERMS.modified))))
+    assert ch_modified == "2030-06-15"
+
+
+def test_diff_base_new_file_gets_git_dates(
+    git_repo_with_split_files, monkeypatch, caplog
+):
+    """New file (not in base ref) gets dates from git history."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    # Create a new concept file in the partition directory
+    partition_dir = vocdir / "IDs0000xxx"
+    assert partition_dir.is_dir()
+
+    new_file = partition_dir / "99.ttl"
+    new_file.write_text(
+        "@prefix skos: <http://www.w3.org/2004/02/skos/core#> .\n"
+        "@prefix ex: <http://example.org/> .\n"
+        "@prefix dcterms: <http://purl.org/dc/terms/> .\n"
+        "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n"
+        "\n"
+        "ex:test99 a skos:Concept ;\n"
+        '    dcterms:identifier "test99"^^xsd:token ;\n'
+        '    skos:definition "A new concept"@en ;\n'
+        "    skos:inScheme <http://example.org/test/> ;\n"
+        '    skos:prefLabel "new term"@en .\n',
+        encoding="utf-8",
+    )
+
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(
+        [
+            "git",
+            "commit",
+            "-m",
+            "Add new concept",
+            "--date",
+            "2030-03-15T10:00:00",
+        ],
+        repo_path,
+    )
+
+    # Run --prov-from-git --diff-base HEAD~1 (new file not in base)
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD~1",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    # New file should get git dates
+    graph = Graph().parse(new_file, format="turtle")
+    concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
+    created = list(graph.objects(concept_iri, DCTERMS.created))
+    modified = list(graph.objects(concept_iri, DCTERMS.modified))
+    assert len(created) == 1
+    assert len(modified) == 1
+    assert str(modified[0]) == "2030-03-15"
+
+
+def test_diff_base_requires_prov_from_git(git_repo_with_split_files, monkeypatch):
+    """--diff-base without --prov-from-git raises error."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    with pytest.raises(Voc4catError, match="--diff-base requires --prov-from-git"):
+        main_cli(["transform", "--diff-base", "HEAD", "--inplace", str(vocdir)])
+
+
+def test_diff_base_invalid_ref(git_repo_with_split_files, monkeypatch):
+    """Invalid git ref raises Voc4catError."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    with pytest.raises(Voc4catError, match="not a valid git ref"):
+        main_cli(
+            [
+                "transform",
+                "--prov-from-git",
+                "--diff-base",
+                "nonexistent-ref-xyz",
+                "--inplace",
+                str(vocdir),
+            ]
+        )
+
+
+def test_diff_base_base_no_dates_falls_through(git_repo_with_split_files, monkeypatch):
+    """If base version has no dates, falls through to git-history logic."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    # Base state has NO provenance dates (just split files committed)
+    # Run --prov-from-git --diff-base HEAD
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    # Content is unchanged, but base has no dates -> falls through to git-history
+    concept_files = [f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"]
+    graph = Graph().parse(concept_files[0], format="turtle")
+    concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
+
+    # Should have dates from git history (not from base, since base had none)
+    created = list(graph.objects(concept_iri, DCTERMS.created))
+    modified = list(graph.objects(concept_iri, DCTERMS.modified))
+    assert len(created) == 1
+    assert len(modified) == 1
+
+
+def test_diff_base_with_outdir(git_repo_with_split_files, monkeypatch):
+    """Works correctly with --outdir (source paths used for git lookups)."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    # Add provenance and commit
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
+
+    # Record dates from a concept file
+    concept_files = sorted(
+        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
+    )
+    test_file = concept_files[0]
+    graph_orig = Graph().parse(test_file, format="turtle")
+    concept_iri = next(iter(graph_orig.subjects(None, SKOS.Concept)))
+    original_created = str(next(iter(graph_orig.objects(concept_iri, DCTERMS.created))))
+    original_modified = str(
+        next(iter(graph_orig.objects(concept_iri, DCTERMS.modified)))
+    )
+
+    outdir = repo_path / "output"
+    outdir.mkdir()
+
+    # Run with --outdir and --diff-base HEAD (unchanged)
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD",
+            "--outdir",
+            str(outdir),
+            str(vocdir),
+        ]
+    )
+
+    # Check output directory has files with restored dates
+    target_dir = outdir / vocdir.name
+    assert target_dir.is_dir()
+
+    copied_concept_files = sorted(
+        f for f in target_dir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
+    )
+    assert len(copied_concept_files) > 0
+
+    # Dates should match the base (HEAD) since content is unchanged
+    graph_copy = Graph().parse(copied_concept_files[0], format="turtle")
+    assert (
+        str(next(iter(graph_copy.objects(concept_iri, DCTERMS.created))))
+        == original_created
+    )
+    assert (
+        str(next(iter(graph_copy.objects(concept_iri, DCTERMS.modified))))
+        == original_modified
+    )
+
+
+def test_diff_base_concept_scheme(git_repo_with_split_files, monkeypatch):
+    """Handles concept_scheme.ttl (with Person/Organization entities)."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    # Add provenance and commit
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
+
+    cs_file = vocdir / "concept_scheme.ttl"
+    assert cs_file.exists()
+
+    # Record concept scheme dates
+    graph = Graph().parse(cs_file, format="turtle")
+    cs_iri = next(iter(graph.subjects(None, SKOS.ConceptScheme)))
+    original_created = str(next(iter(graph.objects(cs_iri, DCTERMS.created))))
+    original_modified = str(next(iter(graph.objects(cs_iri, DCTERMS.modified))))
+
+    # Run --prov-from-git --diff-base HEAD (unchanged)
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    # concept_scheme.ttl should be handled correctly (dates restored from base)
+    graph2 = Graph().parse(cs_file, format="turtle")
+    assert str(next(iter(graph2.objects(cs_iri, DCTERMS.created)))) == original_created
+    assert (
+        str(next(iter(graph2.objects(cs_iri, DCTERMS.modified)))) == original_modified
+    )
