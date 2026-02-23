@@ -1,6 +1,6 @@
 # Change log
 
-## Unreleased
+## Release 1.0.4 (2026-02-23)
 
 Features:
 
