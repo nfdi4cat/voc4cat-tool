@@ -210,6 +210,17 @@ def add_transform_subparser(subparsers, options):
         ),
         action="store_true",
     )
+    skosopt.add_argument(
+        "--diff-base",
+        metavar="REF",
+        help=(
+            "Git ref (branch, tag, or commit) to compare against when using "
+            "--prov-from-git. Only concepts with content changes compared to "
+            "REF get updated dates; unchanged concepts keep their dates from "
+            "REF. Requires --prov-from-git."
+        ),
+        default=None,
+    )
     parser.add_argument(
         "--inplace",  # was "--no-warn"
         help=(
