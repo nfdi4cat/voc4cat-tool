@@ -44,6 +44,7 @@ from voc4cat.convert_v1 import (
     build_concept_to_ordered_collections_map,
     build_curies_converter_from_prefixes,
     build_entity_graph,
+    build_mappings_graph,
     config_to_concept_scheme_v1,
     excel_to_rdf_v1,
     extract_collections_from_rdf,
@@ -347,6 +348,67 @@ class TestModelConversion:
             or "http://example.org/related1" in models[0].related_matches
         )
         assert models[0].exact_matches != ""
+
+    def test_mappings_to_v1_multiple_iris_newline_separated(self, temp_config):
+        """Multiple IRIs per mapping type must be newline-separated for round-trip."""
+        mappings_data = {
+            "http://example.org/c1": {
+                "related_matches": [],
+                "close_matches": [],
+                "exact_matches": [
+                    "http://example.org/exact1",
+                    "http://example.org/exact2",
+                ],
+                "narrower_matches": [],
+                "broader_matches": [],
+            }
+        }
+
+        models = rdf_mappings_to_v1(mappings_data)
+
+        assert len(models) == 1
+        # Must be newline-separated so expand_iri_list() can split them correctly
+        parts = models[0].exact_matches.split("\n")
+        assert len(parts) == 2
+        assert any("exact1" in p for p in parts)
+        assert any("exact2" in p for p in parts)
+
+
+class TestMappingsRoundtrip:
+    """Round-trip tests for Mappings: RDF -> MappingV1 -> RDF."""
+
+    def test_multiple_iris_roundtrip(self, temp_config):
+        """Multiple IRIs must survive a full MappingV1 -> rdf_mappings_to_v1 -> build_mappings_graph round-trip."""
+        mappings_data = {
+            "http://example.org/c1": {
+                "related_matches": [],
+                "close_matches": [],
+                "exact_matches": [
+                    "http://example.org/exact1",
+                    "http://example.org/exact2",
+                ],
+                "narrower_matches": [
+                    "http://example.org/narrow1",
+                    "http://example.org/narrow2",
+                ],
+                "broader_matches": [],
+            }
+        }
+
+        # Write side: RDF data -> MappingV1 models
+        models = rdf_mappings_to_v1(mappings_data)
+
+        # Read side: MappingV1 models -> RDF graph
+        g = build_mappings_graph(models, temp_config.curies_converter)
+
+        c1 = URIRef("http://example.org/c1")
+        exact_matches = set(g.objects(c1, SKOS.exactMatch))
+        narrower_matches = set(g.objects(c1, SKOS.narrowMatch))
+
+        assert URIRef("http://example.org/exact1") in exact_matches
+        assert URIRef("http://example.org/exact2") in exact_matches
+        assert URIRef("http://example.org/narrow1") in narrower_matches
+        assert URIRef("http://example.org/narrow2") in narrower_matches
 
 
 class TestRdfToXlsxV1:
