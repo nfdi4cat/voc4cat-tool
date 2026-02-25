@@ -1071,24 +1071,24 @@ def rdf_mappings_to_v1(
     for concept_iri, data in mappings_data.items():
         concept_iri_display = format_iri_with_label(concept_iri, concepts_data)
 
-        # Format each mapping type as space-separated IRIs
-        related = " ".join(
+        # Format each mapping type as newline-separated IRIs (matches expand_iri_list reader)
+        related = "\n".join(
             converter.compress(m, passthrough=True)
             for m in data.get("related_matches", [])
         )
-        close = " ".join(
+        close = "\n".join(
             converter.compress(m, passthrough=True)
             for m in data.get("close_matches", [])
         )
-        exact = " ".join(
+        exact = "\n".join(
             converter.compress(m, passthrough=True)
             for m in data.get("exact_matches", [])
         )
-        narrower = " ".join(
+        narrower = "\n".join(
             converter.compress(m, passthrough=True)
             for m in data.get("narrower_matches", [])
         )
-        broader = " ".join(
+        broader = "\n".join(
             converter.compress(m, passthrough=True)
             for m in data.get("broader_matches", [])
         )

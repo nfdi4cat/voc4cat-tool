@@ -234,7 +234,7 @@ def load_config(config_file: Path | None = None, config: IDrangeConfig | None = 
         voc = new_conf["IDRANGES"].vocabs.get(name)
         id_patterns[name] = re.compile(
             r"(?<![0-9])(?P<identifier>[0-9]{%i})$" % voc.id_length
-        )  # noqa: UP031
+        )
     new_conf["ID_PATTERNS"] = id_patterns
 
     new_conf["ID_RANGES_BY_ACTOR"] = _id_ranges_by_actor(new_conf)
