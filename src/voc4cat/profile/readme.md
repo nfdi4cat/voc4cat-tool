@@ -9,7 +9,7 @@ These releases use the vocabulary profile 'vp4Cat' [SHACL profile](./vp4cat-5.2.
 
 The differences in vp4cat are:
 
-- vocabulary-profile IRI under NFDI4Cat namespace `https://w3id.org/nfdi4cat/voc4cat/profile`
+- vocabulary-profile IRI under NFDI4Cat namespace `https://w3id.org/nfdi4cat/vp4cat`
 - Modified Requirement-2.4.3b to allow schema:url as alternative to schema:email for Persons
 - Modified Requirement-2.3.4 to also accept prov:hadPrimarySource as alternative
 
