@@ -6,13 +6,16 @@ These checks cannot be handled with pydantic model validation.
 import glob
 import logging
 import os
+from collections.abc import Iterable
 from itertools import chain
 from pathlib import Path
+from typing import cast
 
 from curies import Converter
-from rdflib import RDF, SKOS, Graph, compare
+from rdflib import RDF, SKOS, Graph, URIRef, compare
 
 from voc4cat import config
+from voc4cat.config import IDrangeConfig
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +24,7 @@ class Voc4catError(Exception):
     pass
 
 
-def validate_config_has_idrange(vocab_name):
+def validate_config_has_idrange(vocab_name: str) -> None:
     """Check that the vocabulary has at least one id_range."""
     logger.debug('-> Validating ID range config for vocabulary "%s".', vocab_name)
     if config.IDRANGES.default_config:
@@ -34,7 +37,9 @@ def validate_config_has_idrange(vocab_name):
         raise Voc4catError(msg % vocab_name)
 
 
-def check_number_of_files_in_inbox(inbox_dir: Path, idranges: dict | None = None):
+def check_number_of_files_in_inbox(
+    inbox_dir: Path, idranges: IDrangeConfig | None = None
+) -> None:
     """Check that inbox has not more than one file if single_vocab option is true."""
     idranges = config.IDRANGES if idranges is None else idranges
     inbox_files = glob.glob(str(inbox_dir / "*.xlsx"))
@@ -44,7 +49,7 @@ def check_number_of_files_in_inbox(inbox_dir: Path, idranges: dict | None = None
         raise Voc4catError(msg % (inbox_dir, len(inbox_files)))
 
 
-def validate_vocabulary_files_for_ci_workflow(vocab_dir: Path, inbox_dir: Path):
+def validate_vocabulary_files_for_ci_workflow(vocab_dir: Path, inbox_dir: Path) -> None:
     """Check if name of vocabulary is OK"""
 
     # (1) If config: Verify that xlsx-filenames (stem) present in inbox are defined in config
@@ -116,7 +121,7 @@ def validate_vocabulary_files_for_ci_workflow(vocab_dir: Path, inbox_dir: Path):
         raise Voc4catError(msg % ", ".join(missing_in_config))
 
 
-def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
+def check_for_removed_iris(prev_vocab: Path, new_vocab: Path) -> None:
     """
     Validate that concepts/collection were not removed from prev_vocab to new_vocab.
 
@@ -136,8 +141,8 @@ def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
     # print("Only in 1st\n", in_prev.serialize(format="turtle"))
     # print("Only in 2nd\n", in_new.serialize(format="turtle"))
 
-    voc = config.IDRANGES.vocabs.get(prev_vocab.stem.lower(), {})
-    delete_allowed = voc.checks.allow_delete if getattr(voc, "checks", False) else False
+    voc = config.IDRANGES.vocabs.get(prev_vocab.stem.lower())
+    delete_allowed = voc.checks.allow_delete if voc is not None else False
     if in_prev:
         removed = 0
         for iri in in_prev.subjects(RDF.type, SKOS.Concept):
@@ -290,7 +295,11 @@ def check_hierarchical_redundancy(vocab_path: Path) -> list[tuple[str, str, str]
 
     redundancies = []
     for concept, parent1 in sorted(g.subject_objects(SKOS.broader)):
-        for parent2 in sorted(g.objects(concept, SKOS.broader)):
+        # The profile's SHACL shapes constrain skos:broader's value to
+        # sh:nodeKind sh:IRI, so objects of this predicate are always URIRef.
+        for parent2 in sorted(
+            cast("Iterable[URIRef]", g.objects(concept, SKOS.broader))
+        ):
             if parent1 == parent2:
                 continue  # must be different parents
             # Check if parent2 is an ancestor of parent1 (reachable via broader)
