@@ -303,7 +303,6 @@ disallow_untyped_decorators = false
 module = [
   "voc4cat.check",
   "voc4cat.cli",
-  "voc4cat.config",
   "voc4cat.convert",
   "voc4cat.convert_043",
   "voc4cat.convert_v1",

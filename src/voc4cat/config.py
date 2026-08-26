@@ -5,7 +5,7 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any, TypedDict
 
 from curies import Converter
 from pydantic import (
@@ -81,7 +81,7 @@ class IdrangeItem(BaseModel):
 
     @field_validator("ror_id", "orcid", mode="before")
     @classmethod
-    def handle_empty_field(cls, value):
+    def handle_empty_field(cls, value: Any) -> Any:
         # None cannot be expressed in toml so we catch an empty string before validation.
         if value == "":
             return None
@@ -120,8 +120,8 @@ class Vocab(BaseModel):
 
     @field_validator("id_range", mode="before")
     @classmethod
-    def check_names_not_empty(cls, value):
-        ids_defined = set()
+    def check_names_not_empty(cls, value: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        ids_defined: set[int] = set()
         for idr in value:
             new_ids = set(range(idr["first_id"], idr["last_id"] + 1))
             reused = list(ids_defined & new_ids)
@@ -183,18 +183,35 @@ IDRANGES = IDrangeConfig(default_config=True)
 IDRANGES_PATH: Path | None = (
     None  # Path to idranges.toml (for resolving relative paths)
 )
-ID_PATTERNS = {}
-ID_RANGES_BY_ACTOR = defaultdict(list)
+ID_PATTERNS: dict[str, re.Pattern[str]] = {}
+ID_RANGES_BY_ACTOR: defaultdict[tuple[str, str], list[tuple[int, int]]] = defaultdict(
+    list
+)
 CURIES_CONVERTER_MAP = {}
 
 
-def _id_ranges_by_actor(new_conf):
+class _NewConf(TypedDict, total=False):
+    """Shape of the local state assembled by load_config() before it is
+    published to this module's globals()."""
+
+    IDRANGES: IDrangeConfig
+    IDRANGES_PATH: Path | None
+    ID_PATTERNS: dict[str, re.Pattern[str]]
+    ID_RANGES_BY_ACTOR: defaultdict[tuple[str, str], list[tuple[int, int]]]
+
+
+def _id_ranges_by_actor(
+    new_conf: _NewConf,
+) -> defaultdict[tuple[str, str], list[tuple[int, int]]]:
     # Look-up map of ID ranges keyed by (vocabulary, actor). Ranges are granted
     # per vocabulary, so an actor's ranges must not leak between vocabularies.
     # Actor keys are lowercased because GitHub names are case-insensitive.
-    id_ranges_by_actor = defaultdict(list)
+    id_ranges_by_actor: defaultdict[tuple[str, str], list[tuple[int, int]]] = (
+        defaultdict(list)
+    )
     for name in new_conf["IDRANGES"].vocabs:
-        voc = new_conf["IDRANGES"].vocabs.get(name)
+        # Subscript, not .get(): name always comes from this same dict's keys.
+        voc = new_conf["IDRANGES"].vocabs[name]
         for idr in voc.id_range:
             rng = (idr.first_id, idr.last_id)
             if idr.orcid:
@@ -208,8 +225,10 @@ def _id_ranges_by_actor(new_conf):
     return id_ranges_by_actor
 
 
-def load_config(config_file: Path | None = None, config: IDrangeConfig | None = None):
-    new_conf = {}
+def load_config(
+    config_file: Path | None = None, config: IDrangeConfig | None = None
+) -> None:
+    new_conf: _NewConf = {}
     new_conf["ID_PATTERNS"] = {}
     new_conf["ID_RANGES_BY_ACTOR"] = defaultdict(list)
     new_conf["IDRANGES_PATH"] = None
@@ -225,15 +244,27 @@ def load_config(config_file: Path | None = None, config: IDrangeConfig | None = 
         new_conf["IDRANGES"] = IDrangeConfig(**conf)
         new_conf["IDRANGES_PATH"] = config_file.resolve()
     else:
+        # Reachable only when config is not None: the two branches above
+        # together cover every case where config is None (missing/absent
+        # config_file, or config_file is None). The guard documents that
+        # invariant and narrows the type for model_dump_json() below.
+        if config is None:
+            msg = (
+                "Internal error in load_config(): reached the config-refresh "
+                "branch with config=None. This indicates a logic error in "
+                "load_config()'s branching, not a caller mistake."
+            )
+            raise RuntimeError(msg)
         new_conf["IDRANGES"] = IDrangeConfig().model_validate_json(
             config.model_dump_json()
         )
         logger.debug("Refreshing global state of config.")
 
     # pre-compile regex patterns for ID part of IRIs for each vocabulary
-    id_patterns = {}
+    id_patterns: dict[str, re.Pattern[str]] = {}
     for name in new_conf["IDRANGES"].vocabs:
-        voc = new_conf["IDRANGES"].vocabs.get(name)
+        # Subscript, not .get(): name always comes from this same dict's keys.
+        voc = new_conf["IDRANGES"].vocabs[name]
         id_patterns[name] = re.compile(
             rf"(?<![0-9])(?P<identifier>[0-9]{{{voc.id_length}}})$"
         )
