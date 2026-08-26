@@ -19,7 +19,16 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Any, Union, cast, get_args, get_origin
+from typing import (
+    Annotated,
+    Any,
+    Generic,
+    TypeVar,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+)
 
 from openpyxl import load_workbook
 from openpyxl.cell import Cell, MergedCell
@@ -982,6 +991,7 @@ class XLSXConfig:
     exclude_fields: set[str] | None = None
     field_order: list[str] | None = None
     metadata_visibility: MetadataToggleConfig | None = None
+    enable_cell_formatting: bool = True
 
     def should_include_field(self, field_name: str) -> bool:
         """Check if a field should be included based on configuration."""
@@ -1007,12 +1017,16 @@ class XLSXConfig:
         return [f for f in result if self.should_include_field(f)]
 
 
+# Configuration type held by a formatter and its processor.
+ConfigT = TypeVar("ConfigT", bound=XLSXConfig)
+
+
 # Base formatter class
-class XLSXFormatter(ABC):
+class XLSXFormatter(ABC, Generic[ConfigT]):
     """Base formatter interface for different xlsx layouts."""
 
-    def __init__(self, config: XLSXConfig):
-        self.config = config
+    def __init__(self, config: ConfigT) -> None:
+        self.config: ConfigT = config
         self.serialization_engine = XLSXSerializationEngine()
         self.row_calculator = XLSXRowCalculator(config)
 
@@ -1042,10 +1056,7 @@ class XLSXFormatter(ABC):
     ) -> None:
         """Apply consistent formatting to data cells (not headers)."""
         # Skip formatting if disabled in configuration
-        if (
-            hasattr(self.config, "enable_cell_formatting")
-            and not self.config.enable_cell_formatting
-        ):
+        if not self.config.enable_cell_formatting:
             return
 
         # Vertical alignment: center for all data cells
@@ -1096,7 +1107,7 @@ class XLSXFormatter(ABC):
         """Format field name as readable header text."""
         return self._get_field_display_name(field_analysis)
 
-    def _add_title(self, worksheet: Worksheet, title: str) -> None:
+    def _add_title(self, worksheet: Worksheet, title: str | None) -> None:
         """Add title to worksheet."""
         if title:
             title_row = self.row_calculator.get_title_row()
@@ -1224,12 +1235,12 @@ class XLSXFormatter(ABC):
 
 
 # Base processor class
-class XLSXProcessor(ABC):
+class XLSXProcessor(ABC, Generic[ConfigT]):
     """Base class for all XLSX processors."""
 
-    def __init__(self, config: XLSXConfig, formatter: XLSXFormatter):
-        self.config = config
-        self.formatter = formatter
+    def __init__(self, config: ConfigT, formatter: XLSXFormatter[ConfigT]) -> None:
+        self.config: ConfigT = config
+        self.formatter: XLSXFormatter[ConfigT] = formatter
         self.field_analyzer = XLSXFieldAnalyzer()
 
     @abstractmethod
