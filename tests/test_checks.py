@@ -552,3 +552,35 @@ def test_no_check_without_vocabulary_config(tmp_path, temp_config):
     new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1, 15])
 
     assert check_new_ids_in_actor_range(prev, new, "sofia-garcia") is None
+
+
+def test_check_for_removed_iris_detects_removed_ordered_collection(
+    tmp_path, myvocab_config, caplog
+):
+    original = write_vocab(tmp_path / "myvocab.ttl", ordered_ids=[1, 2])
+    reduced = write_vocab(tmp_path / "reduced.ttl", ordered_ids=[1])
+
+    with (
+        caplog.at_level(logging.ERROR),
+        pytest.raises(Voc4catError, match=r"Forbidden removal of 1"),
+    ):
+        check_for_removed_iris(original, reduced)
+
+    assert "Removal of a Collection detected" in caplog.text
+
+
+def test_check_for_removed_iris_matches_vocabulary_name_case_insensitively(
+    tmp_path, myvocab_config, caplog
+):
+    """Config keys are lowercased, file names need not be."""
+    config = myvocab_config
+    config.IDRANGES.vocabs["myvocab"].checks.allow_delete = True
+    config.load_config(config=config.IDRANGES)
+
+    original = write_vocab(tmp_path / "MyVocab.ttl", concept_ids=[1, 2])
+    reduced = write_vocab(tmp_path / "reduced.ttl", concept_ids=[1])
+
+    with caplog.at_level(logging.WARNING):
+        assert check_for_removed_iris(original, reduced) is None
+
+    assert "Removal of a Concept detected" in caplog.text

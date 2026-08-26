@@ -103,14 +103,16 @@ def generate_template_v1(
     # 1. Concept Scheme (key-value format)
     _export_concept_scheme(temp_path, vocab_config)
 
+    concepts, collections, mappings = _examples_for_vocab(vocab_config)
+
     # 2. Concepts (table format)
-    _export_concepts(temp_path)
+    _export_concepts(temp_path, concepts)
 
     # 3. Collections (table format)
-    _export_collections(temp_path)
+    _export_collections(temp_path, collections)
 
     # 4. Mappings (table format)
-    _export_mappings(temp_path)
+    _export_mappings(temp_path, mappings)
 
     # 5. ID Ranges (table format, read-only)
     _export_id_ranges(temp_path, vocab_config)
@@ -198,10 +200,44 @@ def _export_concept_scheme(filepath: Path, vocab_config: Vocab | None = None) ->
     )
 
 
-def _export_concepts(filepath: Path) -> None:
+def _example_entity_iri(vocab_config: Vocab, id_: int) -> str:
+    """Build an example IRI, as CURIE if a prefix covers the permanent IRI part."""
+    permanent_iri_part = str(vocab_config.permanent_iri_part)
+    id_part = f"{id_:0{vocab_config.id_length}d}"
+    for prefix, namespace in vocab_config.prefix_map.items():
+        if str(namespace) == permanent_iri_part:
+            return f"{prefix}:{id_part}"
+    return f"{permanent_iri_part}{id_part}"
+
+
+def _examples_for_vocab(vocab_config: Vocab | None):
+    """Example rows using IDs from the first configured ID range.
+
+    Generic example data is kept when no ID range is configured. Suggesting
+    IDs from outside the granted ranges would produce a vocabulary that the
+    ci-post ID check rejects.
+    """
+    if vocab_config is None or not vocab_config.id_range:
+        return EXAMPLE_CONCEPTS, EXAMPLE_COLLECTIONS, EXAMPLE_MAPPINGS
+
+    first_id = vocab_config.id_range[0].first_id
+    concept_iri = _example_entity_iri(vocab_config, first_id)
+    # A range always holds at least two IDs, so the collection gets its own.
+    collection_iri = _example_entity_iri(vocab_config, first_id + 1)
+    return (
+        [c.model_copy(update={"concept_iri": concept_iri}) for c in EXAMPLE_CONCEPTS],
+        [
+            c.model_copy(update={"collection_iri": collection_iri})
+            for c in EXAMPLE_COLLECTIONS
+        ],
+        [m.model_copy(update={"concept_iri": concept_iri}) for m in EXAMPLE_MAPPINGS],
+    )
+
+
+def _export_concepts(filepath: Path, concepts) -> None:
     """Export Concepts sheet in table format."""
     export_to_xlsx(
-        EXAMPLE_CONCEPTS,
+        concepts,
         filepath,
         format_type="table",
         config=CONCEPTS_EXPORT_CONFIG,
@@ -209,10 +245,10 @@ def _export_concepts(filepath: Path) -> None:
     )
 
 
-def _export_collections(filepath: Path) -> None:
+def _export_collections(filepath: Path, collections) -> None:
     """Export Collections sheet in table format."""
     export_to_xlsx(
-        EXAMPLE_COLLECTIONS,
+        collections,
         filepath,
         format_type="table",
         config=COLLECTIONS_EXPORT_CONFIG,
@@ -220,10 +256,10 @@ def _export_collections(filepath: Path) -> None:
     )
 
 
-def _export_mappings(filepath: Path) -> None:
+def _export_mappings(filepath: Path, mappings) -> None:
     """Export Mappings sheet in table format."""
     export_to_xlsx(
-        EXAMPLE_MAPPINGS,
+        mappings,
         filepath,
         format_type="table",
         config=MAPPINGS_EXPORT_CONFIG,
