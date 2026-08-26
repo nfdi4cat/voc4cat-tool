@@ -121,34 +121,41 @@ module is touched once instead of by five successive flag passes.
 
 Modules are ordered leaf-first by the intra-package import graph, because
 `disallow_untyped_calls` reports a typed module that calls a still-untyped
-dependency. The order below is a topological sort of that graph, which is
-acyclic. Note that `xlsx_api`, `xlsx_keyvalue` and `xlsx_table` use relative
-imports; the graph accounts for them.
+dependency. The order below is a topological sort of that graph.
 
 | # | Module | Errors | Intra-package dependencies |
 | ---: | --- | ---: | --- |
 | 1 | `__init__` | 1 | — |
 | 2 | `assistant` | 20 | — |
-| 3 | `checks` | 11 | — |
-| 4 | `fields` | 2 | — |
-| 5 | `merge_vocab` | 1 | — |
-| 6 | `xlsx_common` | 30 | — |
-| 7 | `config` | 10 | `fields` |
-| 8 | `gh_index` | 17 | `checks` |
-| 9 | `xlsx_keyvalue` | 1 | `xlsx_common` |
-| 10 | `xlsx_table` | 10 | `xlsx_common` |
-| 11 | `docs` | 2 | `gh_index` |
-| 12 | `models_v1` | 0 | `xlsx_common`, `xlsx_table` |
-| 13 | `xlsx_api` | 1 | `xlsx_common`, `xlsx_keyvalue`, `xlsx_table` |
-| 14 | `convert_v1_helpers` | 4 | `config`, `models_v1` |
-| 15 | `utils` | 4 | `checks`, `models_v1` |
-| 16 | `convert_v1` | 29 | 8 modules |
+| 3 | `fields` | 2 | — |
+| 4 | `merge_vocab` | 1 | — |
+| 5 | `xlsx_common` | 30 | — |
+| 6 | `config` | 10 | `fields` |
+| 7 | `xlsx_keyvalue` | 1 | `xlsx_common` |
+| 8 | `xlsx_table` | 10 | `xlsx_common` |
+| 9 | `checks` | 11 | `config` |
+| 10 | `models_v1` | 0 | `xlsx_common`, `xlsx_table` |
+| 11 | `xlsx_api` | 1 | `xlsx_common`, `xlsx_keyvalue`, `xlsx_table` |
+| 12 | `convert_v1_helpers` | 4 | `config`, `models_v1` |
+| 13 | `gh_index` | 17 | `checks`, `config` |
+| 14 | `utils` | 4 | `checks`, `models_v1` |
+| 15 | `convert_v1` | 29 | 9 modules |
+| 16 | `docs` | 2 | `gh_index` |
 | 17 | `gen_template` | 5 | 8 modules |
-| 18 | `transform` | 19 | `checks`, `utils` |
+| 18 | `transform` | 19 | `checks`, `config`, `utils` |
 | 19 | `convert_043` | 10 | `config`, `convert_v1`, `convert_v1_helpers`, `utils` |
-| 20 | `convert` | 8 | 6 modules |
-| 21 | `check` | 9 | 6 modules |
-| 22 | `cli` | 23 | 7 modules |
+| 20 | `convert` | 8 | 7 modules |
+| 21 | `check` | 9 | 7 modules |
+| 22 | `cli` | 23 | 8 modules |
+
+The graph accounts for all three import forms in use: `from voc4cat.x import y`,
+`from .x import y` (in `xlsx_api`, `xlsx_keyvalue` and `xlsx_table`) and
+`from voc4cat import x` (in `checks`, `config` and others). It is acyclic.
+
+The implementation plan groups these into 18 tasks and does not follow this
+order exactly: `checks` is annotated before `config`. That inversion was
+verified to be safe, because `checks` only reads `config.IDRANGES`, a pydantic
+model with typed attributes, and calls no unannotated function in `config`.
 
 Adjacent small modules may share a commit; the large ones
 (`xlsx_common`, `convert_v1`, `cli`, `assistant`) get their own.
