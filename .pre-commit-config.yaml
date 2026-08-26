@@ -9,7 +9,7 @@ repos:
       -  id: check-toml
       -  id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.10
+    rev: v0.16.4
     hooks:
       # Run the linter.
       - id: ruff
@@ -17,6 +17,6 @@ repos:
       # Run the formatter.
       - id: ruff-format
   - repo: https://github.com/crate-ci/typos
-    rev: v1.40.0
+    rev: v1.49.0
     hooks:
       - id: typos
