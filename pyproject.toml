@@ -309,7 +309,6 @@ module = [
   "voc4cat.convert_v1_helpers",
   "voc4cat.docs",
   "voc4cat.gen_template",
-  "voc4cat.gh_index",
   "voc4cat.transform",
   "voc4cat.utils",
   "voc4cat.xlsx_api",
