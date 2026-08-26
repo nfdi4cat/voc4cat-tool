@@ -314,7 +314,6 @@ module = [
   "voc4cat.transform",
   "voc4cat.utils",
   "voc4cat.xlsx_api",
-  "voc4cat.xlsx_common",
   "voc4cat.xlsx_keyvalue",
   "voc4cat.xlsx_table",
 ]
