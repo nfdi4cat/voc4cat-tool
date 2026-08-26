@@ -716,12 +716,10 @@ Delete these lines from the `module = [...]` list in `pyproject.toml`:
 Run: `just typecheck`
 Expected: FAIL with the 11 errors above.
 
-- [ ] **Step 3: STOP and confirm the formatter/config approach with David**
+- [ ] **Step 3: Make `XLSXFormatter` generic in its config type**
 
-Two options. Do not pick unilaterally; the decision was explicitly deferred to
-this point in `docs/plans/2026-08-26-typing-support-design.md`.
-
-Option A, generic base. `XLSXFormatter` becomes generic in its config type:
+David decided this; it is no longer an open question. The base becomes generic
+so each subclass declares which config it holds:
 
 ```python
 ConfigT = TypeVar("ConfigT", bound=XLSXConfig)
@@ -734,30 +732,64 @@ class XLSXFormatter(ABC, Generic[ConfigT]):
         self.row_calculator = XLSXRowCalculator(config)
 ```
 
-with `class XLSXTableFormatter(XLSXFormatter[XLSXTableConfig])`. Type-safe and
-self-documenting, but touches the base class and every subclass, and callers
-holding a bare `XLSXFormatter` need a parameter.
+Then `class XLSXTableFormatter(XLSXFormatter[XLSXTableConfig])`,
+`class XLSXKeyValueFormatter(XLSXFormatter[XLSXKeyValueConfig])`, and
+`XLSXJoinedTableFormatter(XLSXTableFormatter)` inherits its parameter.
+Callers holding a bare `XLSXFormatter` need a parameter; use the concrete type
+where one is known rather than `XLSXFormatter[Any]`.
 
-Option B, narrowed re-annotation in each subclass:
+This clears the four `attr-defined` errors at `xlsx_table.py:586, 617, 1036, 1057`.
+
+- [ ] **Step 4: Declare the nine phantom config fields**
+
+Ten config attributes are reached through `getattr`/`hasattr` probes. Nine of
+them are declared on no config class and assigned nowhere in `src/`, `tests/`
+or `example/`, so the probes always fall through to their defaults: that
+styling is effectively hardcoded and the knobs do nothing.
+
+Declare each with **exactly its current default**, then replace the probe with
+direct attribute access. This is behaviour-preserving — `getattr(cfg, "x", 9)`
+and `cfg.x` where `x: int = 9` are identical — and it removes eleven
+`Any`-leaking sites.
+
+On `XLSXConfig` (base), because the probe lives in the base formatter at
+`xlsx_common.py:1046` and is also read at `xlsx_keyvalue.py:199`:
 
 ```python
-class XLSXTableFormatter(XLSXFormatter):
-    def __init__(self, config: XLSXTableConfig) -> None:
-        super().__init__(config)
-        self.config: XLSXTableConfig = config
+    enable_cell_formatting: bool = True
 ```
 
-Smaller diff, confined to the subclasses, but the narrowing is repeated per
-subclass and a caller holding the base type still sees `XLSXConfig`.
+Verify the behaviour holds: today `hasattr(...)` is False, so the guard
+short-circuits and formatting always applies. With the field declared `True`,
+`not self.config.enable_cell_formatting` is False, so formatting still always
+applies. Simplify the guard to `if not self.config.enable_cell_formatting:`.
 
-Recommend Option A if `xlsx_api.py:144` (Task 9) also becomes cleaner under it;
-otherwise Option B. Report the recommendation and wait for the decision.
+On `XLSXTableConfig`, because all eight probes are inside `XLSXTableFormatter`:
 
-- [ ] **Step 4: Apply the agreed approach**
+```python
+    description_font_size: int = 9
+    description_color: str = "666666"
+    meaning_style_italic: bool = True
+    meaning_font_size: int = 9
+    meaning_color: str = "666666"
+    unit_style_italic: bool = True
+    unit_font_size: int = 9
+    unit_color: str = "666666"
+```
 
-Implement the option David chose. That clears lines 586, 617, 1036 and 1057.
+Then rewrite `xlsx_table.py:392, 393, 430, 431, 432, 469, 470, 471` as direct
+attribute access. `header_row_color` is already declared on `XLSXTableConfig`;
+its `hasattr` guard at `xlsx_table.py:547` can also become a direct check.
 
-- [ ] **Step 5: Fix the `_add_title` argument type**
+Do not invent new defaults, and do not add fields nobody reads.
+
+- [ ] **Step 5: Verify the generic change did not alter behaviour**
+
+`Generic[ConfigT]` adds `__class_getitem__` machinery but no runtime logic.
+Confirm `tests/test_xlsx_table.py` and `tests/test_xlsx_keyvalue.py` still pass
+in full; they are the closest coverage this area has.
+
+- [ ] **Step 6: Fix the `_add_title` argument type**
 
 Lines 322 and 817 pass `str | None` where `_add_title` declares `str`.
 `XLSXConfig.title` is `str | None = None` (`xlsx_common.py:957`). Either guard
@@ -765,13 +797,13 @@ at the call site or widen `_add_title` to accept `str | None` and return early
 when it is `None` — choose whichever matches what the code already does when no
 title is configured.
 
-- [ ] **Step 6: Fix the remaining assignments and `Any` returns**
+- [ ] **Step 7: Fix the remaining assignments and `Any` returns**
 
 Lines 233 and 261 assign a non-list into a `list[str]` target; correct the
 declared type or the assignment to match actual contents. Lines 555, 1017 and
 1075 return values the checker sees as `Any`; narrow at the source.
 
-- [ ] **Step 7: Verify green, tests and lint**
+- [ ] **Step 8: Verify green, tests and lint**
 
 Run: `just typecheck && just test && uv run ruff check src/`
 Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
@@ -779,7 +811,7 @@ Expected: `Success: no issues found in 23 source files`, suite passes, and ruff 
 `tests/test_xlsx_table.py` (858 lines) and `tests/test_xlsx_keyvalue.py` (645
 lines) cover this area well. Any failure here is a real behaviour change.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add pyproject.toml src/voc4cat/xlsx_keyvalue.py src/voc4cat/xlsx_table.py src/voc4cat/xlsx_common.py
