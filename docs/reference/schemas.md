@@ -159,7 +159,7 @@ allow_delete = false
 
 ### ID ranges
 
-ID ranges allocate concept ID blocks to contributors:
+ID ranges allocate concept ID blocks to contributors. Ranges apply to the vocabulary they are configured for and are enforced by `check --ci-post` (see {doc}`cli`). A contributor may hold several ranges.
 
 ```toml
 [[vocabs.myvocab.id_range]]

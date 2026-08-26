@@ -11,7 +11,7 @@ import pytest
 from curies import Converter
 from openpyxl import load_workbook
 from pydantic import BaseModel, Field
-from rdflib import DCTERMS, RDF, SKOS, Graph, URIRef
+from rdflib import DCTERMS, RDF, SKOS, Graph, Literal, URIRef
 from rdflib.namespace import NamespaceManager
 
 from voc4cat import config
@@ -393,3 +393,24 @@ def large_employee_dataset():
         )
         for i in range(100)  # 100 employees
     ]
+
+
+VOCAB_IRI = "https://example.org/"
+
+
+def write_vocab(path, concept_ids=(), collection_ids=(), ordered_ids=(), foreign=()):
+    """Serialize a minimal vocabulary with the given numeric entity IDs."""
+    g = Graph()
+    for type_, ids in (
+        (SKOS.Concept, concept_ids),
+        (SKOS.Collection, collection_ids),
+        (SKOS.OrderedCollection, ordered_ids),
+    ):
+        for id_ in ids:
+            iri = URIRef(f"{VOCAB_IRI}{id_:07d}")
+            g.add((iri, RDF.type, type_))
+            g.add((iri, SKOS.prefLabel, Literal(f"Entity {id_}", lang="en")))
+    for iri in foreign:
+        g.add((URIRef(iri), RDF.type, SKOS.Concept))
+    g.serialize(destination=path, format="turtle")
+    return path

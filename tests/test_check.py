@@ -1,10 +1,13 @@
 import logging
+import os
 import shutil
 from pathlib import Path
+from unittest import mock
 
 import pytest
 from openpyxl import load_workbook
 
+from tests.conftest import VOCAB_IRI, write_vocab
 from tests.test_cli import (
     CS_CYCLES,
 )
@@ -263,3 +266,87 @@ def test_check_with_config_profile(datadir, tmp_path, caplog, monkeypatch, temp_
 
     # The config's profile_local_path should be used
     assert "valid according to the custom_profile profile" in caplog.text
+
+
+# ===== ci-post: ID usage of the acting contributor =====
+
+VALID_CONFIG = "valid_idranges.toml"
+
+
+@mock.patch.dict(os.environ, {"GITHUB_ACTOR": "sofia-garcia"})
+def test_check_ci_post_accepts_id_inside_actor_range(
+    datadir, tmp_path, temp_config, caplog
+):
+    prev_dir = tmp_path / "prev"
+    new_dir = tmp_path / "new"
+    prev_dir.mkdir()
+    new_dir.mkdir()
+    write_vocab(prev_dir / "myvocab.ttl", concept_ids=[1])
+    write_vocab(new_dir / "myvocab.ttl", concept_ids=[1, 5])
+
+    with caplog.at_level(logging.INFO):
+        main_cli(
+            [
+                "check",
+                "--config",
+                str(datadir / VALID_CONFIG),
+                "--ci-post",
+                str(prev_dir),
+                str(new_dir),
+            ]
+        )
+
+    assert "ci-post passed" in caplog.text
+
+
+@mock.patch.dict(os.environ, {"GITHUB_ACTOR": "sofia-garcia"})
+def test_check_ci_post_rejects_id_outside_actor_range(
+    datadir, tmp_path, temp_config, caplog
+):
+    prev_dir = tmp_path / "prev"
+    new_dir = tmp_path / "new"
+    prev_dir.mkdir()
+    new_dir.mkdir()
+    write_vocab(prev_dir / "myvocab.ttl", concept_ids=[1])
+    # ID 15 is granted to actor "unknown", not to sofia-garcia
+    write_vocab(new_dir / "myvocab.ttl", concept_ids=[1, 15])
+
+    with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
+        main_cli(
+            [
+                "check",
+                "--config",
+                str(datadir / VALID_CONFIG),
+                "--ci-post",
+                str(prev_dir),
+                str(new_dir),
+            ]
+        )
+
+    assert f"{VOCAB_IRI}0000015" in caplog.text
+
+
+@mock.patch.dict(os.environ, {"GITHUB_ACTOR": "sofia-garcia"})
+def test_check_ci_post_checks_vocabulary_without_previous_version(
+    datadir, tmp_path, temp_config, caplog
+):
+    """A vocabulary added in this PR has no previous version but new IDs."""
+    prev_dir = tmp_path / "prev"
+    new_dir = tmp_path / "new"
+    prev_dir.mkdir()
+    new_dir.mkdir()
+    write_vocab(new_dir / "myvocab.ttl", concept_ids=[15])
+
+    with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
+        main_cli(
+            [
+                "check",
+                "--config",
+                str(datadir / VALID_CONFIG),
+                "--ci-post",
+                str(prev_dir),
+                str(new_dir),
+            ]
+        )
+
+    assert f"{VOCAB_IRI}0000015" in caplog.text

@@ -228,6 +228,14 @@ voc4cat check --config idranges.toml --ci-post existing/ vocabularies/
 voc4cat check --config idranges.toml --redundant-hierarchies myvocab.ttl
 ```
 
+### ID range check
+
+`--ci-post` verifies that IRIs added since the previous version use IDs from a range granted to the contributor who triggered the run. The contributor is read from the `GITHUB_ACTOR` environment variable and matched against `gh_name` in the `[[vocabs.VOCAB_NAME.id_range]]` sections of the vocabulary being checked. Ranges granted for a different vocabulary do not apply, and a contributor holding several ranges may use IDs from any of them.
+
+IRIs that already existed in the previous version are not checked, so editing concepts created by others is unaffected. A vocabulary without a previous version is new, so all of its IRIs are checked.
+
+If `GITHUB_ACTOR` is not set the check is skipped with a warning, unless `CI_RUN` is set, in which case the missing variable is an error.
+
 ### Hierarchy redundancy check
 
 The `--redundant-hierarchies` option detects redundant hierarchical relationships where a concept has `skos:broader` links to both a parent and an ancestor of that parent. For example, if concept C has broader B, and B has broader A, then C should not also have broader A directly. While such redundancies are OK in SKOS they causes problems for [Skosmos](https://https://skosmos.org/). So we suggest to remove them if you plan to host your vocabulary with Skosmos.

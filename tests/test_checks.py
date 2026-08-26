@@ -9,10 +9,12 @@ from unittest import mock
 import pytest
 from rdflib import RDF, SKOS, Graph, Literal, Namespace, URIRef
 
+from tests.conftest import VOCAB_IRI, write_vocab
 from voc4cat.checks import (
     Voc4catError,
     check_for_removed_iris,
     check_hierarchical_redundancy,
+    check_new_ids_in_actor_range,
     check_number_of_files_in_inbox,
     validate_config_has_idrange,
     validate_vocabulary_files_for_ci_workflow,
@@ -381,3 +383,172 @@ def test_check_hierarchical_redundancy_without_redundancy(tmp_path):
     redundancies = check_hierarchical_redundancy(vocab_file)
 
     assert len(redundancies) == 0
+
+
+# ===== check_new_ids_in_actor_range =====
+
+
+@pytest.fixture
+def myvocab_config(datadir, temp_config):
+    """Config with vocabulary "myvocab": 1-10 sofia-garcia, 11-20 unknown, 21-30 orcid."""
+    config = temp_config
+    config.load_config(datadir / VALID_CONFIG)
+    return config
+
+
+def test_new_id_inside_actor_range_passes(tmp_path, myvocab_config):
+    prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
+    new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1, 5])
+
+    assert check_new_ids_in_actor_range(prev, new, "sofia-garcia") is None
+
+
+def test_new_id_outside_actor_range_raises(tmp_path, myvocab_config, caplog):
+    prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
+    # ID 15 belongs to the range of actor "unknown", not to sofia-garcia
+    new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1, 15])
+
+    with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError) as excinfo:
+        check_new_ids_in_actor_range(prev, new, "sofia-garcia")
+
+    assert "1 new IRI" in str(excinfo.value)
+    assert f"{VOCAB_IRI}0000015" in caplog.text
+    assert "sofia-garcia" in caplog.text
+
+
+def test_id_in_gap_between_actor_ranges_raises(tmp_path, temp_config, mandatory_fields):
+    """Ranges of one actor are disjoint; IDs in the gap are not allowed."""
+    config = temp_config
+    config.IDRANGES.vocabs["myvocab"] = config.Vocab(
+        id_length=7,
+        permanent_iri_part=VOCAB_IRI,
+        checks={},
+        prefix_map={},
+        id_range=[
+            {"first_id": 1, "last_id": 100, "gh_name": "sofia-garcia"},
+            {"first_id": 250, "last_id": 300, "gh_name": "sofia-garcia"},
+        ],
+        **mandatory_fields,
+    )
+    config.load_config(config=config.IDRANGES)
+
+    prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
+    in_second_range = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1, 275])
+    assert check_new_ids_in_actor_range(prev, in_second_range, "sofia-garcia") is None
+
+    in_gap = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1, 175])
+    with pytest.raises(Voc4catError):
+        check_new_ids_in_actor_range(prev, in_gap, "sofia-garcia")
+
+
+def test_id_range_of_other_vocabulary_does_not_apply(
+    tmp_path, myvocab_config, mandatory_fields
+):
+    """A range granted for another vocabulary must not permit IDs here."""
+    config = myvocab_config
+    config.IDRANGES.single_vocab = False
+    config.IDRANGES.vocabs["othervocab"] = config.Vocab(
+        id_length=7,
+        permanent_iri_part="https://example.org/other/",
+        checks={},
+        prefix_map={},
+        id_range=[{"first_id": 500, "last_id": 600, "gh_name": "sofia-garcia"}],
+        **mandatory_fields,
+    )
+    config.load_config(config=config.IDRANGES)
+
+    prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
+    new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1, 550])
+
+    with pytest.raises(Voc4catError):
+        check_new_ids_in_actor_range(prev, new, "sofia-garcia")
+
+
+def test_unchanged_out_of_range_id_is_not_flagged(tmp_path, myvocab_config):
+    """Editing a vocabulary must not fail over IDs someone else created."""
+    prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[15])
+    new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[15, 5])
+
+    assert check_new_ids_in_actor_range(prev, new, "sofia-garcia") is None
+
+
+def test_all_ids_checked_when_no_previous_version(tmp_path, myvocab_config):
+    new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[15])
+
+    with pytest.raises(Voc4catError):
+        check_new_ids_in_actor_range(None, new, "sofia-garcia")
+
+
+def test_collections_are_checked(tmp_path, myvocab_config):
+    prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
+    new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1], collection_ids=[15])
+
+    with pytest.raises(Voc4catError):
+        check_new_ids_in_actor_range(prev, new, "sofia-garcia")
+
+
+def test_ordered_collections_are_checked(tmp_path, myvocab_config):
+    prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
+    new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1], ordered_ids=[15])
+
+    with pytest.raises(Voc4catError):
+        check_new_ids_in_actor_range(prev, new, "sofia-garcia")
+
+
+def test_iris_outside_the_vocabulary_are_ignored(tmp_path, myvocab_config):
+    """Concepts of other vocabularies may be referenced and are not our IDs."""
+    prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
+    new = write_vocab(
+        tmp_path / "myvocab.ttl",
+        concept_ids=[1, 5],
+        foreign=["https://other.example/0000015"],
+    )
+
+    assert check_new_ids_in_actor_range(prev, new, "sofia-garcia") is None
+
+
+def test_actor_is_matched_case_insensitively(tmp_path, myvocab_config):
+    prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
+    new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1, 5])
+
+    assert check_new_ids_in_actor_range(prev, new, "Sofia-Garcia") is None
+
+
+def test_actor_without_id_range_raises(tmp_path, myvocab_config):
+    prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
+    new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1, 5])
+
+    with pytest.raises(Voc4catError) as excinfo:
+        check_new_ids_in_actor_range(prev, new, "mallory")
+
+    assert "mallory" in str(excinfo.value)
+    assert "myvocab" in str(excinfo.value)
+
+
+@mock.patch.dict(os.environ, {"CI_RUN": "true"})
+def test_missing_actor_raises_in_ci(tmp_path, myvocab_config):
+    prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
+    new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1, 15])
+
+    with pytest.raises(Voc4catError) as excinfo:
+        check_new_ids_in_actor_range(prev, new, "")
+
+    assert "GITHUB_ACTOR" in str(excinfo.value)
+
+
+@mock.patch.dict(os.environ, {"CI_RUN": ""})
+def test_missing_actor_warns_outside_ci(tmp_path, myvocab_config, caplog):
+    prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
+    new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1, 15])
+
+    with caplog.at_level(logging.WARNING):
+        assert check_new_ids_in_actor_range(prev, new, "") is None
+
+    assert "GITHUB_ACTOR" in caplog.text
+
+
+def test_no_check_without_vocabulary_config(tmp_path, temp_config):
+    prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
+    new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1, 15])
+
+    assert check_new_ids_in_actor_range(prev, new, "sofia-garcia") is None

@@ -189,20 +189,22 @@ CURIES_CONVERTER_MAP = {}
 
 
 def _id_ranges_by_actor(new_conf):
-    # create look-up map for ID ranges of all "actors"
+    # Look-up map of ID ranges keyed by (vocabulary, actor). Ranges are granted
+    # per vocabulary, so an actor's ranges must not leak between vocabularies.
+    # Actor keys are lowercased because GitHub names are case-insensitive.
     id_ranges_by_actor = defaultdict(list)
     for name in new_conf["IDRANGES"].vocabs:
         voc = new_conf["IDRANGES"].vocabs.get(name)
         for idr in voc.id_range:
             rng = (idr.first_id, idr.last_id)
             if idr.orcid:
-                id_ranges_by_actor[str(idr.orcid)].append(rng)
+                id_ranges_by_actor[(name, str(idr.orcid).lower())].append(rng)
                 no_url_orcid = str(idr.orcid).split("orcid.org/")[-1]
-                id_ranges_by_actor[no_url_orcid].append(rng)
+                id_ranges_by_actor[(name, no_url_orcid.lower())].append(rng)
             if idr.gh_name:
-                id_ranges_by_actor[str(idr.gh_name)].append(rng)
+                id_ranges_by_actor[(name, str(idr.gh_name).lower())].append(rng)
             if idr.ror_id:
-                id_ranges_by_actor[str(idr.ror_id)].append(rng)
+                id_ranges_by_actor[(name, str(idr.ror_id).lower())].append(rng)
     return id_ranges_by_actor
 
 
@@ -233,7 +235,7 @@ def load_config(config_file: Path | None = None, config: IDrangeConfig | None = 
     for name in new_conf["IDRANGES"].vocabs:
         voc = new_conf["IDRANGES"].vocabs.get(name)
         id_patterns[name] = re.compile(
-            r"(?<![0-9])(?P<identifier>[0-9]{%i})$" % voc.id_length
+            rf"(?<![0-9])(?P<identifier>[0-9]{{{voc.id_length}}})$"
         )
     new_conf["ID_PATTERNS"] = id_patterns
 

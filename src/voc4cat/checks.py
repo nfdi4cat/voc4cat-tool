@@ -161,6 +161,109 @@ def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
         logger.debug("-> No removals detected.")
 
 
+def _typed_entity_iris(vocab: Path) -> set[str]:
+    """Collect the IRIs of all concepts and collections in a vocabulary file."""
+    graph = Graph()
+    graph.parse(vocab.resolve().as_uri(), format="turtle")
+    return {
+        str(iri)
+        for skos_type in (SKOS.Concept, SKOS.Collection, SKOS.OrderedCollection)
+        for iri in graph.subjects(RDF.type, skos_type)
+    }
+
+
+def _iris_with_forbidden_ids(
+    iris: set[str],
+    vocab_name: str,
+    granted: list[tuple[int, int]],
+    actor: str,
+) -> list[str]:
+    """Select the IRIs whose ID is not covered by any of the granted ranges."""
+    voc = config.IDRANGES.vocabs[vocab_name]
+    permanent_iri_part = str(voc.permanent_iri_part)
+    id_pattern = config.ID_PATTERNS[vocab_name]
+    granted_text = ", ".join(f"{first}-{last}" for first, last in granted)
+
+    forbidden = []
+    for iri in sorted(iris):
+        if not iri.startswith(permanent_iri_part):
+            # IRIs of other vocabularies may be referenced; their IDs are not ours.
+            continue
+        match = id_pattern.search(iri)
+        if match is None:
+            logger.error(
+                "-> New IRI %s has no ID matching the configured pattern of %i digits.",
+                iri,
+                voc.id_length,
+            )
+            forbidden.append(iri)
+            continue
+        id_ = int(match["identifier"])
+        if not any(first <= id_ <= last for first, last in granted):
+            logger.error(
+                '-> New IRI %s is outside the ID range(s) of actor "%s": %s',
+                iri,
+                actor,
+                granted_text,
+            )
+            forbidden.append(iri)
+    return forbidden
+
+
+def check_new_ids_in_actor_range(
+    prev_vocab: Path | None, new_vocab: Path, actor: str
+) -> None:
+    """
+    Validate that IRIs added in new_vocab use IDs granted to actor.
+
+    IDs are granted per vocabulary and an actor may hold several disjoint
+    ranges. IRIs already present in prev_vocab are left alone since they were
+    created by whoever holds their ID range. If prev_vocab is None the
+    vocabulary is new and all of its IRIs are checked.
+    """
+    vocab_name = new_vocab.stem.lower()
+    voc = config.IDRANGES.vocabs.get(vocab_name)
+    if voc is None:
+        logger.debug(
+            '-> No ID range config for vocabulary "%s". Cannot check ID usage.',
+            vocab_name,
+        )
+        return
+
+    logger.debug('-> Checking ID usage in "%s" for actor "%s".', new_vocab, actor)
+
+    if not actor:
+        msg = (
+            f'Cannot check ID usage in "{vocab_name}" because the environment '
+            "variable GITHUB_ACTOR is not set."
+        )
+        if os.getenv("CI_RUN"):
+            raise Voc4catError(msg)
+        logger.warning("-> %s", msg)
+        return
+
+    granted = config.ID_RANGES_BY_ACTOR.get((vocab_name, actor.lower()), [])
+    if not granted:
+        msg = (
+            f'Actor "{actor}" has no ID range for vocabulary "{vocab_name}". '
+            "An ID range must be requested before new IRIs can be added."
+        )
+        raise Voc4catError(msg)
+
+    new_iris = _typed_entity_iris(new_vocab)
+    if prev_vocab is not None:
+        new_iris -= _typed_entity_iris(prev_vocab)
+
+    forbidden = _iris_with_forbidden_ids(new_iris, vocab_name, granted, actor)
+    if forbidden:
+        msg = (
+            f"{len(forbidden)} new IRI(s) with IDs that are not allowed for "
+            f'actor "{actor}" detected. See log for IRIs.'
+        )
+        raise Voc4catError(msg)
+    logger.debug('-> All new IRIs use IDs granted to actor "%s".', actor)
+
+
 def check_hierarchical_redundancy(vocab_path: Path) -> list[tuple[str, str, str]]:
     """
     Detect redundant hierarchical relationships in a SKOS vocabulary.
