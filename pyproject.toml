@@ -287,3 +287,40 @@ classmethod-decorators = [
 mode = "mypy"
 # Suppress all missing import errors for all untyped libraries
 ignore_missing_imports = true
+strict = true
+# openpyxl's submodules define no __all__, so no_implicit_reexport reports
+# about 25 documented-public imports (load_workbook, Font, get_column_letter)
+# as private.
+implicit_reexport = true
+# click reaches the checker as Any because the `assistant` extra is absent from
+# the lint environment, which would make every click decorator untyped.
+disallow_untyped_decorators = false
+
+# Burn-down list: modules still to be annotated for issue #362. Each entry is
+# removed by the commit that annotates that module. When the list is empty,
+# delete this table.
+[[tool.zuban.overrides]]
+module = [
+  "voc4cat",
+  "voc4cat.assistant",
+  "voc4cat.check",
+  "voc4cat.checks",
+  "voc4cat.cli",
+  "voc4cat.config",
+  "voc4cat.convert",
+  "voc4cat.convert_043",
+  "voc4cat.convert_v1",
+  "voc4cat.convert_v1_helpers",
+  "voc4cat.docs",
+  "voc4cat.fields",
+  "voc4cat.gen_template",
+  "voc4cat.gh_index",
+  "voc4cat.merge_vocab",
+  "voc4cat.transform",
+  "voc4cat.utils",
+  "voc4cat.xlsx_api",
+  "voc4cat.xlsx_common",
+  "voc4cat.xlsx_keyvalue",
+  "voc4cat.xlsx_table",
+]
+ignore_errors = true
