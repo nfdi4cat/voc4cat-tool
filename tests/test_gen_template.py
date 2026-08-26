@@ -449,6 +449,61 @@ class TestTemplateWithConfig:
         # Should use ORCID as the name since gh_name is not provided
         assert "0000-0001-5000-0007" in str(ws_id["A4"].value)
 
+    def test_example_rows_use_ids_from_first_id_range(
+        self, tmp_path, base_vocab_config
+    ):
+        """Example rows must not suggest IDs nobody is allowed to use."""
+        config = base_vocab_config.copy()
+        config.update(
+            {
+                "id_length": 7,
+                "prefix_map": {"ex": "https://example.org/"},
+                "id_range": [
+                    {"first_id": 5000, "last_id": 5100, "gh_name": "sofia-garcia"},
+                ],
+            }
+        )
+        vocab_config = Vocab(**config)
+
+        output_path = tmp_path / "in_range.xlsx"
+        wb = generate_template_v1(output_path, vocab_config=vocab_config)
+
+        # Both concept rows describe the same concept in two languages.
+        assert wb["Concepts"]["A6"].value == "ex:0005000"
+        assert wb["Concepts"]["A7"].value == "ex:0005000"
+        assert wb["Collections"]["A6"].value == "ex:0005001"
+        assert wb["Mappings"]["A6"].value == "ex:0005000"
+
+    def test_example_rows_use_full_iri_without_matching_prefix(
+        self, tmp_path, base_vocab_config
+    ):
+        """Without a prefix for the permanent IRI part a full IRI is written."""
+        config = base_vocab_config.copy()
+        config.update(
+            {
+                "id_length": 7,
+                "prefix_map": {},
+                "id_range": [
+                    {"first_id": 1, "last_id": 10, "gh_name": "sofia-garcia"},
+                ],
+            }
+        )
+        vocab_config = Vocab(**config)
+
+        output_path = tmp_path / "full_iri.xlsx"
+        wb = generate_template_v1(output_path, vocab_config=vocab_config)
+
+        assert wb["Concepts"]["A6"].value == "https://example.org/0000001"
+        assert wb["Collections"]["A6"].value == "https://example.org/0000002"
+
+    def test_example_rows_unchanged_without_id_range(self, tmp_path):
+        """Without config the generic example data is kept."""
+        output_path = tmp_path / "no_config.xlsx"
+        wb = generate_template_v1(output_path)
+
+        assert wb["Concepts"]["A6"].value == "ex:0001001"
+        assert wb["Collections"]["A6"].value == "ex:collection001"
+
     def test_generate_template_without_output_path(self):
         """Test template generation returns workbook when no output path."""
         # When output_path is None, should still return valid workbook

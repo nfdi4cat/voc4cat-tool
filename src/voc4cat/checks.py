@@ -136,7 +136,7 @@ def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
     # print("Only in 1st\n", in_prev.serialize(format="turtle"))
     # print("Only in 2nd\n", in_new.serialize(format="turtle"))
 
-    voc = config.IDRANGES.vocabs.get(prev_vocab.stem, {})
+    voc = config.IDRANGES.vocabs.get(prev_vocab.stem.lower(), {})
     delete_allowed = voc.checks.allow_delete if getattr(voc, "checks", False) else False
     if in_prev:
         removed = 0
@@ -147,7 +147,10 @@ def check_for_removed_iris(prev_vocab: Path, new_vocab: Path):
             else:
                 logger.error(msg, iri)
             removed += 1
-        for iri in in_prev.subjects(RDF.type, SKOS.Collection):
+        collections = set(in_prev.subjects(RDF.type, SKOS.Collection)) | set(
+            in_prev.subjects(RDF.type, SKOS.OrderedCollection)
+        )
+        for iri in collections:
             msg = "-> Removal of a Collection detected: %s"
             if delete_allowed:
                 logger.warning(msg, iri)
