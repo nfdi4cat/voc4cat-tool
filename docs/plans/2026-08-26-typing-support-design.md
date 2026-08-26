@@ -238,4 +238,28 @@ pre-existing complexity findings, 76 across all three directories, all present
 on `main` and all out of scope for a typing change. Formatting is still
 enforced, by the `ruff-format` pre-commit hook on staged files.
 
+The pre-commit `ruff` hook lints whole files and has no baseline concept, so it
+rejects commits to the ten modules that carry those findings — eight of this
+plan's tasks. Those commits use `SKIP=ruff git commit`, which bypasses only the
+linter while `ruff format`, `zuban check`, `typos` and the hygiene hooks all
+still run. Never `--no-verify`, which would skip the zuban gate this plan
+exists to install.
+
+## Follow-up phase: complexity refactor
+
+The 62 findings are not being suppressed, only deferred. Twenty functions
+exceed the complexity limits, including `convert_v1.build_concept_scheme_graph`
+(complexity 36 against a limit of 10, 38 branches, 70 statements),
+`xlsx_table.reconstruct_joined_data` (30, 34 branches, 73 statements) and
+`convert_043._enrich_concept_scheme_from_config` (22, 25 branches, 61
+statements). Decomposing them is a substantial change to the tool's core
+conversion paths.
+
+That work follows this plan rather than preceding it, deliberately. Extracting
+functions out of a 38-branch body is precisely where signatures drift
+silently, and the strict gate installed here catches that class of mistake.
+Refactoring first would mean restructuring untyped code and then annotating
+whatever shape emerged. The 690-test suite guards either order; types guard the
+second one better.
+
 Delivery is a single pull request on `issue362-improve-typing`, closing #362.
