@@ -1,5 +1,6 @@
 import glob
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from voc4cat.checks import (
     Voc4catError,
     check_for_removed_iris,
     check_hierarchical_redundancy,
+    check_new_ids_in_actor_range,
     check_number_of_files_in_inbox,
     validate_vocabulary_files_for_ci_workflow,
 )
@@ -119,6 +121,7 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
 
 def ci_post(args):
     prev_vocab_dir, vocab_new = args.ci_post, args.VOCAB
+    actor = os.getenv("GITHUB_ACTOR", "")
     for vocfile in glob.glob(str(vocab_new.resolve() / "*.ttl")):
         new = Path(vocfile)
         prev_split_voc = prev_vocab_dir / new.stem
@@ -133,13 +136,16 @@ def ci_post(args):
             join_split_turtle(prev_split_voc)
 
         prev = prev_vocab_dir / new.name
-        if not prev.exists():
+        if prev.exists():
+            check_for_removed_iris(prev, new)
+        else:
             logger.debug(
                 '-> previous version of vocabulary "%s" does not exist.',
                 new.name,
             )
-            continue
-        check_for_removed_iris(prev, new)
+            # A vocabulary without previous version is new, so are all its IRIs.
+            prev = None
+        check_new_ids_in_actor_range(prev, new, actor)
         logger.info("-> Check ci-post passed.")
 
 
@@ -161,7 +167,7 @@ def _check_ci_args(args):
         raise Voc4catError(msg)
 
 
-def check(args):
+def check(args):  # noqa: C901, PLR0912, PLR0915
     logger.debug("Check subcommand started!")
 
     _check_ci_args(args)

@@ -439,3 +439,85 @@ def test_provenance_url_template_empty_allowed(temp_config):
     )
 
     assert vocab.provenance_url_template == ""
+
+
+def test_id_ranges_by_actor_keyed_per_vocabulary(
+    datadir, temp_config, mandatory_fields
+):
+    """Ranges an actor holds in one vocabulary must not apply to another."""
+    config = temp_config
+    config.load_config(datadir / VALID_CONFIG)
+    config.IDRANGES.single_vocab = False
+    config.IDRANGES.vocabs["othervocab"] = config.Vocab(
+        id_length=7,
+        permanent_iri_part="https://example.org/other/",
+        checks={},
+        prefix_map={},
+        id_range=[{"first_id": 500, "last_id": 600, "gh_name": "sofia-garcia"}],
+        **mandatory_fields,
+    )
+    config.load_config(config=config.IDRANGES)
+
+    assert config.ID_RANGES_BY_ACTOR[("myvocab", "sofia-garcia")] == [(1, 10)]
+    assert config.ID_RANGES_BY_ACTOR[("othervocab", "sofia-garcia")] == [(500, 600)]
+
+
+def test_id_ranges_by_actor_keeps_disjoint_ranges(temp_config, mandatory_fields):
+    """A contributor may hold several non-adjacent ranges."""
+    config = temp_config
+    config.IDRANGES.vocabs["myvocab"] = config.Vocab(
+        id_length=7,
+        permanent_iri_part="https://example.org/",
+        checks={},
+        prefix_map={},
+        id_range=[
+            {"first_id": 1, "last_id": 100, "gh_name": "sofia-garcia"},
+            {"first_id": 250, "last_id": 300, "gh_name": "sofia-garcia"},
+        ],
+        **mandatory_fields,
+    )
+    config.load_config(config=config.IDRANGES)
+
+    assert config.ID_RANGES_BY_ACTOR[("myvocab", "sofia-garcia")] == [
+        (1, 100),
+        (250, 300),
+    ]
+
+
+def test_id_ranges_by_actor_lowercases_gh_name(temp_config, mandatory_fields):
+    """GitHub names are case-insensitive, so keys are normalised to lowercase."""
+    config = temp_config
+    config.IDRANGES.vocabs["myvocab"] = config.Vocab(
+        id_length=7,
+        permanent_iri_part="https://example.org/",
+        checks={},
+        prefix_map={},
+        id_range=[{"first_id": 1, "last_id": 100, "gh_name": "Sofia-Garcia"}],
+        **mandatory_fields,
+    )
+    config.load_config(config=config.IDRANGES)
+
+    assert config.ID_RANGES_BY_ACTOR[("myvocab", "sofia-garcia")] == [(1, 100)]
+
+
+def test_id_ranges_by_actor_indexes_orcid_with_and_without_url(
+    temp_config, mandatory_fields
+):
+    """An ORCID is reachable both as bare ID and as URL."""
+    config = temp_config
+    config.IDRANGES.vocabs["myvocab"] = config.Vocab(
+        id_length=7,
+        permanent_iri_part="https://example.org/",
+        checks={},
+        prefix_map={},
+        id_range=[
+            {"first_id": 1, "last_id": 100, "orcid": "0000-0002-1825-0097"},
+        ],
+        **mandatory_fields,
+    )
+    config.load_config(config=config.IDRANGES)
+
+    assert config.ID_RANGES_BY_ACTOR[("myvocab", "0000-0002-1825-0097")] == [(1, 100)]
+    assert config.ID_RANGES_BY_ACTOR[
+        ("myvocab", "https://orcid.org/0000-0002-1825-0097")
+    ] == [(1, 100)]
