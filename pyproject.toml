@@ -58,25 +58,7 @@ Documentation = "https://github.com/nfdi4cat/voc4cat-tool/"
 Changelog = "https://github.com/nfdi4cat/voc4cat-tool/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-tests = [
-  "pytest",
-  "pytest-subprocess",
-  "coverage",
-]
-lint = [
-  "ruff",
-  "mypy",
-]
-docs = [
-  "sphinx",
-  "myst-parser",
-  "furo",
-  "sphinx-sitemap",
-]
-dev = [
-    # Recursively including the project's own optional dependencies requires pip>=21.2
-    "voc4cat[tests,lint,docs]",
-]
+# Extras are features of the distributed package that users may opt into.
 assistant = [
   "click",
   "sentence-transformers",
@@ -88,6 +70,30 @@ assistant = [
 voc4cat = "voc4cat.cli:run_cli_app"
 voc4cat-merge = "voc4cat.merge_vocab:main_cli"
 voc-assistant = "voc4cat.assistant:cli"
+
+# Development tooling lives in dependency groups (PEP 735) so that it stays out
+# of the published wheel metadata. "uv sync" installs the "dev" group by default.
+[dependency-groups]
+tests = [
+  "pytest",
+  "pytest-subprocess",
+  "coverage",
+]
+lint = [
+  "ruff",
+  "zuban",
+]
+docs = [
+  "sphinx",
+  "myst-parser",
+  "furo",
+  "sphinx-sitemap",
+]
+dev = [
+  {include-group = "tests"},
+  {include-group = "lint"},
+  {include-group = "docs"},
+]
 
 [tool.hatch.metadata]
 # Hatch disallows direct references for dependencies by default.
@@ -274,7 +280,10 @@ classmethod-decorators = [
   "classmethod",
 ]
 
-[tool.mypy]
-# https://mypy.readthedocs.io/en/latest/config_file.html#using-a-pyproject-toml-file
+[tool.zuban]
+# https://docs.zubanls.com/
+# Zuban's own default mode infers far more aggressively than the annotations in
+# this code base assume, so stay on mypy-compatible semantics.
+mode = "mypy"
 # Suppress all missing import errors for all untyped libraries
 ignore_missing_imports = true
