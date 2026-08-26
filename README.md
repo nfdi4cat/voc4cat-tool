@@ -69,7 +69,8 @@ uv tool install "voc4cat[assistant]"
 
 Alternatively, you can install voc4cat using `pip` like any other Python package.
 
-To install including all development tools use `pip install .[dev]`.
+For development, `uv sync` installs voc4cat together with all development tools.
+With `pip` the same set is available as dependency groups: `pip install -e . --group dev` (requires pip >= 25.1).
 
 ### Getting started
 

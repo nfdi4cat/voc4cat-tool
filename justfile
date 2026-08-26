@@ -1,5 +1,9 @@
 # voc4cat-tool - Essential Development Commands
 
+# On Windows the "bash" shell from Git for Windows is used.
+# If Git is installed in a non-standard location, edit the path below.
+set windows-shell := ["C:/Program Files/Git/bin/bash", "-cu"]
+
 # Show available commands
 default:
     @just --list
@@ -29,13 +33,11 @@ lint:
     # finally format fixed code
     uv run ruff format src/ example/ tests/
 
-# Type check code with mypy and ty
+# Type check code with zuban
 [group('development')]
 typecheck:
-    @echo "Running mypy type checks..."
-    uv run mypy src/
-    @echo "Running ty type checks..."
-    uv run ty check src/
+    @echo "Running zuban type checks..."
+    uv run zuban check src/
 
 # Build Sphinx documentation
 [group('development')]

@@ -74,6 +74,12 @@ ENV/
 env.bak/
 venv.bak/
 
+# uv
+# voc4cat is a library, so CI resolves dependencies fresh on every run to keep
+# the test matrix catching upstream releases. A committed lock hides that drift
+# and is never seen by anyone installing voc4cat.
+uv.lock
+
 # Spyder project settings
 .spyderproject
 .spyproject
