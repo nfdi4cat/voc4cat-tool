@@ -19,7 +19,9 @@
 - Escape-hatch order: (1) fix the annotation or code, (2) `cast()` with a comment explaining why the narrowing holds, (3) `# type: ignore[specific-code]` with a comment. Never `Any` as a silencer, never a bare `# type: ignore`.
 - `warn_unused_ignores` is active, so a stale ignore becomes an error.
 - This is annotation-only work. If a genuine behaviour bug surfaces, STOP: write a failing test first, then fix, then report it separately. Do not fold a behaviour fix silently into a typing commit.
-- Every task ends with `just typecheck`, `just test` and `just lint` all clean.
+- Every task ends with `just typecheck` green, `just test` passing, and `uv run ruff check src/` reporting no more than its pre-existing 62-finding baseline.
+- **Do NOT run `just lint`.** It runs `ruff format` and `ruff check --fix` over `src/`, `example/` and `tests/`, so it rewrites files rather than checking them, and it can never exit clean: `src/` carries 62 pre-existing complexity findings (76 across all three directories) that are present on `main` and are out of scope here. Use `uv run ruff check src/` to check, and `uv run ruff format --check src/` if you need to confirm formatting. The pre-commit hooks still run `ruff-format` and `ruff --fix` on staged files at commit time; that remains the formatting gate.
+- Never modify a file outside your task's stated scope. If a tool rewrites unrelated files, revert them before committing.
 - Commit messages: first line under 60 characters, no attribution footers.
 
 ## Verification commands
@@ -27,7 +29,8 @@
 ```bash
 just typecheck                                    # must print "Success: no issues found"
 just test                                         # full suite must pass
-just lint                                         # ruff format + check
+uv run ruff check src/                            # must stay at the 62-finding baseline
+uv run ruff format --check src/                   # must report "26 files already formatted"
 uv run zuban check src/ 2>&1 | grep 'MODULE\.py'  # errors for one module while working
 ```
 
@@ -153,7 +156,7 @@ Expected: build completes; no "document isn't included in any toctree" warning n
 
 - [ ] **Step 7: Verify tests and lint**
 
-Run: `just test && just lint`
+Run: `just test && uv run ruff check src/`
 Expected: suite passes, ruff clean.
 
 - [ ] **Step 8: Commit**
@@ -173,7 +176,7 @@ each can be executed without reading its neighbours, but the shape is:
 2. Run `just typecheck` to see that module's real errors.
 3. Annotate until the checker is green, following the escape-hatch order in
    Global Constraints.
-4. Run `just test` and `just lint`.
+4. Run `just test` and `uv run ruff check src/`.
 5. Commit `pyproject.toml` together with the module.
 
 Error lists below are the measured baseline at the target configuration. Counts
@@ -238,8 +241,8 @@ checker demands `HttpUrl` even though pydantic's `BeforeValidator` accepts
 
 - [ ] **Step 4: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 - [ ] **Step 5: Commit**
 
@@ -321,8 +324,8 @@ gets its return type as part of Step 3.
 
 - [ ] **Step 5: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 - [ ] **Step 6: Commit**
 
@@ -419,8 +422,8 @@ parameterise the bare `dict` and `list` annotations at lines 80, 151, 160, 240,
 
 - [ ] **Step 6: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 `assistant.py` has no tests, so `just test` only confirms nothing else broke.
 
@@ -510,8 +513,8 @@ at 1018. Parameterise the bare `dict` and `list` at 751, 758, 769, 776, 906 and 
 
 - [ ] **Step 6: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 - [ ] **Step 7: Commit**
 
@@ -579,8 +582,8 @@ Lines 84, 123, 191 and 211. Line 242 clears once `_id_ranges_by_actor` is annota
 
 - [ ] **Step 6: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 - [ ] **Step 7: Commit**
 
@@ -650,8 +653,8 @@ each is populated with.
 
 - [ ] **Step 5: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 - [ ] **Step 6: Commit**
 
@@ -766,8 +769,8 @@ declared type or the assignment to match actual contents. Lines 555, 1017 and
 
 - [ ] **Step 7: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 `tests/test_xlsx_table.py` (858 lines) and `tests/test_xlsx_keyvalue.py` (645
 lines) cover this area well. Any failure here is a real behaviour change.
@@ -821,8 +824,8 @@ widening the signature.
 
 - [ ] **Step 4: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 - [ ] **Step 5: Commit**
 
@@ -876,8 +879,8 @@ literal. Parameterise each `dict` with the key and value types actually stored.
 
 - [ ] **Step 4: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 - [ ] **Step 5: Commit**
 
@@ -953,8 +956,8 @@ Work top to bottom through the `type-arg` lines, then the run of functions from
 
 - [ ] **Step 6: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 - [ ] **Step 7: Commit**
 
@@ -997,8 +1000,8 @@ Expected: FAIL with the 5 errors above.
 
 - [ ] **Step 4: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 - [ ] **Step 5: Commit**
 
@@ -1096,8 +1099,8 @@ are annotated (`extract_numeric_id_from_iri` comes from Task 10).
 
 - [ ] **Step 6: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 - [ ] **Step 7: Commit**
 
@@ -1175,8 +1178,8 @@ already active in ruff.
 
 - [ ] **Step 6: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 - [ ] **Step 7: Commit**
 
@@ -1241,8 +1244,8 @@ their callees are annotated.
 
 - [ ] **Step 5: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 - [ ] **Step 6: Commit**
 
@@ -1316,8 +1319,8 @@ Lines 69, 122, 155 and 170. Lines 173 and 213 clear once `_check_ci_args` and
 
 - [ ] **Step 6: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 `tests/test_check.py` covers `check_xlsx` directly; a failure there means the
 return-type change was not as inert as expected.
@@ -1394,8 +1397,8 @@ rather than falling back to `Any`.
 
 - [ ] **Step 5: Verify green, tests and lint**
 
-Run: `just typecheck && just test && just lint`
-Expected: `Success: no issues found in 23 source files`, suite passes, ruff clean.
+Run: `just typecheck && just test && uv run ruff check src/`
+Expected: `Success: no issues found in 23 source files`, suite passes, and ruff still at its 62-finding baseline (no new findings).
 
 - [ ] **Step 6: Verify the CLI still runs**
 
@@ -1467,7 +1470,7 @@ If the list is empty, add an explicit `include` for it under
 
 - [ ] **Step 5: Verify the hook, tests and lint**
 
-Run: `pre-commit run --all-files && just test && just lint`
+Run: `pre-commit run --all-files && just test && uv run ruff check src/`
 Expected: all hooks pass, suite passes, ruff clean.
 
 - [ ] **Step 6: Commit**
@@ -1495,7 +1498,7 @@ git commit -m "Update changelog for typing support"
 - `just typecheck` prints `Success: no issues found in 23 source files` with no
   `[[tool.zuban.overrides]]` table present.
 - `pre-commit run --all-files` passes, including the `zuban` hook.
-- `just test` and `just lint` pass.
+- `just test` passes and `uv run ruff check src/` reports no more than the 62-finding pre-existing baseline.
 - `src/voc4cat/py.typed` exists and is present in the built wheel.
 - Every function in `src/voc4cat` has a complete signature.
 - Any behaviour bug found along the way was reported separately with a test,

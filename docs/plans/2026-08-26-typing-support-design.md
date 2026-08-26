@@ -226,8 +226,16 @@ contributor who skips it.
 
 ## Verification
 
-Every commit leaves `just typecheck`, `just test` and `just lint` clean. Since
+Every commit leaves `just typecheck` green, `just test` passing, and
+`uv run ruff check src/` at no more than its pre-existing baseline. Since
 annotation changes do not alter runtime behaviour, any test failure indicates a
 real behaviour change and is investigated rather than accommodated.
+
+`just lint` is deliberately not part of that contract. It runs `ruff format`
+and `ruff check --fix` across `src/`, `example/` and `tests/`, so it rewrites
+files instead of checking them, and it cannot exit clean: `src/` carries 62
+pre-existing complexity findings, 76 across all three directories, all present
+on `main` and all out of scope for a typing change. Formatting is still
+enforced, by the `ruff-format` pre-commit hook on staged files.
 
 Delivery is a single pull request on `issue362-improve-typing`, closing #362.
