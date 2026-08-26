@@ -173,6 +173,9 @@ Tasks 2 to 17 all follow the same five steps. They are written out per task so
 each can be executed without reading its neighbours, but the shape is:
 
 1. Delete the module's entry from the `module = [...]` list in `pyproject.toml`.
+   Some tasks cover more than one module and delete two or three entries; the
+   task's own Step 1 names exactly which. Across Tasks 2 to 17, 16 tasks remove
+   all 21 entries.
 2. Run `just typecheck` to see that module's real errors.
 3. Annotate until the checker is green, following the escape-hatch order in
    Global Constraints.
