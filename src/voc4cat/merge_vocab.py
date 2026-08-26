@@ -44,7 +44,7 @@ def main(ttl_inbox: Path, vocab: Path) -> int:
     return retcode
 
 
-def main_cli(args=None) -> int:
+def main_cli(args: list[str] | None = None) -> int:
     if args is None:  # run via entrypoint
         args = sys.argv[1:]
 
