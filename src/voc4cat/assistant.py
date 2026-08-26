@@ -13,6 +13,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import TypedDict
 
 import click
 from Levenshtein import ratio
@@ -37,7 +38,7 @@ class Problem(Enum):
     NO_BROADER_CONCEPT = ("W001", "No broader concept")
     MULTIPLE_BROADER_CONCEPTS = ("W002", "Multiple broader concepts")
 
-    def __init__(self, problem_id, description):
+    def __init__(self, problem_id: str, description: str) -> None:
         self.problem_id = problem_id
         self.description = description
 
@@ -49,9 +50,9 @@ class Concept:
     uri: str
     curie: str
     pref_label: str
-    alt_labels: str
+    alt_labels: list[str]
     definition: str
-    parents: str
+    parents: list[str]
 
 
 @dataclass
@@ -59,9 +60,9 @@ class ConceptSimilarity:
     """Class to hold concept similarity information."""
 
     concept_id: str
-    sentence_key: str
+    sentence_key: tuple[str, str]
     similar_concept_id: str
-    similar_sentence_key: str
+    similar_sentence_key: tuple[str, str]
     similarity_score: float
     definition_similarity_score: float
     have_same_broader_concept: bool
@@ -77,29 +78,40 @@ class ConceptIssue:
     problem_detail: str
 
 
-def load_vocab(ttl_file: Path) -> dict:
+class ComparisonResult(TypedDict):
+    """Result of comparing labels between concepts."""
+
+    method: str
+    uses_alt_labels: str
+    threshold_labels: float
+    threshold_definitions: float
+    compare_all: bool
+    data: list[ConceptSimilarity]
+
+
+def load_vocab(ttl_file: Path) -> dict[str, Concept]:
     """Return list of Concept instances."""
     vocab_graph = Graph().parse(str(ttl_file), format="turtle")
     concepts = {}
     for s in vocab_graph.subjects(RDF.type, SKOS.Concept):
-        holder = {}
+        holder: dict[str, str] = {}
         concept_id = str(s)
         holder["uri"] = str(s)
         holder["curie"] = (
             str(s).split("/")[-1].replace("_", ":")
         )  # TODO use a function to convert URI to CURIE
-        holder["alt_labels"] = []
-        holder["parents"] = []
+        alt_labels: list[str] = []
+        parents: list[str] = []
         for p, o in vocab_graph.predicate_objects(s):
             if p == SKOS.prefLabel:
                 holder["pref_label"] = str(o)  # .toPython()
             if p == SKOS.altLabel:
-                holder["alt_labels"].append(str(o))
+                alt_labels.append(str(o))
             if p == SKOS.definition:
                 holder["definition"] = str(o)
             if p == SKOS.broader:
-                holder["parents"].append(str(o))
-        concepts[concept_id] = Concept(**holder)
+                parents.append(str(o))
+        concepts[concept_id] = Concept(**holder, alt_labels=alt_labels, parents=parents)
     return concepts
 
 
@@ -121,14 +133,16 @@ class CompareVocabularies:
         self.idx_new = [
             i for i, uri in enumerate(self.vocab_new) if uri in self.added_concepts
         ]
-        self.model = None
+        self.model: SentenceTransformer | None = None
 
         logger.info("Known concepts    : %d", len(self.vocab_base))
         logger.info("Submitted concepts: %d", len(self.vocab_new))
         logger.info("New concepts added: %d", len(self.added_concepts))
         logger.debug("idx of new concepts: %s", self.idx_new)
 
-    def get_similarities_sbert(self, sentences, model="all-MiniLM-L6-v2") -> Tensor:
+    def get_similarities_sbert(
+        self, sentences: list[str], model: str = "all-MiniLM-L6-v2"
+    ) -> Tensor:
         """
         Determine similarity using Sentence Transformers.
 
@@ -140,15 +154,16 @@ class CompareVocabularies:
             # Load the model
             self.model = SentenceTransformer(model)
             logger.debug("model %s loaded.", model)
+        model_obj = self.model
         # Compute embeddings
-        embeddings = self.model.encode(sentences)
+        embeddings = model_obj.encode(sentences)
         logger.debug("Embeddings calculated.")
         # Compute cosine similarities
-        similarities = self.model.similarity(embeddings, embeddings)
+        similarities = model_obj.similarity(embeddings, embeddings)
         logger.debug("sbert similarities calculated.")
         return similarities
 
-    def get_similarities_levenshtein(self, sentences) -> list:
+    def get_similarities_levenshtein(self, sentences: list[str]) -> list[list[float]]:
         """
         Determine Levenshtein similarity after normalising terms.
 
@@ -157,7 +172,7 @@ class CompareVocabularies:
         """
         logger.debug("Entering get_similarities_levenshtein method.")
         sentences = [s.strip().lower().replace("-", " ") for s in sentences]
-        similarities: list = []
+        similarities: list[list[float]] = []
         for i, sentence1 in enumerate(sentences):
             similarities.append([])
             for j, sentence2 in enumerate(sentences):
@@ -169,8 +184,12 @@ class CompareVocabularies:
         return similarities
 
     def find_similarities(
-        self, labeled_sentences, similarities, thresholds, compare_all
-    ):
+        self,
+        labeled_sentences: dict[tuple[str, str], str],
+        similarities: Tensor | list[list[float]],
+        thresholds: tuple[float, float],
+        compare_all: bool,
+    ) -> list[ConceptSimilarity]:
         """
         Find and print similarities between new concepts and existing concepts.
         """
@@ -232,12 +251,12 @@ class CompareVocabularies:
 
     def compare_concept_labels(
         self,
-        method,
-        include_alt_labels,
-        threshold_labels,
-        threshold_definitions,
-        compare_all,  # true=compare all concepts, false=just new ones
-    ) -> dict:
+        method: str,
+        include_alt_labels: bool,
+        threshold_labels: float,
+        threshold_definitions: float,
+        compare_all: bool,  # true=compare all concepts, false=just new ones
+    ) -> ComparisonResult:
         new_vocab_labels = {
             (k, "pref_label"): v.pref_label.strip() for k, v in self.vocab_new.items()
         }
@@ -272,10 +291,10 @@ class CompareVocabularies:
             ),
         }
 
-    def check_parents(self, method="sbert") -> dict:
+    def check_parents(self, method: str = "sbert") -> dict[str, ConceptIssue]:
         """Check if the concepts have no or more than one broader concept."""
         logger.info("Checking if concepts have no or more than one broader concept.")
-        concept_problems = {}
+        concept_problems: dict[str, ConceptIssue] = {}
         for id_, concept in self.vocab_new.items():
             if not concept.parents:
                 concept_problems[id_] = ConceptIssue(
@@ -299,7 +318,7 @@ class CompareVocabularies:
                 )
         return concept_problems
 
-    def markdown_report(self, results: dict) -> None:
+    def markdown_report(self, results: ComparisonResult) -> None:
         """Generate a markdown report of the similarities found."""
         method = results["method"]
         report = []
@@ -396,10 +415,10 @@ class CompareVocabularies:
                 f"| {'Problem description':<25} | {'Problem details':<20} |\n"
             )
             report.append(f"|{'-' * 17}|{'-' * 32}|{'-' * 17}|{'-' * 32}|{'-' * 22}|\n")
-            for id_, rec in sorted(parent_check_report.items()):
+            for id_, issue in sorted(parent_check_report.items()):
                 report.append(
-                    f"| [{rec.concept_id}]({base_url + id_}) | {rec.concept_label:<30} "
-                    f"| {rec.problem.problem_id} | {rec.problem.description:<30} | {rec.problem_detail} |\n"
+                    f"| [{issue.concept_id}]({base_url + id_}) | {issue.concept_label:<30} "
+                    f"| {issue.problem.problem_id} | {issue.problem.description:<30} | {issue.problem_detail} |\n"
                 )
         else:
             report.append("\n## No additional concept issues found.\n")
@@ -415,7 +434,7 @@ class CompareVocabularies:
 
 
 @click.group()
-def cli():
+def cli() -> None:
     """CLI tool for vocabulary maintainers."""
 
 
