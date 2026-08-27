@@ -370,12 +370,14 @@ def convert_rdf_043_to_v1(
         for prefix, namespace_uri in vocab_config.prefix_map.items():
             output_graph.bind(prefix, Namespace(str(namespace_uri)))
 
-    # voc4cat mints every skos:Concept/Collection/ConceptScheme as a URIRef
-    # (idranges.toml assigns each entity a stable IRI; blank nodes are never
-    # used for them) and the vp4cat/vocpub SHACL profile requires the
-    # properties that reference these entities to be sh:nodeKind sh:IRI
-    # (e.g. Requirement-2.3.3 skos:inScheme, Requirement-2.1.9
-    # skos:hasTopConcept). rdflib types graph iteration as the wider Node.
+    # This 043 input was produced by an earlier voc4cat-tool version, which
+    # (like the current one) used an idranges.toml-driven scheme that mints
+    # every skos:Concept/Collection/ConceptScheme as a stable URIRef and
+    # never as a blank node (see docs/migration-to-v1.0.md). That is a fact
+    # about the input's provenance, not something checked here: input_graph
+    # is parsed above with no SHACL validation, and the vp4cat/vocpub
+    # profile describes voc4cat's v1.0 *output* shape -- it is not applied
+    # to this 043 input. rdflib types graph iteration as the wider Node.
 
     # Get all concepts for special handling of rdfs:isDefinedBy
     concepts: set[URIRef] = {

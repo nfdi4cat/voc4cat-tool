@@ -295,8 +295,13 @@ def check_hierarchical_redundancy(vocab_path: Path) -> list[tuple[str, str, str]
 
     redundancies = []
     for concept, parent1 in sorted(g.subject_objects(SKOS.broader)):
-        # The profile's SHACL shapes constrain skos:broader's value to
-        # sh:nodeKind sh:IRI, so objects of this predicate are always URIRef.
+        # skos:broader's sh:nodeKind constraint depends on which profile is
+        # in effect: the default (vp4cat-5.2) and vocpub-5.2/vp4cat require
+        # sh:nodeKind sh:IRI, but vocpub-4.7 has no shape for skos:broader
+        # at all, so a --profile vocpub-4.7 run gives no such guarantee.
+        # This cast is safe regardless: URIRef/BNode/Literal are all str
+        # subclasses, and parent2 below is only compared, tested for set
+        # membership, and stringified -- never treated as IRI-specific.
         for parent2 in sorted(
             cast("Iterable[URIRef]", g.objects(concept, SKOS.broader))
         ):

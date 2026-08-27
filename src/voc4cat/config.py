@@ -248,7 +248,7 @@ def load_config(
         # together cover every case where config is None (missing/absent
         # config_file, or config_file is None). The guard documents that
         # invariant and narrows the type for model_dump_json() below.
-        if config is None:
+        if config is None:  # pragma: no cover
             msg = (
                 "Internal error in load_config(): reached the config-refresh "
                 "branch with config=None. This indicates a logic error in "
