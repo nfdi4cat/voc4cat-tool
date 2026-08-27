@@ -1,3 +1,4 @@
+import argparse
 import logging
 from itertools import chain
 from pathlib import Path
@@ -80,7 +81,7 @@ def validate_with_profile(
     data_graph: GraphLike | str | bytes,
     profile: str = DEFAULT_PROFILE,
     error_level: int = 1,
-):
+) -> None:
     """Validate data graph against a SHACL profile.
 
     Args:
@@ -93,12 +94,11 @@ def validate_with_profile(
 
     # Resolve profile to file path
     shacl_graph_path, _profile_name = resolve_profile(profile)
-    shacl_graph_path = str(shacl_graph_path)
 
     # validate the RDF file
     _conforms, results_graph, _results_text = pyshacl.validate(
         data_graph,
-        shacl_graph=shacl_graph_path,
+        shacl_graph=str(shacl_graph_path),
         allow_warnings=allow_warnings,
     )
 
@@ -162,7 +162,7 @@ def validate_with_profile(
         raise ConversionError(msg)
 
 
-def format_log_msg(result: dict, colored: bool = False) -> str:
+def format_log_msg(result: dict[str, str], colored: bool = False) -> str:
     formatted_msg = ""
     message = f"""Validation Result in {result["sourceConstraintComponent"].split(str(SH))[1]} ({result["sourceConstraintComponent"]}):
 \tSeverity: sh:{result["resultSeverity"].split(str(SH))[1]}
@@ -218,7 +218,7 @@ def _get_vocab_config(vocab_name: str) -> "config.Vocab | None":
     return vocab
 
 
-def _check_convert_args(args):
+def _check_convert_args(args: argparse.Namespace) -> None:
     if args.template is not None:
         if not args.template.exists():
             logger.warning(
@@ -246,7 +246,7 @@ def _check_convert_args(args):
             raise Voc4catError(msg % '", "'.join(duplicates))
 
 
-def convert(args):
+def convert(args: argparse.Namespace) -> None:
     logger.debug("Convert subcommand started!")
 
     _check_convert_args(args)
