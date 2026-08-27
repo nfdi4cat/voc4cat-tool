@@ -3,6 +3,7 @@ import glob
 import logging
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 import openpyxl
@@ -120,33 +121,44 @@ def check_xlsx(fpath: Path, outfile: Path) -> None:
     logger.info("-> xlsx check passed for file: %s", fpath)
 
 
+def _previous_vocabulary(prev_vocab_dir: Path, new: Path, workdir: Path) -> Path | None:
+    """
+    Locate the previous version of `new`, joining it if it is stored split.
+
+    A split vocabulary is joined into `workdir` under the file name of `new`,
+    so that the vocabulary name can still be derived from the file stem.
+
+    Returns None if there is no previous version. All IRIs are then new.
+    """
+    prev = prev_vocab_dir / new.name
+    if prev.exists():
+        return prev
+
+    prev_split_voc = prev_vocab_dir / new.stem
+    if prev_split_voc.is_dir() and any(prev_split_voc.rglob("*.ttl")):
+        logger.debug("-> previous version is a split vocabulary, joining...")
+        joined = workdir / new.name
+        graph = join_split_turtle(prev_split_voc, vocab_name=new.stem)
+        graph.serialize(destination=joined, format="turtle")
+        return joined
+
+    logger.debug(
+        '-> previous version of vocabulary "%s" does not exist.',
+        new.name,
+    )
+    return None
+
+
 def ci_post(args: argparse.Namespace) -> None:
     prev_vocab_dir, vocab_new = args.ci_post, args.VOCAB
     actor = os.getenv("GITHUB_ACTOR", "")
     for vocfile in glob.glob(str(vocab_new.resolve() / "*.ttl")):
         new = Path(vocfile)
-        prev_split_voc = prev_vocab_dir / new.stem
-        # The prev version could be in split form in a vocabulary directory
-        if (
-            prev_split_voc.exists()
-            and prev_split_voc.is_dir()
-            and any(prev_split_voc.rglob("*.ttl"))
-        ):
-            # Create a single vocab out of the directory
-            logger.debug("-> previous version is a split vocabulary, joining...")
-            join_split_turtle(prev_split_voc)
-
-        prev = prev_vocab_dir / new.name
-        if prev.exists():
-            check_for_removed_iris(prev, new)
-        else:
-            logger.debug(
-                '-> previous version of vocabulary "%s" does not exist.',
-                new.name,
-            )
-            # A vocabulary without previous version is new, so are all its IRIs.
-            prev = None
-        check_new_ids_in_actor_range(prev, new, actor)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prev = _previous_vocabulary(prev_vocab_dir, new, Path(tmpdir))
+            if prev is not None:
+                check_for_removed_iris(prev, new)
+            check_new_ids_in_actor_range(prev, new, actor)
         logger.info("-> Check ci-post passed.")
 
 

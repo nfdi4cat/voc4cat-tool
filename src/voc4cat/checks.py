@@ -250,6 +250,15 @@ def check_new_ids_in_actor_range(
         logger.warning("-> %s", msg)
         return
 
+    new_iris = _typed_entity_iris(new_vocab)
+    if prev_vocab is not None:
+        new_iris -= _typed_entity_iris(prev_vocab)
+
+    if not new_iris:
+        # Editing existing entities mints no IRI, so no ID range is required.
+        logger.debug('-> No IRIs added to "%s" by actor "%s".', vocab_name, actor)
+        return
+
     granted = config.ID_RANGES_BY_ACTOR.get((vocab_name, actor.lower()), [])
     if not granted:
         msg = (
@@ -257,10 +266,6 @@ def check_new_ids_in_actor_range(
             "An ID range must be requested before new IRIs can be added."
         )
         raise Voc4catError(msg)
-
-    new_iris = _typed_entity_iris(new_vocab)
-    if prev_vocab is not None:
-        new_iris -= _typed_entity_iris(prev_vocab)
 
     forbidden = _iris_with_forbidden_ids(new_iris, vocab_name, granted, actor)
     if forbidden:
