@@ -5,16 +5,16 @@
 Changes:
 
 - The `voc4cat` package is now fully type-annotated and type-checked under a strict `zuban` configuration, enforced by a pre-commit hook. It ships a `py.typed` marker (PEP 561), so downstream consumers get the annotations when type-checking their own code against this package. [#362](https://github.com/nfdi4cat/voc4cat-tool/issues/362)
-- Add a version-neutral profile token `vp4cat` that always resolves to the current vp4cat profile. Use `vp4cat-5.2` to pin the version.
+- Add a version-neutral profile token `vp4cat` that always resolves to the current vp4cat profile. Use `vp4cat-5.2` to pin the version. [#351](https://github.com/nfdi4cat/voc4cat-tool/pull/351), [#352](https://github.com/nfdi4cat/voc4cat-tool/pull/352)
 - The IRIs of the vp4cat profiles now match the redirects configured at w3id.org, so `https://w3id.org/nfdi4cat/vp4cat` is dereferenceable. [#317](https://github.com/nfdi4cat/voc4cat-tool/issues/317)
-- Development tooling moved from extras to PEP 735 dependency groups, so `uv sync` installs it by default and it no longer appears in the published package metadata. Only `assistant` remains an extra. Type checking moved from mypy to [zuban](https://github.com/zubanls/zuban).
+- Development tooling moved from extras to PEP 735 dependency groups, so `uv sync` installs it by default and it no longer appears in the published package metadata. Only `assistant` remains an extra. Type checking moved from mypy to [zuban](https://github.com/zubanls/zuban). [#361](https://github.com/nfdi4cat/voc4cat-tool/pull/361)
 - Documentation brought in line with what the tool does: the recipe list of the voc4cat-template justfile, the `transform --diff-base` option, the mandatory `VOCAB` argument of `voc4cat template`, the environment variables that are actually read, the `dct:isReplacedBy` columns and vp4cat as the default profile. The quickstart now accounts for the example rows that `voc4cat template` writes.
 
 Fixes:
 
 - Separate mapping IRIs by newline when writing xlsx, matching the separator expected when reading them back. Vocabularies with several mappings of the same kind did not survive a turtle -> xlsx -> turtle round-trip. [#349](https://github.com/nfdi4cat/voc4cat-tool/issues/349)
 - Do not report a missing numeric ID in the vocabulary IRI as an error. A vocabulary IRI carries no concept ID, so every conversion without a configured `catalogue_pid` logged a spurious error.
-- Return the exit code of `git merge-file` from `voc4cat-merge` instead of collapsing every failure to `1`. The walrus operator binds less tightly than `!=`, so `retcode := outp.returncode != 0` stored a boolean and discarded git's count of unresolved conflicts.
+- Return the exit code of `git merge-file` from `voc4cat-merge` instead of collapsing every failure to `1`. The walrus operator binds less tightly than `!=`, so `retcode := outp.returncode != 0` stored a boolean and discarded git's count of unresolved conflicts. [#364](https://github.com/nfdi4cat/voc4cat-tool/pull/364)
 - Reject IRIs whose ID is outside the ID range(s) granted to the contributor. `check --ci-post` now validates the IDs added by the acting contributor (from `GITHUB_ACTOR`) against the ranges configured for that vocabulary. The check was lost with the removal of the 0.4.3 template code. ID ranges are now also looked up per vocabulary, so a range granted for one vocabulary no longer permits IDs in another. [#359](https://github.com/nfdi4cat/voc4cat-tool/issues/359)
 - Generate template example rows with IDs from the first configured ID range. Previously `voc4cat template` always suggested `ex:0001001` and the non-numeric `ex:collection001`, which are outside the ID ranges of the shipped starter configuration. [#359](https://github.com/nfdi4cat/voc4cat-tool/issues/359)
 - Detect removal of ordered collections. `check --ci-post` only looked for `skos:Concept` and `skos:Collection`, so deleting a `skos:OrderedCollection` went unnoticed. [#359](https://github.com/nfdi4cat/voc4cat-tool/issues/359)
@@ -130,12 +130,12 @@ Due to the change of hierarchy notation, it is not possible to use XLSX template
 Features:
 
 - **BREAKING** Hierarchy definition changed from ChildrenIRI to ParentIRI approach.
-  Each concept specifies its parent concepts rather than its children concepts.  (part of [#300](https://github.com/nfdi4cat/voc4cat-tool/issues/300))
-- **BREAKING** Removed functionality to express concept-hierarchies by indentation in xlsx table cells.  (part of [#300](https://github.com/nfdi4cat/voc4cat-tool/issues/300))
+  Each concept specifies its parent concepts rather than its children concepts.  (part of [#300](https://github.com/nfdi4cat/voc4cat-tool/pull/300))
+- **BREAKING** Removed functionality to express concept-hierarchies by indentation in xlsx table cells.  (part of [#300](https://github.com/nfdi4cat/voc4cat-tool/pull/300))
 
 Changes:
 
-- **BREAKING** Read template version number from Concept Scheme Sheet (cell B13) instead of Introduction sheet (part of [#300](https://github.com/nfdi4cat/voc4cat-tool/issues/300) by @dalito)
+- **BREAKING** Read template version number from Concept Scheme Sheet (cell B13) instead of Introduction sheet (part of [#300](https://github.com/nfdi4cat/voc4cat-tool/pull/300) by @dalito)
 - Migrate codebase to pydantic2 by @dalito in [#283](https://github.com/nfdi4cat/voc4cat-tool/pull/283)
 
 ## Release 0.9.2 (2025-04-24)
