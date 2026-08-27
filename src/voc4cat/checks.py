@@ -24,6 +24,28 @@ class Voc4catError(Exception):
     pass
 
 
+def running_in_ci() -> bool:
+    """
+    Whether voc4cat runs inside a GitHub Actions workflow.
+
+    Checks that only guard a contributor's pull request are advisory when run
+    locally and fatal in the pipeline. GitHub Actions always sets
+    GITHUB_ACTIONS, so no repository has to opt in to the strict behaviour.
+    """
+    return bool(os.getenv("GITHUB_ACTIONS"))
+
+
+def _stray_inbox_files_message(inbox_dir: Path, stray: list[str]) -> str:
+    """Name the files that do not belong into the inbox and say what to do."""
+    msg = (
+        f'Directory "{inbox_dir}" may only contain xlsx files and markdown '
+        f"documentation, but it contains: {', '.join(stray)}."
+    )
+    if any(name.lower().endswith(".xls") for name in stray):
+        msg += " A legacy .xls spreadsheet has to be saved in the .xlsx format."
+    return msg
+
+
 def validate_config_has_idrange(vocab_name: str) -> None:
     """Check that the vocabulary has at least one id_range."""
     logger.debug('-> Validating ID range config for vocabulary "%s".', vocab_name)
@@ -69,14 +91,15 @@ def validate_vocabulary_files_for_ci_workflow(vocab_dir: Path, inbox_dir: Path) 
     inbox_all_files = glob.glob(str(inbox_dir / "*"))
 
     # Test that inbox has only xlsx files and md or txt doc files
-    if len(inbox_all_files) > len(inbox_files) + len(inbox_md_files):
-        if os.getenv("CI_RUN"):
-            msg = f'Directory "{inbox_dir}" may only contain xlsx files and README.md.'
+    stray = sorted(
+        Path(entry).name
+        for entry in set(inbox_all_files) - set(inbox_files) - set(inbox_md_files)
+    )
+    if stray:
+        msg = _stray_inbox_files_message(inbox_dir, stray)
+        if running_in_ci():
             raise Voc4catError(msg)
-        logger.warning(
-            'Directory "%s" should only contain xlsx files and README.md.',
-            inbox_dir,
-        )
+        logger.warning("%s", msg)
 
     # By creating a set first duplicates are eliminated.
     vocab_files = glob.glob(str(vocab_dir / "*.ttl"))
@@ -245,7 +268,7 @@ def check_new_ids_in_actor_range(
             f'Cannot check ID usage in "{vocab_name}" because the environment '
             "variable GITHUB_ACTOR is not set."
         )
-        if os.getenv("CI_RUN"):
+        if running_in_ci():
             raise Voc4catError(msg)
         logger.warning("-> %s", msg)
         return
