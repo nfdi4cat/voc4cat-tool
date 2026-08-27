@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+Changes:
+
+- The `voc4cat` package is now fully type-annotated and type-checked under a strict `zuban` configuration, enforced by a pre-commit hook. It ships a `py.typed` marker (PEP 561), so downstream consumers get the annotations when type-checking their own code against this package. [#362](https://github.com/nfdi4cat/voc4cat-tool/issues/362)
+
 Fixes:
 
 - Reject IRIs whose ID is outside the ID range(s) granted to the contributor. `check --ci-post` now validates the IDs added by the acting contributor (from `GITHUB_ACTOR`) against the ranges configured for that vocabulary. The check was lost with the removal of the 0.4.3 template code. ID ranges are now also looked up per vocabulary, so a range granted for one vocabulary no longer permits IDs in another. [#359](https://github.com/nfdi4cat/voc4cat-tool/issues/359)
