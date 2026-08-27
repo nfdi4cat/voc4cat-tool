@@ -28,7 +28,7 @@ from voc4cat.xlsx_common import adjust_all_tables_length
 logger = logging.getLogger(__name__)
 
 PROFILE_DIR = Path(__file__).parent / "profile"
-DEFAULT_PROFILE = "vp4cat-5.2"
+DEFAULT_PROFILE = "vp4cat-5.3"
 
 
 def get_bundled_profiles() -> dict[str, Path]:

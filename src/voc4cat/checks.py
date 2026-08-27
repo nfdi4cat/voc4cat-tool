@@ -296,7 +296,7 @@ def check_hierarchical_redundancy(vocab_path: Path) -> list[tuple[str, str, str]
     redundancies = []
     for concept, parent1 in sorted(g.subject_objects(SKOS.broader)):
         # skos:broader's sh:nodeKind constraint depends on which profile is
-        # in effect: the default (vp4cat-5.2) and vocpub-5.2/vp4cat require
+        # in effect: the default (vp4cat-5.3) and vocpub-5.2/vp4cat require
         # sh:nodeKind sh:IRI, but vocpub-4.7 has no shape for skos:broader
         # at all, so a --profile vocpub-4.7 run gives no such guarantee.
         # This cast is safe regardless: URIRef/BNode/Literal are all str
