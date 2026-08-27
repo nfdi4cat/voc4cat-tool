@@ -280,15 +280,16 @@ select = [
 "tests/test_convert_v1.py" = ["PLC0415"]
 
 # --- Complexity debt in the conversion core ---------------------------------
-# These functions predate the typing work and exceed the complexity limits.
-# Decomposing them is the follow-up phase described in
-# docs/plans/2026-08-26-typing-support-design.md; the strict type gate is in
-# place first so it guards the extractions.
+# Tracked in https://github.com/nfdi4cat/voc4cat-tool/issues/363
 #
-# Listed per file and per rule so the remaining debt stays visible and each
-# entry can be deleted as that file's functions are split. Do not add a file
-# here to silence a NEW violation -- that is what this list exists to prevent
-# becoming invisible.
+# These functions predate the typing work of #362 and exceed the complexity
+# limits. Decomposing them was deliberately sequenced after that work, so the
+# strict type gate is in place to guard the extractions.
+#
+# THIS LIST IS THE DEBT REGISTER FOR #363. It is per file and per rule so the
+# remaining debt stays visible, and deleting an entry is how progress on #363
+# is reported. Do not add a file here to silence a NEW violation -- keeping
+# that from becoming invisible is the whole point of the list.
 "src/voc4cat/convert_v1.py" = ["C901", "PLR0912", "PLR0913", "PLR0915", "PLR0917"]
 "src/voc4cat/convert_043.py" = ["C901", "PLR0912", "PLR0913", "PLR0915", "PLR0917"]
 "src/voc4cat/convert_v1_helpers.py" = ["C901", "PLR0912", "PLR0913", "PLR0917"]

@@ -91,7 +91,9 @@ in the design doc and remain after this work:
 
 ## Follow-up phase
 
-Specified in the design document rather than left as a note:
+Specified in the design document rather than left as a note, and the
+complexity work is tracked in
+[#363](https://github.com/nfdi4cat/voc4cat-tool/issues/363):
 
 - Complexity refactor: 62 pre-existing ruff findings across 20 functions,
   including `build_concept_scheme_graph` (complexity 36 against a limit of 10).

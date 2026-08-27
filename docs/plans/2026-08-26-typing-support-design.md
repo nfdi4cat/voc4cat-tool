@@ -264,6 +264,9 @@ while still reporting `PLR0917`.
 
 ## Follow-up phase: complexity refactor
 
+Tracked in [#363](https://github.com/nfdi4cat/voc4cat-tool/issues/363),
+which carries the full inventory of the 27 affected functions.
+
 The 62 findings are exempted per file and per rule in
 `[tool.ruff.lint.per-file-ignores]` so that `ruff check` passes, not fixed.
 The exemption list is the debt register: deleting an entry is how this phase
