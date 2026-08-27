@@ -14,7 +14,7 @@ import logging
 import os
 import re
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import curies
 from jinja2 import Template
@@ -27,6 +27,8 @@ from voc4cat.models_v1 import (
 )
 
 if TYPE_CHECKING:
+    from rdflib import Graph, URIRef
+
     from voc4cat.config import IdrangeItem, Vocab
 
 logger = logging.getLogger(__name__)
@@ -273,8 +275,8 @@ def extract_entity_id_from_iri(iri: str, vocab_name: str) -> str:
 
 
 def add_provenance_triples_to_graph(
-    graph,  # rdflib.Graph - not typed to avoid circular import
-    entity_iri,  # URIRef
+    graph: Graph,
+    entity_iri: URIRef,
     vocab_name: str,
     provenance_template: str = "",
     repository_url: str = "",
@@ -311,10 +313,17 @@ def add_provenance_triples_to_graph(
     return False
 
 
+# Per-language field dict as produced by convert_v1.extract_concepts_from_rdf /
+# extract_collections_from_rdf, e.g. {"preferred_label": "...", "is_deprecated":
+# False, "parent_iris": [...]}. Shared by format_iri_with_label below and by
+# validate_entity_deprecation further down.
+EntityLangData = dict[str, str | bool | list[str]]
+
+
 def format_iri_with_label(
     iri: str,
-    concepts_data: dict[str, dict[str, dict]],
-    collections_data: dict[str, dict[str, dict]] | None = None,
+    concepts_data: dict[str, dict[str, EntityLangData]],
+    collections_data: dict[str, dict[str, EntityLangData]] | None = None,
 ) -> str:
     """Format IRI as 'curie (english_label)' if label is available.
 
@@ -662,7 +671,7 @@ def validate_deprecation(
 
 def validate_entity_deprecation(
     entity_iri: str,
-    lang_data: dict[str, dict],
+    lang_data: dict[str, EntityLangData],
     vocab_name: str,
     provenance_template: str,
     repository_url: str,
@@ -703,13 +712,18 @@ def validate_entity_deprecation(
         entity_id, vocab_name, provenance_template, repository_url, id_length
     )
 
-    # Get deprecation info from any language (it's the same for all)
+    # Get deprecation info from any language (it's the same for all).
+    # "is_deprecated" and "obsolete_reason" are always stored as bool/str by
+    # extract_concepts_from_rdf/extract_collections_from_rdf, never as
+    # list[str], so narrowing away the rest of EntityLangData's value union
+    # is safe here.
     first_lang_data = next(iter(lang_data.values()), {})
-    is_deprecated = first_lang_data.get("is_deprecated", False)
-    obsolete_reason_raw = first_lang_data.get("obsolete_reason", "")
+    is_deprecated = cast("bool", first_lang_data.get("is_deprecated", False))
+    obsolete_reason_raw = cast("str", first_lang_data.get("obsolete_reason", ""))
 
-    # Validate and fix English prefLabel if needed
-    en_pref_label = lang_data.get("en", {}).get("preferred_label", "")
+    # Validate and fix English prefLabel if needed. "preferred_label" is
+    # always a str for the same reason as above.
+    en_pref_label = cast("str", lang_data.get("en", {}).get("preferred_label", ""))
     if en_pref_label:
         corrected_label, errors = validate_deprecation(
             pref_label=en_pref_label,
