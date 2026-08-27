@@ -305,7 +305,6 @@ module = [
   "voc4cat.cli",
   "voc4cat.convert",
   "voc4cat.convert_043",
-  "voc4cat.gen_template",
   "voc4cat.transform",
 ]
 ignore_errors = true
