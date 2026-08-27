@@ -122,7 +122,13 @@ Recommended settings:
 
 - Enable Issues (for ID range requests and discussions)
 - Disable Wiki (optional, storing documentation in the code-repository is typically preferred)
-- Disable "Allow merge commits" (optional, the remaining options "squash" and "rebase" give a cleaner git history)
+- Disable "Allow squash merging" (required, see below)
+
+:::{important}
+Squash merging must be disabled. `voc4cat transform --prov-from-git`, which the CI workflows run on every pull request, derives `dct:created` and `dct:modified` from the author dates of the commits touching each concept file. Squashing replaces those commits with a single new one dated at merge time, so the creation date of every concept added in that pull request becomes invisible to git. The next contribution re-derives the dates and silently overwrites them.
+
+"Allow merge commits" and "Allow rebase merging" both preserve author dates. Keep at least one of them enabled. See {doc}`../reference/cli` for details.
+:::
 
 ## Customize your project
 
