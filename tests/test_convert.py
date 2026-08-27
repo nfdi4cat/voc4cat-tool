@@ -381,20 +381,20 @@ class TestValidateWithProfile:
         # concept-scheme-simple.ttl should be valid
         ttl_file = datadir / "concept-scheme-simple.ttl"
         # Should not raise
-        validate_with_profile(str(ttl_file), profile="vp4cat-5.2")
+        validate_with_profile(str(ttl_file), profile=DEFAULT_PROFILE)
 
     def test_validate_invalid_vocabulary_raises(self, datadir):
         """Test validation of invalid vocabulary raises ConversionError."""
         ttl_file = datadir / "concept-scheme-badfile.ttl"
         with pytest.raises(ConversionError, match="not valid according to"):
-            validate_with_profile(str(ttl_file), profile="vp4cat-5.2")
+            validate_with_profile(str(ttl_file), profile=DEFAULT_PROFILE)
 
     def test_validate_with_error_level_3(self, datadir, caplog):
         """Test validation with error_level=3 only fails on violations."""
         # badfile should have violations
         ttl_file = datadir / "concept-scheme-badfile.ttl"
         with caplog.at_level(logging.ERROR), pytest.raises(ConversionError):
-            validate_with_profile(str(ttl_file), profile="vp4cat-5.2", error_level=3)
+            validate_with_profile(str(ttl_file), profile=DEFAULT_PROFILE, error_level=3)
 
 
 class TestMultilingualLabels:
