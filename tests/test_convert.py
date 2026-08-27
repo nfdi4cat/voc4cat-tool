@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pytest
 from openpyxl import Workbook, load_workbook
-from rdflib import SH
+from rdflib import SH, Graph, Literal, URIRef
+from rdflib.namespace import SKOS
 
 from tests.test_cli import (
     CS_CYCLES,
@@ -13,7 +14,13 @@ from tests.test_cli import (
 )
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli
-from voc4cat.convert import format_log_msg, resolve_profile, validate_with_profile
+from voc4cat.convert import (
+    DEFAULT_PROFILE,
+    format_log_msg,
+    get_bundled_profiles,
+    resolve_profile,
+    validate_with_profile,
+)
 from voc4cat.utils import ConversionError
 
 
@@ -388,6 +395,69 @@ class TestValidateWithProfile:
         ttl_file = datadir / "concept-scheme-badfile.ttl"
         with caplog.at_level(logging.ERROR), pytest.raises(ConversionError):
             validate_with_profile(str(ttl_file), profile="vp4cat-5.2", error_level=3)
+
+
+class TestMultilingualLabels:
+    """A concept may carry one prefLabel per language (SKOS rule)."""
+
+    @staticmethod
+    def _with_labels(datadir, tmp_path, *labels):
+        """Copy the simple vocabulary, replacing term1's prefLabel."""
+        graph = Graph()
+        graph.parse(datadir / "concept-scheme-simple.ttl", format="turtle")
+        term = URIRef("http://example.org/test01")
+        graph.remove((term, SKOS.prefLabel, None))
+        for text, lang in labels:
+            graph.add((term, SKOS.prefLabel, Literal(text, lang=lang)))
+        out = tmp_path / "multilang.ttl"
+        graph.serialize(out, format="turtle")
+        return out
+
+    def test_one_preflabel_per_language_is_valid(self, datadir, tmp_path):
+        """The default profile must accept a concept labelled in two languages."""
+        ttl = self._with_labels(datadir, tmp_path, ("term1", "en"), ("Begriff1", "de"))
+        validate_with_profile(str(ttl), profile=DEFAULT_PROFILE)
+
+    def test_two_preflabels_in_one_language_is_invalid(self, datadir, tmp_path):
+        """sh:uniqueLang must still forbid two labels in the same language."""
+        ttl = self._with_labels(datadir, tmp_path, ("term1", "en"), ("other", "en"))
+        with pytest.raises(ConversionError, match="not valid according to"):
+            validate_with_profile(str(ttl), profile=DEFAULT_PROFILE)
+
+    def test_single_preflabel_is_still_required(self, datadir, tmp_path):
+        """sh:minCount must still require at least one label."""
+        ttl = self._with_labels(datadir, tmp_path)
+        with pytest.raises(ConversionError, match="not valid according to"):
+            validate_with_profile(str(ttl), profile=DEFAULT_PROFILE)
+
+
+class TestBundledProfiles:
+    """The profile shipped as default and what else is available."""
+
+    def test_default_profile_is_vp4cat_5_3(self):
+        assert DEFAULT_PROFILE == "vp4cat-5.3"
+
+    def test_default_profile_is_bundled(self):
+        assert DEFAULT_PROFILE in get_bundled_profiles()
+
+    def test_earlier_vp4cat_versions_stay_available(self):
+        """Vocabularies pinning an older profile keep working."""
+        assert "vp4cat-5.2" in get_bundled_profiles()
+
+    def test_default_profile_carries_no_shui_shapes(self):
+        """The SHUI shapes duplicate every violation, so they are not shipped."""
+        path, _ = resolve_profile(DEFAULT_PROFILE)
+        assert "Shui" not in path.read_text(encoding="utf-8")
+
+    def test_label_violation_is_reported_once(self, datadir, tmp_path, caplog):
+        """A single offending label must not produce two identical messages."""
+        ttl = TestMultilingualLabels._with_labels(
+            datadir, tmp_path, ("term1", "en"), ("duplicate", "en")
+        )
+        with caplog.at_level(logging.ERROR), contextlib.suppress(ConversionError):
+            validate_with_profile(str(ttl), profile=DEFAULT_PROFILE)
+        reported = [r for r in caplog.records if "UniqueLang" in r.getMessage()]
+        assert len(reported) == 1
 
 
 class TestXlsxToRdfConversion:
