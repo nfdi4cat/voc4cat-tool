@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 from pathlib import Path
@@ -54,7 +55,7 @@ def run_pylode(turtle_file: Path, output_path: Path) -> None:
 # ===== docs command =====
 
 
-def docs(args):
+def docs(args: argparse.Namespace) -> None:
     logger.debug("Docs subcommand started!")
 
     files = [args.VOCAB] if args.VOCAB.is_file() else [*Path(args.VOCAB).iterdir()]
