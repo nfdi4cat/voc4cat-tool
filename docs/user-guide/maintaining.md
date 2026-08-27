@@ -2,10 +2,9 @@
 
 Guide for vocabulary maintainers and editors.
 
-https://nfdi4cat.github.io/voc4cat/
 :::{seealso}
 
-Our Catalysis Vocabulary **Voc4Cat** includes [various sections for maintiners](https://nfdi4cat.github.io/voc4cat/) that you may find helpful.
+Our Catalysis Vocabulary **Voc4Cat** includes [various sections for maintainers](https://nfdi4cat.github.io/voc4cat/) that you may find helpful.
 :::
 
 In the vocabulary maintenance, two roles are distinguished, Contributors and Editors (AKA Maintainers).
@@ -27,7 +26,7 @@ The CI/CD pipeline validates:
 
 - xlsx file format and required fields
 - ID usage within allocated ranges
-- SHACL profile compliance (vocpub)
+- SHACL profile compliance (vp4cat)
 - Concept deletion (if `allow_delete = false`)
 
 Review the workflow run before manual review.
@@ -89,7 +88,7 @@ Example: `v2025-01-15`
 
 ### Write Release notes
 
-Use GitHub´s feature to create a list of changes made since the last release.
+Use GitHub's feature to create a list of changes made since the last release.
 
 Review and revise as needed but be sure to include
 

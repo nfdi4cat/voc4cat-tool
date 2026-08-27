@@ -72,7 +72,7 @@ orcid = "0000-0000-0000-0000"
 
 See {doc}`../reference/schemas` for the complete documentation of the configuration fields.
 
-When your are done, add this configuration to the repository:
+When you are done, add this configuration to the repository:
 
 ```bash
 # Commit & push
@@ -83,11 +83,9 @@ git push
 
 ## Generate your first vocabulary
 
-First, add the configuration for your vocabularies to the repository:
-
 ```bash
 # Generate xlsx template from configuration
-voc4cat template --config idranges.toml --outdir vocabularies/
+voc4cat template --config idranges.toml --outdir vocabularies/ myvocab
 
 # Edit the xlsx file in Excel or LibreOffice
 # Add your initial concepts
@@ -98,7 +96,7 @@ voc4cat template --config idranges.toml --outdir vocabularies/
 ### Branch protection
 
 It is recommended to prevent accidental changes to the main branch.
-On Github this can be achieved via branch preptection rules.
+On GitHub this can be achieved via branch protection rules.
 
 Settings → Branches → Add rule for `main`:
 
@@ -148,7 +146,7 @@ The templates in `.github/ISSUE_TEMPLATE/` can be customized:
 
 ### Customize the xlsx template
 
-While most sheets in the xlsx vocdabulary are created automatically, you can still provide a base-template to which the auto-created sheets will be added.
+While most sheets in the xlsx vocabulary are created automatically, you can still provide a base-template to which the auto-created sheets will be added.
 This could for example be used to provide a help sheet.
 
 Drop a custom template file `template_myvocab.xlsx` to the folder `templates/`.

@@ -5,7 +5,7 @@ Technical specifications for configuration and xlsx template formats.
 ## Configuration (idranges.toml)
 
 The `idranges.toml` file is the central configuration for vocabulary projects.
-It defines metadata, settings, and contributor ID ranges for one or more vocabluaries.
+It defines metadata, settings, and contributor ID ranges for one or more vocabularies.
 This general information is specified via a configuration file, because it should not be editable via xlsx.
 
 ### Structure overview
@@ -230,7 +230,7 @@ homepage = "https://nfdi4cat.github.io/voc4cat/"
 catalogue_pid = "https://doi.org/10.5281/zenodo.8313340"
 documentation = "https://nfdi4cat.github.io/voc4cat/"
 issue_tracker = "https://github.com/nfdi4cat/voc4cat/issues"
-conforms_to = "https://linked.data.gov.au/def/vocpub/validator/4.7"
+conforms_to = "https://w3id.org/nfdi4cat/vp4cat/"
 
 [vocabs.voc4cat.checks]
 allow_delete = false
@@ -322,14 +322,15 @@ The main sheet where you define vocabulary concepts. Each row represents one con
 | Parent IRIs | Broader concepts (comma-separated) | skos:broader |
 | Member of collection(s) | Collection memberships (comma-separated) | skos:member |
 | Member of ordered collection # position | Position in ordered collection | - |
-| Provenance | Origin of concept (read-only) | dct:provenance |
+| Provenance (read-only) | Origin of concept | dct:provenance |
 | Change Note | Documentation of changes | skos:changeNote |
 | Editorial Note | Internal notes | skos:editorialNote |
-| Obsoletion reason | Why deprecated | owl:deprecated |
 | Influenced by IRIs | Related external concepts (comma-separated) | prov:wasInfluencedBy |
 | Source Vocab IRI or URL | Original source | prov:hadPrimarySource |
 | Source Vocab License | License of source | dct:license |
 | Source Vocab Rights Holder | Rights holder of source | dct:rightsHolder |
+| Obsoletion reason | Why deprecated | owl:deprecated |
+| dct:isReplacedBy | IRI of the concept that replaces this one | dct:isReplacedBy |
 
 :::
 
@@ -375,7 +376,8 @@ To mark a concept as obsolete, select a reason from the "Obsoletion reason" drop
 - The meaning of the concept is ambiguous.
 - Lack of evidence that this function/process/component exists.
 
-Deprecated concept are marked in RDF with `owl:deprecated`.
+Deprecated concepts are marked in RDF with `owl:deprecated`.
+Name the successor in the "dct:isReplacedBy" column if one exists.
 
 ### Collections sheet
 
@@ -393,9 +395,11 @@ Members are assigned to collections in the Concepts sheet via the "Member of col
 | Definition* | What the collection contains | skos:definition | |
 | Parent Collection IRIs | Nest collections within other collections (comma-separated) | skos:member | |
 | Ordered? | "Yes" for ordered collection, blank for unordered | - | No |
+| Provenance (read-only) | Origin of collection | dct:provenance | |
 | Change Note | Documentation of changes | skos:changeNote | |
 | Editorial Note | Internal notes | skos:editorialNote | |
 | Obsoletion reason | Why deprecated | owl:deprecated | |
+| dct:isReplacedBy | IRI of the collection that replaces this one | dct:isReplacedBy | |
 
 :::
 
@@ -423,12 +427,12 @@ Link your concepts to terms in other vocabularies.
 ### ID Ranges sheet
 
 Read-only sheet showing which concept ID ranges are allocated to each contributor.
-This information comes mainly from the `idranges.toml` configuration but is updated with on the current usage of IDs.
+This information comes mainly from the `idranges.toml` configuration but is updated with the current usage of IDs.
 
 ### Prefixes sheet
 
 Read-only sheet showing namespace prefix mappings for CURIE expansion.
-The prefixes come the `idranges.toml` configuration enriched with the default prefixes from [rdflib](https://rdflib.readthedocs.io/en/stable/apidocs/rdflib.namespace/).
+The prefixes come from the `idranges.toml` configuration enriched with the default prefixes from [rdflib](https://rdflib.readthedocs.io/en/stable/apidocs/rdflib.namespace/).
 
 ### Data formats
 

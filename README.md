@@ -20,7 +20,7 @@ For **[voc4cat](https://github.com/nfdi4cat/voc4cat)**, a term collection for ca
 voc4cat was mainly developed to be used in gh-actions but it is also useful as a locally installed command line tool. It has the following features.
 
 - Convert between SKOS-vocabularies in Excel/xlsx format and rdf-format (turtle) in both directions.
-- Check/validate SKOS-vocabularies in rdf/turtle format with the [vocpub](https://w3id.org/profile/vocpub) SHACL-profile.
+- Check/validate SKOS-vocabularies in rdf/turtle format with the [vp4cat](https://w3id.org/nfdi4cat/vp4cat) SHACL-profile, a derivative of [vocpub](https://w3id.org/profile/vocpub).
 - Manage vocabulary metadata (title, description, creator, publisher, etc.) via configuration file.
 - Extract provenance information from git history (created, updated).
 - Allocate ID ranges to contributors and track their contributions.
@@ -81,7 +81,7 @@ This file defines vocabulary metadata and ID ranges for contributors.
 Then create an xlsx-template:
 
 ```bash
-voc4cat template --config myvocab/idranges.toml --outdir myvocab/
+voc4cat template --config myvocab/idranges.toml --outdir myvocab/ myvocab
 ```
 
 This creates `myvocab.xlsx` (named after your vocabulary) with the structure for entering concepts.

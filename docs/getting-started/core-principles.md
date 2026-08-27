@@ -23,7 +23,7 @@ In voc4cat, the Concept Scheme metadata is defined in your `idranges.toml` confi
 
 Concepts are the core elements - the terms you're defining. Each concept has:
 
-- **IRI** - A unique identifier (e.g., `https://example.org/myvocab/000001`)
+- **IRI** - A unique identifier (e.g., `https://example.org/myvocab_000001`)
 - **Preferred Label** - The main name in each language
 - **Alternative Labels** - Synonyms or variant names
 - **Definition** - What the concept means
@@ -88,7 +88,7 @@ The format conversions happen automatically via the GitHub workflows implemented
 
 To prevent ID conflicts when multiple people edit a vocabulary, voc4cat allocates ID ranges to contributors.
 Each person gets a unique range of concept IDs they can use.
-The voc4cac-template repository contains an issue-template to request IDs.
+The voc4cat-template repository contains an issue-template to request IDs.
 
 ## Learn more
 
