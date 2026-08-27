@@ -172,6 +172,23 @@ unchanged concepts keep the dates they have in REF.
 Requirements:
 - Untracked `.ttl` files are skipped with an info message
 - Requires either `--inplace` or `--outdir`
+- The repository must not use squash merging (see below)
+
+#### Merge strategy
+
+Dates are read from the **author** date of each commit that touched a concept file, so the repository's merge strategy decides whether they survive.
+
+:::{important}
+Disable squash merging in repositories that use `--prov-from-git`.
+:::
+
+| Merge strategy | Author dates | Result |
+|----------------|--------------|--------|
+| Merge commit | Preserved from the pull request branch | Safe |
+| Rebase merging | Replayed, author dates preserved | Safe |
+| Squash merging | Replaced by one commit dated at merge time | **Dates are lost** |
+
+Squashing discards the commits of the pull request branch. A concept created on one day and merged on another therefore keeps a `dct:created` value that no commit corroborates. Because a spreadsheet carries no date columns, the next xlsx submission strips all dates and re-derives them from what git can still see - the squash commit - silently rewriting the original creation date in a pull request that has nothing to do with that concept.
 
 ## check
 
