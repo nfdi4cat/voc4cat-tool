@@ -80,8 +80,11 @@ runtime behaviour. No behaviour bug has been confirmed.
   caller at `check.py:231` discards the result, so `-> None` is correct.
 - `assistant.py:97` — `holder = {}` is inferred `dict[str, str]` from the
   first write, then receives a list.
-- `transform.py:520` — rdflib's `Result.__iter__` yields
-  `Node | bool | ResultRow`; a SELECT query always yields `ResultRow`.
+- `transform.py:520` — rdflib declares `Result.__iter__` as
+  `Iterator[Union[_TripleType, bool, ResultRow]]`, wide enough to cover ASK and
+  CONSTRUCT; a SELECT query always yields `ResultRow`. (An earlier draft of this
+  document said `Node | bool | ResultRow`. That was wrong: the first member is a
+  triple tuple, not a `Node`.)
 
 ## Configuration
 
