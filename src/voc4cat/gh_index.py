@@ -22,7 +22,6 @@ class IndexPage:
         self.METADATA = {}
         self.METADATA["title"] = "Index of vocabulary versions"
         self.vocpath = Path(".") if vocpath is None else Path(vocpath)
-        self.vocabs: list[str] = []
         self.vocab_data: defaultdict[str, dict[str, str]] = defaultdict(dict)
         self.tags: list[str] = []
 
