@@ -263,8 +263,8 @@ def extract_entity_id_from_iri(iri: str, vocab_name: str) -> str:
     Returns:
         The entity ID portion (with vocab prefix stripped if applicable).
     """
-    if "#" in iri:  # noqa: SIM108
-        entity_id = iri.split("#")[-1]
+    if "#" in iri:
+        entity_id = iri.rsplit("#", maxsplit=1)[-1]
     else:
         entity_id = iri.rstrip("/").split("/")[-1]
 

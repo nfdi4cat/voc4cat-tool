@@ -73,7 +73,7 @@ def test_build_docs_pylode_ci_no_config(monkeypatch, datadir, tmp_path, caplog):
 @pytest.mark.skipif(not HAS_PYLODE, reason="pyLODE not installed")
 @pytest.mark.parametrize("git_output", [b"v2022.12.22\n", b""])
 @mock.patch.dict(os.environ, {"CI": "TRUE"})
-def test_build_docs_pylode_in_ci(  # noqa: PLR0913
+def test_build_docs_pylode_in_ci(
     fake_process, monkeypatch, datadir, tmp_path, caplog, git_output
 ):
     """Check that pylode generates additional index.html in CI."""

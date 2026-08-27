@@ -428,11 +428,11 @@ class TestIntegration:
                 list[int],
                 XLSXMetadata(
                     xlsx_serializer=lambda x: ", ".join(str(i) for i in x) if x else "",
-                    xlsx_deserializer=lambda x: [
-                        int(i.strip()) for i in x.split(",") if i.strip()
-                    ]
-                    if x.strip()
-                    else [],
+                    xlsx_deserializer=lambda x: (
+                        [int(i.strip()) for i in x.split(",") if i.strip()]
+                        if x.strip()
+                        else []
+                    ),
                 ),
             ] = Field(default=[])
 

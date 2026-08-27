@@ -561,13 +561,13 @@ class TestXLSXFieldAnalyzer:
         """Test custom serializer detection."""
         # Both serializers present
         metadata = XLSXMetadata(
-            xlsx_serializer=lambda x: str(x),
+            xlsx_serializer=str,
             xlsx_deserializer=lambda x: x,
         )
         assert XLSXFieldAnalyzer.has_custom_serializers(metadata) is True
 
         # Only one serializer - returns False
-        metadata_partial = XLSXMetadata(xlsx_serializer=lambda x: str(x))
+        metadata_partial = XLSXMetadata(xlsx_serializer=str)
         assert XLSXFieldAnalyzer.has_custom_serializers(metadata_partial) is False
 
         # No metadata
@@ -575,14 +575,14 @@ class TestXLSXFieldAnalyzer:
 
     def test_get_custom_serializer(self):
         """Test custom serializer extraction."""
-        serializer = lambda x: str(x)  # noqa: E731
+        serializer = str
         metadata = XLSXMetadata(xlsx_serializer=serializer)
         assert XLSXFieldAnalyzer.get_custom_serializer(metadata) is serializer
         assert XLSXFieldAnalyzer.get_custom_serializer(None) is None
 
     def test_get_custom_deserializer(self):
         """Test custom deserializer extraction."""
-        deserializer = lambda x: int(x)  # noqa: E731
+        deserializer = int
         metadata = XLSXMetadata(xlsx_deserializer=deserializer)
         assert XLSXFieldAnalyzer.get_custom_deserializer(metadata) is deserializer
         assert XLSXFieldAnalyzer.get_custom_deserializer(None) is None

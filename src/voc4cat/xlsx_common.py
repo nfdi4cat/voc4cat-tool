@@ -494,11 +494,14 @@ class XLSXSerializationEngine:
         if field_type is None:
             return str(raw_value)
 
-        type_converters = {
-            str: lambda x: str(x),
-            int: lambda x: int(x),
-            float: lambda x: float(x),
-            bool: lambda x: self._convert_bool(x),
+        # Annotated because the values are heterogeneous (classes, a bound
+        # method, lambdas); without it they join to `object`, which is not
+        # callable at the lookup below.
+        type_converters: dict[type, Callable[[Any], Any]] = {
+            str: str,
+            int: int,
+            float: float,
+            bool: self._convert_bool,
             date: lambda x: self._convert_datetime(x, date),
             datetime: lambda x: self._convert_datetime(x, datetime),
         }
