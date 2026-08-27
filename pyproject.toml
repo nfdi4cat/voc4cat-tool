@@ -300,7 +300,5 @@ disallow_untyped_decorators = false
 # removed by the commit that annotates that module. When the list is empty,
 # delete this table.
 [[tool.zuban.overrides]]
-module = [
-  "voc4cat.cli",
-]
+module = []
 ignore_errors = true

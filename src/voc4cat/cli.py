@@ -5,7 +5,9 @@ import logging
 import os.path
 import sys
 import textwrap
+from collections.abc import Sequence
 from pathlib import Path
+from typing import TypeAlias, TypedDict
 
 from voc4cat import __version__, config, setup_logging
 from voc4cat.check import check
@@ -18,8 +20,21 @@ from voc4cat.utils import ConversionError
 
 logger = logging.getLogger(__name__)
 
+# argparse.ArgumentParser.add_subparsers() returns an argparse._SubParsersAction.
+# The leading underscore is argparse's own; typeshed declares this class as the
+# return type, so it is the accurate annotation for the helpers below. It is
+# quoted because argparse does not support subscripting it at runtime.
+SubParsersAction: TypeAlias = "argparse._SubParsersAction[argparse.ArgumentParser]"
 
-def process_common_options(args, raw_args):
+
+class CommonSubparserOptions(TypedDict):
+    """argparse keyword arguments that every subparser shares."""
+
+    parents: list[argparse.ArgumentParser]
+    formatter_class: type[argparse.HelpFormatter]
+
+
+def process_common_options(args: argparse.Namespace, raw_args: Sequence[str]) -> None:
     # set up output directory
     outdir = getattr(args, "outdir", None)
     if outdir is not None and os.path.isfile(outdir):
@@ -64,7 +79,7 @@ class DecentFormatter(argparse.HelpFormatter):
     An argparse formatter that preserves newlines & keeps indentation.
     """
 
-    def _fill_text(self, text, width, indent):
+    def _fill_text(self, text: str, width: int, indent: str) -> str:
         """
         Reformat text while keeping newlines for lines shorter than width.
         """
@@ -73,7 +88,7 @@ class DecentFormatter(argparse.HelpFormatter):
             lines.append(textwrap.fill(line, width, subsequent_indent=indent))
         return "\n".join(lines)
 
-    def _split_lines(self, text, width):
+    def _split_lines(self, text: str, width: int) -> list[str]:
         """
         Conserve indentation in help/description lines when splitting long lines.
         """
@@ -88,12 +103,12 @@ class DecentFormatter(argparse.HelpFormatter):
         return lines
 
 
-def root_cmd(args):
+def root_cmd(args: argparse.Namespace) -> None:
     if args.version:  # pragma: no cover
         print(f"voc4cat {__version__}")
 
 
-def create_root_parser():
+def create_root_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="voc4cat",
         description=(
@@ -113,7 +128,7 @@ def create_root_parser():
     return parser
 
 
-def create_common_options_parser():
+def create_common_options_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="voc4cat",
         allow_abbrev=False,
@@ -165,7 +180,9 @@ def create_common_options_parser():
     return parser
 
 
-def add_transform_subparser(subparsers, options):
+def add_transform_subparser(
+    subparsers: SubParsersAction, options: CommonSubparserOptions
+) -> None:
     """Transforms have the same input and output filetype."""
     parser = subparsers.add_parser(
         "transform",
@@ -237,7 +254,9 @@ def add_transform_subparser(subparsers, options):
     parser.set_defaults(func=transform)
 
 
-def add_convert_subparser(subparsers, options):
+def add_convert_subparser(
+    subparsers: SubParsersAction, options: CommonSubparserOptions
+) -> None:
     """Conversions xlsx <-> rdf and between different rdf representations."""
 
     parser = subparsers.add_parser(
@@ -290,7 +309,9 @@ def add_convert_subparser(subparsers, options):
     parser.set_defaults(func=convert)
 
 
-def add_check_subparser(subparsers, options):
+def add_check_subparser(
+    subparsers: SubParsersAction, options: CommonSubparserOptions
+) -> None:
     """Validation and checks of xlsx files, SKOS file and directory usage in CI."""
 
     parser = subparsers.add_parser(
@@ -381,7 +402,9 @@ def add_check_subparser(subparsers, options):
     parser.set_defaults(func=check, _parser=parser)
 
 
-def add_docs_subparser(subparsers, options):
+def add_docs_subparser(
+    subparsers: SubParsersAction, options: CommonSubparserOptions
+) -> None:
     """HTML documentation generation for SKOS vocabulary from rdf-format."""
     parser = subparsers.add_parser(
         "docs",
@@ -411,7 +434,9 @@ def add_docs_subparser(subparsers, options):
     parser.set_defaults(func=docs)
 
 
-def add_template_subparser(subparsers, options):
+def add_template_subparser(
+    subparsers: SubParsersAction, options: CommonSubparserOptions
+) -> None:
     """Generate blank vocabulary templates."""
     parser = subparsers.add_parser(
         "template",
@@ -441,7 +466,7 @@ def add_template_subparser(subparsers, options):
     parser.set_defaults(func=template_cmd)
 
 
-def main_cli(raw_args=None):
+def main_cli(raw_args: Sequence[str] | None = None) -> None:
     """Setup CLI app and run commands based on args."""
     # Create root parser for cli app
     parser = create_root_parser()
@@ -457,7 +482,7 @@ def main_cli(raw_args=None):
     common_options_parser = create_common_options_parser()
 
     # Create the subparsers with some common options
-    common_options = {
+    common_options: CommonSubparserOptions = {
         "parents": [common_options_parser],
         "formatter_class": DecentFormatter,
     }
@@ -479,7 +504,7 @@ def main_cli(raw_args=None):
     args.func(args)
 
 
-def run_cli_app(raw_args=None):
+def run_cli_app(raw_args: Sequence[str] | None = None) -> None:
     """Entry point for running the cli app."""
     if raw_args is None:
         raw_args = sys.argv[1:]
