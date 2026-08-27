@@ -17,10 +17,14 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal as TypingLiteral
+from typing import TypedDict, cast
 
 import curies
 from openpyxl import load_workbook
+from openpyxl.cell import Cell
 from openpyxl.styles import Font
+from openpyxl.workbook import Workbook
+from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import BaseModel
 from rdflib import (
     DCAT,
@@ -36,6 +40,7 @@ from rdflib import (
     Graph,
     Literal,
     Namespace,
+    Node,
     URIRef,
 )
 from rdflib.collection import Collection as RDFCollection
@@ -43,6 +48,8 @@ from rdflib.collection import Collection as RDFCollection
 from voc4cat import config
 from voc4cat.checks import Voc4catError
 from voc4cat.convert_v1_helpers import (
+    CollectionLangData,
+    ConceptLangData,
     add_provenance_triples_to_graph,
     build_id_range_info,
     derive_contributors,
@@ -223,7 +230,7 @@ def lookup_entity_name_safe(graph: Graph, value: str) -> str:
     return value
 
 
-def extract_concept_scheme_from_rdf(graph: Graph) -> dict:
+def extract_concept_scheme_from_rdf(graph: Graph) -> dict[str, str]:
     """Extract ConceptScheme data from an RDF graph.
 
     Args:
@@ -301,7 +308,27 @@ def extract_concept_scheme_from_rdf(graph: Graph) -> dict:
     return holder
 
 
-def extract_concepts_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
+class _ConceptRdfData(TypedDict):
+    """All RDF data collected for one concept, before splitting by language."""
+
+    pref_labels: dict[str, str]
+    definitions: dict[str, str]
+    alt_labels: dict[str, list[str]]
+    editorial_notes: dict[str, str]
+    parent_iris: list[str]
+    source_vocab_iri: str
+    source_vocab_license: str
+    source_vocab_rights_holder: str
+    change_note: str
+    obsolete_reason: str
+    is_deprecated: bool
+    influenced_by_iris: list[str]
+    replaced_by_iri: str
+
+
+def extract_concepts_from_rdf(
+    graph: Graph,
+) -> dict[str, dict[str, ConceptLangData]]:
     """Extract Concepts from an RDF graph, grouped by IRI and language.
 
     Args:
@@ -315,27 +342,27 @@ def extract_concepts_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
         source_vocab_license, source_vocab_rights_holder.
     """
     # Structure: {iri: {lang: {field: value}}}
-    concepts_by_iri_lang: dict[str, dict[str, dict]] = defaultdict(
-        lambda: defaultdict(dict)
+    concepts_by_iri_lang: defaultdict[str, defaultdict[str, ConceptLangData]] = (
+        defaultdict(lambda: defaultdict(ConceptLangData))
     )
 
     # First pass: collect all data per concept
-    concept_data: dict[str, dict] = defaultdict(
-        lambda: {
-            "pref_labels": {},  # {lang: label}
-            "definitions": {},  # {lang: definition}
-            "alt_labels": {},  # {lang: [labels]}
-            "editorial_notes": {},  # {lang: note}
-            "parent_iris": [],
-            "source_vocab_iri": "",
-            "source_vocab_license": "",
-            "source_vocab_rights_holder": "",
-            "change_note": "",
-            "obsolete_reason": "",
-            "is_deprecated": False,
-            "influenced_by_iris": [],
-            "replaced_by_iri": "",
-        }
+    concept_data: defaultdict[str, _ConceptRdfData] = defaultdict(
+        lambda: _ConceptRdfData(
+            pref_labels={},
+            definitions={},
+            alt_labels={},
+            editorial_notes={},
+            parent_iris=[],
+            source_vocab_iri="",
+            source_vocab_license="",
+            source_vocab_rights_holder="",
+            change_note="",
+            obsolete_reason="",
+            is_deprecated=False,
+            influenced_by_iris=[],
+            replaced_by_iri="",
+        )
     )
 
     for s in graph.subjects(RDF.type, SKOS.Concept):
@@ -411,7 +438,26 @@ def extract_concepts_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
     return dict(concepts_by_iri_lang)
 
 
-def extract_collections_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
+class _CollectionRdfData(TypedDict):
+    """All RDF data collected for one collection, before splitting by language."""
+
+    pref_labels: dict[str, str]
+    definitions: dict[str, str]
+    editorial_notes: dict[str, str]
+    change_note: str
+    obsolete_reason: str
+    is_deprecated: bool
+    ordered: bool
+    # Member IRIs (concepts or collections), unordered.
+    members: list[str]
+    # Member IRIs in order, for an OrderedCollection.
+    ordered_members: list[str]
+    replaced_by_iri: str
+
+
+def extract_collections_from_rdf(
+    graph: Graph,
+) -> dict[str, dict[str, CollectionLangData]]:
     """Extract Collections from an RDF graph, grouped by IRI and language.
 
     Args:
@@ -422,24 +468,24 @@ def extract_collections_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
         Each collection_data_dict contains: preferred_label, definition, change_note,
         editorial_note, obsolete_reason, ordered, members.
     """
-    collections_by_iri_lang: dict[str, dict[str, dict]] = defaultdict(
-        lambda: defaultdict(dict)
+    collections_by_iri_lang: defaultdict[str, defaultdict[str, CollectionLangData]] = (
+        defaultdict(lambda: defaultdict(CollectionLangData))
     )
 
     # First pass: collect all data per collection
-    collection_data: dict[str, dict] = defaultdict(
-        lambda: {
-            "pref_labels": {},  # {lang: label}
-            "definitions": {},  # {lang: definition}
-            "editorial_notes": {},  # {lang: note}
-            "change_note": "",
-            "obsolete_reason": "",
-            "is_deprecated": False,
-            "ordered": False,
-            "members": [],  # member IRIs (concepts or collections) - unordered
-            "ordered_members": [],  # member IRIs in order - for OrderedCollection
-            "replaced_by_iri": "",
-        }
+    collection_data: defaultdict[str, _CollectionRdfData] = defaultdict(
+        lambda: _CollectionRdfData(
+            pref_labels={},
+            definitions={},
+            editorial_notes={},
+            change_note="",
+            obsolete_reason="",
+            is_deprecated=False,
+            ordered=False,
+            members=[],
+            ordered_members=[],
+            replaced_by_iri="",
+        )
     )
 
     # Process both Collection and OrderedCollection types
@@ -516,7 +562,7 @@ def extract_collections_from_rdf(graph: Graph) -> dict[str, dict[str, dict]]:
     return dict(collections_by_iri_lang)
 
 
-def extract_mappings_from_rdf(graph: Graph) -> dict[str, dict]:
+def extract_mappings_from_rdf(graph: Graph) -> dict[str, dict[str, list[str]]]:
     """Extract mapping relations from an RDF graph.
 
     Args:
@@ -525,7 +571,7 @@ def extract_mappings_from_rdf(graph: Graph) -> dict[str, dict]:
     Returns:
         Dict: {concept_iri: {related_matches: [], close_matches: [], ...}}
     """
-    mappings: dict[str, dict] = defaultdict(
+    mappings: defaultdict[str, dict[str, list[str]]] = defaultdict(
         lambda: {
             "related_matches": [],
             "close_matches": [],
@@ -649,7 +695,7 @@ def build_concept_to_ordered_collections_map(
 # =============================================================================
 
 
-def rdf_concept_scheme_to_v1(data: dict) -> ConceptSchemeV1:
+def rdf_concept_scheme_to_v1(data: dict[str, str]) -> ConceptSchemeV1:
     """Convert extracted concept scheme data to ConceptSchemeV1 model.
 
     Args:
@@ -769,10 +815,10 @@ def config_to_concept_scheme_v1(
 
 
 def rdf_concepts_to_v1(
-    concepts_data: dict[str, dict[str, dict]],
+    concepts_data: dict[str, dict[str, ConceptLangData]],
     concept_to_collections: dict[str, list[str]],
     concept_to_ordered_collections: dict[str, dict[str, int]] | None = None,
-    collections_data: dict[str, dict[str, dict]] | None = None,
+    collections_data: dict[str, dict[str, CollectionLangData]] | None = None,
     vocab_name: str = "",
     provenance_template: str = "",
     repository_url: str = "",
@@ -828,7 +874,7 @@ def rdf_concepts_to_v1(
         )
 
         # Get deprecation info from any language (it's the same for all)
-        first_lang_data = next(iter(lang_data.values()), {})
+        first_lang_data: ConceptLangData = next(iter(lang_data.values()), {})
         replaced_by_iri = first_lang_data.get("replaced_by_iri", "")
 
         for lang, data in lang_data.items():
@@ -933,9 +979,9 @@ def rdf_concepts_to_v1(
 
 
 def rdf_collections_to_v1(
-    collections_data: dict[str, dict[str, dict]],
+    collections_data: dict[str, dict[str, CollectionLangData]],
     collection_to_parents: dict[str, list[str]],
-    concepts_data: dict[str, dict[str, dict]] | None = None,
+    concepts_data: dict[str, dict[str, ConceptLangData]] | None = None,
     vocab_name: str = "",
     provenance_template: str = "",
     repository_url: str = "",
@@ -984,7 +1030,7 @@ def rdf_collections_to_v1(
         )
 
         # Get deprecation info from any language (it's the same for all)
-        first_lang_data = next(iter(lang_data.values()), {})
+        first_lang_data: CollectionLangData = next(iter(lang_data.values()), {})
         replaced_by_iri = first_lang_data.get("replaced_by_iri", "")
 
         for lang, data in lang_data.items():
@@ -1048,8 +1094,8 @@ def rdf_collections_to_v1(
 
 
 def rdf_mappings_to_v1(
-    mappings_data: dict[str, dict],
-    concepts_data: dict[str, dict[str, dict]] | None = None,
+    mappings_data: dict[str, dict[str, list[str]]],
+    concepts_data: dict[str, dict[str, ConceptLangData]] | None = None,
 ) -> list[MappingV1]:
     """Convert extracted mappings to MappingV1 models.
 
@@ -1154,7 +1200,9 @@ def _get_v1_table_row_info(
     )
 
 
-def _find_column_by_header(worksheet, header_name: str, header_row: int) -> int | None:
+def _find_column_by_header(
+    worksheet: Worksheet, header_name: str, header_row: int
+) -> int | None:
     """Find column index by header name in a worksheet.
 
     Args:
@@ -1192,7 +1240,7 @@ def _extract_entity_id_from_provenance_url(url: str) -> str:
 
 
 def _add_provenance_hyperlinks(
-    workbook, sheet_name: str, model_class: type[BaseModel]
+    workbook: Workbook, sheet_name: str, model_class: type[BaseModel]
 ) -> None:
     """Add hyperlinks to provenance cells in a sheet.
 
@@ -1227,7 +1275,7 @@ def _add_provenance_hyperlinks(
 
 
 def _add_concept_iri_hyperlinks(
-    workbook, sheet_name: str, model_class: type[BaseModel]
+    workbook: Workbook, sheet_name: str, model_class: type[BaseModel]
 ) -> None:
     """Add hyperlinks to concept IRI cells in a sheet.
 
@@ -1265,7 +1313,7 @@ def _add_concept_iri_hyperlinks(
                 _apply_hyperlink_style(cell)
 
 
-def _apply_hyperlink_style(cell) -> None:
+def _apply_hyperlink_style(cell: Cell) -> None:
     """Apply standard hyperlink styling to a cell (blue, underlined).
 
     Args:
@@ -1282,7 +1330,10 @@ def _apply_hyperlink_style(cell) -> None:
 
 
 def _add_entity_iri_hyperlinks(
-    workbook, sheet_name: str, column_header: str, model_class: type[BaseModel]
+    workbook: Workbook,
+    sheet_name: str,
+    column_header: str,
+    model_class: type[BaseModel],
 ) -> None:
     """Add hyperlinks to entity IRI cells (Concepts or Collections).
 
@@ -1320,7 +1371,9 @@ def _add_entity_iri_hyperlinks(
                 _apply_hyperlink_style(cell)
 
 
-def _add_vocabulary_iri_hyperlink(workbook, sheet_name: str = "Concept Scheme") -> None:
+def _add_vocabulary_iri_hyperlink(
+    workbook: Workbook, sheet_name: str = "Concept Scheme"
+) -> None:
     """Add hyperlink to the Vocabulary IRI field in Concept Scheme sheet.
 
     The Concept Scheme sheet uses key-value format where the Vocabulary IRI
@@ -1711,11 +1764,16 @@ def read_concept_scheme_v1(filepath: Path) -> ConceptSchemeV1:
     Returns:
         ConceptSchemeV1 model instance.
     """
-    return import_from_xlsx(
-        filepath,
-        ConceptSchemeV1,
-        format_type="keyvalue",
-        sheet_name=CONCEPT_SCHEME_SHEET_NAME,
+    # import_from_xlsx() returns Any because it serves several formats; the
+    # "keyvalue" format always yields one instance of the requested model.
+    return cast(
+        "ConceptSchemeV1",
+        import_from_xlsx(
+            filepath,
+            ConceptSchemeV1,
+            format_type="keyvalue",
+            sheet_name=CONCEPT_SCHEME_SHEET_NAME,
+        ),
     )
 
 
@@ -1728,12 +1786,17 @@ def read_concepts_v1(filepath: Path) -> list[ConceptV1]:
     Returns:
         List of ConceptV1 model instances (one per row).
     """
-    return import_from_xlsx(
-        filepath,
-        ConceptV1,
-        format_type="table",
-        config=CONCEPTS_READ_CONFIG,
-        sheet_name=CONCEPTS_SHEET_NAME,
+    # import_from_xlsx() returns Any because it serves several formats; the
+    # "table" format always yields a list of the requested model.
+    return cast(
+        "list[ConceptV1]",
+        import_from_xlsx(
+            filepath,
+            ConceptV1,
+            format_type="table",
+            config=CONCEPTS_READ_CONFIG,
+            sheet_name=CONCEPTS_SHEET_NAME,
+        ),
     )
 
 
@@ -1746,12 +1809,17 @@ def read_collections_v1(filepath: Path) -> list[CollectionV1]:
     Returns:
         List of CollectionV1 model instances (one per row).
     """
-    return import_from_xlsx(
-        filepath,
-        CollectionV1,
-        format_type="table",
-        config=COLLECTIONS_READ_CONFIG,
-        sheet_name=COLLECTIONS_SHEET_NAME,
+    # import_from_xlsx() returns Any because it serves several formats; the
+    # "table" format always yields a list of the requested model.
+    return cast(
+        "list[CollectionV1]",
+        import_from_xlsx(
+            filepath,
+            CollectionV1,
+            format_type="table",
+            config=COLLECTIONS_READ_CONFIG,
+            sheet_name=COLLECTIONS_SHEET_NAME,
+        ),
     )
 
 
@@ -1764,12 +1832,17 @@ def read_mappings_v1(filepath: Path) -> list[MappingV1]:
     Returns:
         List of MappingV1 model instances (one per row).
     """
-    return import_from_xlsx(
-        filepath,
-        MappingV1,
-        format_type="table",
-        config=MAPPINGS_READ_CONFIG,
-        sheet_name=MAPPINGS_SHEET_NAME,
+    # import_from_xlsx() returns Any because it serves several formats; the
+    # "table" format always yields a list of the requested model.
+    return cast(
+        "list[MappingV1]",
+        import_from_xlsx(
+            filepath,
+            MappingV1,
+            format_type="table",
+            config=MAPPINGS_READ_CONFIG,
+            sheet_name=MAPPINGS_SHEET_NAME,
+        ),
     )
 
 
@@ -1782,12 +1855,17 @@ def read_prefixes_v1(filepath: Path) -> list[PrefixV1]:
     Returns:
         List of PrefixV1 model instances.
     """
-    return import_from_xlsx(
-        filepath,
-        PrefixV1,
-        format_type="table",
-        config=PREFIXES_READ_CONFIG,
-        sheet_name=PREFIXES_SHEET_NAME,
+    # import_from_xlsx() returns Any because it serves several formats; the
+    # "table" format always yields a list of the requested model.
+    return cast(
+        "list[PrefixV1]",
+        import_from_xlsx(
+            filepath,
+            PrefixV1,
+            format_type="table",
+            config=PREFIXES_READ_CONFIG,
+            sheet_name=PREFIXES_SHEET_NAME,
+        ),
     )
 
 
@@ -2638,7 +2716,9 @@ def build_collection_graph(
         ordered_members = ordered_collection_members.get(collection.iri, [])
         if ordered_members:
             list_node = BNode()
-            member_refs = [URIRef(m) for m in ordered_members]
+            # RDFCollection stores its items in an invariant list[Node], so
+            # the list has to be built as one rather than as list[URIRef].
+            member_refs: list[Node] = [URIRef(m) for m in ordered_members]
             RDFCollection(g, list_node, member_refs)
             g.add((c, SKOS.memberList, list_node))
     else:
@@ -2921,7 +3001,17 @@ def excel_to_rdf_v1(
 # --- Debugging Utilities ---
 
 
-def compare_graphs(g1: Graph, g2: Graph) -> dict:
+class GraphComparison(TypedDict):
+    """Differences between two graphs, as reported by compare_graphs."""
+
+    only_in_g1: list[tuple[Node, Node, Node]]
+    only_in_g2: list[tuple[Node, Node, Node]]
+    g1_count: int
+    g2_count: int
+    common_count: int
+
+
+def compare_graphs(g1: Graph, g2: Graph) -> GraphComparison:
     """Compare two graphs and return differences.
 
     Useful for debugging round-trip conversion issues.

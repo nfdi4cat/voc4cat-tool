@@ -187,7 +187,7 @@ ID_PATTERNS: dict[str, re.Pattern[str]] = {}
 ID_RANGES_BY_ACTOR: defaultdict[tuple[str, str], list[tuple[int, int]]] = defaultdict(
     list
 )
-CURIES_CONVERTER_MAP = {}
+CURIES_CONVERTER_MAP: dict[str, Converter] = {}
 
 
 class _NewConf(TypedDict, total=False):

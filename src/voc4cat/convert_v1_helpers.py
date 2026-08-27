@@ -14,7 +14,7 @@ import logging
 import os
 import re
 from enum import Enum
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypedDict
 
 import curies
 from jinja2 import Template
@@ -27,6 +27,8 @@ from voc4cat.models_v1 import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from rdflib import Graph, URIRef
 
     from voc4cat.config import IdrangeItem, Vocab
@@ -313,17 +315,47 @@ def add_provenance_triples_to_graph(
     return False
 
 
-# Per-language field dict as produced by convert_v1.extract_concepts_from_rdf /
-# extract_collections_from_rdf, e.g. {"preferred_label": "...", "is_deprecated":
-# False, "parent_iris": [...]}. Shared by format_iri_with_label below and by
-# validate_entity_deprecation further down.
-EntityLangData = dict[str, str | bool | list[str]]
+class EntityLangData(TypedDict, total=False):
+    """Per-language fields shared by concepts and collections.
+
+    Produced by convert_v1.extract_concepts_from_rdf and
+    extract_collections_from_rdf, which fill in the entity-specific subtypes
+    ConceptLangData and CollectionLangData below. The keys are optional so
+    that an empty dict is a valid stand-in for a missing language.
+    """
+
+    preferred_label: str
+    definition: str
+    editorial_note: str
+    change_note: str
+    obsolete_reason: str
+    replaced_by_iri: str
+    is_deprecated: bool
+
+
+class ConceptLangData(EntityLangData, total=False):
+    """Per-language fields of a concept."""
+
+    alternate_labels: list[str]
+    parent_iris: list[str]
+    source_vocab_iri: str
+    source_vocab_license: str
+    source_vocab_rights_holder: str
+    influenced_by_iris: list[str]
+
+
+class CollectionLangData(EntityLangData, total=False):
+    """Per-language fields of a collection."""
+
+    ordered: bool
+    members: list[str]
+    ordered_members: list[str]
 
 
 def format_iri_with_label(
     iri: str,
-    concepts_data: dict[str, dict[str, EntityLangData]],
-    collections_data: dict[str, dict[str, EntityLangData]] | None = None,
+    concepts_data: Mapping[str, Mapping[str, EntityLangData]],
+    collections_data: Mapping[str, Mapping[str, EntityLangData]] | None = None,
 ) -> str:
     """Format IRI as 'curie (english_label)' if label is available.
 
@@ -671,7 +703,7 @@ def validate_deprecation(
 
 def validate_entity_deprecation(
     entity_iri: str,
-    lang_data: dict[str, EntityLangData],
+    lang_data: Mapping[str, EntityLangData],
     vocab_name: str,
     provenance_template: str,
     repository_url: str,
@@ -713,17 +745,12 @@ def validate_entity_deprecation(
     )
 
     # Get deprecation info from any language (it's the same for all).
-    # "is_deprecated" and "obsolete_reason" are always stored as bool/str by
-    # extract_concepts_from_rdf/extract_collections_from_rdf, never as
-    # list[str], so narrowing away the rest of EntityLangData's value union
-    # is safe here.
-    first_lang_data = next(iter(lang_data.values()), {})
-    is_deprecated = cast("bool", first_lang_data.get("is_deprecated", False))
-    obsolete_reason_raw = cast("str", first_lang_data.get("obsolete_reason", ""))
+    first_lang_data: EntityLangData = next(iter(lang_data.values()), {})
+    is_deprecated = first_lang_data.get("is_deprecated", False)
+    obsolete_reason_raw = first_lang_data.get("obsolete_reason", "")
 
-    # Validate and fix English prefLabel if needed. "preferred_label" is
-    # always a str for the same reason as above.
-    en_pref_label = cast("str", lang_data.get("en", {}).get("preferred_label", ""))
+    # Validate and fix English prefLabel if needed.
+    en_pref_label = lang_data.get("en", {}).get("preferred_label", "")
     if en_pref_label:
         corrected_label, errors = validate_deprecation(
             pref_label=en_pref_label,
