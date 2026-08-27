@@ -262,4 +262,36 @@ Refactoring first would mean restructuring untyped code and then annotating
 whatever shape emerged. The 690-test suite guards either order; types guard the
 second one better.
 
+### Enforcing openpyxl types
+
+openpyxl ships no `py.typed`, so every annotation naming `Worksheet`, `Cell`,
+`Workbook` or their kin resolves to `Any`. Thirty-four annotation sites are
+affected, 35 of the 37 concentrated in the xlsx layer. Those annotations
+document intent; they enforce nothing. `reveal_type` on an annotated
+`Worksheet` returns `Any`, and reading a nonexistent attribute off one passes.
+
+`types-openpyxl==3.1.5.20260807` closes that gap, and its version line matches
+the pinned `openpyxl >= 3.1.5`. Measured against this branch it produces 17
+errors in two files, `xlsx_common` (15) and `xlsx_keyvalue` (2):
+
+- Five at `xlsx_common.py:1155-1163`, where a `_validation_list_col` counter is
+  stored on openpyxl's `Workbook` object. It works only because `Workbook`
+  defines no `__slots__`, and it puts this project's state on a third-party
+  object under a name openpyxl could claim for itself. This needs a design fix,
+  not a cast: hold the counter in a module-level map keyed by workbook, or on
+  the hidden sheet that already exists for the purpose.
+- Four at `xlsx_common.py:1115` and `xlsx_keyvalue.py:133`, assigning `.value`
+  on a cell the stubs type as possibly a `MergedCell`, whose `value` is
+  read-only `None` behind `__slots__`. A latent `AttributeError`.
+- Six at `xlsx_common.py:1518-1546`, where `range_boundaries()` is stubbed as
+  returning optional components. It genuinely can, for open-ended refs like
+  `"A:B"`, but every input here is a bounded table ref. An assert or a cast is
+  the honest fix.
+- Two more: a `Workbook | None` argument at `:1214`, and optional
+  `max_row`/`max_column`.
+
+Roughly nine of the seventeen are real defects that the `Any` resolution hides
+today. Adopting the stubs belongs with the refactor rather than in the typing
+plan, because it reopens two modules that plan has already finished.
+
 Delivery is a single pull request on `issue362-improve-typing`, closing #362.
