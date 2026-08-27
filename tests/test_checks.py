@@ -81,15 +81,15 @@ def test_check_number_of_files_in_inbox(datadir, tmp_path, temp_config, cs_cycle
     assert "The single vocabulary option is active but " in str(excinfo.value)
 
 
-# To give the same result on gh-actions we need to clear the CI_RUN envvar
-@mock.patch.dict(os.environ, {"CI_RUN": ""})
+# Clear GITHUB_ACTIONS so this stays the non-CI path when run on gh-actions.
+@mock.patch.dict(os.environ, {"GITHUB_ACTIONS": ""})
 def test_validate_vocabulary_files_for_ci_workflow_default(
     datadir, caplog, temp_config, tmp_path, cs_cycles_xlsx
 ):
     """
     Test for validate_vocabulary_files_for_ci_workflow.
 
-    Tests for default config. single_vocab=False and envvar "CI_Run" not set.
+    Tests for default config. single_vocab=False and envvar "GITHUB_ACTIONS" not set.
     """
     # The loose default config results only in a warning.
     with caplog.at_level(logging.WARNING):
@@ -133,19 +133,20 @@ def test_validate_vocabulary_files_for_ci_workflow_default(
     with caplog.at_level(logging.WARNING):
         retval = validate_vocabulary_files_for_ci_workflow(vocab, inbox)
     assert (
-        f'Directory "{inbox}" should only contain xlsx files and README.md.'
+        f'Directory "{inbox}" may only contain xlsx files and markdown documentation'
         in caplog.text
     )
+    assert "extra_file" in caplog.text
     assert retval is None
 
 
-@mock.patch.dict(os.environ, {"CI_RUN": "true"})
+@mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"})
 def test_validate_vocabulary_files_for_ci_workflow_single_vocab(
     datadir, tmp_path, temp_config, cs_cycles_xlsx
 ):
     """Test for validate_vocabulary_files_for_ci_workflow.
 
-    Tests for single_vocab=True and envvar "CI_Run" set.
+    Tests for single_vocab=True and envvar "GITHUB_ACTIONS" set.
     """
     # Load a valid stricter config.
     config = temp_config
@@ -194,9 +195,11 @@ def test_validate_vocabulary_files_for_ci_workflow_single_vocab(
     shutil.copy(datadir / "valid_idranges.toml", pr_inbox)
     with pytest.raises(Voc4catError) as excinfo:
         validate_vocabulary_files_for_ci_workflow(pr_vocab, pr_inbox)
-    assert f'Directory "{pr_inbox}" may only contain xlsx files and README.md.' in str(
-        excinfo.value
+    assert (
+        f'Directory "{pr_inbox}" may only contain xlsx files and markdown documentation'
+        in str(excinfo.value)
     )
+    assert "valid_idranges.toml" in str(excinfo.value)
     os.remove(pr_inbox / "valid_idranges.toml")
 
     # One vocab but without idranges specified.
@@ -222,13 +225,13 @@ def test_validate_vocabulary_files_for_ci_workflow_single_vocab(
     )
 
 
-@mock.patch.dict(os.environ, {"CI_RUN": "true"}, clear=True)
+@mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}, clear=True)
 def test_validate_vocabulary_files_for_ci_workflow_multi_vocab(
     datadir, tmp_path, temp_config, caplog, cs_cycles_xlsx
 ):
     """Test for validate_vocabulary_files_for_ci_workflow.
 
-    Tests for single_vocab=False and envvar "CI_Run" set.
+    Tests for single_vocab=False and envvar "GITHUB_ACTIONS" set.
     """
     # Load a valid stricter config.
     config = temp_config
@@ -525,7 +528,7 @@ def test_actor_without_id_range_raises(tmp_path, myvocab_config):
     assert "myvocab" in str(excinfo.value)
 
 
-@mock.patch.dict(os.environ, {"CI_RUN": "true"})
+@mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"})
 def test_missing_actor_raises_in_ci(tmp_path, myvocab_config):
     prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
     new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1, 15])
@@ -536,7 +539,7 @@ def test_missing_actor_raises_in_ci(tmp_path, myvocab_config):
     assert "GITHUB_ACTOR" in str(excinfo.value)
 
 
-@mock.patch.dict(os.environ, {"CI_RUN": ""})
+@mock.patch.dict(os.environ, {"GITHUB_ACTIONS": ""})
 def test_missing_actor_warns_outside_ci(tmp_path, myvocab_config, caplog):
     prev = write_vocab(tmp_path / "prev.ttl", concept_ids=[1])
     new = write_vocab(tmp_path / "myvocab.ttl", concept_ids=[1, 15])
@@ -584,3 +587,89 @@ def test_check_for_removed_iris_matches_vocabulary_name_case_insensitively(
         assert check_for_removed_iris(original, reduced) is None
 
     assert "Removal of a Concept detected" in caplog.text
+
+
+# ===== CI detection and inbox error messages =====
+
+
+@pytest.fixture
+def stricter_config(datadir, temp_config):
+    """Config with single_vocab=True, so inbox file names are validated."""
+    config = temp_config
+    config.load_config(datadir / VALID_CONFIG)
+    return config
+
+
+def make_inbox(tmp_path, *names):
+    """Create an inbox directory holding files with the given names."""
+    inbox = tmp_path / "inbox"
+    inbox.mkdir(exist_ok=True)
+    for name in names:
+        (inbox / name).write_text("x", encoding="utf-8")
+    return inbox
+
+
+@mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"})
+def test_stray_inbox_file_is_an_error_on_github_actions(
+    tmp_path, stricter_config, cs_cycles_xlsx
+):
+    """A file that is neither a spreadsheet nor documentation fails CI."""
+    inbox = make_inbox(tmp_path, "data.csv")
+    shutil.copy(cs_cycles_xlsx, inbox / "myvocab.xlsx")
+    vocab_dir = tmp_path / "vocabularies"
+    vocab_dir.mkdir()
+    write_vocab(vocab_dir / "myvocab.ttl", concept_ids=[1])
+
+    with pytest.raises(Voc4catError) as excinfo:
+        validate_vocabulary_files_for_ci_workflow(vocab_dir, inbox)
+
+    assert "data.csv" in str(excinfo.value)
+
+
+@mock.patch.dict(os.environ, {"GITHUB_ACTIONS": ""})
+def test_stray_inbox_file_is_only_a_warning_outside_ci(
+    tmp_path, stricter_config, caplog, cs_cycles_xlsx
+):
+    """Outside CI the same file must not stop a local run."""
+    inbox = make_inbox(tmp_path, "data.csv")
+    shutil.copy(cs_cycles_xlsx, inbox / "myvocab.xlsx")
+    vocab_dir = tmp_path / "vocabularies"
+    vocab_dir.mkdir()
+    write_vocab(vocab_dir / "myvocab.ttl", concept_ids=[1])
+
+    with caplog.at_level(logging.WARNING):
+        validate_vocabulary_files_for_ci_workflow(vocab_dir, inbox)
+
+    assert "data.csv" in caplog.text
+
+
+@mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"})
+def test_legacy_xls_in_inbox_advises_saving_as_xlsx(
+    tmp_path, stricter_config, cs_cycles_xlsx
+):
+    """A contributor who submitted .xls must be told how to fix it."""
+    inbox = make_inbox(tmp_path, "myvocab.xls")
+    shutil.copy(cs_cycles_xlsx, inbox / "myvocab.xlsx")
+    vocab_dir = tmp_path / "vocabularies"
+    vocab_dir.mkdir()
+    write_vocab(vocab_dir / "myvocab.ttl", concept_ids=[1])
+
+    with pytest.raises(Voc4catError) as excinfo:
+        validate_vocabulary_files_for_ci_workflow(vocab_dir, inbox)
+
+    assert ".xlsx" in str(excinfo.value)
+    assert "myvocab.xls" in str(excinfo.value)
+
+
+@mock.patch.dict(os.environ, {"GITHUB_ACTIONS": "true"})
+def test_markdown_documentation_is_accepted_in_inbox(
+    tmp_path, stricter_config, cs_cycles_xlsx
+):
+    """Markdown accompanying a submission is documentation, not a stray file."""
+    inbox = make_inbox(tmp_path, "NOTES.md")
+    shutil.copy(cs_cycles_xlsx, inbox / "myvocab.xlsx")
+    vocab_dir = tmp_path / "vocabularies"
+    vocab_dir.mkdir()
+    write_vocab(vocab_dir / "myvocab.ttl", concept_ids=[1])
+
+    assert validate_vocabulary_files_for_ci_workflow(vocab_dir, inbox) is None

@@ -1,6 +1,6 @@
 # Change log
 
-## Release 1.1.0 (2026-08-27)
+## Release 1.1.0 (2026-08-28)
 
 Changes:
 
@@ -10,6 +10,8 @@ Changes:
 - The IRIs of the vp4cat profiles now match the redirects configured at w3id.org, so `https://w3id.org/nfdi4cat/vp4cat` is dereferenceable. [#317](https://github.com/nfdi4cat/voc4cat-tool/issues/317)
 - Development tooling moved from extras to PEP 735 dependency groups, so `uv sync` installs it by default and it no longer appears in the published package metadata. Only `assistant` remains an extra. Type checking moved from mypy to [zuban](https://github.com/zubanls/zuban). [#361](https://github.com/nfdi4cat/voc4cat-tool/pull/361)
 - Documentation brought in line with what the tool does: the recipe list of the voc4cat-template justfile, the `transform --diff-base` option, the mandatory `VOCAB` argument of `voc4cat template`, the environment variables that are actually read, the `dct:isReplacedBy` columns and vp4cat as the default profile. The quickstart now accounts for the example rows that `voc4cat template` writes. [#365](https://github.com/nfdi4cat/voc4cat-tool/pull/365)
+- **Detect CI through `GITHUB_ACTIONS` instead of `CI_RUN`, which replaces that environment variable.** The checks of `check --ci-pre` and `--ci-post` that are advisory locally and fatal in the pipeline consulted `CI_RUN`, which no repository set, so they stayed advisory everywhere: a stray file in the inbox and a missing `GITHUB_ACTOR` both passed CI. GitHub Actions always sets `GITHUB_ACTIONS`, so repositories need no configuration. [#370](https://github.com/nfdi4cat/voc4cat-tool/issues/370)
+- The inbox check now names the offending files instead of only restating the rule, and tells contributors who submitted a legacy `.xls` file to save it in the `.xlsx` format. Markdown documentation of any name is accepted, which the previous message described too narrowly as `README.md`. [#370](https://github.com/nfdi4cat/voc4cat-tool/issues/370)
 
 Fixes:
 

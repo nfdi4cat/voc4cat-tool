@@ -241,7 +241,11 @@ voc4cat check --config idranges.toml --redundant-hierarchies myvocab.ttl
 
 IRIs that already existed in the previous version are not checked, so editing concepts created by others is unaffected. A vocabulary without a previous version is new, so all of its IRIs are checked.
 
-If `GITHUB_ACTOR` is not set the check is skipped with a warning, unless `CI_RUN` is set, in which case the missing variable is an error.
+If `GITHUB_ACTOR` is not set the check is skipped with a warning. On GitHub Actions, where `GITHUB_ACTIONS` is always set, the missing variable is an error instead, so a misconfigured workflow cannot silently skip the check.
+
+### Inbox contents check
+
+`--ci-pre` verifies that the inbox holds only vocabulary spreadsheets (`*.xlsx`) and markdown documentation (`*.md`). Anything else - data files, legacy `*.xls` spreadsheets, or subdirectories - is reported by name. Outside CI this is a warning; on GitHub Actions it is an error. Files whose name begins with a dot, such as `.gitkeep`, are ignored.
 
 ### Hierarchy redundancy check
 
@@ -367,7 +371,7 @@ Custom git merge driver for vocabulary files used in the GitHub action workflows
 | `VOC4CAT_MODIFIED` | Modified date to embed instead of today's date |
 | `GITHUB_ACTOR` | Contributor whose ID ranges `check --ci-post` enforces |
 | `GITHUB_REPOSITORY` | `owner/repo` used to build git blame links |
-| `CI_RUN` | Turn a missing `GITHUB_ACTOR` from a warning into an error |
+| `GITHUB_ACTIONS` | Set by GitHub Actions; turns the advisory checks of `check --ci-pre` and `--ci-post` into errors |
 | `CI` | Also build the multi-release index page in `docs` |
 
 :::
