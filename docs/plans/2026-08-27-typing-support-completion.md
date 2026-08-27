@@ -66,15 +66,28 @@ in the design doc and remain after this work:
 - `getattr(obj, "name", default)` returns `Any`. Eleven such probes were
   removed; the remainder are legitimate dynamic access.
 
-## Found but not fixed
+## Two defects found by the typing work, fixed here
 
-- `merge_vocab.py:39` — `if retcode := outp.returncode != 0:` binds `retcode` to
-  a `bool`, collapsing git's exit code to 1. The walrus binds looser than `!=`.
-  Confirmed by execution. Fixing it changes the process exit code, so it needs
-  its own commit and a test. Type checking cannot catch it: `bool` subclasses
-  `int`, so `-> int` is satisfied.
-- `gh_index.py:25` — `self.vocabs` is assigned in `__init__` and never read
-  anywhere in `src/`, `tests/` or `example/`.
+- `merge_vocab.py:39` — `if retcode := outp.returncode != 0:` bound `retcode` to
+  a `bool`, so `git merge-file`'s count of unresolved conflicts collapsed to `1`
+  in the process exit code. The walrus operator binds less tightly than `!=`.
+  Fixed test-first: `test_main_merge_propagates_git_exit_code` registers a fake
+  `git merge-file` returning 3 and asserts the exit code survives; it failed
+  with `assert True == 3` before the fix.
+
+  Fixing it exposed a second problem. `test_main_merge_split_vocab_dir` and
+  `test_main_merge_files` set `subprocess.Popen.return_value.returncode = 1`
+  while the code calls `subprocess.run`, so the mock never applied — those tests
+  passed only because Python evaluates `True == 1` as true. Both now mock
+  `subprocess.run` and exercise the failure path they always claimed to.
+
+  Note that type checking cannot catch this class of bug: `bool` subclasses
+  `int`, so `-> int` was satisfied throughout.
+
+- `gh_index.py:25` — `self.vocabs` was assigned in `__init__` and read nowhere in
+  `src/`, `tests/` or `example/`. Removed. The annotation added for it during
+  this work was an unfalsifiable guess, since no use site constrained the
+  element type.
 
 ## Follow-up phase
 
