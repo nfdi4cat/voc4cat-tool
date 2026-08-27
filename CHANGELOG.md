@@ -1,13 +1,19 @@
 # Change log
 
-## Unreleased
+## Release 1.1.0 (2026-08-27)
 
 Changes:
 
 - The `voc4cat` package is now fully type-annotated and type-checked under a strict `zuban` configuration, enforced by a pre-commit hook. It ships a `py.typed` marker (PEP 561), so downstream consumers get the annotations when type-checking their own code against this package. [#362](https://github.com/nfdi4cat/voc4cat-tool/issues/362)
+- Add a version-neutral profile token `vp4cat` that always resolves to the current vp4cat profile. Use `vp4cat-5.2` to pin the version.
+- The IRIs of the vp4cat profiles now match the redirects configured at w3id.org, so `https://w3id.org/nfdi4cat/vp4cat` is dereferenceable. [#317](https://github.com/nfdi4cat/voc4cat-tool/issues/317)
+- Development tooling moved from extras to PEP 735 dependency groups, so `uv sync` installs it by default and it no longer appears in the published package metadata. Only `assistant` remains an extra. Type checking moved from mypy to [zuban](https://github.com/zubanls/zuban).
+- Documentation brought in line with what the tool does: the recipe list of the voc4cat-template justfile, the `transform --diff-base` option, the mandatory `VOCAB` argument of `voc4cat template`, the environment variables that are actually read, the `dct:isReplacedBy` columns and vp4cat as the default profile. The quickstart now accounts for the example rows that `voc4cat template` writes.
 
 Fixes:
 
+- Separate mapping IRIs by newline when writing xlsx, matching the separator expected when reading them back. Vocabularies with several mappings of the same kind did not survive a turtle -> xlsx -> turtle round-trip. [#349](https://github.com/nfdi4cat/voc4cat-tool/issues/349)
+- Do not report a missing numeric ID in the vocabulary IRI as an error. A vocabulary IRI carries no concept ID, so every conversion without a configured `catalogue_pid` logged a spurious error.
 - Return the exit code of `git merge-file` from `voc4cat-merge` instead of collapsing every failure to `1`. The walrus operator binds less tightly than `!=`, so `retcode := outp.returncode != 0` stored a boolean and discarded git's count of unresolved conflicts.
 - Reject IRIs whose ID is outside the ID range(s) granted to the contributor. `check --ci-post` now validates the IDs added by the acting contributor (from `GITHUB_ACTOR`) against the ranges configured for that vocabulary. The check was lost with the removal of the 0.4.3 template code. ID ranges are now also looked up per vocabulary, so a range granted for one vocabulary no longer permits IDs in another. [#359](https://github.com/nfdi4cat/voc4cat-tool/issues/359)
 - Generate template example rows with IDs from the first configured ID range. Previously `voc4cat template` always suggested `ex:0001001` and the non-numeric `ex:collection001`, which are outside the ID ranges of the shipped starter configuration. [#359](https://github.com/nfdi4cat/voc4cat-tool/issues/359)
@@ -52,7 +58,7 @@ Changes:
 - Improved migration guide and template update guide.
 
 - Fix BASE declaration in vp4cat profile; allow `dct:provenance` with IRI value (Req. 2.2.2). [#325](https://github.com/nfdi4cat/voc4cat-tool/pull/325), [#326](https://github.com/nfdi4cat/voc4cat-tool/issues/326)
-- Fix reporting for `check --detect-hierarchy-redundancy`. [#323](https://github.com/nfdi4cat/voc4cat-tool/pull/323)
+- Fix reporting for `check --redundant-hierarchies`. [#323](https://github.com/nfdi4cat/voc4cat-tool/pull/323)
 - Fix openpyxl warning about worksheet selection.
 - Fix xlsx generation to mark only one sheet as selected.
 
@@ -64,7 +70,7 @@ The following changes were made to RC1 based on testing it with the voc4cat voca
 Features:
 
 - **New transform option `--prov-from-git`:** Adds `dct:created` and `dct:modified` dates to split turtle files based on git history. Created date is only added if missing; modified date is updated when different.
-- **New check option `--detect-hierarchy-redundancy`:** Detects redundant hierarchical relationships where a concept has `skos:broader` to both a parent and an ancestor of that parent.
+- **New check option `--redundant-hierarchies`:** Detects redundant hierarchical relationships where a concept has `skos:broader` to both a parent and an ancestor of that parent.
 - **Added `dct:isReplacedBy` columns** to Concepts and Collections sheets for specifying replacement IRIs when deprecating concepts.
 
 Changes:
