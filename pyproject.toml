@@ -304,6 +304,5 @@ module = [
   "voc4cat.check",
   "voc4cat.cli",
   "voc4cat.convert",
-  "voc4cat.convert_043",
 ]
 ignore_errors = true
