@@ -234,23 +234,40 @@ Every commit leaves `just typecheck` green, `just test` passing, and
 annotation changes do not alter runtime behaviour, any test failure indicates a
 real behaviour change and is investigated rather than accommodated.
 
-`just lint` is deliberately not part of that contract. It runs `ruff format`
-and `ruff check --fix` across `src/`, `example/` and `tests/`, so it rewrites
-files instead of checking them, and it cannot exit clean: `src/` carries 62
-pre-existing complexity findings, 76 across all three directories, all present
-on `main` and all out of scope for a typing change. Formatting is still
-enforced, by the `ruff-format` pre-commit hook on staged files.
+While the annotation work was in progress, `just lint` was not part of that
+contract. It runs `ruff format` and `ruff check --fix` across `src/`,
+`example/` and `tests/`, so it rewrites files instead of checking them, and it
+could not exit clean: `src/` carried 62 pre-existing complexity findings, 76
+across all three directories, all present on `main` and all out of scope for a
+typing change. The pre-commit `ruff` hook lints whole files and has no baseline
+concept, so it rejected commits to the ten modules carrying those findings —
+eight of this plan's tasks committed with `SKIP=ruff git commit`, which
+bypasses only the linter while `ruff format`, `zuban check`, `typos` and the
+hygiene hooks all still run. `--no-verify` was never used, as it would have
+skipped the zuban gate this plan exists to install.
 
-The pre-commit `ruff` hook lints whole files and has no baseline concept, so it
-rejects commits to the ten modules that carry those findings — eight of this
-plan's tasks. Those commits use `SKIP=ruff git commit`, which bypasses only the
-linter while `ruff format`, `zuban check`, `typos` and the hygiene hooks all
-still run. Never `--no-verify`, which would skip the zuban gate this plan
-exists to install.
+**That is no longer the case.** After the annotation work landed, the trivial
+findings were fixed and the remaining complexity debt was exempted per file and
+per rule in `[tool.ruff.lint.per-file-ignores]`. `ruff check` now passes across
+all three directories, `just lint` exits 0 and rewrites nothing, and commits no
+longer need `SKIP=ruff`. A check that always reports findings teaches everyone
+to ignore it, which is the failure this closes.
+
+The exemptions are deliberately per file and per rule rather than a global
+`ignore`, so the remaining debt stays legible and each entry can be deleted as
+that file's functions are decomposed. The trade-off is real and worth stating:
+a per-file exemption also hides a *new* violation of the same rule in that same
+file. That is the price of keeping the list visible in one place instead of
+scattering `# noqa` comments across the code — line annotations proved easy to
+get partially wrong, as `test_docs.py` showed by carrying a `# noqa: PLR0913`
+while still reporting `PLR0917`.
 
 ## Follow-up phase: complexity refactor
 
-The 62 findings are not being suppressed, only deferred. Twenty functions
+The 62 findings are exempted per file and per rule in
+`[tool.ruff.lint.per-file-ignores]` so that `ruff check` passes, not fixed.
+The exemption list is the debt register: deleting an entry is how this phase
+reports progress. Twenty functions
 exceed the complexity limits, including `convert_v1.build_concept_scheme_graph`
 (complexity 36 against a limit of 10, 38 branches, 70 statements),
 `xlsx_table.reconstruct_joined_data` (30, 34 branches, 73 statements) and

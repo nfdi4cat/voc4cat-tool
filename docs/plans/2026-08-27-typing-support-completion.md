@@ -96,7 +96,10 @@ Specified in the design document rather than left as a note:
 - Complexity refactor: 62 pre-existing ruff findings across 20 functions,
   including `build_concept_scheme_graph` (complexity 36 against a limit of 10).
   Deliberately sequenced after the typing work so the strict gate guards the
-  extractions.
+  extractions. These are now exempted per file and per rule in
+  `[tool.ruff.lint.per-file-ignores]` so `ruff check` passes cleanly; that
+  exemption list is the debt register, and entries are removed as functions are
+  decomposed.
 - `types-openpyxl==3.1.5.20260807`: 17 errors in two files, roughly nine of them
   real defects that the `Any` resolution hides today.
 - `@overload` on `xlsx_api.import_from_xlsx` keyed on
