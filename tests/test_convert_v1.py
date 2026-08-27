@@ -3327,6 +3327,23 @@ class TestBuildConceptSchemeGraphEntities:
         assert (alice_uri, RDF.type, SDO.Person) in graph
         assert (bob_uri, RDF.type, SDO.Person) in graph
 
+    def test_vocabulary_iri_without_id_is_not_reported_as_error(self, caplog):
+        """A vocabulary IRI carries no concept ID, so its absence is not an error."""
+
+        cs = ConceptSchemeV1(
+            vocabulary_iri="https://example.org/myvocab",
+            title="Test",
+            description="Test vocab",
+        )
+        id_pattern = re.compile(r"(?<![0-9])(?P<identifier>[0-9]{6})$")
+
+        with caplog.at_level(logging.DEBUG):
+            graph = build_concept_scheme_graph(cs, {}, id_pattern=id_pattern)
+
+        scheme_uri = URIRef("https://example.org/myvocab")
+        assert (scheme_uri, DCTERMS.identifier, None) not in graph
+        assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+
     def test_publisher_ror_creates_organization(self):
         """Test publisher with ROR URL creates Organization (lines 2430-2434)."""
 

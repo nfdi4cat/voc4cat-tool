@@ -474,7 +474,7 @@ def main_cli(raw_args: Sequence[str] | None = None) -> None:
     subparsers = parser.add_subparsers(
         title="Subcommands",
         dest="subcommand",
-        description="Get help for commands with voc4cat-ng COMMAND --help",
+        description="Get help for commands with voc4cat COMMAND --help",
         # help="The following sub-commands are available:",
     )
     # Create parser to share some options between subparsers. We cannot use the

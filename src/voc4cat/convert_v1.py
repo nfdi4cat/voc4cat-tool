@@ -2271,7 +2271,9 @@ def build_collection_hierarchy_members(
 # --- Identifier Extraction ---
 
 
-def extract_identifier(iri: str, id_pattern: "re.Pattern[str]") -> str:
+def extract_identifier(
+    iri: str, id_pattern: "re.Pattern[str]", *, required: bool = True
+) -> str:
     """Extract local ID from IRI for dcterms:identifier.
 
     Uses the vocabulary's ID pattern to extract digits from the end of the IRI.
@@ -2282,6 +2284,8 @@ def extract_identifier(iri: str, id_pattern: "re.Pattern[str]") -> str:
     Args:
         iri: Full IRI string.
         id_pattern: Compiled regex pattern with 'identifier' named group.
+        required: Whether a missing ID is a defect. Concept and collection IRIs
+            always carry an ID; a vocabulary IRI need not.
 
     Returns:
         Local ID string (digits only) suitable for dcterms:identifier,
@@ -2291,9 +2295,8 @@ def extract_identifier(iri: str, id_pattern: "re.Pattern[str]") -> str:
     if match:
         return match.group("identifier")
 
-    logger.error(
-        "Could not extract ID from IRI using pattern %s: %s", id_pattern.pattern, iri
-    )
+    log = logger.error if required else logger.debug
+    log("Could not extract ID from IRI using pattern %s: %s", id_pattern.pattern, iri)
     return ""
 
 
@@ -2430,7 +2433,7 @@ def build_concept_scheme_graph(
 
     # Identifier - use catalogue_pid if provided, otherwise extract from vocabulary IRI
     if not cs.catalogue_pid and id_pattern:
-        identifier = extract_identifier(cs.vocabulary_iri, id_pattern)
+        identifier = extract_identifier(cs.vocabulary_iri, id_pattern, required=False)
         if identifier:
             g.add(
                 (
