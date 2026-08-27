@@ -8,11 +8,11 @@ This guide explains how to migrate vocabularies created with voc4cat-tool v0.10.
 - **ConceptScheme metadata**: No longer editable in xlsx; managed via `idranges.toml` and shown as read-only in xlsx.
 - **RDF changes**: `skos:historyNote` converted to `skos:changeNote`.
 - **Excel template**: Dynamically generated based on config; no longer distributed as a static file.
-- **Partitioned file storage**: Files are stored in folders with at most 1000 entries named IDx0000xxx (for IDs 001 - 999), IDx0001xxx (for IDs 1000 - 1999), etc.
+- **Partitioned file storage**: Files are stored in folders with at most 1000 entries named IDs0000xxx (for IDs 0 - 999), IDs0001xxx (for IDs 1000 - 1999), etc.
 
 ## Migration steps
 
-Make sure you have a version 1.0.x of voc4cat-tool installed before
+Make sure you have a 1.x version of voc4cat-tool installed before you start.
 
 ### Step 0: Upgrade to latest release of voc4cat-template
 
@@ -28,7 +28,7 @@ Start with the template from `src/voc4cat/templates/vocab/idranges.toml` and fil
    - `created_date`, `creator`, `publisher`, `custodian`
    - `repository`, `homepage` (if applicable)
 
-The `idrange.toml` files now include a mandatory version number (`config_version = "v1.0"`) to help with future updates.
+The `idranges.toml` files now include a mandatory version number (`config_version = "v1.0"`) to help with future updates.
 
 ### Step 2: Convert to new partitioned storage
 
@@ -69,7 +69,7 @@ This command assumes that your version-tracked files are stored in the `vocabula
 
 **Step 3c**
 
-Add provenance info based on git history (dct:created and dct:updated) to the split RDF files from Step 3b.
+Add provenance info based on git history (dct:created and dct:modified) to the split RDF files from Step 3b.
 
 ```bash
 voc4cat transform --prov-from-git --inplace --config path/to/v1.0/idranges.toml --logfile outbox/voc4cat.log vocabularies/

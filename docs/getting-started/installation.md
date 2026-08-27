@@ -20,7 +20,7 @@ Of course, you can also use pip the standard Python package manager.
 pip install voc4cat
 ```
 
-To verify the installation, run voc4cat´s command line interface
+To verify the installation, run voc4cat's command line interface
 
 ```bash
 voc4cat --version
@@ -33,7 +33,7 @@ which shows the installed version and the command line help.
 
 ### Step 1: Create configuration
 
-Create a directory and configuration file `idranges.toml` for a vocabulary named `myvoc`:
+Create a directory and configuration file `idranges.toml` for a vocabulary named `myvocab`:
 
 ```bash
 mkdir myvocab && cd myvocab
@@ -77,12 +77,16 @@ voc4cat template --config idranges.toml myvocab
 
 ### Step 3: Add concepts
 
-Open `myvocab.xlsx`, go to the **Concepts** sheet, and add:
+The generated file already contains example rows that use the first IDs of your range.
+Open `myvocab.xlsx`, go to the **Concepts** sheet, and replace them with:
 
 | Concept IRI | Language Code | Preferred Label | Definition | Parent IRIs |
 |-------------|---------------|-----------------|------------|-------------|
 | myvoc:000001 | en | Animal | A living organism that can move and respond to its environment | |
 | myvoc:000002 | en | Cat | A small furry animal that says meow and rules the household | myvoc:000001 |
+
+The **Collections** sheet holds an example collection that uses `myvoc:000002` as well.
+Delete that row, so the ID is free for the Cat concept.
 
 ### Step 4: Convert to SKOS
 
@@ -92,27 +96,24 @@ voc4cat convert --config idranges.toml myvocab.xlsx
 
 This creates `myvocab.ttl` containing your vocabulary in SKOS format.
 
-### Step 5: Validate against vocpub profile
+### Step 5: Validate against the vp4cat profile
 
 ```bash
 voc4cat check --config idranges.toml myvocab.ttl
 ```
 
-With this minimal configuration, the check will report several **violations**. This is expected and demonstrates what the vocpub profile requires for a complete vocabulary:
+With this minimal configuration, the check reports a **violation**. This is expected and demonstrates what the vp4cat profile requires for a complete vocabulary:
 
 - **creator**: Must be an IRI (ORCID or ROR ID), not just a name
-- **empty collection**: The template includes an example collection that needs members or should be deleted
 
-To make the check pass:
+To make the check pass, update `idranges.toml` with a valid creator:
 
-1. Update `idranges.toml` with valid creator:
+```toml
+creator = "Your Name https://orcid.org/0000-0001-2345-6789"
+```
 
-   ```toml
-   creator = "Your Name https://orcid.org/0000-0001-2345-6789"
-   ```
-
-2. In the xlsx file:
-   - Either delete the example collection in the **Collections** sheet, or add members to it
+A collection that you keep but leave without members is reported the same way:
+add members to it in the **Concepts** sheet or delete it.
 
 ## Next steps
 

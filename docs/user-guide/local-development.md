@@ -25,10 +25,10 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ### Installing just
 
-`just` is available via [PyPI](https://pypi.org/project/rust-just/). So we can use UV (or pipx) to install
+`just` is available via [PyPI](https://pypi.org/project/rust-just/). So we can use uv (or pipx) to install
 
 ```bash
-uv tool rust-just
+uv tool install rust-just
 ```
 
 Alternatively, you can download from just's GitHub [releases](https://github.com/casey/just/releases) page.
@@ -41,13 +41,19 @@ From the root of a voc4cat-template based repository, run `just` to see availabl
 $ just
 Available recipes:
     all     # Run all steps as in gh-actions: check xlsx, convert to SKOS, build docs, re-build xlsx
-    check   # Check the xlsx file in inbox/ for errors
+
+    [environment]
     clean   # Remove all generated files/directories
-    convert # Convert the xlsx file in inbox/ to turtle
-    docs    # Run voc4cat (build HTML documentation from ttl files)
     setup   # Run initial setup (run this first)
-    update  # Updates voc4cat-tool installation
-    xlsx    # Rebuild the xlsx file from the joined ttl file
+    upgrade # Upgrades voc4cat-tool installation
+
+    [individual steps]
+    check   # Check the *.xlsx file(s) in inbox/ for errors
+    convert # Convert the voc4cat.xlsx file in inbox/ to turtle
+    docs    # Run voc4cat (build HTML documentation from ttl files)
+    join    # Join individual ttl files in vocabularies/ to one turtle file in outbox/
+    prov    # Add provenance information to all ttl files in vocabularies/
+    xlsx    # Rebuild the xlsx file from the joined ttl file.
 ```
 
 ### Command descriptions
@@ -57,14 +63,16 @@ Available recipes:
 
 | Command | Description |
 |---------|-------------|
-| `just setup` | Initial setup - creates virtual environment and installs voc4cat |
+| `just setup` | Initial setup - installs voc4cat as a uv tool |
 | `just check` | Validate xlsx files in `inbox-excel-vocabs/` |
 | `just convert` | Convert xlsx to turtle format |
 | `just docs` | Generate HTML documentation from turtle files |
 | `just xlsx` | Rebuild xlsx from turtle (round-trip test) |
 | `just all` | Run the complete pipeline (check → convert → docs → xlsx) |
+| `just join` | Join the turtle files in `vocabularies/` into one file in `outbox/` |
+| `just prov` | Add provenance dates from git history to `vocabularies/` |
 | `just clean` | Remove generated files and directories |
-| `just update` | Update voc4cat-tool to the latest version |
+| `just upgrade` | Update voc4cat-tool to the latest version |
 
 :::
 
@@ -82,7 +90,7 @@ just setup
 ```
 
 No environment variables need to be set manually.
-The justfile automatically creates `_main_branch/` and copies `idranges.toml` when running `just check` or `just convert`.
+The justfile automatically creates `_main_branch/` and copies `idranges.toml` when running `just check`, `just convert` or `just xlsx`.
 
 :::{tip}
 For verbose output, set `LOGLEVEL=DEBUG` before running commands:
@@ -123,16 +131,14 @@ git show main:idranges.toml > _main_branch/idranges.toml
 ```
 :::
 
-### Virtual environment issues
+### Outdated voc4cat-tool
 
-If you encounter Python environment issues:
+`just setup` installs the version of voc4cat that was current at the time. To move to
+the latest release:
 
 ```bash
-just clean
-just setup
+just upgrade
 ```
-
-This removes the existing environment and creates a fresh one.
 
 ## See also
 

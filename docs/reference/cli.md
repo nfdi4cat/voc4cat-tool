@@ -111,6 +111,7 @@ voc4cat transform [options] VOCAB
 | `--split` | Split single turtle file into one file per concept |
 | `--join` | Join split turtle files into single file |
 | `--prov-from-git` | Add `dct:created` and `dct:modified` dates from git history |
+| `--diff-base REF` | Git ref to compare against with `--prov-from-git` |
 | `--inplace` | Modify files in place (removes source) |
 
 :::
@@ -151,6 +152,9 @@ voc4cat transform --join --inplace myvocab/
 # Add provenance dates from git history to split files
 voc4cat transform --prov-from-git --inplace myvocab/
 
+# Same, but date only the concepts that changed since origin/main
+voc4cat transform --prov-from-git --diff-base origin/main --inplace myvocab/
+
 # Same, but write to output directory
 voc4cat transform --prov-from-git --outdir output/ myvocab/
 ```
@@ -162,8 +166,11 @@ The `--prov-from-git` option adds Dublin Core provenance dates to split turtle f
 - **`dct:created`**: Added only if missing, set to the date of the first commit
 - **`dct:modified`**: Updated when different from the most recent commit date
 
+With `--diff-base REF` only concepts whose content changed compared to REF get updated dates;
+unchanged concepts keep the dates they have in REF.
+
 Requirements:
-- All `.ttl` files must be tracked in git
+- Untracked `.ttl` files are skipped with an info message
 - Requires either `--inplace` or `--outdir`
 
 ## check
@@ -238,7 +245,7 @@ If `GITHUB_ACTOR` is not set the check is skipped with a warning, unless `CI_RUN
 
 ### Hierarchy redundancy check
 
-The `--redundant-hierarchies` option detects redundant hierarchical relationships where a concept has `skos:broader` links to both a parent and an ancestor of that parent. For example, if concept C has broader B, and B has broader A, then C should not also have broader A directly. While such redundancies are OK in SKOS they causes problems for [Skosmos](https://https://skosmos.org/). So we suggest to remove them if you plan to host your vocabulary with Skosmos.
+The `--redundant-hierarchies` option detects redundant hierarchical relationships where a concept has `skos:broader` links to both a parent and an ancestor of that parent. For example, if concept C has broader B, and B has broader A, then C should not also have broader A directly. While such redundancies are OK in SKOS they cause problems for [Skosmos](https://skosmos.org/). So we suggest to remove them if you plan to host your vocabulary with Skosmos.
 
 ## docs
 
@@ -290,7 +297,7 @@ voc4cat docs --force --outdir docs/ myvocab.ttl
 Generate blank xlsx vocabulary templates.
 
 ```bash
-voc4cat template [options] [VOCAB]
+voc4cat template [options] VOCAB
 ```
 
 ### Arguments & Options
@@ -300,7 +307,7 @@ voc4cat template [options] [VOCAB]
 
 | Argument | Description |
 |----------|-------------|
-| `VOCAB` | Used as filename (VOCAB.xlsx) |
+| `VOCAB` | Vocabulary name, used as filename (VOCAB.xlsx) |
 
 :::
 
@@ -310,6 +317,7 @@ voc4cat template [options] [VOCAB]
 | Option | Description |
 |--------|-------------|
 | `--version {v1.0}` | Template version (default: v1.0) |
+| `-t, --template FILE` | xlsx file to use as base for the generated sheets |
 
 :::
 
@@ -317,10 +325,10 @@ voc4cat template [options] [VOCAB]
 
 ```bash
 # Generate template from config
-voc4cat template --config idranges.toml --outdir .
+voc4cat template --config idranges.toml --outdir . myvocab
 
 # Explicit version
-voc4cat template --config idranges.toml --version v1.0 --outdir .
+voc4cat template --config idranges.toml --version v1.0 --outdir . myvocab
 ```
 
 ## Additional tools
@@ -354,8 +362,13 @@ Custom git merge driver for vocabulary files used in the GitHub action workflows
 
 | Variable | Description |
 |----------|-------------|
-| `VOC4CAT_VERSION` | Version string to embed in converted vocabularies |
-| `NO_COLOR` | Disable colored output when set |
+| `LOGLEVEL` | Log level for console and logfile (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`) |
+| `VOC4CAT_VERSION` | Version string to embed in converted vocabularies (must start with `v`) |
+| `VOC4CAT_MODIFIED` | Modified date to embed instead of today's date |
+| `GITHUB_ACTOR` | Contributor whose ID ranges `check --ci-post` enforces |
+| `GITHUB_REPOSITORY` | `owner/repo` used to build git blame links |
+| `CI_RUN` | Turn a missing `GITHUB_ACTOR` from a warning into an error |
+| `CI` | Also build the multi-release index page in `docs` |
 
 :::
 

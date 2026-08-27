@@ -55,7 +55,7 @@ Edit the relevant cells in the Concepts sheet. Use the "Change Note" column to d
 ### Deprecating concepts
 
 Select a reason from the "Obsoletion reason" dropdown. Do not delete the row - deprecated concepts remain in the vocabulary for reference.
-Note that version 1.0 does not support linking an successor of the deprecated concept. Let us know via an issue if you need this feature.
+If a successor concept exists, put its IRI in the "dct:isReplacedBy" column.
 
 ## Request an ID range
 
@@ -63,12 +63,12 @@ If you need to add new concepts but don't have an ID range allocated:
 
 1. Go to the repository's Issues tab
 2. Select "Request ID range" from the issue templates
-3. Provide your GitHub name and ORCID (reocmmended) and the number of IDs needed
+3. Provide your GitHub name and ORCID (recommended) and the number of IDs needed
 4. A maintainer will update `idranges.toml` with your allocation
 
 ## Submit your contribution
 
-See also voc4cat´s help.
+See also voc4cat's help.
 
 ### Prepare your repository
 

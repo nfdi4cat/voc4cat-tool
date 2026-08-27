@@ -13,11 +13,11 @@ The lead maintainer is David Linke (GitHub: [dalito](https://github.com/dalito/)
 
 If you use the Python package voc4cat in publications or to create a SKOS vocabulary please cite the software either using the version-independent general citation
 
-> voc4cat-tool - A Python command-line tool for creating and maintaining SKOS-vocabularies with Excel and GitHub. nfdi4cat/voc4cat. Zenodo. DOI: 10.5281/zenodo.8277925
+> voc4cat-tool - A Python command-line tool for creating and maintaining SKOS-vocabularies with Excel and GitHub. nfdi4cat/voc4cat-tool. Zenodo. DOI: 10.5281/zenodo.8277925
 
 or (preferred) the exact version that you used, e.g.
 
-> Linke, D., Phillips, P., Car, N. J., & Feiss, J. (2025). A Python command-line tool for creating and maintaining SKOS-vocabularies with Excel and GitHub. nfdi4cat/voc4cat-tool: Release 1.0.0 (RC1) (v1.0.0rc1). Zenodo. https://doi.org/10.5281/zenodo.18025408
+> Linke, D., Phillips, P., Car, N. J., & Feiss, J. (2026). A Python command-line tool for creating and maintaining SKOS-vocabularies with Excel and GitHub. nfdi4cat/voc4cat-tool: Release 1.0.4 (v1.0.4). Zenodo. https://doi.org/10.5281/zenodo.18744619
 
 For the most recent citation, visit the [general Zenodo page](https://doi.org/10.5281/zenodo.8277925).
 
