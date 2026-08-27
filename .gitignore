@@ -112,3 +112,6 @@ _version.py
 
 # AI tools
 .claude/
+
+# Temporary example files
+example/voc4cat*
