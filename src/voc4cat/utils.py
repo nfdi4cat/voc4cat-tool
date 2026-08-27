@@ -2,6 +2,7 @@ import glob
 import logging
 import os
 from pathlib import Path
+from typing import Literal
 
 from openpyxl import Workbook, load_workbook
 
@@ -44,7 +45,7 @@ def split_and_tidy(cell_value: str | None) -> list[str]:
     return [x for x in entries if x]
 
 
-def has_file_in_multiple_formats(dir_: Path) -> bool | list[str]:
+def has_file_in_multiple_formats(dir_: Path) -> Literal[False] | list[str]:
     files = [
         os.path.normcase(f)
         for f in glob.glob(os.path.join(dir_, "*.*"))
@@ -55,7 +56,7 @@ def has_file_in_multiple_formats(dir_: Path) -> bool | list[str]:
     if len(file_names) == len(unique_file_names):
         return False
     seen: set[str] = set()
-    duplicates = []
+    duplicates: list[str] = []
     for x in file_names:
         if x in seen:
             duplicates.append(x)
