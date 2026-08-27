@@ -149,3 +149,17 @@ def test_build_docs_unknown_builder(tmp_path, caplog, capsys):
     assert exc_info.value.code == 2
     captured = capsys.readouterr()
     assert f"invalid choice: '{unknown_doc_builder}'" in captured.err
+
+
+@mock.patch("voc4cat.docs.HAS_PYLODE", False)
+@mock.patch.dict(os.environ, clear=True)
+def test_missing_pylode_is_an_error(datadir, tmp_path):
+    """Documentation was requested but cannot be built, so the run must fail."""
+    shutil.copy(datadir / CS_CYCLES_TURTLE, tmp_path)
+    outdir = tmp_path / "pylode"
+    outdir.mkdir()
+
+    with pytest.raises(Voc4catError) as excinfo:
+        main_cli(["docs", "--style", "pylode", "--outdir", str(outdir), str(tmp_path)])
+
+    assert "pyLODE" in str(excinfo.value)

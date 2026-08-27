@@ -3,6 +3,7 @@ import logging
 import os
 from pathlib import Path
 
+from voc4cat.checks import Voc4catError
 from voc4cat.gh_index import build_multirelease_index
 
 logger = logging.getLogger(__name__)
@@ -76,12 +77,14 @@ def docs(args: argparse.Namespace) -> None:
             return
 
         if args.style == "pylode":
-            if not HAS_PYLODE:  # pragma: no cover
-                logger.error(
+            if not HAS_PYLODE:
+                # Documentation was asked for and cannot be built. Failing here
+                # keeps a CI run from publishing silently outdated docs.
+                msg = (
                     "Cannot build docs without pyLODE. Install our pylode-2.x fork with: "
                     '"pip install git+https://github.com/dalito/pyLODE.git@nfdi4cat-2.x"'
                 )
-                return
+                raise Voc4catError(msg)
             run_pylode(file, outdir)
             # generate index.html linking all tagged version in CI
             if os.getenv("CI") is not None:
