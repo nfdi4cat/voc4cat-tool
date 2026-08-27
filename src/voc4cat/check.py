@@ -1,3 +1,4 @@
+import argparse
 import glob
 import logging
 import os
@@ -37,7 +38,7 @@ from voc4cat.xlsx_common import (
 logger = logging.getLogger(__name__)
 
 
-def check_xlsx(fpath: Path, outfile: Path) -> int:
+def check_xlsx(fpath: Path, outfile: Path) -> None:
     """
     Complex checks of the xlsx file not handled by pydantic model validation
 
@@ -66,7 +67,7 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     data_start_row = row_calculator.get_data_start_row(fields)
 
     subsequent_empty_rows = 0
-    seen_concept_iris = []
+    seen_concept_iris: list[str] = []
     failed_checks = 0
     # v1.0 template: data starts after header row, columns are IRI(A), Language(B)
     for row in ws.iter_rows(min_row=data_start_row, max_col=2):  # pragma: no branch
@@ -119,7 +120,7 @@ def check_xlsx(fpath: Path, outfile: Path) -> int:
     logger.info("-> xlsx check passed for file: %s", fpath)
 
 
-def ci_post(args):
+def ci_post(args: argparse.Namespace) -> None:
     prev_vocab_dir, vocab_new = args.ci_post, args.VOCAB
     actor = os.getenv("GITHUB_ACTOR", "")
     for vocfile in glob.glob(str(vocab_new.resolve() / "*.ttl")):
@@ -152,7 +153,7 @@ def ci_post(args):
 # ===== check command & helpers to validate cmd options =====
 
 
-def _check_ci_args(args):
+def _check_ci_args(args: argparse.Namespace) -> None:
     msg = ""
     if args.ci_pre:
         if args.VOCAB and args.VOCAB.is_dir() and args.ci_pre.is_dir():
@@ -167,7 +168,7 @@ def _check_ci_args(args):
         raise Voc4catError(msg)
 
 
-def check(args):  # noqa: C901, PLR0912, PLR0915
+def check(args: argparse.Namespace) -> None:  # noqa: C901, PLR0912, PLR0915
     logger.debug("Check subcommand started!")
 
     _check_ci_args(args)
@@ -242,15 +243,22 @@ def check(args):  # noqa: C901, PLR0912, PLR0915
         else:
             # Check config for vocab-specific profile
             vocab_name = file.stem.lower()
-            vocab_config = config.IDRANGES.vocabs.get(vocab_name)
+            # dict.get can genuinely return None here: not every vocab file
+            # stem is a configured vocab name in idranges.toml. Named
+            # differently from the `vocab_config` loop variable in the
+            # args.listprofiles branch above (which always returns before
+            # this point is reached) to avoid a same-name redefinition with
+            # an incompatible type.
+            file_vocab_config = config.IDRANGES.vocabs.get(vocab_name)
             if (
-                vocab_config
-                and vocab_config.profile_local_path
+                file_vocab_config
+                and file_vocab_config.profile_local_path
                 and config.IDRANGES_PATH
             ):
                 effective_profile = str(
                     (
-                        config.IDRANGES_PATH.parent / vocab_config.profile_local_path
+                        config.IDRANGES_PATH.parent
+                        / file_vocab_config.profile_local_path
                     ).resolve()
                 )
             else:

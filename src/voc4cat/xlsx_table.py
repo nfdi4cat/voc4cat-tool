@@ -45,6 +45,14 @@ class XLSXTableConfig(XLSXConfig):
     freeze_panes: bool = True
     bold_fields: set[str] = field(default_factory=set)
     rows_pre_allocated: int = 0
+    description_font_size: int = 9
+    description_color: str = "666666"
+    meaning_style_italic: bool = True
+    meaning_font_size: int = 9
+    meaning_color: str = "666666"
+    unit_style_italic: bool = True
+    unit_font_size: int = 9
+    unit_color: str = "666666"
 
 
 # Join configuration for complex relationships
@@ -206,7 +214,9 @@ class JoinedModelProcessor:
         # Reconstruct models
         reconstructed_models = []
         for _key_value, rows in grouped_data.items():
-            primary_data = {}
+            # Collects keyword arguments for a model constructor, so the
+            # values are as heterogeneous as the target model's fields.
+            primary_data: dict[str, Any] = {}
             related_items = []
 
             # Process each row
@@ -232,10 +242,10 @@ class JoinedModelProcessor:
                                 else:
                                     primary_data[model_field] = (
                                         value if value is not None else ""
-                                    )  # type: ignore[assignment]
+                                    )
 
                 # Extract related model data
-                related_data = {}
+                related_data: dict[str, Any] = {}
                 has_related_data = False
                 for field_name in join_config.flattened_fields:
                     if field_name in join_config.field_mappings:
@@ -292,7 +302,7 @@ class JoinedModelProcessor:
 
             # Add related items to primary data
             related_field_name = next(iter(join_config.related_models.keys()))
-            primary_data[related_field_name] = related_items  # type: ignore[assignment]
+            primary_data[related_field_name] = related_items
 
             # Create primary model instance
             try:
@@ -306,7 +316,7 @@ class JoinedModelProcessor:
 
 
 # Table formatter
-class XLSXTableFormatter(XLSXFormatter):
+class XLSXTableFormatter(XLSXFormatter[XLSXTableConfig]):
     """Handles tabular format with rows and columns."""
 
     def format_export(
@@ -389,8 +399,8 @@ class XLSXTableFormatter(XLSXFormatter):
             # Style description cell
             worksheet[description_cell].font = Font(
                 italic=True,
-                size=getattr(self.config, "description_font_size", 9),
-                color=getattr(self.config, "description_color", "666666"),
+                size=self.config.description_font_size,
+                color=self.config.description_color,
             )
             worksheet[description_cell].alignment = Alignment(
                 horizontal="center", vertical="center", wrap_text=True
@@ -427,9 +437,9 @@ class XLSXTableFormatter(XLSXFormatter):
             # Style meaning cell
             if meaning_text:  # Only style cells with meanings
                 worksheet[meaning_cell].font = Font(
-                    italic=getattr(self.config, "meaning_style_italic", True),
-                    size=getattr(self.config, "meaning_font_size", 9),
-                    color=getattr(self.config, "meaning_color", "666666"),
+                    italic=self.config.meaning_style_italic,
+                    size=self.config.meaning_font_size,
+                    color=self.config.meaning_color,
                 )
                 worksheet[meaning_cell].alignment = Alignment(
                     horizontal="center", vertical="center", wrap_text=True
@@ -466,9 +476,9 @@ class XLSXTableFormatter(XLSXFormatter):
             # Style unit cell
             if unit_text:  # Only style cells with units
                 worksheet[unit_cell].font = Font(
-                    italic=getattr(self.config, "unit_style_italic", True),
-                    size=getattr(self.config, "unit_font_size", 9),
-                    color=getattr(self.config, "unit_color", "666666"),
+                    italic=self.config.unit_style_italic,
+                    size=self.config.unit_font_size,
+                    color=self.config.unit_color,
                 )
                 worksheet[unit_cell].alignment = Alignment(
                     horizontal="center", vertical="center", wrap_text=True
@@ -543,10 +553,7 @@ class XLSXTableFormatter(XLSXFormatter):
 
             # Only apply explicit header styling if configured
             # Otherwise, let the table style control header appearance (font, color, fill)
-            if (
-                hasattr(self.config, "header_row_color")
-                and self.config.header_row_color
-            ):
+            if self.config.header_row_color:
                 worksheet[header_cell].font = Font(bold=True)
                 header_fill = PatternFill(
                     start_color=self.config.header_row_color,
@@ -794,7 +801,7 @@ class XLSXTableFormatter(XLSXFormatter):
 class XLSXJoinedTableFormatter(XLSXTableFormatter):
     """Handles joined models with tabular format."""
 
-    def __init__(self, config: XLSXConfig, join_config: JoinConfiguration):
+    def __init__(self, config: XLSXTableConfig, join_config: JoinConfiguration) -> None:
         super().__init__(config)
         self.join_config = join_config
 
@@ -968,8 +975,10 @@ class XLSXJoinedTableFormatter(XLSXTableFormatter):
 
 
 # Table processor
-class XLSXTableProcessor(XLSXProcessor):
+class XLSXTableProcessor(XLSXProcessor[XLSXTableConfig]):
     """Processor for tabular format."""
+
+    formatter: XLSXTableFormatter
 
     def export(
         self, data: Sequence[BaseModel], filepath: Path, sheet_name: str | None = None
@@ -1021,7 +1030,11 @@ class XLSXTableProcessor(XLSXProcessor):
 class XLSXJoinedTableProcessor(XLSXTableProcessor):
     """Processor for joined models in tabular format."""
 
-    def __init__(self, config: XLSXConfig, formatter: XLSXJoinedTableFormatter):
+    formatter: XLSXJoinedTableFormatter
+
+    def __init__(
+        self, config: XLSXTableConfig, formatter: XLSXJoinedTableFormatter
+    ) -> None:
         super().__init__(config, formatter)
 
     def export(

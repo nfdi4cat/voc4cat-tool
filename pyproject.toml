@@ -264,11 +264,41 @@ select = [
 "tests/*.py" = [
   "PLR2004", # Allow numbers instead of named constants in tests
   "S101",   # assert in tests is OK
+  # pytest injects fixtures as function parameters, so these two rules count
+  # fixture injection rather than a design problem.
+  "PLR0913", # too-many-arguments
+  "PLR0917", # too-many-positional-arguments
 ]
 "example/*.py" = [
   "PLR0915", # allow many statements in functions in example scripts
   "S101",   # assert in example scripts is OK
 ]
+# A single linear integration test; splitting it would obscure the sequence.
+"tests/test_xlsx_integration.py" = ["PLR0915"]
+# Imports inside a test body, so the module binds after a fixture has adjusted
+# global config state.
+"tests/test_convert_v1.py" = ["PLC0415"]
+
+# --- Complexity debt in the conversion core ---------------------------------
+# Tracked in https://github.com/nfdi4cat/voc4cat-tool/issues/363
+#
+# These functions predate the typing work of #362 and exceed the complexity
+# limits. Decomposing them was deliberately sequenced after that work, so the
+# strict type gate is in place to guard the extractions.
+#
+# THIS LIST IS THE DEBT REGISTER FOR #363. It is per file and per rule so the
+# remaining debt stays visible, and deleting an entry is how progress on #363
+# is reported. Do not add a file here to silence a NEW violation -- keeping
+# that from becoming invisible is the whole point of the list.
+"src/voc4cat/convert_v1.py" = ["C901", "PLR0912", "PLR0913", "PLR0915", "PLR0917"]
+"src/voc4cat/convert_043.py" = ["C901", "PLR0912", "PLR0913", "PLR0915", "PLR0917"]
+"src/voc4cat/convert_v1_helpers.py" = ["C901", "PLR0912", "PLR0913", "PLR0917"]
+"src/voc4cat/xlsx_table.py" = ["C901", "PLR0912", "PLR0915"]
+"src/voc4cat/convert.py" = ["C901", "PLR0912"]
+"src/voc4cat/utils.py" = ["C901", "PLR0912"]
+"src/voc4cat/xlsx_api.py" = ["C901", "PLR0912"]
+"src/voc4cat/xlsx_keyvalue.py" = ["C901"]
+"src/voc4cat/assistant.py" = ["PLR0913", "PLR0917"]
 
 [tool.ruff.lint.mccabe]
 # Flake8-mccabe uses a default level of 7, ruff of 10.
@@ -287,3 +317,11 @@ classmethod-decorators = [
 mode = "mypy"
 # Suppress all missing import errors for all untyped libraries
 ignore_missing_imports = true
+strict = true
+# openpyxl's submodules define no __all__, so no_implicit_reexport reports
+# about 25 documented-public imports (load_workbook, Font, get_column_letter)
+# as private.
+implicit_reexport = true
+# click reaches the checker as Any because the `assistant` extra is absent from
+# the lint environment, which would make every click decorator untyped.
+disallow_untyped_decorators = false

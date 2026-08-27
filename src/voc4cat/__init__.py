@@ -17,7 +17,7 @@ except PackageNotFoundError:  # pragma: no cover
 logger = logging.getLogger()
 
 
-def setup_logging(loglevel: int = logging.INFO, logfile: Path | None = None):
+def setup_logging(loglevel: int = logging.INFO, logfile: Path | None = None) -> None:
     """
     Setup logging to console and optionally a file.
 

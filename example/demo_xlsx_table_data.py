@@ -79,7 +79,7 @@ def custom_priority_serializer(value: Priority) -> str:
 
 def custom_priority_deserializer(value: str) -> Priority:
     """Custom deserializer for priority enum from emoji format."""
-    clean_value = value.split()[-1].lower() if value else "medium"
+    clean_value = value.rsplit(maxsplit=1)[-1].lower() if value else "medium"
     value_map = {"low": Priority.LOW, "medium": Priority.MEDIUM, "high": Priority.HIGH}
     return value_map.get(clean_value, Priority.MEDIUM)
 
@@ -136,11 +136,9 @@ class Task(BaseModel):
         XLSXMetadata(
             description="Estimated hours per phase (comma-separated integers)",
             xlsx_serializer=lambda x: ", ".join(str(i) for i in x) if x else "",
-            xlsx_deserializer=lambda x: [
-                int(i.strip()) for i in x.split(",") if i.strip()
-            ]
-            if x.strip()
-            else [],
+            xlsx_deserializer=lambda x: (
+                [int(i.strip()) for i in x.split(",") if i.strip()] if x.strip() else []
+            ),
         ),
     ] = []
 

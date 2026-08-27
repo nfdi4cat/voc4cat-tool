@@ -15,7 +15,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from typing import Literal as TypingLiteral
 
 from rdflib import (
@@ -33,6 +33,7 @@ from rdflib import (
     Namespace,
     URIRef,
 )
+from rdflib.term import Node
 
 from voc4cat import config
 from voc4cat.convert_v1 import (
@@ -369,14 +370,29 @@ def convert_rdf_043_to_v1(
         for prefix, namespace_uri in vocab_config.prefix_map.items():
             output_graph.bind(prefix, Namespace(str(namespace_uri)))
 
+    # This 043 input was produced by an earlier voc4cat-tool version, which
+    # (like the current one) used an idranges.toml-driven scheme that mints
+    # every skos:Concept/Collection/ConceptScheme as a stable URIRef and
+    # never as a blank node (see docs/migration-to-v1.0.md). That is a fact
+    # about the input's provenance, not something checked here: input_graph
+    # is parsed above with no SHACL validation, and the vp4cat/vocpub
+    # profile describes voc4cat's v1.0 *output* shape -- it is not applied
+    # to this 043 input. rdflib types graph iteration as the wider Node.
+
     # Get all concepts for special handling of rdfs:isDefinedBy
-    concepts = set(input_graph.subjects(RDF.type, SKOS.Concept))
+    concepts: set[URIRef] = {
+        cast("URIRef", s) for s in input_graph.subjects(RDF.type, SKOS.Concept)
+    }
 
     # Get all collections for special handling of dcterms:isPartOf
-    collections = set(input_graph.subjects(RDF.type, SKOS.Collection))
+    collections: set[URIRef] = {
+        cast("URIRef", s) for s in input_graph.subjects(RDF.type, SKOS.Collection)
+    }
 
     # Get ConceptScheme(s) for special handling of dcterms:hasPart
-    concept_schemes = set(input_graph.subjects(RDF.type, SKOS.ConceptScheme))
+    concept_schemes: set[URIRef] = {
+        cast("URIRef", s) for s in input_graph.subjects(RDF.type, SKOS.ConceptScheme)
+    }
 
     # Track unknown predicates for warning
     unknown_predicates: set[URIRef] = set()
@@ -392,9 +408,12 @@ def convert_rdf_043_to_v1(
 
     # Process each triple
     for s, p, o in input_graph:
+        # Predicates are structurally always URIRef in RDF (blank nodes and
+        # literals cannot appear in predicate position); subjects here are
+        # the same voc4cat-minted SKOS/organization IRIs described above.
         new_triple = _transform_triple_043_to_v1(
-            s,
-            p,
+            cast("URIRef", s),
+            cast("URIRef", p),
             o,
             concepts,
             collections,
@@ -453,13 +472,13 @@ def convert_rdf_043_to_v1(
 def _transform_triple_043_to_v1(  # noqa: PLR0911
     s: URIRef,
     p: URIRef,
-    o,
+    o: Node,
     concepts: set[URIRef],
     collections: set[URIRef],
     concept_schemes: set[URIRef],
     unknown_predicates: set[URIRef],
     id_pattern: re.Pattern[str] | None = None,
-) -> tuple | None:
+) -> tuple[Node, Node, Node] | None:
     """Transform a single triple from 043 to v1.0 format.
 
     Args:

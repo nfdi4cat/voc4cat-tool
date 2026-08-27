@@ -9,7 +9,7 @@ This module provides the main public API for XLSX processing, including:
 """
 
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from openpyxl import load_workbook
 from pydantic import BaseModel
@@ -141,7 +141,7 @@ def create_xlsx_wrapper(
     class_name = f"XLSX{original_model.__name__}"
 
     # Create the class dynamically with proper annotations
-    return type(
+    new_class = type(
         class_name,
         (base_class,),
         {
@@ -150,6 +150,9 @@ def create_xlsx_wrapper(
             "__qualname__": f"XLSX{original_model.__qualname__}",
         },
     )
+    # type()'s three-arg form is typed to return plain `type`, but base_class
+    # is itself a type[BaseModel], so the created subclass is one too.
+    return cast("type[BaseModel]", new_class)
 
 
 def export_to_xlsx(

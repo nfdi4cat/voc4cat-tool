@@ -52,7 +52,7 @@ class XLSXKeyValueConfig(XLSXConfig):
 
 
 # Key-value formatter
-class XLSXKeyValueFormatter(XLSXFormatter):
+class XLSXKeyValueFormatter(XLSXFormatter[XLSXKeyValueConfig]):
     """Handles key-value format with field names and values."""
 
     def format_export(
@@ -195,10 +195,7 @@ class XLSXKeyValueFormatter(XLSXFormatter):
                 value_cell.value = formatted_value
                 # Apply special formatting for Value column (always left-aligned)
                 # Skip formatting if disabled in configuration
-                if not (
-                    hasattr(self.config, "enable_cell_formatting")
-                    and not self.config.enable_cell_formatting
-                ):
+                if self.config.enable_cell_formatting:
                     # Value column gets left alignment regardless of data type
                     wrap_text = self._should_wrap_text(field_analysis.field_type)
 
@@ -510,8 +507,10 @@ class XLSXKeyValueFormatter(XLSXFormatter):
 
 
 # Key-value processor
-class XLSXKeyValueProcessor(XLSXProcessor):
+class XLSXKeyValueProcessor(XLSXProcessor[XLSXKeyValueConfig]):
     """Processor for key-value format."""
+
+    formatter: XLSXKeyValueFormatter
 
     def export(
         self, data: BaseModel, filepath: Path, sheet_name: str | None = None

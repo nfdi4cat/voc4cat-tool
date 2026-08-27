@@ -2,8 +2,9 @@ import glob
 import logging
 import os
 from pathlib import Path
+from typing import Literal
 
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 
 from voc4cat.checks import Voc4catError
 from voc4cat.models_v1 import (
@@ -35,7 +36,7 @@ class ConversionError(Exception):
     pass
 
 
-def split_and_tidy(cell_value: str):
+def split_and_tidy(cell_value: str | None) -> list[str]:
     # note this may not work in list of things that contain commas. Need to consider revising
     # to allow comma-separated values where it'll split in commas but not in things enclosed in quotes.
     if cell_value == "" or cell_value is None:
@@ -44,7 +45,7 @@ def split_and_tidy(cell_value: str):
     return [x for x in entries if x]
 
 
-def has_file_in_multiple_formats(dir_):
+def has_file_in_multiple_formats(dir_: Path) -> Literal[False] | list[str]:
     files = [
         os.path.normcase(f)
         for f in glob.glob(os.path.join(dir_, "*.*"))
@@ -54,8 +55,14 @@ def has_file_in_multiple_formats(dir_):
     unique_file_names = set(file_names)
     if len(file_names) == len(unique_file_names):
         return False
-    seen = set()
-    return [x for x in file_names if x in seen or seen.add(x)]
+    seen: set[str] = set()
+    duplicates: list[str] = []
+    for x in file_names:
+        if x in seen:
+            duplicates.append(x)
+        else:
+            seen.add(x)
+    return duplicates
 
 
 # =============================================================================
@@ -103,7 +110,7 @@ def get_template_sheet_names(template_path: Path) -> list[str]:
 
 
 def reorder_sheets_with_template(
-    wb, template_sheet_names: list[str] | None = None
+    wb: Workbook, template_sheet_names: list[str] | None = None
 ) -> None:
     """Reorder sheets: template sheets first (if any), then auto-created sheets.
 

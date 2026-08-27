@@ -36,7 +36,11 @@ def main(ttl_inbox: Path, vocab: Path) -> int:
             outp = subprocess.run(cmd, capture_output=True, check=False)  # noqa: S603
             if outp.stdout:
                 logger.info("Cmd output: %s", outp.stdout)
-            if retcode := outp.returncode != 0:
+            # Bind the exit code itself: `:=` binds looser than `!=`, so the
+            # walrus form assigned a bool and lost git merge-file's count of
+            # unresolved conflicts.
+            retcode = outp.returncode
+            if retcode != 0:
                 break
         else:
             logger.info('Copying "%s" to "%s"', new, vocab)
@@ -44,7 +48,7 @@ def main(ttl_inbox: Path, vocab: Path) -> int:
     return retcode
 
 
-def main_cli(args=None) -> int:
+def main_cli(args: list[str] | None = None) -> int:
     if args is None:  # run via entrypoint
         args = sys.argv[1:]
 

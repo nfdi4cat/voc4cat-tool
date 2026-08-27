@@ -261,7 +261,7 @@ def test_validate_vocabulary_files_for_ci_workflow_multi_vocab(
         (SKOS.Collection, "Removal of a Collection detected"),
     ],
 )
-def test_check_for_removed_iris(  # noqa: PLR0913
+def test_check_for_removed_iris(
     datadir, tmp_path, temp_config, caplog, skos_el, log_text
 ):
     original = datadir / "concept-scheme-with-cycles.ttl"

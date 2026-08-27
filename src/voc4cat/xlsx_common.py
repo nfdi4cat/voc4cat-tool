@@ -19,10 +19,19 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Any, Union, get_args, get_origin
+from typing import (
+    Annotated,
+    Any,
+    Generic,
+    TypeVar,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+)
 
 from openpyxl import load_workbook
-from openpyxl.cell import MergedCell
+from openpyxl.cell import Cell, MergedCell
 from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter, range_boundaries
 from openpyxl.workbook import Workbook
@@ -38,6 +47,16 @@ logger = logging.getLogger(__name__)
 # Excel's limit for data validation formula length
 EXCEL_DV_FORMULA_LIMIT = 255
 MAX_SHEETNAME_LENGTH = 31
+
+# Custom field converters: a serializer turns a field value into the text
+# written to a cell, a deserializer turns cell text back into a field value.
+# The deserialized type differs per field and is validated by pydantic.
+XLSXSerializer = Callable[[Any], str]
+XLSXDeserializer = Callable[[str], Any]
+
+# Serializer/deserializer pairs produced by the XLSXConverters factories.
+SeparatedConverters = tuple[Callable[[list[Any]], str], Callable[[str], list[str]]]
+IntSeparatedConverters = tuple[Callable[[list[int]], str], Callable[[str], list[int]]]
 
 
 # Exception classes
@@ -75,8 +94,8 @@ class XLSXMetadata:
     display_name: str | None = None
     description: str | None = None
     separator_pattern: "SeparatorPattern | None" = None  # Forward reference
-    xlsx_serializer: Callable | None = None
-    xlsx_deserializer: Callable | None = None
+    xlsx_serializer: XLSXSerializer | None = None
+    xlsx_deserializer: XLSXDeserializer | None = None
 
 
 class MetadataVisibility(Enum):
@@ -295,14 +314,18 @@ class XLSXFieldAnalyzer:
         )
 
     @staticmethod
-    def get_custom_serializer(xlsx_metadata: XLSXMetadata | None) -> Callable | None:
+    def get_custom_serializer(
+        xlsx_metadata: XLSXMetadata | None,
+    ) -> XLSXSerializer | None:
         """Get custom serializer function from metadata."""
         if xlsx_metadata:
             return xlsx_metadata.xlsx_serializer
         return None
 
     @staticmethod
-    def get_custom_deserializer(xlsx_metadata: XLSXMetadata | None) -> Callable | None:
+    def get_custom_deserializer(
+        xlsx_metadata: XLSXMetadata | None,
+    ) -> XLSXDeserializer | None:
         """Get custom deserializer function from metadata."""
         if xlsx_metadata:
             return xlsx_metadata.xlsx_deserializer
@@ -371,7 +394,7 @@ class XLSXFieldAnalyzer:
             return required_text
 
         # Trivial defaults that don't need to be shown
-        trivial_defaults = (None, "", [], {})
+        trivial_defaults: tuple[object, ...] = (None, "", [], {})
 
         if default_value is PydanticUndefined or default_value in trivial_defaults:
             return optional_text
@@ -391,7 +414,7 @@ class XLSXFieldAnalyzer:
 class XLSXSerializationEngine:
     """Centralized serialization/deserialization logic."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.field_analyzer = XLSXFieldAnalyzer()
 
     def serialize_value(self, value: Any, field_analysis: FieldAnalysis) -> Any:
@@ -471,11 +494,14 @@ class XLSXSerializationEngine:
         if field_type is None:
             return str(raw_value)
 
-        type_converters = {
-            str: lambda x: str(x),
-            int: lambda x: int(x),
-            float: lambda x: float(x),
-            bool: lambda x: self._convert_bool(x),
+        # Annotated because the values are heterogeneous (classes, a bound
+        # method, lambdas); without it they join to `object`, which is not
+        # callable at the lookup below.
+        type_converters: dict[type, Callable[[Any], Any]] = {
+            str: str,
+            int: int,
+            float: float,
+            bool: self._convert_bool,
             date: lambda x: self._convert_datetime(x, date),
             datetime: lambda x: self._convert_datetime(x, datetime),
         }
@@ -622,7 +648,9 @@ class XLSXConverters:
     )  # " | " with \| escaping
 
     @staticmethod
-    def create_separated_converters(pattern: SeparatorPattern | str):
+    def create_separated_converters(
+        pattern: SeparatorPattern | str,
+    ) -> SeparatedConverters:
         """Create serializer/deserializer pair for any separator pattern.
 
         Args:
@@ -656,7 +684,9 @@ class XLSXConverters:
         return to_separated, from_separated
 
     @staticmethod
-    def create_int_separated_converters(pattern: SeparatorPattern | str):
+    def create_int_separated_converters(
+        pattern: SeparatorPattern | str,
+    ) -> IntSeparatedConverters:
         """Create serializer/deserializer pair for integer lists."""
         if isinstance(pattern, str):
             pattern = SeparatorPattern(pattern)
@@ -685,100 +715,104 @@ class XLSXConverters:
 
     # Convenience methods for common patterns
     @classmethod
-    def comma_converters(cls):
+    def comma_converters(cls) -> SeparatedConverters:
         """Get comma-separated converters (', ')."""
         return cls.create_separated_converters(cls.COMMA)
 
     @classmethod
-    def pipe_converters(cls):
+    def pipe_converters(cls) -> SeparatedConverters:
         """Get pipe-separated converters (' | ')."""
         return cls.create_separated_converters(cls.PIPE)
 
     @classmethod
-    def semicolon_converters(cls):
+    def semicolon_converters(cls) -> SeparatedConverters:
         """Get semicolon-separated converters ('; ')."""
         return cls.create_separated_converters(cls.SEMICOLON)
 
     @classmethod
-    def newline_converters(cls):
+    def newline_converters(cls) -> SeparatedConverters:
         """Get newline-separated converters."""
         return cls.create_separated_converters(cls.NEWLINE)
 
     @classmethod
-    def tab_converters(cls):
+    def tab_converters(cls) -> SeparatedConverters:
         """Get tab-separated converters."""
         return cls.create_separated_converters(cls.TAB)
 
     @classmethod
-    def arrow_converters(cls):
+    def arrow_converters(cls) -> SeparatedConverters:
         """Get arrow-separated converters (' -> ')."""
         return cls.create_separated_converters(cls.ARROW)
 
     @classmethod
-    def double_colon_converters(cls):
+    def double_colon_converters(cls) -> SeparatedConverters:
         """Get double-colon-separated converters ('::')."""
         return cls.create_separated_converters(cls.DOUBLE_COLON)
 
     # Escaping variants
     @classmethod
-    def comma_escaped_converters(cls):
+    def comma_escaped_converters(cls) -> SeparatedConverters:
         """Get comma-separated converters with backslash escaping."""
         return cls.create_separated_converters(cls.COMMA_ESCAPED)
 
     @classmethod
-    def comma_quoted_converters(cls):
+    def comma_quoted_converters(cls) -> SeparatedConverters:
         """Get comma-separated converters with quote escaping."""
         return cls.create_separated_converters(cls.COMMA_QUOTED)
 
     @classmethod
-    def pipe_escaped_converters(cls):
+    def pipe_escaped_converters(cls) -> SeparatedConverters:
         """Get pipe-separated converters with backslash escaping."""
         return cls.create_separated_converters(cls.PIPE_ESCAPED)
 
     # Integer list converters
     @classmethod
-    def comma_int_converters(cls):
+    def comma_int_converters(cls) -> IntSeparatedConverters:
         """Get comma-separated integer converters."""
         return cls.create_int_separated_converters(cls.COMMA)
 
     @classmethod
-    def pipe_int_converters(cls):
+    def pipe_int_converters(cls) -> IntSeparatedConverters:
         """Get pipe-separated integer converters."""
         return cls.create_int_separated_converters(cls.PIPE)
 
     # JSON converters
     @staticmethod
-    def dict_to_json_string(value: dict) -> str:
+    def dict_to_json_string(value: dict[str, Any] | None) -> str:
         """Convert dictionary to JSON string."""
         if value is None:
             return ""
         return json.dumps(value)
 
     @staticmethod
-    def json_string_to_dict(value: str) -> dict:
+    def json_string_to_dict(value: str) -> dict[str, Any]:
         """Convert JSON string to dictionary."""
         if not value or not value.strip():
             return {}
         try:
-            return json.loads(value)
+            # json.loads is typed as Any. The paired serializer writes JSON
+            # objects only, so round-tripped text parses back into a dict.
+            return cast("dict[str, Any]", json.loads(value))
         except json.JSONDecodeError as e:
             msg = f"Cannot parse '{value}' as JSON: {e}"
             raise ValueError(msg) from e
 
     @staticmethod
-    def list_to_json_string(value: list) -> str:
+    def list_to_json_string(value: list[Any] | None) -> str:
         """Convert list to JSON string."""
         if value is None:
             return ""
         return json.dumps(value)
 
     @staticmethod
-    def json_string_to_list(value: str) -> list:
+    def json_string_to_list(value: str) -> list[Any]:
         """Convert JSON string to list."""
         if not value or not value.strip():
             return []
         try:
-            return json.loads(value)
+            # json.loads is typed as Any. The paired serializer writes JSON
+            # arrays only, so round-tripped text parses back into a list.
+            return cast("list[Any]", json.loads(value))
         except json.JSONDecodeError as e:
             msg = f"Cannot parse '{value}' as JSON: {e}"
             raise ValueError(msg) from e
@@ -903,7 +937,7 @@ XLSXPipeEscapedList = Annotated[
 
 # JSON types
 XLSXJSONDict = Annotated[
-    dict,
+    dict[str, Any],
     XLSXMetadata(
         description="Dictionary as JSON string",
         xlsx_serializer=XLSXConverters.dict_to_json_string,
@@ -911,7 +945,7 @@ XLSXJSONDict = Annotated[
     ),
 ]
 XLSXJSONList = Annotated[
-    list,
+    list[Any],
     XLSXMetadata(
         description="List as JSON string",
         xlsx_serializer=XLSXConverters.list_to_json_string,
@@ -960,6 +994,7 @@ class XLSXConfig:
     exclude_fields: set[str] | None = None
     field_order: list[str] | None = None
     metadata_visibility: MetadataToggleConfig | None = None
+    enable_cell_formatting: bool = True
 
     def should_include_field(self, field_name: str) -> bool:
         """Check if a field should be included based on configuration."""
@@ -985,12 +1020,16 @@ class XLSXConfig:
         return [f for f in result if self.should_include_field(f)]
 
 
+# Configuration type held by a formatter and its processor.
+ConfigT = TypeVar("ConfigT", bound=XLSXConfig)
+
+
 # Base formatter class
-class XLSXFormatter(ABC):
+class XLSXFormatter(ABC, Generic[ConfigT]):
     """Base formatter interface for different xlsx layouts."""
 
-    def __init__(self, config: XLSXConfig):
-        self.config = config
+    def __init__(self, config: ConfigT) -> None:
+        self.config: ConfigT = config
         self.serialization_engine = XLSXSerializationEngine()
         self.row_calculator = XLSXRowCalculator(config)
 
@@ -1015,13 +1054,12 @@ class XLSXFormatter(ABC):
             return field_analysis.xlsx_metadata.display_name
         return " ".join(word.capitalize() for word in field_analysis.name.split("_"))
 
-    def _apply_data_cell_formatting(self, cell, field_analysis: FieldAnalysis) -> None:
+    def _apply_data_cell_formatting(
+        self, cell: Cell, field_analysis: FieldAnalysis
+    ) -> None:
         """Apply consistent formatting to data cells (not headers)."""
         # Skip formatting if disabled in configuration
-        if (
-            hasattr(self.config, "enable_cell_formatting")
-            and not self.config.enable_cell_formatting
-        ):
+        if not self.config.enable_cell_formatting:
             return
 
         # Vertical alignment: center for all data cells
@@ -1072,7 +1110,7 @@ class XLSXFormatter(ABC):
         """Format field name as readable header text."""
         return self._get_field_display_name(field_analysis)
 
-    def _add_title(self, worksheet: Worksheet, title: str) -> None:
+    def _add_title(self, worksheet: Worksheet, title: str | None) -> None:
         """Add title to worksheet."""
         if title:
             title_row = self.row_calculator.get_title_row()
@@ -1200,12 +1238,12 @@ class XLSXFormatter(ABC):
 
 
 # Base processor class
-class XLSXProcessor(ABC):
+class XLSXProcessor(ABC, Generic[ConfigT]):
     """Base class for all XLSX processors."""
 
-    def __init__(self, config: XLSXConfig, formatter: XLSXFormatter):
-        self.config = config
-        self.formatter = formatter
+    def __init__(self, config: ConfigT, formatter: XLSXFormatter[ConfigT]) -> None:
+        self.config: ConfigT = config
+        self.formatter: XLSXFormatter[ConfigT] = formatter
         self.field_analyzer = XLSXFieldAnalyzer()
 
     @abstractmethod

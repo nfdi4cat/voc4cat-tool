@@ -161,8 +161,8 @@ if __name__ == "__main__":
 
     jane = Researcher(
         name="Jane Smith",
-        orcid="https://orcid.org/0000-0002-1825-0097",
-        home_organization="https://ror.org/02y72wh86",
+        orcid=HttpUrl("https://orcid.org/0000-0002-1825-0097"),
+        home_organization=HttpUrl("https://ror.org/02y72wh86"),
     )
     print(f"Researcher    : {jane.name}")
     print(f"ORCID ID part : {jane.orcid_id_part}")

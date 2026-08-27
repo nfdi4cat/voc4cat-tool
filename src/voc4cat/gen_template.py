@@ -6,6 +6,7 @@ xlsx infrastructure (xlsx_api, xlsx_table, xlsx_keyvalue).
 
 from __future__ import annotations
 
+import argparse
 import logging
 import shutil
 import tempfile
@@ -35,9 +36,11 @@ from voc4cat.models_v1 import (
     MAPPINGS_SHEET_NAME,
     PREFIXES_EXPORT_CONFIG,
     PREFIXES_SHEET_NAME,
+    CollectionV1,
     ConceptSchemeV1,
     ConceptV1,
     IDRangeInfoV1,
+    MappingV1,
     PrefixV1,
 )
 from voc4cat.utils import (
@@ -210,7 +213,9 @@ def _example_entity_iri(vocab_config: Vocab, id_: int) -> str:
     return f"{permanent_iri_part}{id_part}"
 
 
-def _examples_for_vocab(vocab_config: Vocab | None):
+def _examples_for_vocab(
+    vocab_config: Vocab | None,
+) -> tuple[list[ConceptV1], list[CollectionV1], list[MappingV1]]:
     """Example rows using IDs from the first configured ID range.
 
     Generic example data is kept when no ID range is configured. Suggesting
@@ -234,7 +239,7 @@ def _examples_for_vocab(vocab_config: Vocab | None):
     )
 
 
-def _export_concepts(filepath: Path, concepts) -> None:
+def _export_concepts(filepath: Path, concepts: list[ConceptV1]) -> None:
     """Export Concepts sheet in table format."""
     export_to_xlsx(
         concepts,
@@ -245,7 +250,7 @@ def _export_concepts(filepath: Path, concepts) -> None:
     )
 
 
-def _export_collections(filepath: Path, collections) -> None:
+def _export_collections(filepath: Path, collections: list[CollectionV1]) -> None:
     """Export Collections sheet in table format."""
     export_to_xlsx(
         collections,
@@ -256,7 +261,7 @@ def _export_collections(filepath: Path, collections) -> None:
     )
 
 
-def _export_mappings(filepath: Path, mappings) -> None:
+def _export_mappings(filepath: Path, mappings: list[MappingV1]) -> None:
     """Export Mappings sheet in table format."""
     export_to_xlsx(
         mappings,
@@ -330,7 +335,7 @@ def _export_prefixes(filepath: Path, vocab_config: Vocab | None = None) -> None:
     )
 
 
-def template_cmd(args) -> None:
+def template_cmd(args: argparse.Namespace) -> None:
     """CLI command handler for template generation.
 
     Args:
