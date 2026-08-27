@@ -68,7 +68,7 @@ def test_main_merge_split_vocab_dir(datadir, tmp_path, caplog):
         caplog.at_level(logging.DEBUG),
         mock.patch("voc4cat.merge_vocab.subprocess") as subprocess,
     ):
-        subprocess.Popen.return_value.returncode = 1
+        subprocess.run.return_value.returncode = 1
         exit_code = main_cli([str(ttl_inbox), str(vocab)])
     assert "Entering directory" in caplog.text
     assert exit_code == 1
@@ -93,6 +93,30 @@ def test_main_merge_files(datadir, tmp_path, caplog):
     assert logf.exists()
 
     with mock.patch("voc4cat.merge_vocab.subprocess") as subprocess:
-        subprocess.Popen.return_value.returncode = 1
+        subprocess.run.return_value.returncode = 1
         exit_code = main_cli(["--logfile", str(logf), str(ttl_inbox), str(vocab)])
     assert exit_code == 1
+
+
+def test_main_merge_propagates_git_exit_code(datadir, tmp_path, fake_process):
+    """git merge-file's exit code is returned, not collapsed to 1.
+
+    git merge-file exits with the number of conflicts, so the specific value
+    carries information a caller can act on.
+    """
+    vocab = tmp_path / "vocab"
+    vocab.mkdir()
+    ttl_inbox = tmp_path / "ttl_inbox"
+    ttl_inbox.mkdir()
+    new = ttl_inbox / CS_CYCLES_TURTLE
+    shutil.copy(datadir / CS_CYCLES_TURTLE, new)
+    exists = vocab / CS_CYCLES_TURTLE
+    shutil.copy(datadir / CS_CYCLES_TURTLE, exists)
+
+    # fake_process is a fixture from pytest-subprocess
+    fake_process.register(
+        ["git", "merge-file", "--theirs", str(exists), str(exists), str(new)],
+        returncode=3,
+    )
+
+    assert main_cli([str(ttl_inbox), str(vocab)]) == 3

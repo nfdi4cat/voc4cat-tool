@@ -8,6 +8,7 @@ Changes:
 
 Fixes:
 
+- Return the exit code of `git merge-file` from `voc4cat-merge` instead of collapsing every failure to `1`. The walrus operator binds less tightly than `!=`, so `retcode := outp.returncode != 0` stored a boolean and discarded git's count of unresolved conflicts.
 - Reject IRIs whose ID is outside the ID range(s) granted to the contributor. `check --ci-post` now validates the IDs added by the acting contributor (from `GITHUB_ACTOR`) against the ranges configured for that vocabulary. The check was lost with the removal of the 0.4.3 template code. ID ranges are now also looked up per vocabulary, so a range granted for one vocabulary no longer permits IDs in another. [#359](https://github.com/nfdi4cat/voc4cat-tool/issues/359)
 - Generate template example rows with IDs from the first configured ID range. Previously `voc4cat template` always suggested `ex:0001001` and the non-numeric `ex:collection001`, which are outside the ID ranges of the shipped starter configuration. [#359](https://github.com/nfdi4cat/voc4cat-tool/issues/359)
 - Detect removal of ordered collections. `check --ci-post` only looked for `skos:Concept` and `skos:Collection`, so deleting a `skos:OrderedCollection` went unnoticed. [#359](https://github.com/nfdi4cat/voc4cat-tool/issues/359)
