@@ -350,3 +350,151 @@ def test_check_ci_post_checks_vocabulary_without_previous_version(
         )
 
     assert f"{VOCAB_IRI}0000015" in caplog.text
+
+
+# ===== ci-post: previous vocabulary stored in split form =====
+
+
+def write_split_vocab(vocab_dir, concept_ids=(), collection_ids=()):
+    """Write a vocabulary split into one turtle file per entity."""
+    vocab_dir.mkdir(parents=True, exist_ok=True)
+    for id_ in concept_ids:
+        write_vocab(vocab_dir / f"{id_:07d}.ttl", concept_ids=[id_])
+    for id_ in collection_ids:
+        write_vocab(vocab_dir / f"{id_:07d}.ttl", collection_ids=[id_])
+    return vocab_dir
+
+
+@mock.patch.dict(os.environ, {"GITHUB_ACTOR": "sofia-garcia"})
+def test_check_ci_post_split_prev_does_not_report_unchanged_iris_as_new(
+    datadir, tmp_path, temp_config, caplog
+):
+    """IRIs already in a split previous vocabulary were not added by the actor."""
+    prev_dir = tmp_path / "prev"
+    new_dir = tmp_path / "new"
+    new_dir.mkdir()
+    # ID 15 belongs to the range of "unknown", not of sofia-garcia. It is
+    # unchanged here, so sofia-garcia must not be held responsible for it.
+    write_split_vocab(prev_dir / "myvocab", concept_ids=[15])
+    write_vocab(new_dir / "myvocab.ttl", concept_ids=[15])
+
+    with caplog.at_level(logging.INFO):
+        main_cli(
+            [
+                "check",
+                "--config",
+                str(datadir / VALID_CONFIG),
+                "--ci-post",
+                str(prev_dir),
+                str(new_dir),
+            ]
+        )
+
+    assert "ci-post passed" in caplog.text
+
+
+@mock.patch.dict(os.environ, {"GITHUB_ACTOR": "sofia-garcia"})
+def test_check_ci_post_split_prev_rejects_id_outside_actor_range(
+    datadir, tmp_path, temp_config, caplog
+):
+    """An ID added next to a split previous vocabulary is still validated."""
+    prev_dir = tmp_path / "prev"
+    new_dir = tmp_path / "new"
+    new_dir.mkdir()
+    write_split_vocab(prev_dir / "myvocab", concept_ids=[1])
+    write_vocab(new_dir / "myvocab.ttl", concept_ids=[1, 15])
+
+    with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
+        main_cli(
+            [
+                "check",
+                "--config",
+                str(datadir / VALID_CONFIG),
+                "--ci-post",
+                str(prev_dir),
+                str(new_dir),
+            ]
+        )
+
+    assert f"{VOCAB_IRI}0000015" in caplog.text
+
+
+@mock.patch.dict(os.environ, {"GITHUB_ACTOR": "sofia-garcia"})
+def test_check_ci_post_split_prev_detects_removed_concept(
+    datadir, tmp_path, temp_config, caplog
+):
+    """allow_delete is false, so removing a concept must be detected."""
+    prev_dir = tmp_path / "prev"
+    new_dir = tmp_path / "new"
+    new_dir.mkdir()
+    write_split_vocab(prev_dir / "myvocab", concept_ids=[1, 2])
+    write_vocab(new_dir / "myvocab.ttl", concept_ids=[1])
+
+    with caplog.at_level(logging.ERROR), pytest.raises(Voc4catError):
+        main_cli(
+            [
+                "check",
+                "--config",
+                str(datadir / VALID_CONFIG),
+                "--ci-post",
+                str(prev_dir),
+                str(new_dir),
+            ]
+        )
+
+    assert f"Removal of a Concept detected: {VOCAB_IRI}0000002" in caplog.text
+
+
+# ===== ci-post: actors without a granted ID range =====
+
+
+@mock.patch.dict(os.environ, {"GITHUB_ACTOR": "curator-without-range"})
+def test_check_ci_post_accepts_actor_without_range_when_nothing_added(
+    datadir, tmp_path, temp_config, caplog
+):
+    """Editing existing concepts mints no IRI, so no ID range is required."""
+    prev_dir = tmp_path / "prev"
+    new_dir = tmp_path / "new"
+    prev_dir.mkdir()
+    new_dir.mkdir()
+    write_vocab(prev_dir / "myvocab.ttl", concept_ids=[1])
+    write_vocab(new_dir / "myvocab.ttl", concept_ids=[1])
+
+    with caplog.at_level(logging.INFO):
+        main_cli(
+            [
+                "check",
+                "--config",
+                str(datadir / VALID_CONFIG),
+                "--ci-post",
+                str(prev_dir),
+                str(new_dir),
+            ]
+        )
+
+    assert "ci-post passed" in caplog.text
+
+
+@mock.patch.dict(os.environ, {"GITHUB_ACTOR": "curator-without-range"})
+def test_check_ci_post_rejects_actor_without_range_when_iri_added(
+    datadir, tmp_path, temp_config, caplog
+):
+    """Adding an IRI without a granted range must still be rejected."""
+    prev_dir = tmp_path / "prev"
+    new_dir = tmp_path / "new"
+    prev_dir.mkdir()
+    new_dir.mkdir()
+    write_vocab(prev_dir / "myvocab.ttl", concept_ids=[1])
+    write_vocab(new_dir / "myvocab.ttl", concept_ids=[1, 5])
+
+    with pytest.raises(Voc4catError, match="has no ID range"):
+        main_cli(
+            [
+                "check",
+                "--config",
+                str(datadir / VALID_CONFIG),
+                "--ci-post",
+                str(prev_dir),
+                str(new_dir),
+            ]
+        )
