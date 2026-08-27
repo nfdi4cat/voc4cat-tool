@@ -4,6 +4,7 @@
 
 Changes:
 
+- **New profile `vp4cat-5.3`, now the default.** A concept may carry one `skos:prefLabel` per language, which `vp4cat-5.2` rejected. It also drops the VocEdit SHACL UI shapes that made every label result appear twice. `vp4cat-5.2` stays bundled for pinning. [#366](https://github.com/nfdi4cat/voc4cat-tool/issues/366)
 - The `voc4cat` package is now fully type-annotated and type-checked under a strict `zuban` configuration, enforced by a pre-commit hook. It ships a `py.typed` marker (PEP 561), so downstream consumers get the annotations when type-checking their own code against this package. [#362](https://github.com/nfdi4cat/voc4cat-tool/issues/362)
 
 Fixes:
