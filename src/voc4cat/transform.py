@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 import shutil
@@ -6,9 +7,22 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 from urllib.parse import urlsplit
 
-from rdflib import DCTERMS, OWL, RDF, SDO, SKOS, XSD, Graph, Literal, Namespace
+from rdflib import (
+    DCTERMS,
+    OWL,
+    RDF,
+    SDO,
+    SKOS,
+    XSD,
+    Graph,
+    Literal,
+    Namespace,
+    Node,
+)
+from rdflib.query import ResultRow
 
 if sys.version_info < (3, 11):
     import isodate
@@ -60,10 +74,10 @@ class FileGitInfo:
 
     created_by: str = ""
     created_email: str = ""
-    created_at: datetime = None
+    created_at: datetime | None = None
     modified_by: str = ""
     modified_email: str = ""
-    modified_at: datetime = None
+    modified_at: datetime | None = None
 
 
 def _get_file_git_info(filepath: str, repo_dir: Path) -> FileGitInfo | None:
@@ -187,7 +201,7 @@ def _get_file_at_ref(ref: str, rel_path: str, repo_dir: Path) -> str | None:
         return result.stdout
 
 
-def _find_main_iri(graph: Graph):
+def _find_main_iri(graph: Graph) -> Node | None:
     """Find the main SKOS entity IRI in a graph.
 
     Looks for SKOS.Concept, SKOS.Collection, or SKOS.ConceptScheme (in that order).
@@ -202,7 +216,7 @@ def _find_main_iri(graph: Graph):
     return None
 
 
-def _content_triples(graph: Graph) -> set:
+def _content_triples(graph: Graph) -> set[tuple[Node, Node, Node]]:
     """Return set of triples excluding date predicates.
 
     Used for semantic comparison: two graphs have the same content if their
@@ -213,7 +227,7 @@ def _content_triples(graph: Graph) -> set:
     }
 
 
-def _extract_prov_dates(graph: Graph, main_iri) -> dict:
+def _extract_prov_dates(graph: Graph, main_iri: Node) -> dict[str, Node | None]:
     """Extract dct:created and dct:modified Literal values from a graph.
 
     Returns:
@@ -227,7 +241,9 @@ def _extract_prov_dates(graph: Graph, main_iri) -> dict:
     }
 
 
-def _restore_prov_dates(graph: Graph, main_iri, dates: dict) -> None:
+def _restore_prov_dates(
+    graph: Graph, main_iri: Node, dates: dict[str, Node | None]
+) -> None:
     """Remove existing date triples and add dates from the dict.
 
     Args:
@@ -244,7 +260,7 @@ def _restore_prov_dates(graph: Graph, main_iri, dates: dict) -> None:
 
 
 def _try_restore_from_base(
-    graph: Graph, main_iri, base_content: str | None, ttl_file: Path
+    graph: Graph, main_iri: Node, base_content: str | None, ttl_file: Path
 ) -> bool:
     """Try to restore dates from a base version for an unchanged file.
 
@@ -279,7 +295,9 @@ def _try_restore_from_base(
     return True
 
 
-def _apply_git_dates(graph: Graph, main_iri, info: FileGitInfo, ttl_file: Path) -> bool:
+def _apply_git_dates(
+    graph: Graph, main_iri: Node, info: FileGitInfo, ttl_file: Path
+) -> bool:
     """Apply dct:created and dct:modified from git info to a graph.
 
     - dct:created: Added only if missing.
@@ -288,6 +306,12 @@ def _apply_git_dates(graph: Graph, main_iri, info: FileGitInfo, ttl_file: Path) 
     Returns:
         True if the graph was modified.
     """
+    if info.created_at is None or info.modified_at is None:  # pragma: no cover
+        # This should not be reached: _get_file_git_info is the only place that
+        # builds a FileGitInfo and it always sets both dates from the git log.
+        msg = f'No git dates for "{ttl_file}".'
+        raise AssertionError(msg)
+
     modified = False
 
     # Handle dct:created - add only if missing
@@ -449,7 +473,7 @@ def bind_namespaces(
                 target_graph.bind(prefix, Namespace(str(namespace_uri)))
 
 
-def extract_numeric_id_from_iri(iri):
+def extract_numeric_id_from_iri(iri: str) -> str:
     iri_path = urlsplit(iri).path
     reverse_id = []
     for char in reversed(iri_path):  # pragma: no branch
@@ -517,7 +541,9 @@ def write_split_turtle(
         # Iterate over search results and write each concept, collection and
         # concept scheme to a separate turtle file using id as filename.
         for qresult in qresults:
-            iri = qresult["iri"]
+            # A SELECT query always yields ResultRow; rdflib's Result.__iter__
+            # is declared more widely to cover ASK and CONSTRUCT.
+            iri = cast("ResultRow", qresult)["iri"]
             tmp_graph = Graph()
             # Bind namespaces from source graph enriched with config prefixes
             bind_namespaces(tmp_graph, source_graph=vocab_graph, vocab_name=vocab_name)
@@ -602,7 +628,7 @@ def join_split_turtle(vocab_dir: Path, vocab_name: str | None = None) -> Graph:
 # ===== transform command & helpers to validate cmd options =====
 
 
-def _transform_rdf(file, args):
+def _transform_rdf(file: Path, args: argparse.Namespace) -> None:
     if args.split:
         vocab_graph = Graph().parse(str(file), format=RDF_FILE_ENDINGS[file.suffix])
         vocab_dir = (
@@ -622,7 +648,7 @@ def _transform_rdf(file, args):
         logger.debug("-> nothing to do for rdf files!")
 
 
-def _handle_prov_from_git(args, diff_base):
+def _handle_prov_from_git(args: argparse.Namespace, diff_base: str | None) -> None:
     """Handle the --prov-from-git transform option."""
     if not args.inplace and not args.outdir:
         msg = "--prov-from-git requires either --inplace or --outdir"
@@ -669,10 +695,12 @@ def _handle_prov_from_git(args, diff_base):
             logger.info("-> added provenance from git to: %s", vocab_dir)
 
 
-def transform(args):
+def transform(args: argparse.Namespace) -> None:
     logger.debug("Transform subcommand started!")
 
-    files = [args.VOCAB] if args.VOCAB.is_file() else [*Path(args.VOCAB).iterdir()]
+    files: list[Path] = (
+        [args.VOCAB] if args.VOCAB.is_file() else [*Path(args.VOCAB).iterdir()]
+    )
     xlsx_files = [f for f in files if f.suffix.lower() in EXCEL_FILE_ENDINGS]
 
     rdf_files = [f for f in files if f.suffix.lower() in RDF_FILE_ENDINGS]
