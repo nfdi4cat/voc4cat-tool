@@ -295,10 +295,3 @@ implicit_reexport = true
 # click reaches the checker as Any because the `assistant` extra is absent from
 # the lint environment, which would make every click decorator untyped.
 disallow_untyped_decorators = false
-
-# Burn-down list: modules still to be annotated for issue #362. Each entry is
-# removed by the commit that annotates that module. When the list is empty,
-# delete this table.
-[[tool.zuban.overrides]]
-module = []
-ignore_errors = true
