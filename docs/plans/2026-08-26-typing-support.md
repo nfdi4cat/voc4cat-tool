@@ -879,7 +879,7 @@ git commit -m "Type docs and xlsx_api modules"
 
 **Interfaces:**
 - Consumes: annotated `voc4cat.config` (Task 6), `voc4cat.checks` (Task 3), `voc4cat.models_v1` (already clean).
-- Produces: annotated `voc4cat.convert_v1_helpers` and `voc4cat.utils`, both dependencies of `convert_v1` (Task 11), `gen_template` (Task 12), `transform` (Task 13), `convert_043` (Task 14), `convert` (Task 15), `check` (Task 16) and `cli` (Task 17). `utils.extract_numeric_id_from_iri` is called from `transform.py:525`.
+- Produces: annotated `voc4cat.convert_v1_helpers` and `voc4cat.utils`, both dependencies of `convert_v1` (Task 11), `gen_template` (Task 12), `transform` (Task 13), `convert_043` (Task 14), `convert` (Task 15), `check` (Task 16) and `cli` (Task 17). (Correction: an earlier draft claimed `extract_numeric_id_from_iri` lives in `utils`. It does not — it is defined at `transform.py:452` and called at `transform.py:525`, both inside `transform`, so it is an intra-module dependency Task 13 resolves on its own.)
 
 Baseline, 8 errors:
 
@@ -1131,7 +1131,7 @@ Import `ResultRow` from `rdflib.query`.
 
 Lines 190, 216, 230, 246, 282, 452, 605, 625 and 672, plus the bare `set` at 205
 and bare `dict` at 216 and 230. Lines 525, 694 and 724 clear once their callees
-are annotated (`extract_numeric_id_from_iri` comes from Task 10).
+are annotated (`extract_numeric_id_from_iri` is defined in this same module at line 452, not in `utils`; annotating it here clears its own call site).
 
 - [ ] **Step 6: Verify green, tests and lint**
 
