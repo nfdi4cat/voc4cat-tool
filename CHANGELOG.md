@@ -4,7 +4,7 @@
 
 Changes:
 
-- **New profile `vp4cat-5.3`, now the default.** A concept can carry one `skos:prefLabel` per language; `vp4cat-5.2` inherited `sh:maxCount 1` from vocpub and rejected every multilingual concept, including the bilingual example that `voc4cat template` generates. `sh:uniqueLang` still allows only one label per language. The profile also drops the VocEdit SHACL UI shapes, which made pySHACL report each prefLabel and definition result twice. `vp4cat-5.2` stays bundled for vocabularies that pin it. From 5.3 on, vp4cat is versioned independently of vocpub. [#366](https://github.com/nfdi4cat/voc4cat-tool/issues/366)
+- **New profile `vp4cat-5.3`, now the default.** A concept may carry one `skos:prefLabel` per language, which `vp4cat-5.2` rejected. It also drops the VocEdit SHACL UI shapes that made every label result appear twice. `vp4cat-5.2` stays bundled for pinning. [#366](https://github.com/nfdi4cat/voc4cat-tool/issues/366)
 - The `voc4cat` package is now fully type-annotated and type-checked under a strict `zuban` configuration, enforced by a pre-commit hook. It ships a `py.typed` marker (PEP 561), so downstream consumers get the annotations when type-checking their own code against this package. [#362](https://github.com/nfdi4cat/voc4cat-tool/issues/362)
 
 Fixes:
