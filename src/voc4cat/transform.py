@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import cast
 from urllib.parse import urlsplit
@@ -259,49 +259,165 @@ def _restore_prov_dates(
         graph.add((main_iri, DCTERMS.modified, dates["modified"]))
 
 
-def _try_restore_from_base(
-    graph: Graph, main_iri: Node, base_content: str | None, ttl_file: Path
-) -> bool:
-    """Try to restore dates from a base version for an unchanged file.
+def _base_dates_if_unchanged(
+    graph: Graph, base_content: str | None
+) -> dict[str, Node | None] | None:
+    """Return the dates of the base version if the file content is unchanged.
 
-    Compares content triples (excluding dates) between current graph and base version.
-    If content is unchanged and base has dates, restores them.
+    Compares content triples (excluding dates) between the current graph and the
+    base version.
 
     Args:
-        graph: Current RDF graph (mutated in place if dates restored).
-        main_iri: IRI of the main SKOS entity in the current graph.
-        base_content: Turtle content of the file at the base ref, or None if new file.
-        ttl_file: Path to the file (for serialization and logging).
+        graph: Current RDF graph.
+        base_content: Turtle content of the file at the base ref, or None if the
+            file does not exist there.
 
     Returns:
-        True if dates were restored (caller should skip git-history dates).
-        False if file is changed/new or base has no dates (fall through needed).
+        The dates of the base version, or None if the file is new or its content
+        differs from the base.
     """
     if base_content is None:
-        return False  # New file
+        return None  # New file
 
     base_graph = Graph().parse(data=base_content, format="turtle")
     base_iri = _find_main_iri(base_graph)
-    if not base_iri or _content_triples(graph) != _content_triples(base_graph):
-        return False  # Changed file or no SKOS entity in base
+    if base_iri is None or _content_triples(graph) != _content_triples(base_graph):
+        return None  # Changed file or no SKOS entity in base
 
-    base_dates = _extract_prov_dates(base_graph, base_iri)
-    if not base_dates["created"] and not base_dates["modified"]:
+    return _extract_prov_dates(base_graph, base_iri)
+
+
+@dataclass
+class _FileState:
+    """A split turtle file with what is needed to decide its dates."""
+
+    ttl_file: Path
+    rel_path: str
+    graph: Graph
+    main_iri: Node
+    is_concept_scheme: bool
+    base_dates: dict[str, Node | None] | None
+
+
+def _restore_dates_from_base(state: _FileState) -> bool:
+    """Write the dates of the base version to an unchanged file.
+
+    Returns:
+        True if dates were restored. False if the file differs from the base or
+        the base carries no dates, so that git history has to supply them.
+    """
+    if state.base_dates is None:
+        return False
+    if not state.base_dates["created"] and not state.base_dates["modified"]:
         return False  # Base has no dates -- fall through to git-history logic
 
-    _restore_prov_dates(graph, main_iri, base_dates)
-    graph.serialize(destination=ttl_file, format="longturtle")
-    logger.debug("Restored dates from base for %s", ttl_file.name)
+    _restore_prov_dates(state.graph, state.main_iri, state.base_dates)
+    state.graph.serialize(destination=state.ttl_file, format="longturtle")
+    logger.debug("Restored dates from base for %s", state.ttl_file.name)
+    return True
+
+
+def _normalized_date(value: str) -> str:
+    """Return an ISO date string for an xsd:date literal.
+
+    Raises:
+        Voc4catError: If the value is not a calendar date.
+    """
+    try:
+        return date.fromisoformat(value).isoformat()
+    except ValueError as exc:
+        msg = f'Invalid --modified-date "{value}". Expected an ISO date (YYYY-MM-DD).'
+        raise Voc4catError(msg) from exc
+
+
+def _validated_modified_date(
+    args: argparse.Namespace, diff_base: str | None
+) -> str | None:
+    """Return the ISO date given with --modified-date, or None if unused.
+
+    Raises:
+        Voc4catError: If the option is used without its prerequisites, or if its
+            value is not a calendar date.
+    """
+    modified_date = getattr(args, "modified_date", None)
+    if not modified_date:
+        return None
+    if not getattr(args, "prov_from_git", False):
+        msg = "--modified-date requires --prov-from-git"
+        raise Voc4catError(msg)
+    if not diff_base:
+        # Without a base there is no set of changed files, so the date would be
+        # forced on every concept of the vocabulary.
+        msg = "--modified-date requires --diff-base"
+        raise Voc4catError(msg)
+    return _normalized_date(modified_date)
+
+
+def _add_created_if_missing(
+    graph: Graph, main_iri: Node, ttl_file: Path, created_date: str
+) -> bool:
+    """Add dct:created unless the graph already carries one.
+
+    Returns:
+        True if the graph was modified.
+    """
+    if list(graph.objects(main_iri, DCTERMS.created)):
+        return False
+
+    graph.add((main_iri, DCTERMS.created, Literal(created_date, datatype=XSD.date)))
+    logger.debug("Added dct:created=%s to %s", created_date, ttl_file.name)
+    return True
+
+
+def _set_modified(
+    graph: Graph, main_iri: Node, ttl_file: Path, modified_date: str
+) -> bool:
+    """Write dct:modified unless the graph already carries that date.
+
+    Returns:
+        True if the graph was modified.
+    """
+    existing_modified = list(graph.objects(main_iri, DCTERMS.modified))
+    if not existing_modified:
+        graph.add(
+            (main_iri, DCTERMS.modified, Literal(modified_date, datatype=XSD.date))
+        )
+        logger.debug("Added dct:modified=%s to %s", modified_date, ttl_file.name)
+        return True
+
+    existing_date = str(existing_modified[0])
+    if existing_date == modified_date:
+        return False
+
+    graph.remove((main_iri, DCTERMS.modified, None))
+    graph.add((main_iri, DCTERMS.modified, Literal(modified_date, datatype=XSD.date)))
+    logger.info(
+        "Updated dct:modified in %s: %s -> %s",
+        ttl_file.name,
+        existing_date,
+        modified_date,
+    )
     return True
 
 
 def _apply_git_dates(
-    graph: Graph, main_iri: Node, info: FileGitInfo, ttl_file: Path
+    graph: Graph,
+    main_iri: Node,
+    info: FileGitInfo,
+    ttl_file: Path,
+    modified_date: str | None = None,
 ) -> bool:
     """Apply dct:created and dct:modified from git info to a graph.
 
     - dct:created: Added only if missing.
     - dct:modified: Updated if different from git date.
+
+    Args:
+        graph: RDF graph to modify (mutated in place).
+        main_iri: IRI of the main SKOS entity.
+        info: Git history dates for the file.
+        ttl_file: Path to the file (for logging).
+        modified_date: ISO date to write as dct:modified instead of the git date.
 
     Returns:
         True if the graph was modified.
@@ -312,49 +428,85 @@ def _apply_git_dates(
         msg = f'No git dates for "{ttl_file}".'
         raise AssertionError(msg)
 
-    modified = False
+    created_added = _add_created_if_missing(
+        graph, main_iri, ttl_file, info.created_at.strftime("%Y-%m-%d")
+    )
+    modified_set = _set_modified(
+        graph,
+        main_iri,
+        ttl_file,
+        modified_date or info.modified_at.strftime("%Y-%m-%d"),
+    )
+    return created_added or modified_set
 
-    # Handle dct:created - add only if missing
-    existing_created = list(graph.objects(main_iri, DCTERMS.created))
-    if not existing_created:
-        created_date = info.created_at.strftime("%Y-%m-%d")
-        graph.add((main_iri, DCTERMS.created, Literal(created_date, datatype=XSD.date)))
-        logger.debug("Added dct:created=%s to %s", created_date, ttl_file.name)
-        modified = True
 
-    # Handle dct:modified - update if different
-    git_modified_date = info.modified_at.strftime("%Y-%m-%d")
-    existing_modified = list(graph.objects(main_iri, DCTERMS.modified))
-    if existing_modified:
-        existing_date = str(existing_modified[0])
-        if existing_date != git_modified_date:
-            graph.remove((main_iri, DCTERMS.modified, None))
-            graph.add(
-                (
-                    main_iri,
-                    DCTERMS.modified,
-                    Literal(git_modified_date, datatype=XSD.date),
-                )
-            )
-            logger.info(
-                "Updated dct:modified in %s: %s -> %s",
-                ttl_file.name,
-                existing_date,
-                git_modified_date,
-            )
-            modified = True
-    else:
-        graph.add(
-            (
-                main_iri,
-                DCTERMS.modified,
-                Literal(git_modified_date, datatype=XSD.date),
+def _apply_caller_dates(state: _FileState, modified_date: str) -> bool:
+    """Date a file that has no git history yet from the date given by the caller.
+
+    Returns:
+        True if the graph was modified.
+    """
+    created_added = _add_created_if_missing(
+        state.graph, state.main_iri, state.ttl_file, modified_date
+    )
+    modified_set = _set_modified(
+        state.graph, state.main_iri, state.ttl_file, modified_date
+    )
+    return created_added or modified_set
+
+
+def _collect_file_states(
+    ttl_files: list[Path],
+    vocab_dir: Path,
+    git_lookup_dir: Path,
+    repo_dir: Path,
+    diff_base: str | None,
+) -> list[_FileState]:
+    """Parse the turtle files and compare each against the base version.
+
+    Files without a SKOS entity are skipped with a warning.
+
+    Args:
+        ttl_files: Split turtle files to process.
+        vocab_dir: Directory the files were found in.
+        git_lookup_dir: Directory to look up git history from.
+        repo_dir: Git repository root directory.
+        diff_base: Git ref to compare against, or None to skip the comparison.
+    """
+    states = []
+    for ttl_file in ttl_files:
+        # Preserve subdirectory structure when looking up in source directory
+        source_file = git_lookup_dir / ttl_file.relative_to(vocab_dir)
+        try:
+            rel_path = source_file.relative_to(repo_dir)
+        except ValueError:
+            rel_path = source_file
+        rel_path_str = str(rel_path).replace("\\", "/")
+
+        graph = Graph().parse(ttl_file, format="turtle")
+
+        # Find the main subject IRI (concept, collection, or concept scheme)
+        main_iri = _find_main_iri(graph)
+        if main_iri is None:
+            logger.warning("No SKOS entity found in %s, skipping.", ttl_file)
+            continue
+
+        base_dates = None
+        if diff_base:
+            base_content = _get_file_at_ref(diff_base, rel_path_str, repo_dir)
+            base_dates = _base_dates_if_unchanged(graph, base_content)
+
+        states.append(
+            _FileState(
+                ttl_file=ttl_file,
+                rel_path=rel_path_str,
+                graph=graph,
+                main_iri=main_iri,
+                is_concept_scheme=(main_iri, RDF.type, SKOS.ConceptScheme) in graph,
+                base_dates=base_dates,
             )
         )
-        logger.debug("Added dct:modified=%s to %s", git_modified_date, ttl_file.name)
-        modified = True
-
-    return modified
+    return states
 
 
 def add_prov_from_git(
@@ -362,6 +514,7 @@ def add_prov_from_git(
     repo_dir: Path | None = None,
     source_dir: Path | None = None,
     diff_base: str | None = None,
+    modified_date: str | None = None,
 ) -> None:
     """Add dct:created and dct:modified to RDF files based on git history.
 
@@ -381,6 +534,8 @@ def add_prov_from_git(
             Used when files have been copied to a new location.
         diff_base: Git ref to compare against. When set, only changed files get
             updated dates.
+        modified_date: ISO date to write as dct:modified for changed files
+            instead of the date taken from git history. Requires diff_base.
 
     Untracked .ttl files are skipped with an informational log message.
     """
@@ -394,6 +549,7 @@ def add_prov_from_git(
         logger.warning("No .ttl files found in %s", vocab_dir)
         return
 
+    git_info: dict[str, FileGitInfo] = {}
     if diff_base:
         _validate_git_ref(diff_base, repo_dir)
     else:
@@ -401,44 +557,56 @@ def add_prov_from_git(
         # where we lazily fetch only for changed files).
         git_info = get_directory_git_info(git_lookup_dir, repo_dir)
 
-    # Process each .ttl file
-    for ttl_file in ttl_files:
-        # Preserve subdirectory structure when looking up in source directory
-        rel_to_vocab = ttl_file.relative_to(vocab_dir)
-        source_file = git_lookup_dir / rel_to_vocab
-        try:
-            rel_path = source_file.relative_to(repo_dir)
-        except ValueError:
-            rel_path = source_file
-        rel_path_str = str(rel_path).replace("\\", "/")
+    states = _collect_file_states(
+        ttl_files, vocab_dir, git_lookup_dir, repo_dir, diff_base
+    )
 
-        # Parse the RDF graph
-        graph = Graph().parse(ttl_file, format="turtle")
+    # The concept scheme carries the modification date of the vocabulary as a
+    # whole. Adding or editing a concept usually leaves concept_scheme.ttl
+    # untouched, so without this its date would never advance.
+    vocab_changed = modified_date is not None and any(
+        state.base_dates is None for state in states
+    )
 
-        # Find the main subject IRI (concept, collection, or concept scheme)
-        main_iri = _find_main_iri(graph)
-        if main_iri is None:
-            logger.warning("No SKOS entity found in %s, skipping.", ttl_file)
+    for state in states:
+        force_modified = state.is_concept_scheme and vocab_changed
+        # Restoring first keeps dct:created of the base for a concept scheme
+        # that is dated only because its vocabulary changed.
+        restored = _restore_dates_from_base(state)
+        if restored and not force_modified:
             continue
 
-        if diff_base:
-            base_content = _get_file_at_ref(diff_base, rel_path_str, repo_dir)
-            if _try_restore_from_base(graph, main_iri, base_content, ttl_file):
-                continue
-            # CHANGED or NEW file -- get git info lazily
-            info = _get_file_git_info(rel_path_str, repo_dir)
-        else:
-            # ORIGINAL behavior (no diff_base)
-            info = git_info.get(rel_path_str)
-
+        # CHANGED or NEW file -- get git info lazily when a base is given
+        info = (
+            _get_file_git_info(state.rel_path, repo_dir)
+            if diff_base
+            else git_info.get(state.rel_path)
+        )
         if info is None:
-            logger.info(
-                'File "%s" is not tracked in git. Skipping provenance.', ttl_file
-            )
+            if modified_date is None:
+                logger.info(
+                    'File "%s" is not tracked in git. Skipping provenance.',
+                    state.ttl_file,
+                )
+                continue
+            # A concept file that this run generated has no commit yet, so git
+            # offers no dates at all. The date given by the caller is the date
+            # the concept came into being.
+            if _apply_caller_dates(state, modified_date):
+                state.graph.serialize(destination=state.ttl_file, format="longturtle")
             continue
 
-        if _apply_git_dates(graph, main_iri, info, ttl_file):
-            graph.serialize(destination=ttl_file, format="longturtle")
+        # The date given by the caller applies to what changed. An unchanged
+        # file whose base carries no dates takes its dates from git history.
+        differs_from_base = state.base_dates is None
+        if _apply_git_dates(
+            state.graph,
+            state.main_iri,
+            info,
+            state.ttl_file,
+            modified_date if differs_from_base or force_modified else None,
+        ):
+            state.graph.serialize(destination=state.ttl_file, format="longturtle")
 
 
 # ===== Split/join utilities =====
@@ -648,7 +816,9 @@ def _transform_rdf(file: Path, args: argparse.Namespace) -> None:
         logger.debug("-> nothing to do for rdf files!")
 
 
-def _handle_prov_from_git(args: argparse.Namespace, diff_base: str | None) -> None:
+def _handle_prov_from_git(
+    args: argparse.Namespace, diff_base: str | None, modified_date: str | None
+) -> None:
     """Handle the --prov-from-git transform option."""
     if not args.inplace and not args.outdir:
         msg = "--prov-from-git requires either --inplace or --outdir"
@@ -686,12 +856,19 @@ def _handle_prov_from_git(args: argparse.Namespace, diff_base: str | None) -> No
             shutil.copytree(vocab_dir, target_dir)
             logger.debug("Copied %s to %s", vocab_dir, target_dir)
             # Pass source_dir so git lookup uses original files
-            add_prov_from_git(target_dir, source_dir=vocab_dir, diff_base=diff_base)
+            add_prov_from_git(
+                target_dir,
+                source_dir=vocab_dir,
+                diff_base=diff_base,
+                modified_date=modified_date,
+            )
             logger.info("-> added provenance from git to: %s", target_dir)
         else:
             # --inplace: modify files in place
             logger.debug("Adding provenance from git to %s", vocab_dir)
-            add_prov_from_git(vocab_dir, diff_base=diff_base)
+            add_prov_from_git(
+                vocab_dir, diff_base=diff_base, modified_date=modified_date
+            )
             logger.info("-> added provenance from git to: %s", vocab_dir)
 
 
@@ -747,6 +924,8 @@ def transform(args: argparse.Namespace) -> None:
         msg = "--diff-base requires --prov-from-git"
         raise Voc4catError(msg)
 
+    modified_date = _validated_modified_date(args, diff_base)
+
     # Handle --prov-from-git option
     if getattr(args, "prov_from_git", False):
-        _handle_prov_from_git(args, diff_base)
+        _handle_prov_from_git(args, diff_base, modified_date)
