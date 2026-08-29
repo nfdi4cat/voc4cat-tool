@@ -179,13 +179,16 @@ unchanged concepts keep the dates they have in REF.
 The concept scheme gets DATE whenever any file of the vocabulary differs from REF, because editing a concept usually leaves `concept_scheme.ttl` untouched and its date would otherwise never advance.
 Concepts that are unchanged compared to REF keep the dates they have in REF, as without the option.
 
+A concept file that no commit has touched yet gets DATE as both `dct:created` and `dct:modified`.
+Such a file is skipped without the option, because git offers no dates for it, and it would reach the repository with no provenance at all.
+
 Use it where the turtle files are generated and committed *after* this command runs, as in the pull-request workflow of the voc4cat-template.
 There the change being stamped is not yet in any commit, so git reports the previous edit and the date written is one cycle behind.
 
 `--modified-date` requires `--diff-base`: without a base there is no set of changed concepts, so the date would be forced on the whole vocabulary.
 
 Requirements:
-- Untracked `.ttl` files are skipped with an info message
+- Untracked `.ttl` files are skipped with an info message unless `--modified-date` supplies their dates
 - Requires either `--inplace` or `--outdir`
 - The repository must not use squash merging (see below)
 

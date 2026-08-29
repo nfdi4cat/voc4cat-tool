@@ -4,7 +4,7 @@
 
 Features:
 
-- Add `--modified-date DATE` option for `transform --prov-from-git`. Concepts whose content differs from `--diff-base` get DATE as `dct:modified` instead of the author date of the last commit touching the file, and the concept scheme gets it whenever any file of the vocabulary differs. Needed where the turtle files are generated and committed after the stamping runs, so that git cannot yet know about the change being stamped. [#378](https://github.com/nfdi4cat/voc4cat-tool/issues/378)
+- Add `--modified-date DATE` option for `transform --prov-from-git`. Concepts whose content differs from `--diff-base` get DATE as `dct:modified` instead of the author date of the last commit touching the file, and the concept scheme gets it whenever any file of the vocabulary differs. Needed where the turtle files are generated and committed after the stamping runs, so that git cannot yet know about the change being stamped. Concept files that no commit has touched yet, which are skipped without the option, get DATE as `dct:created` and `dct:modified` instead of reaching the repository without any provenance. [#378](https://github.com/nfdi4cat/voc4cat-tool/issues/378)
 
 ## Release 1.1.0 (2026-08-28)
 

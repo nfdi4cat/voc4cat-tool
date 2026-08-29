@@ -353,6 +353,53 @@ def _validated_modified_date(
     return _normalized_date(modified_date)
 
 
+def _add_created_if_missing(
+    graph: Graph, main_iri: Node, ttl_file: Path, created_date: str
+) -> bool:
+    """Add dct:created unless the graph already carries one.
+
+    Returns:
+        True if the graph was modified.
+    """
+    if list(graph.objects(main_iri, DCTERMS.created)):
+        return False
+
+    graph.add((main_iri, DCTERMS.created, Literal(created_date, datatype=XSD.date)))
+    logger.debug("Added dct:created=%s to %s", created_date, ttl_file.name)
+    return True
+
+
+def _set_modified(
+    graph: Graph, main_iri: Node, ttl_file: Path, modified_date: str
+) -> bool:
+    """Write dct:modified unless the graph already carries that date.
+
+    Returns:
+        True if the graph was modified.
+    """
+    existing_modified = list(graph.objects(main_iri, DCTERMS.modified))
+    if not existing_modified:
+        graph.add(
+            (main_iri, DCTERMS.modified, Literal(modified_date, datatype=XSD.date))
+        )
+        logger.debug("Added dct:modified=%s to %s", modified_date, ttl_file.name)
+        return True
+
+    existing_date = str(existing_modified[0])
+    if existing_date == modified_date:
+        return False
+
+    graph.remove((main_iri, DCTERMS.modified, None))
+    graph.add((main_iri, DCTERMS.modified, Literal(modified_date, datatype=XSD.date)))
+    logger.info(
+        "Updated dct:modified in %s: %s -> %s",
+        ttl_file.name,
+        existing_date,
+        modified_date,
+    )
+    return True
+
+
 def _apply_git_dates(
     graph: Graph,
     main_iri: Node,
@@ -381,49 +428,31 @@ def _apply_git_dates(
         msg = f'No git dates for "{ttl_file}".'
         raise AssertionError(msg)
 
-    modified = False
+    created_added = _add_created_if_missing(
+        graph, main_iri, ttl_file, info.created_at.strftime("%Y-%m-%d")
+    )
+    modified_set = _set_modified(
+        graph,
+        main_iri,
+        ttl_file,
+        modified_date or info.modified_at.strftime("%Y-%m-%d"),
+    )
+    return created_added or modified_set
 
-    # Handle dct:created - add only if missing
-    existing_created = list(graph.objects(main_iri, DCTERMS.created))
-    if not existing_created:
-        created_date = info.created_at.strftime("%Y-%m-%d")
-        graph.add((main_iri, DCTERMS.created, Literal(created_date, datatype=XSD.date)))
-        logger.debug("Added dct:created=%s to %s", created_date, ttl_file.name)
-        modified = True
 
-    # Handle dct:modified - update if different
-    new_modified_date = modified_date or info.modified_at.strftime("%Y-%m-%d")
-    existing_modified = list(graph.objects(main_iri, DCTERMS.modified))
-    if existing_modified:
-        existing_date = str(existing_modified[0])
-        if existing_date != new_modified_date:
-            graph.remove((main_iri, DCTERMS.modified, None))
-            graph.add(
-                (
-                    main_iri,
-                    DCTERMS.modified,
-                    Literal(new_modified_date, datatype=XSD.date),
-                )
-            )
-            logger.info(
-                "Updated dct:modified in %s: %s -> %s",
-                ttl_file.name,
-                existing_date,
-                new_modified_date,
-            )
-            modified = True
-    else:
-        graph.add(
-            (
-                main_iri,
-                DCTERMS.modified,
-                Literal(new_modified_date, datatype=XSD.date),
-            )
-        )
-        logger.debug("Added dct:modified=%s to %s", new_modified_date, ttl_file.name)
-        modified = True
+def _apply_caller_dates(state: _FileState, modified_date: str) -> bool:
+    """Date a file that has no git history yet from the date given by the caller.
 
-    return modified
+    Returns:
+        True if the graph was modified.
+    """
+    created_added = _add_created_if_missing(
+        state.graph, state.main_iri, state.ttl_file, modified_date
+    )
+    modified_set = _set_modified(
+        state.graph, state.main_iri, state.ttl_file, modified_date
+    )
+    return created_added or modified_set
 
 
 def _collect_file_states(
@@ -554,9 +583,17 @@ def add_prov_from_git(
             else git_info.get(state.rel_path)
         )
         if info is None:
-            logger.info(
-                'File "%s" is not tracked in git. Skipping provenance.', state.ttl_file
-            )
+            if modified_date is None:
+                logger.info(
+                    'File "%s" is not tracked in git. Skipping provenance.',
+                    state.ttl_file,
+                )
+                continue
+            # A concept file that this run generated has no commit yet, so git
+            # offers no dates at all. The date given by the caller is the date
+            # the concept came into being.
+            if _apply_caller_dates(state, modified_date):
+                state.graph.serialize(destination=state.ttl_file, format="longturtle")
             continue
 
         # The date given by the caller applies to what changed. An unchanged

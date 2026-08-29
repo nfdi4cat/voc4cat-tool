@@ -13,6 +13,19 @@ from voc4cat.transform import _run_git, get_partition_dir_name
 
 CS_SIMPLE_TURTLE = "concept-scheme-simple.ttl"
 
+NEW_CONCEPT_TURTLE = (
+    "@prefix skos: <http://www.w3.org/2004/02/skos/core#> .\n"
+    "@prefix ex: <http://example.org/> .\n"
+    "@prefix dcterms: <http://purl.org/dc/terms/> .\n"
+    "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n"
+    "\n"
+    "ex:test99 a skos:Concept ;\n"
+    '    dcterms:identifier "test99"^^xsd:token ;\n'
+    '    skos:definition "A new concept"@en ;\n'
+    "    skos:inScheme <http://example.org/test/> ;\n"
+    '    skos:prefLabel "new term"@en .\n'
+)
+
 # ===== Tests for no option set =====
 
 
@@ -788,19 +801,7 @@ def test_diff_base_new_file_gets_git_dates(
     assert partition_dir.is_dir()
 
     new_file = partition_dir / "99.ttl"
-    new_file.write_text(
-        "@prefix skos: <http://www.w3.org/2004/02/skos/core#> .\n"
-        "@prefix ex: <http://example.org/> .\n"
-        "@prefix dcterms: <http://purl.org/dc/terms/> .\n"
-        "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n"
-        "\n"
-        "ex:test99 a skos:Concept ;\n"
-        '    dcterms:identifier "test99"^^xsd:token ;\n'
-        '    skos:definition "A new concept"@en ;\n'
-        "    skos:inScheme <http://example.org/test/> ;\n"
-        '    skos:prefLabel "new term"@en .\n',
-        encoding="utf-8",
-    )
+    new_file.write_text(NEW_CONCEPT_TURTLE, encoding="utf-8")
 
     _run_git(["git", "add", "."], repo_path)
     _run_git(
@@ -1350,3 +1351,105 @@ def test_modified_date_dates_an_uncommitted_change(
     assert (
         str(next(iter(graph2.objects(concept_iri, DCTERMS.modified)))) == "2035-01-02"
     )
+
+
+def test_modified_date_dates_a_concept_without_git_history(
+    git_repo_with_split_files, monkeypatch
+):
+    """A concept file that has no commit yet is dated from the given date.
+
+    CI generates the turtle files and a later job commits them, so a newly
+    added concept is untracked while it is stamped and git offers no dates.
+    """
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
+
+    new_file = vocdir / "IDs0000xxx" / "99.ttl"
+    new_file.write_text(NEW_CONCEPT_TURTLE, encoding="utf-8")
+
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD",
+            "--modified-date",
+            "2035-01-02",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    graph = Graph().parse(new_file, format="turtle")
+    concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
+    assert [str(d) for d in graph.objects(concept_iri, DCTERMS.created)] == [
+        "2035-01-02"
+    ]
+    assert [str(d) for d in graph.objects(concept_iri, DCTERMS.modified)] == [
+        "2035-01-02"
+    ]
+
+
+def test_diff_base_skips_untracked_without_modified_date(
+    git_repo_with_split_files, monkeypatch, caplog
+):
+    """Without --modified-date an untracked file is still skipped."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    new_file = vocdir / "IDs0000xxx" / "99.ttl"
+    new_file.write_text(NEW_CONCEPT_TURTLE, encoding="utf-8")
+    content_before = new_file.read_bytes()
+
+    with caplog.at_level(logging.INFO):
+        main_cli(
+            [
+                "transform",
+                "--prov-from-git",
+                "--diff-base",
+                "HEAD",
+                "--inplace",
+                str(vocdir),
+            ]
+        )
+
+    assert "is not tracked in git" in caplog.text
+    assert new_file.read_bytes() == content_before
+
+
+def test_modified_date_keeps_created_of_a_committed_new_concept(
+    git_repo_with_split_files, monkeypatch
+):
+    """A new concept that is committed keeps dct:created from git history."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    new_file = vocdir / "IDs0000xxx" / "99.ttl"
+    new_file.write_text(NEW_CONCEPT_TURTLE, encoding="utf-8")
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(
+        ["git", "commit", "-m", "Add new concept", "--date", "2030-03-15T10:00:00"],
+        repo_path,
+    )
+
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD~1",
+            "--modified-date",
+            "2035-01-02",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    graph = Graph().parse(new_file, format="turtle")
+    concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
+    assert str(next(iter(graph.objects(concept_iri, DCTERMS.created)))) == "2030-03-15"
+    assert str(next(iter(graph.objects(concept_iri, DCTERMS.modified)))) == "2035-01-02"
