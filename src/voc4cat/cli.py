@@ -238,6 +238,19 @@ def add_transform_subparser(
         ),
         default=None,
     )
+    skosopt.add_argument(
+        "--modified-date",
+        metavar="DATE",
+        help=(
+            "Date (YYYY-MM-DD) to write as dct:modified instead of the date "
+            "taken from git history. Applied to concepts whose content differs "
+            "from --diff-base, and to the concept scheme if any concept of the "
+            "vocabulary differs. Use it when the files are generated and "
+            "committed after this command runs, so that git cannot yet know "
+            "about the change. Requires --prov-from-git and --diff-base."
+        ),
+        default=None,
+    )
     parser.add_argument(
         "--inplace",  # was "--no-warn"
         help=(

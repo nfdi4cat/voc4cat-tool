@@ -990,3 +990,363 @@ def test_diff_base_concept_scheme(git_repo_with_split_files, monkeypatch):
     assert (
         str(next(iter(graph2.objects(cs_iri, DCTERMS.modified)))) == original_modified
     )
+
+
+# ===== Tests for --modified-date option =====
+
+
+def test_modified_date_requires_prov_from_git(git_repo_with_split_files, monkeypatch):
+    """--modified-date without --prov-from-git raises error."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    with pytest.raises(Voc4catError, match="--modified-date requires --prov-from-git"):
+        main_cli(
+            ["transform", "--modified-date", "2030-06-15", "--inplace", str(vocdir)]
+        )
+
+
+def test_modified_date_requires_diff_base(git_repo_with_split_files, monkeypatch):
+    """--modified-date without --diff-base raises error."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    with pytest.raises(Voc4catError, match="--modified-date requires --diff-base"):
+        main_cli(
+            [
+                "transform",
+                "--prov-from-git",
+                "--modified-date",
+                "2030-06-15",
+                "--inplace",
+                str(vocdir),
+            ]
+        )
+
+
+def test_modified_date_invalid_format(git_repo_with_split_files, monkeypatch):
+    """A --modified-date that is not an ISO date raises error."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    with pytest.raises(Voc4catError, match=r'Invalid --modified-date "15\.06\.2030"'):
+        main_cli(
+            [
+                "transform",
+                "--prov-from-git",
+                "--diff-base",
+                "HEAD",
+                "--modified-date",
+                "15.06.2030",
+                "--inplace",
+                str(vocdir),
+            ]
+        )
+
+
+def test_modified_date_overrides_git_date_for_changed_concept(
+    git_repo_with_split_files, monkeypatch
+):
+    """A changed concept gets the given date instead of the git commit date."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
+
+    concept_files = sorted(
+        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
+    )
+    changed_file = concept_files[0]
+
+    graph = Graph().parse(changed_file, format="turtle")
+    concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
+    graph.add((concept_iri, SKOS.note, Literal("A new note", lang="en")))
+    graph.serialize(destination=changed_file, format="longturtle")
+
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(
+        ["git", "commit", "-m", "Modify concept", "--date", "2030-06-15T10:00:00"],
+        repo_path,
+    )
+
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD~1",
+            "--modified-date",
+            "2035-01-02",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    graph2 = Graph().parse(changed_file, format="turtle")
+    modified = str(next(iter(graph2.objects(concept_iri, DCTERMS.modified))))
+    assert modified == "2035-01-02"
+
+
+def test_modified_date_dates_concept_scheme_when_a_concept_changed(
+    git_repo_with_split_files, monkeypatch
+):
+    """The concept scheme is dated when any concept of the vocabulary changed."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
+
+    cs_file = vocdir / "concept_scheme.ttl"
+    cs_before = cs_file.read_text(encoding="utf-8")
+
+    # Change a concept only; this leaves concept_scheme.ttl untouched.
+    concept_files = sorted(
+        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
+    )
+    graph = Graph().parse(concept_files[0], format="turtle")
+    concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
+    graph.add((concept_iri, SKOS.note, Literal("A new note", lang="en")))
+    graph.serialize(destination=concept_files[0], format="longturtle")
+    assert cs_file.read_text(encoding="utf-8") == cs_before
+
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(
+        ["git", "commit", "-m", "Modify concept", "--date", "2030-06-15T10:00:00"],
+        repo_path,
+    )
+
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD~1",
+            "--modified-date",
+            "2035-01-02",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    cs_graph = Graph().parse(cs_file, format="turtle")
+    cs_iri = next(iter(cs_graph.subjects(None, SKOS.ConceptScheme)))
+    modified = str(next(iter(cs_graph.objects(cs_iri, DCTERMS.modified))))
+    assert modified == "2035-01-02"
+
+
+def test_modified_date_leaves_unchanged_concept_alone(
+    git_repo_with_split_files, monkeypatch
+):
+    """An unchanged concept keeps its date from the base, not the given date."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
+
+    concept_files = sorted(
+        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
+    )
+    changed_file, unchanged_file = concept_files[0], concept_files[1]
+
+    graph_unch = Graph().parse(unchanged_file, format="turtle")
+    unch_iri = next(iter(graph_unch.subjects(None, SKOS.Concept)))
+    unch_modified = str(next(iter(graph_unch.objects(unch_iri, DCTERMS.modified))))
+
+    graph_ch = Graph().parse(changed_file, format="turtle")
+    ch_iri = next(iter(graph_ch.subjects(None, SKOS.Concept)))
+    graph_ch.add((ch_iri, SKOS.note, Literal("A new note", lang="en")))
+    graph_ch.serialize(destination=changed_file, format="longturtle")
+
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(
+        ["git", "commit", "-m", "Modify concept", "--date", "2030-06-15T10:00:00"],
+        repo_path,
+    )
+
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD~1",
+            "--modified-date",
+            "2035-01-02",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    graph_unch2 = Graph().parse(unchanged_file, format="turtle")
+    assert (
+        str(next(iter(graph_unch2.objects(unch_iri, DCTERMS.modified))))
+        == unch_modified
+    )
+
+
+def test_modified_date_leaves_concept_scheme_alone_when_nothing_changed(
+    git_repo_with_split_files, monkeypatch
+):
+    """The concept scheme keeps its date when no file of the vocabulary changed."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
+
+    cs_file = vocdir / "concept_scheme.ttl"
+    graph = Graph().parse(cs_file, format="turtle")
+    cs_iri = next(iter(graph.subjects(None, SKOS.ConceptScheme)))
+    original_modified = str(next(iter(graph.objects(cs_iri, DCTERMS.modified))))
+
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD",
+            "--modified-date",
+            "2035-01-02",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    graph2 = Graph().parse(cs_file, format="turtle")
+    assert (
+        str(next(iter(graph2.objects(cs_iri, DCTERMS.modified)))) == original_modified
+    )
+
+
+def test_modified_date_keeps_created_from_git(git_repo_with_split_files, monkeypatch):
+    """The given date replaces dct:modified only; dct:created stays from git."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
+
+    concept_files = sorted(
+        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
+    )
+    changed_file = concept_files[0]
+    graph = Graph().parse(changed_file, format="turtle")
+    concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
+    original_created = str(next(iter(graph.objects(concept_iri, DCTERMS.created))))
+    graph.add((concept_iri, SKOS.note, Literal("A new note", lang="en")))
+    graph.serialize(destination=changed_file, format="longturtle")
+
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(
+        ["git", "commit", "-m", "Modify concept", "--date", "2030-06-15T10:00:00"],
+        repo_path,
+    )
+
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD~1",
+            "--modified-date",
+            "2035-01-02",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    graph2 = Graph().parse(changed_file, format="turtle")
+    assert str(next(iter(graph2.objects(concept_iri, DCTERMS.created)))) == (
+        original_created
+    )
+
+
+def test_modified_date_ignored_for_unchanged_file_with_dateless_base(
+    git_repo_with_split_files, monkeypatch
+):
+    """An unchanged file whose base carries no dates falls back to git history."""
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    concept_files = sorted(
+        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
+    )
+    test_file = concept_files[0]
+    rel_path = test_file.relative_to(repo_path).as_posix()
+    git_date = _run_git(
+        ["git", "log", "-1", "--format=%as", "--", rel_path], repo_path
+    ).stdout.strip()
+
+    # The base (HEAD) holds the split files without any dates, so there is
+    # nothing to restore and the file is nonetheless unchanged.
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD",
+            "--modified-date",
+            "2035-01-02",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    graph = Graph().parse(test_file, format="turtle")
+    concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
+    assert str(next(iter(graph.objects(concept_iri, DCTERMS.modified)))) == git_date
+
+
+def test_modified_date_dates_an_uncommitted_change(
+    git_repo_with_split_files, monkeypatch
+):
+    """A change that is not committed yet is dated with the given date.
+
+    This is the case the option exists for: the turtle files are generated by
+    CI and committed by a later job, so at stamping time no commit has ever
+    touched the change and git reports the previous edit.
+    """
+    repo_path, vocdir = git_repo_with_split_files
+    monkeypatch.chdir(repo_path)
+
+    main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
+    _run_git(["git", "add", "."], repo_path)
+    _run_git(
+        ["git", "commit", "-m", "Add provenance", "--date", "2030-06-15T10:00:00"],
+        repo_path,
+    )
+
+    # Edit a concept and leave it uncommitted, as the generating job does.
+    concept_files = sorted(
+        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
+    )
+    changed_file = concept_files[0]
+    graph = Graph().parse(changed_file, format="turtle")
+    concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
+    graph.add((concept_iri, SKOS.note, Literal("A new note", lang="en")))
+    graph.serialize(destination=changed_file, format="longturtle")
+
+    main_cli(
+        [
+            "transform",
+            "--prov-from-git",
+            "--diff-base",
+            "HEAD",
+            "--modified-date",
+            "2035-01-02",
+            "--inplace",
+            str(vocdir),
+        ]
+    )
+
+    graph2 = Graph().parse(changed_file, format="turtle")
+    assert (
+        str(next(iter(graph2.objects(concept_iri, DCTERMS.modified)))) == "2035-01-02"
+    )
