@@ -17,7 +17,7 @@ If you use the Python package voc4cat in publications or to create a SKOS vocabu
 
 or (preferred) the exact version that you used, e.g.
 
-> Linke, D., Phillips, P., Car, N. J., & Feiss, J. (2026). A Python command-line tool for creating and maintaining SKOS-vocabularies with Excel and GitHub. nfdi4cat/voc4cat-tool: Release 1.0.4 (v1.0.4). Zenodo. https://doi.org/10.5281/zenodo.18744619
+> Linke, D., Phillips, P., Car, N. J., & Feiss, J. (2026). A Python command-line tool for creating and maintaining SKOS-vocabularies with Excel and GitHub. nfdi4cat/voc4cat-tool: Release 1.1.1 (v1.1.1). Zenodo. https://doi.org/10.5281/zenodo.22167484
 
 For the most recent citation, visit the [general Zenodo page](https://doi.org/10.5281/zenodo.8277925).
 
