@@ -1,5 +1,11 @@
 # Change log
 
+## Unreleased
+
+Changes:
+
+- Correct the instructions for syncing a vocabulary repository with voc4cat-template. The documented `git fetch <url> tag v26.x` copies the tags of the template into the vocabulary repository, where they are indistinguishable from its own release tags. [#381](https://github.com/nfdi4cat/voc4cat-tool/pull/381)
+
 ## Release 1.1.1 (2026-08-30)
 
 Features:
