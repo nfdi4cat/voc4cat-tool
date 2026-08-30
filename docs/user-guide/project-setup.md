@@ -169,20 +169,28 @@ To review the changes made in a new template version 26.x and compare to when yo
 
 ```bash
 # View changes
-git fetch https://github.com/nfdi4cat/voc4cat-template tag v26.x
+git fetch --no-tags https://github.com/nfdi4cat/voc4cat-template refs/tags/v26.x
 git diff ...FETCH_HEAD
 ```
 
-If you decide to take over the changes, pull them into your repository and push them to GitHub.
+If you decide to take over the changes, merge them into your repository and push them to GitHub.
 
 ```bash
 # Apply changes
-git pull https://github.com/nfdi4cat/voc4cat-template tag v26.x
+git merge FETCH_HEAD -m "Merge voc4cat-template v26.x"
 # -- resolve any conflicts --
 git push
 ```
 
 Conflicts may occur if you and the template-maintainers have changed the same files since the last template-update.
+
+:::{important}
+Fetch the template with `--no-tags` and the full `refs/tags/...` path.
+The shorter form `git fetch <url> tag v26.x` writes that tag into your repository and brings the remaining tags of the template with it.
+There they are indistinguishable from the release tags of your own vocabulary, and any command that pushes tags publishes them.
+:::
+
+If an earlier sync copied template tags into your repository, delete them locally with `git tag -d <tag>` and, where they were pushed, with `git push --delete origin <tag>`.
 
 ### Handling merge conflicts
 
