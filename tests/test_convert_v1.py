@@ -3668,3 +3668,55 @@ class TestIdentifierExtraction:
         name, url = parse_name_url("")
         assert name == ""  # Empty string
         assert url == ""  # Empty string
+
+
+class TestWhitespaceStripping:
+    """Surrounding whitespace in a cell is invisible to whoever fills it in."""
+
+    def test_concept_strips_label_and_definition(self):
+        """A label or definition keeps no surrounding whitespace."""
+        concept = ConceptV1(
+            concept_iri="http://example.org/test01",
+            language_code="en",
+            preferred_label="metal loading ",
+            definition=" The mass fraction of metal.\n",
+            alternate_labels=" metal content ",
+        )
+
+        assert concept.preferred_label == "metal loading"
+        assert concept.definition == "The mass fraction of metal."
+        assert concept.alternate_labels == "metal content"
+
+    def test_trailing_space_in_xlsx_does_not_reach_the_rdf(self, tmp_path):
+        """A trailing space typed into a cell is not written to the vocabulary."""
+        vocab_config = make_vocab_config_from_rdf(
+            Graph().parse(V1_COMPREHENSIVE_TTL, format="turtle"),
+            vocab_name="v1_comprehensive",
+        )
+        xlsx_path = tmp_path / "v1_comprehensive.xlsx"
+        rdf_to_excel_v1(V1_COMPREHENSIVE_TTL, xlsx_path, vocab_config=vocab_config)
+
+        workbook = load_workbook(xlsx_path)
+        sheet = workbook["Concepts"]
+        header_row = 5  # title, empty, meanings, requiredness, headers, data
+        columns = {
+            sheet.cell(row=header_row, column=col).value: col
+            for col in range(1, sheet.max_column + 1)
+        }
+        label_cell = sheet.cell(row=header_row + 1, column=columns["Preferred Label*"])
+        definition_cell = sheet.cell(row=header_row + 1, column=columns["Definition*"])
+        edited_label = str(label_cell.value)
+        label_cell.value = f"{edited_label} "
+        definition_cell.value = f"{definition_cell.value}  "
+        workbook.save(xlsx_path)
+        workbook.close()
+
+        graph = excel_to_rdf_v1(
+            xlsx_path, output_type="graph", vocab_config=vocab_config
+        )
+
+        labels = [str(o) for o in graph.objects(None, SKOS.prefLabel)]
+        definitions = [str(o) for o in graph.objects(None, SKOS.definition)]
+        assert edited_label in labels
+        assert [lbl for lbl in labels if lbl != lbl.strip()] == []
+        assert [dfn for dfn in definitions if dfn != dfn.strip()] == []
