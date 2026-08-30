@@ -7,12 +7,26 @@ annotations to specify column headers, SKOS meanings, and field descriptions.
 from enum import Enum
 from typing import Annotated
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from voc4cat.xlsx_common import MetadataToggleConfig, MetadataVisibility, XLSXMetadata
 from voc4cat.xlsx_table import XLSXTableConfig
 
 TEMPLATE_VERSION = "v1.0.rev-2025-12a"
+
+
+# === Base model ===
+
+
+class BaseModelV1(BaseModel):
+    """Base of the v1.0 template models.
+
+    Whitespace around the value of an xlsx cell is invisible to whoever fills
+    it in, and a label carrying it is a different RDF literal from the one
+    everybody searches for. It is therefore removed from every string field.
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
 
 
 # === Obsoletion Reason Enums ===
@@ -51,7 +65,7 @@ CONCEPT_SCHEME_SHEET_NAME = "Concept Scheme"
 CONCEPT_SCHEME_SHEET_TITLE = "Concept Scheme (read-only)"
 
 
-class ConceptSchemeV1(BaseModel):
+class ConceptSchemeV1(BaseModelV1):
     """Concept Scheme metadata - rendered as key-value pairs in xlsx."""
 
     template_version: Annotated[
@@ -236,7 +250,7 @@ class ConceptSchemeV1(BaseModel):
 CONCEPTS_SHEET_NAME = "Concepts"
 
 
-class ConceptV1(BaseModel):
+class ConceptV1(BaseModelV1):
     """Single concept row in the Concepts table."""
 
     concept_iri: Annotated[
@@ -380,7 +394,7 @@ class ConceptV1(BaseModel):
 COLLECTIONS_SHEET_NAME = "Collections"
 
 
-class CollectionV1(BaseModel):
+class CollectionV1(BaseModelV1):
     """Single collection row in the Collections table."""
 
     collection_iri: Annotated[
@@ -475,7 +489,7 @@ class CollectionV1(BaseModel):
 MAPPINGS_SHEET_NAME = "Mappings"
 
 
-class MappingV1(BaseModel):
+class MappingV1(BaseModelV1):
     """External mappings row in the Mappings table."""
 
     concept_iri: Annotated[
@@ -541,7 +555,7 @@ PREFIXES_SHEET_NAME = "Prefixes"
 PREFIXES_SHEET_TITLE = "Prefix mappings (read-only)"
 
 
-class PrefixV1(BaseModel):
+class PrefixV1(BaseModelV1):
     """Prefix namespace mapping row in the Prefixes table."""
 
     prefix: Annotated[
@@ -577,7 +591,7 @@ RESERVED_SHEET_NAMES = frozenset(
 )
 
 
-class IDRangeInfoV1(BaseModel):
+class IDRangeInfoV1(BaseModelV1):
     """ID range information row in the ID Ranges table (read-only)."""
 
     gh_name: Annotated[
