@@ -199,7 +199,7 @@ How much the merge strategy matters depends on how much the command has to ask g
 `--diff-base REF` together with `--modified-date DATE` leaves no date to git history: a concept unchanged compared to REF keeps the dates it has in REF, and a changed or new one gets DATE.
 Every merge strategy is then safe.
 This is what the pull-request workflow of the voc4cat-template passes, so vocabularies built from the template may merge however they like.
-The one value still read from git is `dct:created` for a tracked file that carries none.
+Git history is still consulted in two cases, both of which only arise in a vocabulary that is not yet fully dated: `dct:created` for a tracked file that carries none, and both dates for a file that is unchanged compared to REF whose version in REF carries no dates either.
 
 Without `--modified-date`, `dct:modified` comes from the **author** date of the most recent commit touching each changed concept file and `dct:created` from the oldest one, so the merge strategy decides whether those dates survive:
 
