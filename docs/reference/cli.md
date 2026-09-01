@@ -190,15 +190,18 @@ There the change being stamped is not yet in any commit, so git reports the prev
 Requirements:
 - Untracked `.ttl` files are skipped with an info message unless `--modified-date` supplies their dates
 - Requires either `--inplace` or `--outdir`
-- The repository must not use squash merging (see below)
+- Without `--modified-date` the repository must not use squash merging (see below)
 
 #### Merge strategy
 
-Dates are read from the **author** date of each commit that touched a concept file, so the repository's merge strategy decides whether they survive.
+How much the merge strategy matters depends on how much the command has to ask git.
 
-:::{important}
-Disable squash merging in repositories that use `--prov-from-git`.
-:::
+`--diff-base REF` together with `--modified-date DATE` leaves no date to git history: a concept unchanged compared to REF keeps the dates it has in REF, and a changed or new one gets DATE.
+Every merge strategy is then safe.
+This is what the pull-request workflow of the voc4cat-template passes, so vocabularies built from the template may merge however they like.
+The one value still read from git is `dct:created` for a tracked file that carries none.
+
+Without `--modified-date`, `dct:modified` comes from the **author** date of the most recent commit touching each changed concept file and `dct:created` from the oldest one, so the merge strategy decides whether those dates survive:
 
 | Merge strategy | Author dates | Result |
 |----------------|--------------|--------|
@@ -207,6 +210,10 @@ Disable squash merging in repositories that use `--prov-from-git`.
 | Squash merging | Replaced by one commit dated at merge time | **Dates are lost** |
 
 Squashing discards the commits of the pull request branch. A concept created on one day and merged on another therefore keeps a `dct:created` value that no commit corroborates. Because a spreadsheet carries no date columns, the next xlsx submission strips all dates and re-derives them from what git can still see - the squash commit - silently rewriting the original creation date in a pull request that has nothing to do with that concept.
+
+:::{important}
+Pass `--modified-date` together with `--diff-base`, or disable squash merging.
+:::
 
 ## check
 

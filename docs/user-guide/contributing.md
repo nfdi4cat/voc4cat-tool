@@ -97,6 +97,9 @@ When you submit a pull request, an automated pipeline runs:
 2. **Conversion**: Converts xlsx to RDF/Turtle
 3. **Merge**: Integrates changes with existing vocabulary
 4. **Artifacts**: Generates updated xlsx and documentation
+5. **Cleanup**: Removes your xlsx file from every commit of your branch, so that it never enters the history of the vocabulary repository
+
+Step 5 rewrites your branch, so the commits on it are replaced rather than added to.
 
 ### Review the results
 
@@ -125,7 +128,13 @@ After the pipeline completes:
 
 If the pipeline fails or reviewers request changes:
 
-1. Pull the latest changes from your PR branch (the CI may have committed updates)
+1. Reset your local branch to the state the pipeline published. Because the pipeline rewrites the branch, `git pull` does not apply:
+
+   ```bash
+   git fetch origin
+   git reset --hard origin/<your-branch>
+   ```
+
 2. Make the necessary fixes in the xlsx file
 3. Commit and push - this triggers the pipeline again
 

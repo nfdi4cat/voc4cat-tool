@@ -70,7 +70,7 @@ Available recipes:
 | `just xlsx` | Rebuild xlsx from turtle (round-trip test) |
 | `just all` | Run the complete pipeline (check → convert → docs → xlsx) |
 | `just join` | Join the turtle files in `vocabularies/` into one file in `outbox/` |
-| `just prov` | Add provenance dates from git history to `vocabularies/` |
+| `just prov` | Add provenance dates to `vocabularies/`, as the pull-request workflow does |
 | `just clean` | Remove generated files and directories |
 | `just upgrade` | Update voc4cat-tool to the latest version |
 
