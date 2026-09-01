@@ -98,11 +98,13 @@ voc4cat template --config idranges.toml --outdir vocabularies/ myvocab
 It is recommended to prevent accidental changes to the main branch.
 On GitHub this can be achieved via branch protection rules.
 
-Settings → Branches → Add rule for `main`:
+Settings → Branches → Add rule for `main` (or Settings → Rules → Rulesets, which is the newer equivalent):
 
 - Require pull request reviews before merging
-- Require status checks to pass
+- Require status checks to pass, and list `No spreadsheet in the branch history` among them
 - Do not allow bypassing the above settings
+
+The last two belong together. The pipeline removes a submitted spreadsheet from the pull request branch by itself, but it can only do so when it is able to push to the branch; when it cannot - a failed conversion, or a fork owned by an organization - GitHub still reports the pull request as mergeable. The check reports that state, and only "do not allow bypassing" keeps a repository administrator from merging past it. In a ruleset the equivalent of that setting is an empty bypass list.
 
 ### GitHub Pages
 
@@ -122,12 +124,13 @@ Recommended settings:
 
 - Enable Issues (for ID range requests and discussions)
 - Disable Wiki (optional, storing documentation in the code-repository is typically preferred)
-- Disable "Allow squash merging" (required, see below)
 
-:::{important}
-Squash merging must be disabled. `voc4cat transform --prov-from-git`, which the CI workflows run on every pull request, derives `dct:created` and `dct:modified` from the author dates of the commits touching each concept file. Squashing replaces those commits with a single new one dated at merge time, so the creation date of every concept added in that pull request becomes invisible to git. The next contribution re-derives the dates and silently overwrites them.
+:::{note}
+Any merge strategy may be used. Two earlier constraints have both been removed.
 
-"Allow merge commits" and "Allow rebase merging" both preserve author dates. Keep at least one of them enabled. See {doc}`../reference/cli` for details.
+Provenance dates no longer depend on the commits: the pull-request workflow passes `--modified-date` to `voc4cat transform --prov-from-git`, so a changed concept is dated with the run date and an unchanged one keeps the date it already has. Earlier versions of this page said to disable squash merging for that reason.
+
+Submitted spreadsheets no longer depend on the merge strategy either: the workflow removes them from every commit of the pull request branch, not only from its tip. Earlier the spreadsheet was deleted in a follow-up commit, which left it in the branch's earlier commits, so only squash merging kept it out of the history of `main` - the opposite of what the dates required. See {doc}`../reference/cli` for details.
 :::
 
 ## Customize your project
