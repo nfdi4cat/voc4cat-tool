@@ -897,3 +897,89 @@ def test_the_report_marks_a_definition_score_that_was_not_taken(concepts):
     report = similarity.render_report(build_result(concepts, findings))
 
     assert "not scored" in report
+
+
+def test_a_tie_is_won_by_the_preferred_labels(labels, thresholds):
+    """Two concepts sharing a prefLabel is the more serious finding.
+
+    Real data ties: voc4cat:0007795 and voc4cat:0008124 share both the
+    prefLabel "co-precipitation" and the altLabel "coprecipitation", and the
+    report must name the prefLabel collision.
+    """
+    scores = score_matrix(
+        labels,
+        {
+            ((CO_PRECIPITATION_1, "pref_label"), (CALCINATION, "pref_label")): 1.0,
+            ((CO_PRECIPITATION_1, "pref_label"), (CALCINATION, "altLabel-0")): 1.0,
+        },
+    )
+
+    candidates = similarity.select_candidates(labels, scores, thresholds)
+
+    assert len(candidates) == 1
+    assert candidates[0].similar_sentence_key == (CALCINATION, "pref_label")
+
+
+def test_scores_that_differ_only_by_float_noise_count_as_a_tie(labels, thresholds):
+    """Embedding a string twice does not give bit-identical scores.
+
+    Measured with all-MiniLM-L6-v2 on voc4cat:0007795 / voc4cat:0008124,
+    which share both their prefLabel and their altLabel: the prefLabels
+    score 0.9999998807907104 and the altLabels 1.000000238418579. The
+    difference is float32 noise, not evidence, so the prefLabels must still
+    win.
+    """
+    scores = score_matrix(
+        labels,
+        {
+            ((CO_PRECIPITATION_1, "pref_label"), (CALCINATION, "pref_label")): (
+                0.9999998807907104
+            ),
+            ((CO_PRECIPITATION_1, "pref_label"), (CALCINATION, "altLabel-0")): (
+                1.000000238418579
+            ),
+        },
+    )
+
+    candidates = similarity.select_candidates(labels, scores, thresholds)
+
+    assert candidates[0].similar_sentence_key == (CALCINATION, "pref_label")
+
+
+def test_a_real_difference_in_score_still_decides(labels, thresholds):
+    """The tolerance must not swallow a difference the report would show."""
+    scores = score_matrix(
+        labels,
+        {
+            ((CO_PRECIPITATION_1, "pref_label"), (CALCINATION, "pref_label")): 0.99,
+            ((CO_PRECIPITATION_1, "pref_label"), (CALCINATION, "altLabel-0")): 1.0,
+        },
+    )
+
+    candidates = similarity.select_candidates(labels, scores, thresholds)
+
+    assert candidates[0].similar_sentence_key == (CALCINATION, "altLabel-0")
+
+
+def test_label_scores_that_display_the_same_sort_by_definition_score(
+    concepts, thresholds
+):
+    """The report states it sorts by label score, then definition score.
+
+    Float noise in the label scores must not reorder rows that the report
+    prints identically.
+    """
+    pairs = [
+        candidate(CO_PRECIPITATION_1, CALCINATION, 1.000000238418579),
+        candidate(CO_PRECIPITATION_1, CO_PRECIPITATION_2, 0.9999998807907104),
+    ]
+    definition_scores = {
+        similarity.pair_key(CO_PRECIPITATION_1, CALCINATION): 0.20,
+        similarity.pair_key(CO_PRECIPITATION_1, CO_PRECIPITATION_2): 0.66,
+    }
+
+    reported = similarity.apply_definition_rule(
+        pairs, definition_scores, thresholds, concepts
+    )
+
+    assert [found.definition_similarity_score for found in reported] == [0.66, 0.20]

@@ -28,6 +28,11 @@ logger = logging.getLogger(__name__)
 # plays for it: "pref_label", or "altLabel-<n>" for the n-th alternate label.
 LabelKey = tuple[str, str]
 
+# Scores closer than this are one score. Embedding the same string twice does
+# not give bit-identical results, and the report shows four decimals, so a
+# difference this small is float32 noise rather than evidence.
+SCORE_TOLERANCE = 1e-6
+
 
 @dataclass
 class Concept:
@@ -214,12 +219,29 @@ def _orient(
 
 
 def _outranks(candidate: CandidatePair, previous: CandidatePair) -> bool:
-    """Report the strongest evidence for a pair, ties broken by label key."""
-    if candidate.similarity_score != previous.similarity_score:
+    """Report the strongest evidence for a pair.
+
+    Scores decide first. On a tie the preferred labels win, because two
+    concepts sharing a prefLabel is a graver finding than two sharing an
+    altLabel, and they often tie: a pair may carry both the same prefLabel
+    and the same altLabel. The label key settles what is left, so the report
+    does not depend on iteration order.
+    """
+    if abs(candidate.similarity_score - previous.similarity_score) > SCORE_TOLERANCE:
         return candidate.similarity_score > previous.similarity_score
+    if _pref_label_count(candidate) != _pref_label_count(previous):
+        return _pref_label_count(candidate) > _pref_label_count(previous)
     return (candidate.sentence_key, candidate.similar_sentence_key) < (
         previous.sentence_key,
         previous.similar_sentence_key,
+    )
+
+
+def _pref_label_count(candidate: CandidatePair) -> int:
+    """How many of the two matched labels are preferred labels."""
+    return sum(
+        key[1] == "pref_label"
+        for key in (candidate.sentence_key, candidate.similar_sentence_key)
     )
 
 
@@ -291,7 +313,9 @@ def apply_definition_rule(
         )
     reported.sort(
         key=lambda found: (
-            -found.similarity_score,
+            # Quantised, so that float noise in two label scores the report
+            # prints alike does not outrank the definition score.
+            -round(found.similarity_score / SCORE_TOLERANCE),
             # An unscored pair sorts after a scored one of the same label score.
             -(
                 found.definition_similarity_score
