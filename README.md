@@ -59,29 +59,28 @@ The available commands and options can be explored via the help system:
 voc4cat --help
 ```
 
-You can optionally install the "assistant", which uses [sentence-transformers](https://sbert.net/) for concept similarity analysis.
-It pulls in PyTorch and takes roughly 800 MB of disk space, and the embedding model it downloads on first use takes another 275 MB, so it is not part of the default installer.
-To include it modify the command (for uv tool) to
-
-```bash
-uv tool install "voc4cat[assistant]"
-```
-
-In a clone of this repository, `uv sync --extra assistant` adds it to the development environment.
-
+The `voc-assistant` command comes with the default install.
 `voc-assistant check VOCAB` screens one vocabulary for similar concepts; `voc-assistant compare PUBLISHED SUBMITTED` screens only what the submission adds.
 Both read `idranges.toml`, where `accepted_similarity` records the concept pairs you have reviewed and `concept_url_template` sets where the report links to.
 Run `voc-assistant check --help` for the thresholds and the other options.
 
-For basic duplicate detection you can skip the model entirely.
-`--definitions none` scores no definitions, so this needs only the small `levenshtein` package and no PyTorch:
+Out of the box it compares text with the Levenshtein ratio, which needs no model:
 
 ```bash
 voc-assistant check myvocab.ttl --method levenshtein --definitions none
 ```
 
-It reports the concept pairs whose labels reach `--threshold-labels-certain` and counts the ones it could not judge.
+That reports the concept pairs whose labels reach `--threshold-labels-certain` and counts the ones it could not judge.
 Since Levenshtein scores spelling variants below the 0.98 default (`co-precipitation` against `coprecipitation` is 0.9677), lower the threshold to catch them.
+
+For semantic similarity, which also compares definitions and is what the default `--method sbert` uses, install the `sbert` extra.
+It pulls in PyTorch and takes roughly 800 MB of disk space, and the embedding model it downloads on first use takes another 275 MB, so it is not part of the default install:
+
+```bash
+uv tool install "voc4cat[sbert]"
+```
+
+In a clone of this repository, `uv sync --extra sbert` adds it to the development environment.
 
 Alternatively, you can install voc4cat using `pip` like any other Python package.
 

@@ -1,9 +1,9 @@
 """Tests for the voc-assistant command line interface.
 
-The command line layer is importable without the optional `assistant` extra,
-so these tests run in CI. They drive it with a simple scoring backend instead
-of sentence-transformers; the real backends are covered by the tests at the
-end of this module, which are skipped when the extra is absent.
+The command line layer and the Levenshtein backend are part of the default
+install, so these tests run in CI. They drive the CLI with a simple scoring
+backend instead of sentence-transformers; the sbert backend is covered by the
+tests that are skipped when the `sbert` extra is absent.
 """
 
 import importlib.util
@@ -315,7 +315,6 @@ def sbert_backend():
 
 @pytest.fixture
 def levenshtein_backend():
-    pytest.importorskip("Levenshtein")
     return assistant.build_backend("levenshtein")
 
 
@@ -354,28 +353,38 @@ def test_an_unknown_method_is_refused():
 
 WITHOUT_SBERT = pytest.mark.skipif(
     importlib.util.find_spec("sentence_transformers") is not None,
-    reason="the assistant extra is installed",
+    reason="the sbert extra is installed",
 )
-WITHOUT_LEVENSHTEIN = pytest.mark.skipif(
-    importlib.util.find_spec("Levenshtein") is not None,
-    reason="the assistant extra is installed",
-)
+
+
+def test_the_levenshtein_backend_needs_no_extra():
+    """It is a core dependency, so this works on a default install."""
+    scores = assistant.build_backend("levenshtein").label_scores(
+        ["co-precipitation", "coprecipitation"]
+    )
+
+    assert scores[0][1] > 0.9
 
 
 @WITHOUT_SBERT
 def test_sbert_scoring_without_the_extra_says_how_to_install_it():
     backend = assistant.build_backend("sbert")
 
-    with pytest.raises(click.ClickException, match=r"voc4cat\[assistant\]"):
+    with pytest.raises(click.ClickException, match=r"voc4cat\[sbert\]"):
         backend.label_scores(["a", "b"])
 
 
-@WITHOUT_LEVENSHTEIN
-def test_levenshtein_scoring_without_the_extra_says_how_to_install_it():
-    backend = assistant.build_backend("levenshtein")
+@WITHOUT_SBERT
+def test_sbert_scoring_without_the_extra_names_the_way_around_it():
+    """The error is also the answer: it spells out the torch-free run."""
+    backend = assistant.build_backend("sbert")
 
-    with pytest.raises(click.ClickException, match=r"voc4cat\[assistant\]"):
+    with pytest.raises(click.ClickException) as excinfo:
         backend.label_scores(["a", "b"])
+
+    message = str(excinfo.value)
+    assert "--method levenshtein" in message
+    assert "--definitions none" in message
 
 
 # === Definition scoring can be turned off (the torch-free path) ===
@@ -491,7 +500,6 @@ def test_the_torch_free_path_imports_no_sentence_transformers(vocab, tmp_path):
 
     Checked in a subprocess because the tests above import both.
     """
-    pytest.importorskip("Levenshtein")
     script = textwrap.dedent(f"""
         import sys
         from click.testing import CliRunner
@@ -597,20 +605,17 @@ def run_cli_in_subprocess(vocab, tmp_path, args):
 
 
 def test_the_assistant_reports_progress_at_the_default_level(vocab, tmp_path):
-    pytest.importorskip("Levenshtein")
 
     assert "INFO" in run_cli_in_subprocess(vocab, tmp_path, [])
 
 
 def test_quiet_silences_the_progress_messages(vocab, tmp_path):
-    pytest.importorskip("Levenshtein")
 
     assert "INFO" not in run_cli_in_subprocess(vocab, tmp_path, ["--quiet"])
 
 
 def test_the_assistant_logs_to_a_file_when_asked(vocab, tmp_path):
     """Run out of process: under pytest basicConfig cannot set the root level."""
-    pytest.importorskip("Levenshtein")
     logfile = tmp_path / "logs" / "assistant.log"
 
     run_cli_in_subprocess(vocab, tmp_path, ["--logfile", str(logfile)])

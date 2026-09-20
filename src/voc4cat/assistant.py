@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 import click
+from Levenshtein import ratio
 
 from voc4cat import __version__, config, setup_logging, similarity
 
@@ -30,9 +31,10 @@ NOISY_LOGGERS = ("httpx", "huggingface_hub", "sentence_transformers", "transform
 
 DEFAULT_MODEL = "all-MiniLM-L6-v2"
 
-MISSING_EXTRA = (
-    "Scoring needs the optional dependencies of voc-assistant. "
-    'Install them with: pip install "voc4cat[assistant]"'
+MISSING_SBERT = (
+    'Scoring with sentence-transformers needs the "sbert" extra. '
+    'Install it with: pip install "voc4cat[sbert]"\n'
+    "To check without it, pass: --method levenshtein --definitions none"
 )
 
 
@@ -91,7 +93,7 @@ class ScoringBackend:
             try:
                 from sentence_transformers import SentenceTransformer  # noqa: PLC0415
             except ImportError as err:
-                raise click.ClickException(MISSING_EXTRA) from err
+                raise click.ClickException(MISSING_SBERT) from err
             self._model = SentenceTransformer(self.model_name)
             logger.debug("model %s loaded.", self.model_name)
         return self._model
@@ -111,10 +113,6 @@ class ScoringBackend:
         Normalisation includes stripping whitespace, converting to lowercase,
         and replacing hyphens with spaces.
         """
-        try:
-            from Levenshtein import ratio  # noqa: PLC0415
-        except ImportError as err:
-            raise click.ClickException(MISSING_EXTRA) from err
         normalised = [s.strip().lower().replace("-", " ") for s in sentences]
         matrix: list[list[float]] = []
         for i, first in enumerate(normalised):

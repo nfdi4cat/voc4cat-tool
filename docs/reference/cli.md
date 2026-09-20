@@ -381,11 +381,13 @@ voc4cat template --config idranges.toml --version v1.0 --outdir . myvocab
 
 ### voc-assistant
 
-Detects quality issues using semantic similarity - finds potential duplicates, similar definitions, and typos. Useful for reviewing large vocabularies or comparing versions.
+Detects quality issues - finds potential duplicates, similar definitions, and typos. Useful for reviewing large vocabularies or comparing versions.
 
-**Installation** (optional dependency):
+The command is part of the default install and compares text with the Levenshtein ratio.
+Semantic similarity, which the default `--method sbert` uses, needs an optional dependency:
+
 ```bash
-pip install voc4cat[assistant]
+pip install voc4cat[sbert]
 ```
 
 **Usage:**
@@ -395,6 +397,9 @@ voc-assistant check myvocab.ttl
 
 # Compare two vocabularies (e.g., before/after changes)
 voc-assistant compare existing.ttl new.ttl
+
+# Without the sbert extra
+voc-assistant check myvocab.ttl --method levenshtein --definitions none
 ```
 
 ### voc4cat-merge

@@ -300,7 +300,8 @@ The report is written with `encoding="utf-8"`.
 
 ## Dependency change
 
-`click` moves from the `assistant` extra to the core dependencies. It is small,
+`click` and `levenshtein` move from the `assistant` extra to the core
+dependencies, and what remains of the extra is renamed `sbert`. click is small,
 pure Python, and adds no transitive dependency that is not already core
 (`colorama`). `torch`, `sentence-transformers` and `Levenshtein` stay in the
 extra and are imported lazily, inside the scoring functions that need them.
@@ -310,7 +311,7 @@ extra, so the CLI layer — option parsing, configuration loading, output paths,
 report assembly — can be tested in CI. Only the two scoring backends cannot.
 
 Each lazy import sits behind a `try`/`except ImportError` that raises with a
-message naming the `assistant` extra and how to install it. Without it, a user
+message naming the `sbert` extra and the flags that avoid it. Without it, a user
 who installed plain `voc4cat` now reaches a bare `ModuleNotFoundError` deep in
 a command that used to refuse to start.
 

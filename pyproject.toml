@@ -42,6 +42,7 @@ dependencies = [
   "colorama",
   "curies",
   "jinja2",
+  "levenshtein",
   "openpyxl >= 3.1.5",
   "pillow",  # for supporting images in xlsx files
   "pydantic >= 2.10",
@@ -60,10 +61,11 @@ Changelog = "https://github.com/nfdi4cat/voc4cat-tool/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 # Extras are features of the distributed package that users may opt into.
-assistant = [
+# voc-assistant itself is part of the default install; this extra only adds
+# the semantic scoring it can use instead of the Levenshtein ratio.
+sbert = [
   "sentence-transformers",
   "torch",
-  "levenshtein",
 ]
 
 [project.scripts]
