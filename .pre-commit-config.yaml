@@ -16,7 +16,7 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
       # Run the formatter.
       - id: ruff-format
-  - repo: https://github.com/dunossauro/zuban-pre-commit
+  - repo: https://github.com/zubanls/zuban-pre-commit
     rev: v0.9.2
     hooks:
       # Run `zuban check`. The hook runs in its own environment holding only
