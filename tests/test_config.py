@@ -521,3 +521,164 @@ def test_id_ranges_by_actor_indexes_orcid_with_and_without_url(
     assert config.ID_RANGES_BY_ACTOR[
         ("myvocab", "https://orcid.org/0000-0002-1825-0097")
     ] == [(1, 100)]
+
+
+# === Tests for concept_url_template validation ===
+
+
+def test_concept_url_template_valid(temp_config, mandatory_fields):
+    """A template carrying the entity_id placeholder is accepted."""
+    config = temp_config
+
+    vocab = config.Vocab(
+        id_length=7,
+        permanent_iri_part="https://example.org/",
+        checks={},
+        prefix_map={},
+        concept_url_template="https://example.org/docs/index.html#{{ entity_id }}",
+        **mandatory_fields,
+    )
+
+    assert "{{ entity_id }}" in vocab.concept_url_template
+
+
+def test_concept_url_template_invalid_missing_entity_id(temp_config, mandatory_fields):
+    """A template without the entity_id placeholder is rejected."""
+    config = temp_config
+
+    with pytest.raises(ValidationError) as excinfo:
+        config.Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks={},
+            prefix_map={},
+            concept_url_template="https://example.org/docs/index.html",
+            **mandatory_fields,
+        )
+
+    assert "concept_url_template must contain '{{ entity_id }}'" in str(excinfo.value)
+
+
+def test_concept_url_template_defaults_to_empty(temp_config, mandatory_fields):
+    """The template is optional; reports then link the concept IRI itself."""
+    config = temp_config
+
+    vocab = config.Vocab(
+        id_length=7,
+        permanent_iri_part="https://example.org/",
+        checks={},
+        prefix_map={},
+        **mandatory_fields,
+    )
+
+    assert vocab.concept_url_template == ""
+
+
+# === Tests for accepted_similarity validation ===
+
+
+def test_accepted_similarity_pair(temp_config, mandatory_fields):
+    """A reviewed pair of concepts is stored with its reason."""
+    config = temp_config
+
+    vocab = config.Vocab(
+        id_length=7,
+        permanent_iri_part="https://example.org/",
+        checks={},
+        prefix_map={},
+        accepted_similarity=[
+            {
+                "concepts": ["ex:0000001", "ex:0000002"],
+                "reason": "Distinct processes that share a label.",
+            }
+        ],
+        **mandatory_fields,
+    )
+
+    assert vocab.accepted_similarity[0].concepts == ["ex:0000001", "ex:0000002"]
+    assert (
+        vocab.accepted_similarity[0].reason == "Distinct processes that share a label."
+    )
+
+
+def test_accepted_similarity_defaults_to_empty(temp_config, mandatory_fields):
+    """A vocabulary without reviewed pairs needs no accepted_similarity section."""
+    config = temp_config
+
+    vocab = config.Vocab(
+        id_length=7,
+        permanent_iri_part="https://example.org/",
+        checks={},
+        prefix_map={},
+        **mandatory_fields,
+    )
+
+    assert vocab.accepted_similarity == []
+
+
+@pytest.mark.parametrize(
+    "concepts",
+    [
+        pytest.param(["ex:0000001"], id="one"),
+        pytest.param(["ex:0000001", "ex:0000002", "ex:0000003"], id="three"),
+        pytest.param([], id="none"),
+    ],
+)
+def test_accepted_similarity_requires_exactly_two_concepts(
+    temp_config, mandatory_fields, concepts
+):
+    """An accepted similarity is a pair; any other count is a config error."""
+    config = temp_config
+
+    with pytest.raises(ValidationError) as excinfo:
+        config.Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks={},
+            prefix_map={},
+            accepted_similarity=[{"concepts": concepts, "reason": "Reviewed."}],
+            **mandatory_fields,
+        )
+
+    assert "accepted_similarity requires exactly two concepts" in str(excinfo.value)
+
+
+def test_accepted_similarity_rejects_a_concept_paired_with_itself(
+    temp_config, mandatory_fields
+):
+    """A concept cannot be an accepted similarity with itself."""
+    config = temp_config
+
+    with pytest.raises(ValidationError) as excinfo:
+        config.Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks={},
+            prefix_map={},
+            accepted_similarity=[
+                {"concepts": ["ex:0000001", "ex:0000001"], "reason": "Reviewed."}
+            ],
+            **mandatory_fields,
+        )
+
+    assert "accepted_similarity requires two different concepts" in str(excinfo.value)
+
+
+@pytest.mark.parametrize("reason", ["", "   "])
+def test_accepted_similarity_requires_a_reason(temp_config, mandatory_fields, reason):
+    """A suppression without a recorded reason cannot be reviewed later."""
+    config = temp_config
+
+    with pytest.raises(ValidationError) as excinfo:
+        config.Vocab(
+            id_length=7,
+            permanent_iri_part="https://example.org/",
+            checks={},
+            prefix_map={},
+            accepted_similarity=[
+                {"concepts": ["ex:0000001", "ex:0000002"], "reason": reason}
+            ],
+            **mandatory_fields,
+        )
+
+    assert "accepted_similarity requires a non-empty reason" in str(excinfo.value)

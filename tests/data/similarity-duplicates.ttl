@@ -1,0 +1,44 @@
+# Fixture for voc-assistant duplicate detection (issue #387).
+#
+# 0000001 and 0000002 reproduce the reported case: an identical prefLabel
+# carried by two concepts whose definitions are worded independently.
+
+@prefix ex: <https://example.org/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:0000010 a skos:Concept ;
+    skos:prefLabel "synthesis method"@en ;
+    skos:definition "A procedure by which a material is produced."@en ;
+    skos:topConceptOf <https://example.org/> .
+
+ex:0000011 a skos:Concept ;
+    skos:prefLabel "preparation"@en ;
+    skos:definition "The act of making something ready for use."@en ;
+    skos:broader ex:0000010, ex:0000012 .
+
+ex:0000012 a skos:Concept ;
+    skos:prefLabel "processing"@en ;
+    skos:definition "A series of operations applied to a material."@en ;
+    skos:broader ex:0000010 .
+
+ex:0000001 a skos:Concept ;
+    skos:prefLabel "co-precipitation"@en ;
+    skos:definition "Precipitation of more than one substance at the same time from a common solution."@en ;
+    skos:broader ex:0000010 .
+
+ex:0000002 a skos:Concept ;
+    skos:prefLabel "co-precipitation"@en ;
+    skos:definition "The carrying down by a precipitate of substances normally soluble under the conditions used."@en ;
+    skos:broader ex:0000011 .
+
+ex:0000003 a skos:Concept ;
+    skos:prefLabel "coprecipitation"@en ;
+    skos:definition "Simultaneous precipitation of several components."@en ;
+    skos:broader ex:0000010 .
+
+ex:0000004 a skos:Concept ;
+    skos:prefLabel "calcination"@en ;
+    skos:altLabel "thermal decomposition"@en, "co-precipitation"@en ;
+    skos:definition "Heating a solid to a high temperature below its melting point."@en ;
+    skos:broader ex:0000010 .
