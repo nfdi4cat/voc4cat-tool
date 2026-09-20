@@ -2,8 +2,24 @@
 
 ## Unreleased
 
+Features:
+
+- `voc-assistant` gained `--threshold-labels-certain` (default 0.98), the label score above which a pair is reported whatever its definitions say. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- Reviewed concept pairs can be declared as `accepted_similarity` in `idranges.toml`. They move to their own section of the report instead of competing with the pairs that still need a decision, and entries that name an unknown concept or suppress nothing are listed so that the allow-list does not rot. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- The concept links in a `voc-assistant` report come from the new `concept_url_template` in `idranges.toml`, which replaces a hardcoded URL of the voc4cat development documentation. Without it a concept links to its own permanent IRI. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- `voc-assistant` gained `--output` for the report path and `--hide-accepted` to leave the accepted similarities out. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+
+Fixes:
+
+- **Two concepts carrying the same `skos:prefLabel` are now reported whatever their definitions say.** A pair had to pass the label *and* the definition threshold, so an exact label match with independently worded definitions was dropped. This hid a real duplicate in voc4cat. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- **`voc-assistant compare` reported nothing at all.** An inverted condition skipped every concept, which made the subcommand useless for the job it exists for, screening a submission against the published vocabulary. Alternate labels of added concepts were skipped by a second defect in the same place and are now screened too. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- A concept pair is reported once, represented by its highest-scoring combination of labels, rather than by whichever combination happened to be found first. Findings are sorted by label score, then definition score. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- The report is written as UTF-8. It used the locale encoding, so a non-ASCII label aborted the run on Windows. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- `--include-alt-labels` can be switched off, via `--no-alt-labels`. It was declared as a flag defaulting to true and was therefore always true. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+
 Changes:
 
+- `click` moved from the `assistant` extra to the core dependencies, and the scoring libraries are imported where they are used. The command line layer of `voc-assistant` no longer needs the extra to be imported, running it without the extra now names what to install, and `zuban` gained `disallow_untyped_decorators`. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
 - Correct the instructions for syncing a vocabulary repository with voc4cat-template. The documented `git fetch <url> tag v26.x` copies the tags of the template into the vocabulary repository, where they are indistinguishable from its own release tags. [#381](https://github.com/nfdi4cat/voc4cat-tool/pull/381)
 
 ## Release 1.1.1 (2026-08-30)

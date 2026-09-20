@@ -85,6 +85,11 @@ created_date = "2025-01-01"
 # Path is relative to this idranges.toml file location
 # profile_local_path = "profiles/vocpub-5.2-validator.ttl"
 
+# Optional: Jinja template for the concept links in voc-assistant reports
+# Available template variable: entity_id
+# Default: the concept links to its own permanent IRI
+# concept_url_template = "https://YOUR-ORG.github.io/YOUR-REPO/myvocab/index.html#https://example.org/{{ entity_id }}"
+
 # ==== Checks Configuration ====
 # Section to configure checks (useful in CI pipeline)
 [vocabs.myvocab.checks]
@@ -127,3 +132,14 @@ orcid = ""
 ror_id = ""
 
 # Continue with as many [[vocabs.myvocab.id_range]] sections as needed.
+
+# ==== Accepted Similarities ====
+# Concept pairs that voc-assistant reported and that the vocabulary
+# maintainers have reviewed and accepted. They move to their own section of
+# the report instead of competing with the pairs that still need a decision.
+# The two concepts may be written as CURIEs or as full IRIs, in either order.
+# A reason is mandatory: an entry nobody can review later is worse than none.
+#
+# [[vocabs.myvocab.accepted_similarity]]
+# concepts = ["ex:0000001", "ex:0000002"]
+# reason = "Distinct processes that share a label; decided in issue #42."
