@@ -29,6 +29,14 @@ voc4cat --help
 
 which shows the installed version and the command line help.
 
+The install also provides `voc-assistant`, which screens a vocabulary for duplicate and near-duplicate concepts. It compares text with the Levenshtein ratio out of the box. For semantic similarity, which also compares definitions, install the optional `sbert` extra:
+
+```bash
+uv tool install "voc4cat[sbert]"
+```
+
+It pulls in PyTorch and downloads an embedding model on first use, together about 1 GB, which is why it is not part of the default install. See {doc}`../reference/cli` for what `voc-assistant` does.
+
 ## Quickstart: Your first vocabulary
 
 ### Step 1: Create configuration

@@ -117,6 +117,7 @@ These fields define vocabulary metadata shown in the Concept Scheme sheet.
 | `provenance_url_template` | Jinja template for provenance URLs | - |
 | `history_note` | Auto-generated if empty from created_date and creator | skos:historyNote |
 | `profile_local_path` | Path to local SHACL profile file (relative to idranges.toml) | - |
+| `concept_url_template` | Jinja template for the concept links of `voc-assistant` reports | - |
 
 :::
 
@@ -194,6 +195,40 @@ orcid = "0000-0002-3456-7890"
 :::
 
 *At least one of `gh_name` or `orcid` is required.
+
+### Accepted similarities
+
+Concept pairs that `voc-assistant` reports and that the vocabulary maintainers have reviewed and accepted (see {doc}`cli`). They move to a separate section of the report instead of competing with the pairs that still need a decision.
+
+```toml
+[[vocabs.myvocab.accepted_similarity]]
+concepts = ["ex:0000001", "ex:0000002"]
+reason = "Distinct processes that share a label; decided in issue #42."
+```
+
+**Accepted similarity fields:**
+
+:::{table}
+:align: left
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `concepts` | Yes | Exactly two different concepts, as CURIEs or IRIs, in either order |
+| `reason` | Yes | Why the pair is acceptable |
+
+:::
+
+`reason` is mandatory: an entry that records no reason cannot be reviewed later. Entries naming a concept that is not in the vocabulary, and entries that match no reported pair, are listed in the report so that the list does not go stale.
+
+### Concept links in assistant reports
+
+`concept_url_template` sets where the concepts in a `voc-assistant` report link to. It is a Jinja template and must contain `{{ entity_id }}`, the numeric concept ID:
+
+```toml
+concept_url_template = "https://myorg.github.io/myvocab/index.html#https://example.org/{{ entity_id }}"
+```
+
+Without it, a concept links to its own permanent IRI, so a report is useful with no configuration at all.
 
 ### Complete example
 
