@@ -21,11 +21,11 @@ Out of scope, deliberately:
   `--method levenshtein` normalises case and hyphens and scores them near 1.
   Choosing a better default, normalising labels before embedding, or running
   both methods together needs its own evaluation against real vocabulary data.
-- **The sbert dependency of `--method levenshtein`.** Definition similarity is
-  always computed with sentence-transformers, whichever method scores the
-  labels. A user who asks for Levenshtein still pays for torch and a model
-  download. This is existing behaviour and stays as it is here; it is recorded
-  as a wart, not endorsed.
+- **Using Levenshtein to score definitions.** Measured on the fixture pairs,
+  the Levenshtein ratio of two definitions sits in 0.41–0.49 whatever they
+  mean, while sbert spreads 0.25–0.79 and tracks meaning. A Levenshtein
+  definition score would look like a score and rank nothing, so definitions
+  are either scored semantically or not scored at all.
 - **The reach of `check_parents`.** It reports concepts with no or several
   broader concepts across the whole of `vocab_new`. In `compare` that is the
   entire submission, not the additions, so the compare report carries an issue
@@ -232,6 +232,33 @@ concept's own permanent IRI. A report is then still useful without any
 configuration, which matters because the assistant is also run ad hoc against a
 vocabulary file on its own.
 
+### Running without sentence-transformers
+
+`--definitions none` turns definition scoring off, so nothing imports
+sentence-transformers or torch and duplicate detection works from the
+Levenshtein backend alone. The rule degrades accordingly: a pair at or above
+`--threshold-labels-certain` is still reported, its definition score recorded
+as not scored; a pair below it cannot be judged and is not reported, and the
+run says how many were dropped that way.
+
+Definition scoring is **not** skipped merely because the label score already
+settles a pair. With `--definitions sbert` every candidate is scored, so the
+report column is always filled: that column is what identified the defect in
+issue #387 in the first place.
+
+What the torch-free mode reaches depends on `--threshold-labels-certain`,
+because Levenshtein scores orthographic variants below the 0.98 default:
+
+| pair | Levenshtein |
+| --- | --- |
+| `co-precipitation` / `coprecipitation` | 0.9677 |
+| `catalyser` / `catalyzer` | 0.8889 |
+| `sulphur` / `sulfur` | 0.7692 |
+
+At the default only exact matches (after case and hyphen normalisation) are
+reported. Lowering the threshold to 0.96 catches the first of these; the
+second and third do not even reach `--threshold-labels`.
+
 ### CLI
 
 `check` and `compare` both gain:
@@ -242,6 +269,7 @@ vocabulary file on its own.
 | `--config PATH` | `idranges.toml` in the working directory | source of accepted pairs and the link template; a missing file is a warning, not an error |
 | `-o, --output PATH` | `check_report_<method>.md` / `compare_report_<method>.md` | report destination |
 | `--hide-accepted` | off | omit the accepted-similarities section |
+| `--definitions sbert\|none` | `sbert` | `none` scores no definitions and needs no model |
 
 `--include-alt-labels` becomes a click boolean flag pair,
 `--include-alt-labels/--no-alt-labels`, default on. This changes the CLI

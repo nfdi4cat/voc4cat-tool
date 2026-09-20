@@ -143,6 +143,7 @@ class AssistantSettings:
 
     method: str
     include_alt_labels: bool
+    score_definitions: bool
     thresholds: similarity.Thresholds
     config_file: Path
     output: Path | None
@@ -187,7 +188,9 @@ def run_comparison(
     )
     findings = similarity.apply_definition_rule(
         candidates,
-        _definition_scores(candidates, concepts, scorer),
+        _definition_scores(candidates, concepts, scorer)
+        if settings.score_definitions
+        else {},
         settings.thresholds,
         concepts,
     )
@@ -206,6 +209,7 @@ def run_comparison(
         added_count=len(added),
         compare_all=compare_all,
         include_alt_labels=settings.include_alt_labels,
+        definitions_scored=settings.score_definitions,
         thresholds=settings.thresholds,
         findings=similarity.partition_accepted(
             findings, accepted, concepts, report_unmatched=compare_all
@@ -255,6 +259,7 @@ def _settings(options: dict[str, Any]) -> AssistantSettings:
     return AssistantSettings(
         method=options["method"],
         include_alt_labels=options["include_alt_labels"],
+        score_definitions=options["definitions"] != "none",
         thresholds=thresholds,
         config_file=options["config_file"],
         output=options["output"],
@@ -275,6 +280,17 @@ def similarity_options(command: Callable[..., Any]) -> Callable[..., Any]:
             "--include-alt-labels/--no-alt-labels",
             default=True,
             help="Include alternate labels in the comparison",
+        ),
+        click.option(
+            "--definitions",
+            type=click.Choice(["sbert", "none"]),
+            default="sbert",
+            show_default=True,
+            help=(
+                "How to score definitions. 'none' skips it, so only labels "
+                "above --threshold-labels-certain are reported and no "
+                "sentence-transformers model is needed."
+            ),
         ),
         click.option(
             "--threshold-labels",

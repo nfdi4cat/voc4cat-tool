@@ -232,7 +232,9 @@ class ConceptSimilarity:
     similar_concept_id: str
     similar_sentence_key: LabelKey
     similarity_score: float
-    definition_similarity_score: float
+    # None when the definitions were not scored, which happens when the label
+    # score alone settles the pair or when definition scoring was turned off.
+    definition_similarity_score: float | None
     have_same_broader_concept: bool
 
 
@@ -248,15 +250,24 @@ def apply_definition_rule(
     cannot argue it away, or when labels and definitions both pass their
     threshold. Two concepts carrying the same label are worth reporting
     however differently their definitions are worded.
+
+    `definition_scores` may leave a pair out, which says its definitions were
+    not scored. A certain pair is reported anyway; an undecided one is not,
+    because nothing is known that would justify reporting it.
     """
     reported = []
+    unjudged = 0
     for pair in candidates:
-        definition_score = definition_scores[
+        definition_score = definition_scores.get(
             pair_key(pair.concept_id, pair.similar_concept_id)
-        ]
+        )
         certain = pair.similarity_score >= thresholds.labels_certain
-        if not certain and definition_score < thresholds.definitions:
-            continue
+        if not certain:
+            if definition_score is None:
+                unjudged += 1
+                continue
+            if definition_score < thresholds.definitions:
+                continue
         reported.append(
             ConceptSimilarity(
                 concept_id=pair.concept_id,
@@ -271,10 +282,22 @@ def apply_definition_rule(
                 ),
             )
         )
+    if unjudged:
+        logger.warning(
+            "%d pair(s) reached the label threshold but could not be judged "
+            "because their definitions were not scored. Run without "
+            "--definitions none to decide them.",
+            unjudged,
+        )
     reported.sort(
         key=lambda found: (
             -found.similarity_score,
-            -found.definition_similarity_score,
+            # An unscored pair sorts after a scored one of the same label score.
+            -(
+                found.definition_similarity_score
+                if found.definition_similarity_score is not None
+                else -1.0
+            ),
             found.concept_id,
             found.similar_concept_id,
         )
@@ -489,6 +512,7 @@ class ComparisonResult:
     added_count: int
     compare_all: bool
     include_alt_labels: bool
+    definitions_scored: bool
     thresholds: Thresholds
     findings: PartitionedFindings
     issues: dict[str, ConceptIssue]
@@ -547,7 +571,8 @@ def _header(result: ComparisonResult) -> str:
         "- Label similarity reported regardless of the definitions: "
         f"{result.thresholds.labels_certain}\n"
         "- Alternate labels included in check? "
-        f"{'Yes' if result.include_alt_labels else 'No'}\n\n"
+        f"{'Yes' if result.include_alt_labels else 'No'}\n"
+        f"- Definitions scored? {'Yes' if result.definitions_scored else 'No'}\n\n"
     )
 
 
@@ -575,8 +600,12 @@ def _similarity_row(
         f"| {style.markdown(similar.uri, similar.curie)} "
         f"| {label_of(similar, found.similar_sentence_key[1])} "
         f"| {found.similarity_score:.4f} "
-        f"| {found.definition_similarity_score:.4f} "
+        f"| {_definition_score_text(found.definition_similarity_score)} "
     )
+
+
+def _definition_score_text(score: float | None) -> str:
+    return "not scored" if score is None else f"{score:.4f}"
 
 
 def _similarity_table(result: ComparisonResult, style: LinkStyle) -> str:

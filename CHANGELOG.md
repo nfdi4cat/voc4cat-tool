@@ -8,6 +8,7 @@ Features:
 - Reviewed concept pairs can be declared as `accepted_similarity` in `idranges.toml`. They move to their own section of the report instead of competing with the pairs that still need a decision, and entries that name an unknown concept or suppress nothing are listed so that the allow-list does not rot. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
 - The concept links in a `voc-assistant` report come from the new `concept_url_template` in `idranges.toml`, which replaces a hardcoded URL of the voc4cat development documentation. Without it a concept links to its own permanent IRI. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
 - `voc-assistant` gained `--output` for the report path and `--hide-accepted` to leave the accepted similarities out. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- **Duplicate detection runs without sentence-transformers.** `--definitions none` scores no definitions, so `voc-assistant check --method levenshtein --definitions none` needs neither torch nor a model download. Pairs at or above `--threshold-labels-certain` are reported with their definition score marked as not scored; pairs below it cannot be judged and are counted in a warning. Levenshtein scores orthographic variants below the 0.98 default (`co-precipitation`/`coprecipitation` is 0.9677), so lower the threshold to reach them. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
 
 Fixes:
 

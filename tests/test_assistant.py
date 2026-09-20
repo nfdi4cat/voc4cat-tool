@@ -8,6 +8,9 @@ end of this module, which are skipped when the extra is absent.
 
 import importlib.util
 import shutil
+import subprocess
+import sys
+import textwrap
 
 import click
 import pytest
@@ -372,3 +375,144 @@ def test_levenshtein_scoring_without_the_extra_says_how_to_install_it():
 
     with pytest.raises(click.ClickException, match=r"voc4cat\[assistant\]"):
         backend.label_scores(["a", "b"])
+
+
+# === Definition scoring can be turned off (the torch-free path) ===
+
+
+class LabelOnlyBackend(ExactLabelBackend):
+    """Refuses to score definitions, the way a run without sbert would."""
+
+    def definition_scores(self, pairs: list[tuple[str, str]]) -> list[float]:
+        msg = "definitions must not be scored in this run"
+        raise AssertionError(msg)
+
+
+class RecordingBackend(ExactLabelBackend):
+    """Scores a chosen label pair below the certain threshold and records asks."""
+
+    def __init__(self, undecided: float = 0.93) -> None:
+        super().__init__()
+        self.undecided = undecided
+        self.asked: list[tuple[str, str]] = []
+
+    def label_scores(self, sentences: list[str]) -> list[list[float]]:
+        scores = super().label_scores(sentences)
+        for i, first in enumerate(sentences):
+            for j, second in enumerate(sentences):
+                if i != j and first.casefold() != second.casefold():
+                    scores[i][j] = self.undecided
+        return scores
+
+    def definition_scores(self, pairs: list[tuple[str, str]]) -> list[float]:
+        self.asked.extend(pairs)
+        return [0.9] * len(pairs)
+
+
+def test_an_exact_duplicate_is_found_without_scoring_definitions(vocab, tmp_path, run):
+    """Basic duplicate detection needs no semantic model at all."""
+    output = tmp_path / "report.md"
+
+    result = run(
+        [
+            "check",
+            str(vocab),
+            "--method",
+            "levenshtein",
+            "--definitions",
+            "none",
+            "--output",
+            str(output),
+        ],
+        backend=LabelOnlyBackend(),
+    )
+
+    report = report_of(result, output)
+    assert "0000001" in report
+    assert "0000002" in report
+    assert "not scored" in report
+
+
+def test_turning_definitions_off_says_so_in_the_report(vocab, tmp_path, run):
+    output = tmp_path / "report.md"
+
+    result = run(
+        ["check", str(vocab), "--definitions", "none", "--output", str(output)],
+        backend=LabelOnlyBackend(),
+    )
+
+    assert "Definitions scored? No" in report_of(result, output)
+
+
+def test_a_pair_that_only_the_definitions_could_decide_is_not_reported(
+    vocab, tmp_path, run
+):
+    """Without a definition score there is nothing to justify reporting it."""
+    output = tmp_path / "report.md"
+
+    result = run(
+        ["check", str(vocab), "--definitions", "none", "--output", str(output)],
+        backend=RecordingBackend(),
+    )
+
+    findings = report_of(result, output).split("## Additional concept check")[0]
+
+    rows = [line for line in findings.splitlines() if line.startswith("| [")]
+    # Only the three exact "co-precipitation" matches survive. Every other
+    # candidate scored 0.93, which the label alone cannot settle.
+    assert len(rows) == 3
+    assert all("| 1.0000 | not scored |" in row for row in rows)
+
+
+def test_every_candidate_pair_is_scored_when_definitions_are_on(vocab, tmp_path, run):
+    """The score fills a column even where the label alone settles the pair."""
+    backend = RecordingBackend()
+
+    result = run(
+        ["check", str(vocab), "--output", str(tmp_path / "report.md")],
+        backend=backend,
+    )
+
+    assert result.exit_code == 0, result.output
+    co_precipitation = (
+        "Precipitation of more than one substance at the same time "
+        "from a common solution."
+    )
+    carried_down = (
+        "The carrying down by a precipitate of substances normally soluble "
+        "under the conditions used."
+    )
+    assert {co_precipitation, carried_down} in [set(pair) for pair in backend.asked]
+
+
+def test_the_torch_free_path_imports_no_sentence_transformers(vocab, tmp_path):
+    """Duplicate detection without sbert must not load sbert or torch.
+
+    Checked in a subprocess because the tests above import both.
+    """
+    pytest.importorskip("Levenshtein")
+    script = textwrap.dedent(f"""
+        import sys
+        from click.testing import CliRunner
+        from voc4cat import assistant
+
+        result = CliRunner().invoke(assistant.cli, [
+            "check", r"{vocab}",
+            "--method", "levenshtein",
+            "--definitions", "none",
+            "--config", r"{tmp_path / "absent.toml"}",
+            "--output", r"{tmp_path / "torch_free.md"}",
+        ], catch_exceptions=False)
+        assert result.exit_code == 0, result.output
+        assert "sentence_transformers" not in sys.modules, "sbert was imported"
+        assert "torch" not in sys.modules, "torch was imported"
+    """)
+
+    completed = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", script], capture_output=True, text=True, check=False
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    report = (tmp_path / "torch_free.md").read_text(encoding="utf-8")
+    assert "co-precipitation" in report
+    assert "Definitions scored? No" in report

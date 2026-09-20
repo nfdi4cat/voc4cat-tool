@@ -687,6 +687,7 @@ def build_result(concepts, findings, **overrides):
         "added_count": len(concepts),
         "compare_all": True,
         "include_alt_labels": True,
+        "definitions_scored": True,
         "thresholds": similarity.Thresholds(0.9, 0.8, 0.98),
         "findings": findings,
         "issues": {},
@@ -844,3 +845,55 @@ def test_build_label_sentences_skips_a_concept_without_a_label(tmp_path):
     labels = similarity.build_label_sentences(concepts, include_alt_labels=True)
 
     assert list(labels) == [("https://example.org/0000003", "pref_label")]
+
+
+# === Definitions that were not scored ===
+
+
+def test_a_certain_pair_is_reported_without_a_definition_score(concepts, thresholds):
+    """The torch-free path: an exact label match needs no semantic model."""
+    pairs = [candidate(CO_PRECIPITATION_1, CO_PRECIPITATION_2, 1.0)]
+
+    reported = similarity.apply_definition_rule(pairs, {}, thresholds, concepts)
+
+    assert len(reported) == 1
+    assert reported[0].definition_similarity_score is None
+
+
+def test_an_undecided_pair_is_not_reported_without_a_definition_score(
+    concepts, thresholds
+):
+    """Nothing is known about it, so claiming it is similar would be a guess."""
+    pairs = [candidate(CO_PRECIPITATION_1, CALCINATION, 0.93)]
+
+    assert similarity.apply_definition_rule(pairs, {}, thresholds, concepts) == []
+
+
+def test_an_unscored_pair_sorts_after_a_scored_one_of_the_same_label_score(
+    concepts, thresholds
+):
+    scored = candidate(CO_PRECIPITATION_1, CALCINATION, 1.0)
+    unscored = candidate(CO_PRECIPITATION_1, CO_PRECIPITATION_2, 1.0)
+
+    reported = similarity.apply_definition_rule(
+        [unscored, scored],
+        {similarity.pair_key(CO_PRECIPITATION_1, CALCINATION): 0.5},
+        thresholds,
+        concepts,
+    )
+
+    assert [found.definition_similarity_score for found in reported] == [0.5, None]
+
+
+def test_the_report_marks_a_definition_score_that_was_not_taken(concepts):
+    findings = similarity.PartitionedFindings(
+        reported=[
+            finding(CO_PRECIPITATION_1, CO_PRECIPITATION_2, definition_score=None)
+        ],
+        accepted=[],
+        unused=[],
+    )
+
+    report = similarity.render_report(build_result(concepts, findings))
+
+    assert "not scored" in report

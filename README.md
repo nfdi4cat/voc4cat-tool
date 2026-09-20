@@ -73,6 +73,16 @@ In a clone of this repository, `uv sync --extra assistant` adds it to the develo
 Both read `idranges.toml`, where `accepted_similarity` records the concept pairs you have reviewed and `concept_url_template` sets where the report links to.
 Run `voc-assistant check --help` for the thresholds and the other options.
 
+For basic duplicate detection you can skip the model entirely.
+`--definitions none` scores no definitions, so this needs only the small `levenshtein` package and no PyTorch:
+
+```bash
+voc-assistant check myvocab.ttl --method levenshtein --definitions none
+```
+
+It reports the concept pairs whose labels reach `--threshold-labels-certain` and counts the ones it could not judge.
+Since Levenshtein scores spelling variants below the 0.98 default (`co-precipitation` against `coprecipitation` is 0.9677), lower the threshold to catch them.
+
 Alternatively, you can install voc4cat using `pip` like any other Python package.
 
 For development, `uv sync` installs voc4cat together with all development tools.
