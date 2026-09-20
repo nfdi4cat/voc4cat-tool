@@ -38,6 +38,7 @@ classifiers = [
 
 dependencies = [
   "base32-crockford",
+  "click",
   "colorama",
   "curies",
   "jinja2",
@@ -60,7 +61,6 @@ Changelog = "https://github.com/nfdi4cat/voc4cat-tool/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 # Extras are features of the distributed package that users may opt into.
 assistant = [
-  "click",
   "sentence-transformers",
   "torch",
   "levenshtein",
@@ -161,7 +161,6 @@ source = ["voc4cat"]
 source_dirs = ["tests"]
 omit = [
     "**/voc4cat/_version.py",
-    "**/voc4cat/assistant.py",  # no tests yet
 ]
 
 [tool.coverage.paths]
@@ -322,6 +321,3 @@ strict = true
 # about 25 documented-public imports (load_workbook, Font, get_column_letter)
 # as private.
 implicit_reexport = true
-# click reaches the checker as Any because the `assistant` extra is absent from
-# the lint environment, which would make every click decorator untyped.
-disallow_untyped_decorators = false
