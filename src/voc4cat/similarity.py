@@ -10,12 +10,17 @@ in :mod:`voc4cat.assistant`.
 """
 
 import logging
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 
 from curies import Converter
+from jinja2 import Template
 from rdflib import RDF, SKOS, Graph
+
+from voc4cat.config import AcceptedSimilarity
 
 logger = logging.getLogger(__name__)
 
@@ -270,3 +275,370 @@ def apply_definition_rule(
         )
     )
     return reported
+
+
+@dataclass(frozen=True)
+class AcceptedPair:
+    """An accepted_similarity entry resolved to concept IRIs."""
+
+    iris: frozenset[str]
+    concepts: tuple[str, str]
+    reason: str
+
+
+@dataclass(frozen=True)
+class AcceptedFinding:
+    """A reported pair that the vocabulary maintainers have already reviewed."""
+
+    finding: ConceptSimilarity
+    reason: str
+
+
+@dataclass(frozen=True)
+class UnusedAcceptedEntry:
+    """An accepted_similarity entry that did not apply to this run."""
+
+    concepts: tuple[str, str]
+    reason: str
+    status: str
+
+
+@dataclass(frozen=True)
+class PartitionedFindings:
+    """Findings split into what needs review and what has been reviewed."""
+
+    reported: list[ConceptSimilarity]
+    accepted: list[AcceptedFinding]
+    unused: list[UnusedAcceptedEntry]
+
+
+def resolve_accepted(
+    entries: Sequence[AcceptedSimilarity], converter: Converter | None
+) -> list[AcceptedPair]:
+    """Resolve the configured pairs to concept IRIs.
+
+    An entry may name its concepts as CURIEs or as IRIs; anything the prefix
+    map cannot expand is taken to be an IRI already.
+    """
+    accepted = []
+    for item in entries:
+        first, second = item.concepts[0], item.concepts[1]
+        iris = frozenset(
+            {_expand(first, converter), _expand(second, converter)},
+        )
+        accepted.append(
+            AcceptedPair(iris=iris, concepts=(first, second), reason=item.reason)
+        )
+    return accepted
+
+
+def _expand(concept: str, converter: Converter | None) -> str:
+    if converter is None:
+        return concept
+    return converter.expand(concept) or concept
+
+
+def partition_accepted(
+    findings: list[ConceptSimilarity],
+    accepted: list[AcceptedPair],
+    concepts: dict[str, Concept],
+    report_unmatched: bool,
+) -> PartitionedFindings:
+    """Set the reviewed pairs aside and name the entries that did not apply.
+
+    ``report_unmatched`` tells whether an entry that matched no finding is
+    worth reporting. It is only meaningful when the whole vocabulary was
+    screened: when only additions are screened, most accepted pairs produce
+    no finding and saying so would be noise.
+    """
+    reasons = {item.iris: item.reason for item in accepted}
+    reported: list[ConceptSimilarity] = []
+    reviewed: list[AcceptedFinding] = []
+    matched: set[frozenset[str]] = set()
+    for found in findings:
+        identity = pair_key(found.concept_id, found.similar_concept_id)
+        if identity in reasons:
+            matched.add(identity)
+            reviewed.append(AcceptedFinding(finding=found, reason=reasons[identity]))
+        else:
+            reported.append(found)
+
+    unused = []
+    for item in accepted:
+        unknown = sorted(iri for iri in item.iris if iri not in concepts)
+        if unknown:
+            status = "unknown concept"
+            logger.warning(
+                "accepted_similarity entry (%s, %s) names a concept that is not "
+                "in the vocabulary: %s",
+                *item.concepts,
+                ", ".join(unknown),
+            )
+        elif report_unmatched and item.iris not in matched:
+            status = "no matching pair"
+            logger.warning(
+                "accepted_similarity entry (%s, %s) matched no reported pair.",
+                *item.concepts,
+            )
+        else:
+            continue
+        unused.append(
+            UnusedAcceptedEntry(
+                concepts=item.concepts, reason=item.reason, status=status
+            )
+        )
+    return PartitionedFindings(reported=reported, accepted=reviewed, unused=unused)
+
+
+class Problem(Enum):
+    """Enumeration for concept issues."""
+
+    NO_BROADER_CONCEPT = ("W001", "No broader concept")
+    MULTIPLE_BROADER_CONCEPTS = ("W002", "Multiple broader concepts")
+
+    def __init__(self, problem_id: str, description: str) -> None:
+        self.problem_id = problem_id
+        self.description = description
+
+
+@dataclass(frozen=True)
+class ConceptIssue:
+    """Class to hold concept issue information."""
+
+    concept_id: str
+    concept_label: str
+    problem: Problem
+    problem_detail: str
+
+
+@dataclass(frozen=True)
+class LinkStyle:
+    """Where the concepts of a report link to.
+
+    Without a template a concept links to its own IRI, so that a report is
+    useful against a plain vocabulary file with no configuration at all.
+    """
+
+    template: str = ""
+    id_pattern: re.Pattern[str] | None = None
+
+    def url(self, uri: str) -> str:
+        if not self.template or self.id_pattern is None:
+            return uri
+        match = self.id_pattern.search(uri)
+        if match is None:
+            # An IRI of another vocabulary; our ID template does not apply.
+            return uri
+        return Template(self.template).render(entity_id=match.group("identifier"))
+
+    def markdown(self, uri: str, text: str) -> str:
+        return f"[{text}]({self.url(uri)})"
+
+
+def check_parents(
+    concepts: dict[str, Concept], link_style: LinkStyle
+) -> dict[str, ConceptIssue]:
+    """Report concepts that have no or more than one broader concept."""
+    logger.info("Checking if concepts have no or more than one broader concept.")
+    issues: dict[str, ConceptIssue] = {}
+    for uri, concept in concepts.items():
+        if not concept.parents:
+            issues[uri] = ConceptIssue(
+                concept_id=concept.curie,
+                concept_label=concept.pref_label,
+                problem=Problem.NO_BROADER_CONCEPT,
+                problem_detail="",
+            )
+        elif len(concept.parents) > 1:
+            issues[uri] = ConceptIssue(
+                concept_id=concept.curie,
+                concept_label=concept.pref_label,
+                problem=Problem.MULTIPLE_BROADER_CONCEPTS,
+                problem_detail=" / ".join(
+                    _parent_links(concept.parents, concepts, link_style)
+                ),
+            )
+    return issues
+
+
+def _parent_links(
+    parents: list[str], concepts: dict[str, Concept], link_style: LinkStyle
+) -> list[str]:
+    """Link each broader concept, naming those of other vocabularies by IRI."""
+    return [
+        link_style.markdown(parent, concepts[parent].pref_label)
+        if parent in concepts
+        else parent
+        for parent in parents
+    ]
+
+
+@dataclass(frozen=True)
+class ComparisonResult:
+    """Everything the report is rendered from."""
+
+    method: str
+    vocab_new_src: Path
+    vocab_base_src: Path | None
+    concepts: dict[str, Concept]
+    added_count: int
+    compare_all: bool
+    include_alt_labels: bool
+    thresholds: Thresholds
+    findings: PartitionedFindings
+    issues: dict[str, ConceptIssue]
+
+
+def label_of(concept: Concept, role: str) -> str:
+    """Return the label a finding refers to, marking alternate labels."""
+    if role == "pref_label":
+        return concept.pref_label
+    position = int(role.rsplit("-", maxsplit=1)[-1])
+    return f"{concept.alt_labels[position]} (altLabel)"
+
+
+SIMILARITY_HEADER = (
+    "| Concept ID | Concept label | Similar<BR>Concept ID "
+    "| Similar Concept label | Similarity Score<BR>Label "
+    "| Similarity Score<BR>Definition |"
+)
+TABLE_RULE = "|---|---|---|---|---|---|"
+
+
+def render_report(
+    result: ComparisonResult,
+    link_style: LinkStyle | None = None,
+    hide_accepted: bool = False,
+) -> str:
+    """Render the markdown report of a comparison."""
+    style = link_style if link_style is not None else LinkStyle()
+    report = [_header(result), _similarity_table(result, style)]
+    if result.findings.accepted and not hide_accepted:
+        report.append(_accepted_table(result, style))
+    if result.findings.unused:
+        # Shown even with --hide-accepted: this is a configuration problem,
+        # not a decision somebody made on purpose.
+        report.append(_unused_table(result))
+    report.append(_issue_table(result, style))
+    return "".join(report)
+
+
+def _header(result: ComparisonResult) -> str:
+    if result.compare_all:
+        head = (
+            f"# Similarities for all concepts using method {result.method}\n\n"
+            f"Checked {len(result.concepts)} concepts in {result.vocab_new_src} "
+            "for similarities.\n\n"
+        )
+    else:
+        head = (
+            f"# Similarities for added concepts using method {result.method}\n\n"
+            f"Checked {result.added_count} additions made in {result.vocab_new_src} "
+            f"for similarities with concepts in {result.vocab_base_src}.\n\n"
+        )
+    return head + (
+        f"- Similarity threshold labels: {result.thresholds.labels}\n"
+        f"- Similarity threshold definitions: {result.thresholds.definitions}\n"
+        "- Label similarity reported regardless of the definitions: "
+        f"{result.thresholds.labels_certain}\n"
+        "- Alternate labels included in check? "
+        f"{'Yes' if result.include_alt_labels else 'No'}\n\n"
+    )
+
+
+def _broader_column(
+    found: ConceptSimilarity, result: ComparisonResult, style: LinkStyle
+) -> str:
+    concepts = result.concepts
+    own = ", ".join(_parent_links(concepts[found.concept_id].parents, concepts, style))
+    if found.have_same_broader_concept:
+        return f"Y - {own}"
+    other = ", ".join(
+        _parent_links(concepts[found.similar_concept_id].parents, concepts, style)
+    )
+    return f"N - {own} / {other}"
+
+
+def _similarity_row(
+    found: ConceptSimilarity, result: ComparisonResult, style: LinkStyle
+) -> str:
+    concept = result.concepts[found.concept_id]
+    similar = result.concepts[found.similar_concept_id]
+    return (
+        f"| {style.markdown(concept.uri, concept.curie)} "
+        f"| {label_of(concept, found.sentence_key[1])} "
+        f"| {style.markdown(similar.uri, similar.curie)} "
+        f"| {label_of(similar, found.similar_sentence_key[1])} "
+        f"| {found.similarity_score:.4f} "
+        f"| {found.definition_similarity_score:.4f} "
+    )
+
+
+def _similarity_table(result: ComparisonResult, style: LinkStyle) -> str:
+    if not result.findings.reported:
+        return "No similarities found.\n"
+    rows = [f"{SIMILARITY_HEADER} Same Broader Concept? |\n", f"{TABLE_RULE}---|\n"]
+    rows.extend(
+        f"{_similarity_row(found, result, style)}"
+        f"| {_broader_column(found, result, style)} |\n"
+        for found in result.findings.reported
+    )
+    return "".join(rows)
+
+
+def _accepted_table(result: ComparisonResult, style: LinkStyle) -> str:
+    rows = [
+        "\n\n## Accepted similarities\n\n",
+        (
+            "Pairs declared in `accepted_similarity` for this vocabulary. "
+            "They need no action.\n\n"
+        ),
+        f"{SIMILARITY_HEADER} Reason |\n",
+        f"{TABLE_RULE}---|\n",
+    ]
+    rows.extend(
+        f"{_similarity_row(accepted.finding, result, style)}| {accepted.reason} |\n"
+        for accepted in result.findings.accepted
+    )
+    return "".join(rows)
+
+
+def _unused_table(result: ComparisonResult) -> str:
+    rows = [
+        "\n\n## Unused accepted-similarity entries\n\n",
+        "These entries of `accepted_similarity` did not apply to this run.\n\n",
+        "| Concepts | Reason | Status |\n",
+        "|---|---|---|\n",
+    ]
+    rows.extend(
+        f"| {entry.concepts[0]}, {entry.concepts[1]} | {entry.reason} "
+        f"| {entry.status} |\n"
+        for entry in result.findings.unused
+    )
+    return "".join(rows)
+
+
+def _issue_table(result: ComparisonResult, style: LinkStyle) -> str:
+    if not result.issues:
+        return "\n\n## No additional concept issues found.\n"
+    rows = [
+        "\n\n## Additional concept check results\n\n",
+        (
+            "| Concept ID | Concept label | Problem ID | Problem description "
+            "| Problem details |\n"
+        ),
+        "|---|---|---|---|---|\n",
+    ]
+    rows.extend(
+        f"| {style.markdown(uri, issue.concept_id)} | {issue.concept_label} "
+        f"| {issue.problem.problem_id} | {issue.problem.description} "
+        f"| {issue.problem_detail} |\n"
+        for uri, issue in sorted(result.issues.items())
+    )
+    return "".join(rows)
+
+
+def write_report(report: str, destination: Path) -> None:
+    """Write the report, independent of the locale encoding."""
+    destination.write_text(report, encoding="utf-8")
+    logger.info("Similarities report written to %s", destination)

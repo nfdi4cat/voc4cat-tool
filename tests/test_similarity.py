@@ -5,10 +5,14 @@ imports no part of the optional `assistant` extra, so these tests run
 wherever the package is installed.
 """
 
+import re
+from pathlib import Path
+
 import pytest
 from curies import Converter
 
 from voc4cat import similarity
+from voc4cat.config import AcceptedSimilarity
 
 DUPLICATES = "similarity-duplicates.ttl"
 
@@ -440,3 +444,381 @@ def test_findings_are_sorted_by_label_score_then_definition_score(concepts, thre
         (found.similarity_score, found.definition_similarity_score)
         for found in reported
     ] == [(1.0, 0.95), (1.0, 0.81), (0.95, 0.99)]
+
+
+# === Accepted similarities ===
+
+
+def entry(first, second, reason="Reviewed."):
+    return AcceptedSimilarity(concepts=[first, second], reason=reason)
+
+
+@pytest.fixture
+def converter():
+    return Converter.from_prefix_map({"ex": "https://example.org/"})
+
+
+def finding(concept_id, similar_concept_id, score=1.0, definition_score=0.5):
+    return similarity.ConceptSimilarity(
+        concept_id=concept_id,
+        sentence_key=(concept_id, "pref_label"),
+        similar_concept_id=similar_concept_id,
+        similar_sentence_key=(similar_concept_id, "pref_label"),
+        similarity_score=score,
+        definition_similarity_score=definition_score,
+        have_same_broader_concept=False,
+    )
+
+
+def test_resolve_accepted_expands_curies(converter):
+    accepted = similarity.resolve_accepted(
+        [entry("ex:0000001", "ex:0000002")], converter
+    )
+
+    assert accepted[0].iris == frozenset({CO_PRECIPITATION_1, CO_PRECIPITATION_2})
+    assert accepted[0].concepts == ("ex:0000001", "ex:0000002")
+    assert accepted[0].reason == "Reviewed."
+
+
+def test_resolve_accepted_accepts_plain_iris(converter):
+    accepted = similarity.resolve_accepted(
+        [entry(CO_PRECIPITATION_1, CO_PRECIPITATION_2)], converter
+    )
+
+    assert accepted[0].iris == frozenset({CO_PRECIPITATION_1, CO_PRECIPITATION_2})
+
+
+def test_resolve_accepted_without_a_converter_keeps_the_written_form():
+    accepted = similarity.resolve_accepted(
+        [entry(CO_PRECIPITATION_1, CO_PRECIPITATION_2)], None
+    )
+
+    assert accepted[0].iris == frozenset({CO_PRECIPITATION_1, CO_PRECIPITATION_2})
+
+
+def test_an_accepted_pair_is_moved_out_of_the_findings(concepts, converter):
+    findings = [finding(CO_PRECIPITATION_1, CO_PRECIPITATION_2)]
+    accepted = similarity.resolve_accepted(
+        [entry("ex:0000001", "ex:0000002", "Distinct processes.")], converter
+    )
+
+    result = similarity.partition_accepted(
+        findings, accepted, concepts, report_unmatched=True
+    )
+
+    assert result.reported == []
+    assert len(result.accepted) == 1
+    assert result.accepted[0].reason == "Distinct processes."
+    assert result.accepted[0].finding.concept_id == CO_PRECIPITATION_1
+
+
+def test_an_accepted_pair_matches_however_it_is_written(concepts, converter):
+    """The pair is an unordered pair, whichever order the config lists it in."""
+    findings = [finding(CO_PRECIPITATION_1, CO_PRECIPITATION_2)]
+    accepted = similarity.resolve_accepted(
+        [entry("ex:0000002", "ex:0000001")], converter
+    )
+
+    result = similarity.partition_accepted(
+        findings, accepted, concepts, report_unmatched=True
+    )
+
+    assert result.reported == []
+    assert len(result.accepted) == 1
+
+
+def test_findings_that_are_not_accepted_stay_reported(concepts, converter):
+    findings = [
+        finding(CO_PRECIPITATION_1, CO_PRECIPITATION_2),
+        finding(CO_PRECIPITATION_1, COPRECIPITATION),
+    ]
+    accepted = similarity.resolve_accepted(
+        [entry("ex:0000001", "ex:0000002")], converter
+    )
+
+    result = similarity.partition_accepted(
+        findings, accepted, concepts, report_unmatched=True
+    )
+
+    assert [found.similar_concept_id for found in result.reported] == [COPRECIPITATION]
+
+
+def test_an_entry_naming_an_unknown_concept_is_reported_as_unused(concepts, converter):
+    accepted = similarity.resolve_accepted(
+        [entry("ex:0000001", "ex:9999999")], converter
+    )
+
+    result = similarity.partition_accepted(
+        [], accepted, concepts, report_unmatched=True
+    )
+
+    assert len(result.unused) == 1
+    assert result.unused[0].status == "unknown concept"
+    assert result.unused[0].concepts == ("ex:0000001", "ex:9999999")
+
+
+def test_an_unknown_concept_is_reported_even_when_unmatched_entries_are_not(
+    concepts, converter
+):
+    """`compare` cannot judge unmatched entries but can still spot a typo."""
+    accepted = similarity.resolve_accepted(
+        [entry("ex:0000001", "ex:9999999")], converter
+    )
+
+    result = similarity.partition_accepted(
+        [], accepted, concepts, report_unmatched=False
+    )
+
+    assert [unused.status for unused in result.unused] == ["unknown concept"]
+
+
+def test_an_entry_that_suppressed_nothing_is_reported_as_unused(concepts, converter):
+    accepted = similarity.resolve_accepted(
+        [entry("ex:0000001", "ex:0000002")], converter
+    )
+
+    result = similarity.partition_accepted(
+        [], accepted, concepts, report_unmatched=True
+    )
+
+    assert [unused.status for unused in result.unused] == ["no matching pair"]
+
+
+def test_unmatched_entries_are_not_reported_when_only_additions_are_screened(
+    concepts, converter
+):
+    """In `compare` most accepted pairs legitimately produce no candidate."""
+    accepted = similarity.resolve_accepted(
+        [entry("ex:0000001", "ex:0000002")], converter
+    )
+
+    result = similarity.partition_accepted(
+        [], accepted, concepts, report_unmatched=False
+    )
+
+    assert result.unused == []
+
+
+# === Concept links ===
+
+ID_PATTERN = re.compile(r"(?<![0-9])(?P<identifier>[0-9]{7})$")
+TEMPLATE = "https://example.org/docs/index.html#{{ entity_id }}"
+
+
+def test_a_concept_links_to_its_own_iri_without_a_template():
+    assert similarity.LinkStyle().url(CO_PRECIPITATION_1) == CO_PRECIPITATION_1
+
+
+def test_a_template_builds_the_documentation_url():
+    style = similarity.LinkStyle(template=TEMPLATE, id_pattern=ID_PATTERN)
+
+    assert style.url(CO_PRECIPITATION_1) == (
+        "https://example.org/docs/index.html#0000001"
+    )
+
+
+def test_an_iri_without_an_id_falls_back_to_itself():
+    style = similarity.LinkStyle(template=TEMPLATE, id_pattern=ID_PATTERN)
+
+    assert style.url("https://example.org/other") == "https://example.org/other"
+
+
+def test_markdown_links_carry_the_given_text():
+    style = similarity.LinkStyle()
+
+    assert style.markdown(CO_PRECIPITATION_1, "ex:0000001") == (
+        f"[ex:0000001]({CO_PRECIPITATION_1})"
+    )
+
+
+# === Parent checks ===
+
+
+def test_a_concept_without_a_broader_concept_is_reported(concepts):
+    issues = similarity.check_parents(concepts, similarity.LinkStyle())
+
+    assert issues[SYNTHESIS_METHOD].problem is similarity.Problem.NO_BROADER_CONCEPT
+
+
+def test_a_concept_with_several_broader_concepts_is_reported(concepts):
+    issues = similarity.check_parents(concepts, similarity.LinkStyle())
+
+    issue = issues[PREPARATION]
+    assert issue.problem is similarity.Problem.MULTIPLE_BROADER_CONCEPTS
+    assert "synthesis method" in issue.problem_detail
+    assert "processing" in issue.problem_detail
+
+
+def test_a_concept_with_exactly_one_broader_concept_is_not_reported(concepts):
+    assert CO_PRECIPITATION_1 not in similarity.check_parents(
+        concepts, similarity.LinkStyle()
+    )
+
+
+def test_a_broader_concept_outside_the_vocabulary_is_named_by_its_iri(tmp_path):
+    """A parent from another vocabulary must not crash the check."""
+    ttl = tmp_path / "external-parent.ttl"
+    ttl.write_text(
+        "@prefix ex: <https://example.org/> .\n"
+        "@prefix other: <https://other.example/> .\n"
+        "@prefix skos: <http://www.w3.org/2004/02/skos/core#> .\n"
+        'ex:0000001 a skos:Concept ; skos:prefLabel "a"@en ;\n'
+        "    skos:broader other:0000001, other:0000002 .\n",
+        encoding="utf-8",
+    )
+    concepts = similarity.load_vocab(ttl)
+
+    issue = similarity.check_parents(concepts, similarity.LinkStyle())[
+        "https://example.org/0000001"
+    ]
+
+    assert "https://other.example/0000001" in issue.problem_detail
+
+
+# === Report rendering ===
+
+
+def build_result(concepts, findings, **overrides):
+    defaults = {
+        "method": "levenshtein",
+        "vocab_new_src": Path("vocab.ttl"),
+        "vocab_base_src": None,
+        "concepts": concepts,
+        "added_count": len(concepts),
+        "compare_all": True,
+        "include_alt_labels": True,
+        "thresholds": similarity.Thresholds(0.9, 0.8, 0.98),
+        "findings": findings,
+        "issues": {},
+    }
+    defaults.update(overrides)
+    return similarity.ComparisonResult(**defaults)
+
+
+def test_the_report_names_a_duplicate_pair(concepts):
+    findings = similarity.PartitionedFindings(
+        reported=[finding(CO_PRECIPITATION_1, CO_PRECIPITATION_2)],
+        accepted=[],
+        unused=[],
+    )
+
+    report = similarity.render_report(build_result(concepts, findings))
+
+    assert "0000001" in report
+    assert "0000002" in report
+    assert "co-precipitation" in report
+
+
+def test_the_report_says_so_when_nothing_was_found(concepts):
+    findings = similarity.PartitionedFindings(reported=[], accepted=[], unused=[])
+
+    assert "No similarities found." in similarity.render_report(
+        build_result(concepts, findings)
+    )
+
+
+def test_the_report_lists_accepted_pairs_with_their_reason(concepts):
+    findings = similarity.PartitionedFindings(
+        reported=[],
+        accepted=[
+            similarity.AcceptedFinding(
+                finding=finding(CO_PRECIPITATION_1, CO_PRECIPITATION_2),
+                reason="Distinct processes, reviewed in #310.",
+            )
+        ],
+        unused=[],
+    )
+
+    report = similarity.render_report(build_result(concepts, findings))
+
+    assert "## Accepted similarities" in report
+    assert "Distinct processes, reviewed in #310." in report
+
+
+def test_accepted_pairs_can_be_left_out_of_the_report(concepts):
+    findings = similarity.PartitionedFindings(
+        reported=[],
+        accepted=[
+            similarity.AcceptedFinding(
+                finding=finding(CO_PRECIPITATION_1, CO_PRECIPITATION_2),
+                reason="Distinct processes.",
+            )
+        ],
+        unused=[],
+    )
+
+    report = similarity.render_report(
+        build_result(concepts, findings), hide_accepted=True
+    )
+
+    assert "## Accepted similarities" not in report
+    assert "Distinct processes." not in report
+
+
+def test_the_report_lists_entries_that_did_not_apply(concepts):
+    findings = similarity.PartitionedFindings(
+        reported=[],
+        accepted=[],
+        unused=[
+            similarity.UnusedAcceptedEntry(
+                concepts=("ex:0000001", "ex:9999999"),
+                reason="Reviewed.",
+                status="unknown concept",
+            )
+        ],
+    )
+
+    report = similarity.render_report(build_result(concepts, findings))
+
+    assert "## Unused accepted-similarity entries" in report
+    assert "ex:9999999" in report
+    assert "unknown concept" in report
+
+
+def test_unused_entries_are_shown_even_when_accepted_pairs_are_hidden(concepts):
+    """Hiding reviewed decisions must not hide a configuration error."""
+    findings = similarity.PartitionedFindings(
+        reported=[],
+        accepted=[],
+        unused=[
+            similarity.UnusedAcceptedEntry(
+                concepts=("ex:0000001", "ex:9999999"),
+                reason="Reviewed.",
+                status="unknown concept",
+            )
+        ],
+    )
+
+    report = similarity.render_report(
+        build_result(concepts, findings), hide_accepted=True
+    )
+
+    assert "## Unused accepted-similarity entries" in report
+
+
+def test_the_report_states_what_was_compared(concepts):
+    findings = similarity.PartitionedFindings(reported=[], accepted=[], unused=[])
+
+    report = similarity.render_report(
+        build_result(
+            concepts,
+            findings,
+            compare_all=False,
+            vocab_base_src=Path("published.ttl"),
+            added_count=2,
+        )
+    )
+
+    assert "published.ttl" in report
+    assert "vocab.ttl" in report
+
+
+def test_the_report_is_written_as_utf8(tmp_path, concepts):
+    """A non-ASCII label must not depend on the locale encoding."""
+    findings = similarity.PartitionedFindings(reported=[], accepted=[], unused=[])
+    report = similarity.render_report(build_result(concepts, findings))
+    destination = tmp_path / "report.md"
+
+    similarity.write_report(report + "\nMüller Ångström 500 °C\n", destination)
+
+    assert "Müller Ångström 500 °C" in destination.read_text(encoding="utf-8")
