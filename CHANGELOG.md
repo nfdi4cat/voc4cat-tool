@@ -20,6 +20,7 @@ Fixes:
 
 Changes:
 
+- `voc-assistant` uses the logging setup of `voc4cat` instead of configuring the root logger itself when the module is imported. It gained `-v`, `-q` and `--logfile` with the meaning they have in `voc4cat`, and `-V/--version`. The loggers of `httpx`, `huggingface_hub`, `sentence-transformers` and `transformers` are set to WARNING: a single run logged 33 HTTP request lines at INFO, against 6 lines of its own. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
 - `click` moved from the `assistant` extra to the core dependencies, and the scoring libraries are imported where they are used. The command line layer of `voc-assistant` no longer needs the extra to be imported, running it without the extra now names what to install, and `zuban` gained `disallow_untyped_decorators`. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
 - Correct the instructions for syncing a vocabulary repository with voc4cat-template. The documented `git fetch <url> tag v26.x` copies the tags of the template into the vocabulary repository, where they are indistinguishable from its own release tags. [#381](https://github.com/nfdi4cat/voc4cat-tool/pull/381)
 

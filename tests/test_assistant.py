@@ -7,6 +7,7 @@ end of this module, which are skipped when the extra is absent.
 """
 
 import importlib.util
+import logging
 import shutil
 import subprocess
 import sys
@@ -516,3 +517,110 @@ def test_the_torch_free_path_imports_no_sentence_transformers(vocab, tmp_path):
     report = (tmp_path / "torch_free.md").read_text(encoding="utf-8")
     assert "co-precipitation" in report
     assert "Definitions scored? No" in report
+
+
+# === Logging ===
+
+
+NOISY_LOGGERS = ("httpx", "huggingface_hub", "sentence_transformers", "transformers")
+
+
+@pytest.fixture
+def restore_logging(monkeypatch):
+    """Undo what setup_logging does to the process-wide logging state."""
+    monkeypatch.delenv("LOGLEVEL", raising=False)
+    root = logging.getLogger()
+    handlers, level = root.handlers[:], root.level
+    levels = {name: logging.getLogger(name).level for name in NOISY_LOGGERS}
+    yield
+    root.handlers[:] = handlers
+    root.setLevel(level)
+    for name, previous in levels.items():
+        logging.getLogger(name).setLevel(previous)
+
+
+def test_importing_the_assistant_does_not_configure_logging():
+    """A module import must not reconfigure logging for the whole process."""
+    script = textwrap.dedent("""
+        import logging
+        assert not logging.getLogger().handlers, "root had handlers already"
+        import voc4cat.assistant
+        assert not logging.getLogger().handlers, "the import configured logging"
+    """)
+
+    completed = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", script], capture_output=True, text=True, check=False
+    )
+
+    assert completed.returncode == 0, completed.stderr
+
+
+def test_the_loggers_of_the_scoring_libraries_are_silenced(
+    vocab, tmp_path, run, restore_logging
+):
+    """An sbert run logs 33 httpx request lines at INFO; they are not news."""
+    for name in NOISY_LOGGERS:
+        logging.getLogger(name).setLevel(logging.NOTSET)
+
+    result = run(["check", str(vocab), "--output", str(tmp_path / "r.md")])
+
+    assert result.exit_code == 0, result.output
+    assert [logging.getLogger(name).level for name in NOISY_LOGGERS] == [
+        logging.WARNING
+    ] * len(NOISY_LOGGERS)
+
+
+def run_cli_in_subprocess(vocab, tmp_path, args):
+    completed = subprocess.run(  # noqa: S603
+        [
+            sys.executable,
+            "-m",
+            "voc4cat.assistant",
+            "check",
+            str(vocab),
+            "--method",
+            "levenshtein",
+            "--definitions",
+            "none",
+            "--config",
+            str(tmp_path / "absent.toml"),
+            "--output",
+            str(tmp_path / "report.md"),
+            *args,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    return completed.stderr
+
+
+def test_the_assistant_reports_progress_at_the_default_level(vocab, tmp_path):
+    pytest.importorskip("Levenshtein")
+
+    assert "INFO" in run_cli_in_subprocess(vocab, tmp_path, [])
+
+
+def test_quiet_silences_the_progress_messages(vocab, tmp_path):
+    pytest.importorskip("Levenshtein")
+
+    assert "INFO" not in run_cli_in_subprocess(vocab, tmp_path, ["--quiet"])
+
+
+def test_the_assistant_logs_to_a_file_when_asked(vocab, tmp_path):
+    """Run out of process: under pytest basicConfig cannot set the root level."""
+    pytest.importorskip("Levenshtein")
+    logfile = tmp_path / "logs" / "assistant.log"
+
+    run_cli_in_subprocess(vocab, tmp_path, ["--logfile", str(logfile)])
+
+    assert "Submitted concepts" in logfile.read_text(encoding="utf-8")
+
+
+def test_verbose_and_quiet_together_are_refused(vocab, tmp_path, run):
+    """They contradict each other; voc4cat refuses the combination too."""
+    result = run(["check", str(vocab), "-v", "-q", "--output", str(tmp_path / "r.md")])
+
+    assert result.exit_code != 0
+    assert "--verbose" in result.output

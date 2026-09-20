@@ -20,12 +20,13 @@ from typing import Any, Protocol
 
 import click
 
-from voc4cat import config, similarity
+from voc4cat import __version__, config, setup_logging, similarity
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger(__name__)
+
+# The scoring libraries chat at INFO: a single sbert run logs 33 httpx request
+# lines. WARNING keeps what they have to say when it matters.
+NOISY_LOGGERS = ("httpx", "huggingface_hub", "sentence_transformers", "transformers")
 
 DEFAULT_MODEL = "all-MiniLM-L6-v2"
 
@@ -246,6 +247,20 @@ def _definition_scores(
     }
 
 
+def _configure_logging(options: dict[str, Any]) -> None:
+    """Set up logging the way the voc4cat CLI does."""
+    verbose, quiet = options["verbose"], options["quiet"]
+    if verbose and quiet:
+        msg = "--verbose and --quiet contradict each other; pass only one."
+        raise click.BadParameter(msg)
+    logfile: Path | None = options["logfile"]
+    if logfile is not None:
+        logfile.parent.mkdir(exist_ok=True, parents=True)
+    setup_logging(logging.INFO + (quiet - verbose) * 10, logfile)
+    for name in NOISY_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
 def _settings(options: dict[str, Any]) -> AssistantSettings:
     """Turn the parsed command line options into settings."""
     try:
@@ -271,6 +286,28 @@ def similarity_options(command: Callable[..., Any]) -> Callable[..., Any]:
     """Apply the options that `check` and `compare` have in common."""
     options = [
         click.option(
+            "-v",
+            "--verbose",
+            count=True,
+            help="More verbose output. Repeat to increase verbosity (-vv or -vvv).",
+        ),
+        click.option(
+            "-q",
+            "--quiet",
+            count=True,
+            help="Less verbose output. Repeat to reduce verbosity (-qq or -qqq).",
+        ),
+        click.option(
+            "-l",
+            "--logfile",
+            type=click.Path(dir_okay=False, path_type=Path),
+            default=None,
+            help=(
+                "Activate logging to a file at given path. "
+                "The path will be created if it is not existing."
+            ),
+        ),
+        click.option(
             "--method",
             type=click.Choice(["sbert", "levenshtein"]),
             default="sbert",
@@ -295,18 +332,21 @@ def similarity_options(command: Callable[..., Any]) -> Callable[..., Any]:
         click.option(
             "--threshold-labels",
             type=float,
+            show_default=True,
             default=0.9,
             help="Threshold for label similarity",
         ),
         click.option(
             "--threshold-defs",
             type=float,
+            show_default=True,
             default=0.8,
             help="Threshold for definition similarity",
         ),
         click.option(
             "--threshold-labels-certain",
             type=float,
+            show_default=True,
             default=0.98,
             help=(
                 "Label similarity that is reported whatever the definitions "
@@ -344,6 +384,7 @@ VOCAB_ARGUMENT = click.Path(exists=True, dir_okay=False, path_type=Path)
 
 
 @click.group()
+@click.version_option(__version__, "-V", "--version", message="%(version)s")
 def cli() -> None:
     """CLI tool for vocabulary maintainers."""
 
@@ -353,6 +394,7 @@ def cli() -> None:
 @similarity_options
 def find_similarities_in_one_vocab(vocab_src: Path, **options: Any) -> None:
     """Find similarities between concepts in a single vocabulary."""
+    _configure_logging(options)
     logger.info("Finding similarities in vocabulary: %s", vocab_src)
     run_comparison(vocab_src, None, _settings(options))
 
@@ -363,6 +405,7 @@ def find_similarities_in_one_vocab(vocab_src: Path, **options: Any) -> None:
 @similarity_options
 def compare_vocabularies(vocab_src: Path, vocab_new_src: Path, **options: Any) -> None:
     """Compare two vocabularies and check additions against existing concepts."""
+    _configure_logging(options)
     logger.info(
         "Checking additions made in %s for similarities with concepts in %s",
         vocab_new_src,
