@@ -822,3 +822,25 @@ def test_the_report_is_written_as_utf8(tmp_path, concepts):
     similarity.write_report(report + "\nMüller Ångström 500 °C\n", destination)
 
     assert "Müller Ångström 500 °C" in destination.read_text(encoding="utf-8")
+
+
+def test_build_label_sentences_skips_a_concept_without_a_label(tmp_path):
+    """An empty label matches every other empty label at score 1.0.
+
+    Reporting concepts as duplicates because neither carries a label is
+    noise; a missing label is a data problem the parent check reports.
+    """
+    ttl = tmp_path / "no-labels.ttl"
+    ttl.write_text(
+        "@prefix ex: <https://example.org/> .\n"
+        "@prefix skos: <http://www.w3.org/2004/02/skos/core#> .\n"
+        'ex:0000001 a skos:Concept ; skos:definition "one"@en .\n'
+        'ex:0000002 a skos:Concept ; skos:definition "two"@en .\n'
+        'ex:0000003 a skos:Concept ; skos:prefLabel "three"@en .\n',
+        encoding="utf-8",
+    )
+    concepts = similarity.load_vocab(ttl)
+
+    labels = similarity.build_label_sentences(concepts, include_alt_labels=True)
+
+    assert list(labels) == [("https://example.org/0000003", "pref_label")]

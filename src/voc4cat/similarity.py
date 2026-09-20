@@ -87,16 +87,21 @@ def build_label_sentences(
     """Return every label to compare, keyed by concept IRI and label role.
 
     Preferred labels come first so that the order is stable and independent of
-    whether alternate labels are included.
+    whether alternate labels are included. Empty labels are left out: they
+    would match each other perfectly and report concepts as duplicates for
+    carrying no label, which the parent check already reports as a data
+    problem.
     """
     labels: dict[LabelKey, str] = {
         (uri, "pref_label"): concept.pref_label.strip()
         for uri, concept in concepts.items()
+        if concept.pref_label.strip()
     }
     if include_alt_labels:
         for uri, concept in concepts.items():
             for position, alt_label in enumerate(concept.alt_labels):
-                labels[(uri, f"altLabel-{position}")] = alt_label.strip()
+                if alt_label.strip():
+                    labels[(uri, f"altLabel-{position}")] = alt_label.strip()
     return labels
 
 

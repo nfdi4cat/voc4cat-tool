@@ -169,7 +169,9 @@ def run_comparison(
 
     concepts = similarity.load_vocab(vocab_new_src, converter)
     published = (
-        {} if compare_all else similarity.load_vocab(vocab_base_src, converter)  # type: ignore[arg-type]
+        {}
+        if vocab_base_src is None
+        else similarity.load_vocab(vocab_base_src, converter)
     )
     added = {uri for uri in concepts if uri not in published}
     logger.info("Known concepts    : %d", len(published))
