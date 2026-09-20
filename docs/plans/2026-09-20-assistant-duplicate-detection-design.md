@@ -144,7 +144,11 @@ label >= threshold_labels_certain
 ```
 
 Defaults: `threshold_labels_certain = 0.98`, `threshold_labels = 0.9`,
-`threshold_definitions = 0.8`. The two existing thresholds keep the meaning
+`threshold_definitions = 0.5`. The definition threshold was 0.8, which
+measurement over voc4cat showed to reject every pair in the 0.90-0.98 label
+band; the best definition score there is 0.7907, and the band holds real
+review candidates such as `analytical measurement technique` against
+`analytical measurement method`. The two existing thresholds keep the meaning
 they have today; the new one is the documented escape hatch for pairs whose
 labels agree so closely that the definitions cannot argue them away.
 

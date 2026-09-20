@@ -338,8 +338,12 @@ def similarity_options(command: Callable[..., Any]) -> Callable[..., Any]:
             "--threshold-defs",
             type=float,
             show_default=True,
-            default=0.8,
-            help="Threshold for definition similarity",
+            default=0.5,
+            help=(
+                "Threshold for definition similarity. Independently worded "
+                "definitions of the same thing score low, so this filters "
+                "little by design."
+            ),
         ),
         click.option(
             "--threshold-labels-certain",

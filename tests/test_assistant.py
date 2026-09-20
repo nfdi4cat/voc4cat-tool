@@ -629,3 +629,16 @@ def test_verbose_and_quiet_together_are_refused(vocab, tmp_path, run):
 
     assert result.exit_code != 0
     assert "--verbose" in result.output
+
+
+def test_the_definition_threshold_defaults_to_one_half(vocab, tmp_path, run):
+    """A definition score is weak evidence, so it filters little by default.
+
+    Measured over the 600 concepts of voc4cat: at 0.8 the threshold rejected
+    every pair in the 0.90-0.98 label band, the best of them scoring 0.7907.
+    """
+    output = tmp_path / "report.md"
+
+    result = run(["check", str(vocab), "--output", str(output)])
+
+    assert "Similarity threshold definitions: 0.5" in report_of(result, output)
