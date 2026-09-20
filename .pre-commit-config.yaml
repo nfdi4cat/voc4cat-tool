@@ -9,15 +9,15 @@ repos:
       -  id: check-toml
       -  id: trailing-whitespace
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.4
+    rev: v0.16.8
     hooks:
       # Run the linter.
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
       # Run the formatter.
       - id: ruff-format
-  - repo: https://github.com/dunossauro/zuban-pre-commit
-    rev: v0.9.2
+  - repo: https://github.com/zubanls/zuban-pre-commit
+    rev: v0.10.0
     hooks:
       # Run `zuban check`. The hook runs in its own environment holding only
       # zuban and resolves project imports by auto-detecting .venv, so the
@@ -25,6 +25,6 @@ repos:
       - id: zuban
         args: [src/, --pretty]
   - repo: https://github.com/crate-ci/typos
-    rev: v1.49.0
+    rev: v1.50.2
     hooks:
       - id: typos

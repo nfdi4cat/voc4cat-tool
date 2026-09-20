@@ -88,6 +88,36 @@ class IdrangeItem(BaseModel):
         return value
 
 
+class AcceptedSimilarity(BaseModel):
+    """A pair of concepts whose similarity has been reviewed and accepted."""
+
+    concepts: list[str]
+    reason: str
+
+    @model_validator(mode="after")
+    def check_pair(self) -> Self:
+        if len(self.concepts) != 2:  # noqa: PLR2004
+            msg = (
+                "accepted_similarity requires exactly two concepts "
+                f"(got {len(self.concepts)})."
+            )
+            raise ValueError(msg)
+        if self.concepts[0] == self.concepts[1]:
+            msg = (
+                "accepted_similarity requires two different concepts "
+                f"(got {self.concepts[0]} twice)."
+            )
+            raise ValueError(msg)
+        # An accepted similarity that records no reason cannot be reviewed later.
+        if not self.reason.strip():
+            msg = (
+                "accepted_similarity requires a non-empty reason "
+                f"(pair: {self.concepts[0]}, {self.concepts[1]})."
+            )
+            raise ValueError(msg)
+        return self
+
+
 class Vocab(BaseModel):
     # Required fields
     id_length: Annotated[int, Field(ge=1, lt=19)]
@@ -117,6 +147,8 @@ class Vocab(BaseModel):
     profile_local_path: str = (
         ""  # Path to SHACL profile file, relative to idranges.toml
     )
+    concept_url_template: str = ""  # Jinja template for concept links in reports
+    accepted_similarity: list[AcceptedSimilarity] = []
 
     @field_validator("id_range", mode="before")
     @classmethod
@@ -159,6 +191,13 @@ class Vocab(BaseModel):
             and "{{ entity_id }}" not in self.provenance_url_template
         ):
             msg = "provenance_url_template must contain '{{ entity_id }}'"
+            raise ValueError(msg)
+
+        if (
+            self.concept_url_template
+            and "{{ entity_id }}" not in self.concept_url_template
+        ):
+            msg = "concept_url_template must contain '{{ entity_id }}'"
             raise ValueError(msg)
 
         return self

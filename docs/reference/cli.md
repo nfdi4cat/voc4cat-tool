@@ -381,11 +381,20 @@ voc4cat template --config idranges.toml --version v1.0 --outdir . myvocab
 
 ### voc-assistant
 
-Detects quality issues using semantic similarity - finds potential duplicates, similar definitions, and typos. Useful for reviewing large vocabularies or comparing versions.
+Detects quality issues - finds potential duplicates, similar definitions, and typos. Useful for reviewing large vocabularies or comparing versions.
 
-**Installation** (optional dependency):
+The command is part of the default install and compares text with the Levenshtein ratio.
+Semantic similarity, which the default `--method sbert` uses, needs an optional dependency:
+
 ```bash
-pip install voc4cat[assistant]
+pip install voc4cat[sbert]
+```
+
+`voc-assistant --version` reports whether that extra is present, and the same line ends the help:
+
+```text
+voc-assistant 1.2.0
+sbert scoring: available (sentence-transformers 6.0.0)
 ```
 
 **Usage:**
@@ -395,7 +404,33 @@ voc-assistant check myvocab.ttl
 
 # Compare two vocabularies (e.g., before/after changes)
 voc-assistant compare existing.ttl new.ttl
+
+# Without the sbert extra
+voc-assistant check myvocab.ttl --method levenshtein --definitions none
 ```
+
+**Use in a CI pipeline:**
+
+`compare` screens only the concepts a submission adds, so a pull request is judged on its own additions rather than on what the vocabulary already contains.
+
+```bash
+voc-assistant compare published.ttl submitted.ttl --config idranges.toml
+```
+
+Inside a GitHub Actions workflow a pair that still needs a decision makes the run fail; locally the same pair is an advisory warning. This matches `voc4cat check --ci-pre` and `--ci-post`.
+
+:::{table}
+:align: left
+
+| Exit code | Meaning |
+|-----------|---------|
+| 0 | No pair needs a decision, or every one is recorded as `accepted_similarity` |
+| 1 | At least one pair needs a decision (only in a workflow) |
+| 2 | Usage error, such as a missing file |
+
+:::
+
+Record the pairs you have reviewed as `accepted_similarity` in `idranges.toml` (see {doc}`schemas`) to take them out of the gate. The concept issues of the parent check (W001, W002) are reported but never fail the run.
 
 ### voc4cat-merge
 

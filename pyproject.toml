@@ -38,9 +38,11 @@ classifiers = [
 
 dependencies = [
   "base32-crockford",
+  "click",
   "colorama",
   "curies",
   "jinja2",
+  "levenshtein",
   "openpyxl >= 3.1.5",
   "pillow",  # for supporting images in xlsx files
   "pydantic >= 2.10",
@@ -59,11 +61,11 @@ Changelog = "https://github.com/nfdi4cat/voc4cat-tool/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 # Extras are features of the distributed package that users may opt into.
-assistant = [
-  "click",
+# voc-assistant itself is part of the default install; this extra only adds
+# the semantic scoring it can use instead of the Levenshtein ratio.
+sbert = [
   "sentence-transformers",
   "torch",
-  "levenshtein",
 ]
 
 [project.scripts]
@@ -161,7 +163,6 @@ source = ["voc4cat"]
 source_dirs = ["tests"]
 omit = [
     "**/voc4cat/_version.py",
-    "**/voc4cat/assistant.py",  # no tests yet
 ]
 
 [tool.coverage.paths]
@@ -201,6 +202,8 @@ exclude = [
     "*.egg",
     ".*",
     "_version.py",
+    # Ruff would format Python fences in Markdown. We treat them as illustrative.
+    "*.md",
 ]
 
 # Assume Python 3.10 syntax and semantics for linting.
@@ -322,6 +325,3 @@ strict = true
 # about 25 documented-public imports (load_workbook, Font, get_column_letter)
 # as private.
 implicit_reexport = true
-# click reaches the checker as Any because the `assistant` extra is absent from
-# the lint environment, which would make every click decorator untyped.
-disallow_untyped_decorators = false
