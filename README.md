@@ -59,13 +59,19 @@ The available commands and options can be explored via the help system:
 voc4cat --help
 ```
 
-You can optionally install the "assistant" which uses [sentence-transformers](https://sbert.net/) for concept similarity analysis.
-This adds over 100 MB to the download so we don't include it in the default installer.
+You can optionally install the "assistant", which uses [sentence-transformers](https://sbert.net/) for concept similarity analysis.
+It pulls in PyTorch and takes roughly 800 MB of disk space, and the embedding model it downloads on first use takes another 275 MB, so it is not part of the default installer.
 To include it modify the command (for uv tool) to
 
 ```bash
 uv tool install "voc4cat[assistant]"
 ```
+
+In a clone of this repository, `uv sync --extra assistant` adds it to the development environment.
+
+`voc-assistant check VOCAB` screens one vocabulary for similar concepts; `voc-assistant compare PUBLISHED SUBMITTED` screens only what the submission adds.
+Both read `idranges.toml`, where `accepted_similarity` records the concept pairs you have reviewed and `concept_url_template` sets where the report links to.
+Run `voc-assistant check --help` for the thresholds and the other options.
 
 Alternatively, you can install voc4cat using `pip` like any other Python package.
 
