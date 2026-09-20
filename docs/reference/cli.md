@@ -390,6 +390,13 @@ Semantic similarity, which the default `--method sbert` uses, needs an optional 
 pip install voc4cat[sbert]
 ```
 
+`voc-assistant --version` reports whether that extra is present, and the same line ends the help:
+
+```text
+voc-assistant 1.2.0
+sbert scoring: available (sentence-transformers 6.0.0)
+```
+
 **Usage:**
 ```bash
 # Check single vocabulary for internal duplicates

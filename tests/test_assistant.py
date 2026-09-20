@@ -726,3 +726,43 @@ def test_the_report_is_written_even_when_the_run_fails(vocab, tmp_path, run, in_
 
     assert result.exit_code == 1
     assert "co-precipitation" in output.read_text(encoding="utf-8")
+
+
+# === Version and the status of the optional scoring stack ===
+
+
+WITH_SBERT = pytest.mark.skipif(
+    importlib.util.find_spec("sentence_transformers") is None,
+    reason="the sbert extra is not installed",
+)
+
+
+def test_the_version_names_the_program(run):
+    """`voc4cat --version` prints "voc4cat <version>"; match it."""
+    result = run(["--version"])
+
+    assert result.exit_code == 0
+    assert result.output.startswith("voc-assistant ")
+
+
+@WITH_SBERT
+def test_the_version_reports_sbert_as_available(run):
+    result = run(["--version"])
+
+    assert "sbert scoring: available" in result.output
+    assert "sentence-transformers" in result.output
+
+
+@WITHOUT_SBERT
+def test_the_version_reports_sbert_as_missing(run):
+    result = run(["--version"])
+
+    assert "sbert scoring: not installed" in result.output
+    assert "voc4cat[sbert]" in result.output
+
+
+def test_the_help_reports_the_scoring_status(run):
+    """Running the bare command prints the help, which says what works."""
+    result = run([])
+
+    assert "sbert scoring:" in result.output

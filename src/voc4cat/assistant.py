@@ -12,6 +12,8 @@ needs none of the optional dependencies.
 Author: David Linke (gh:dalito), 2025
 """
 
+import importlib.metadata
+import importlib.util
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -411,8 +413,53 @@ def similarity_options(command: Callable[..., Any]) -> Callable[..., Any]:
 VOCAB_ARGUMENT = click.Path(exists=True, dir_okay=False, path_type=Path)
 
 
-@click.group()
-@click.version_option(__version__, "-V", "--version", message="%(version)s")
+def sbert_status() -> str:
+    """Say whether semantic scoring is available.
+
+    The default `--method sbert` needs an optional dependency, so the version
+    and the help both state whether it is there, rather than leaving it to be
+    discovered when a run fails.
+    """
+    if importlib.util.find_spec("sentence_transformers") is None:
+        return (
+            "sbert scoring: not installed. The default --method sbert needs "
+            'pip install "voc4cat[sbert]". Without it, check with '
+            "--method levenshtein --definitions none."
+        )
+    try:
+        installed = importlib.metadata.version("sentence-transformers")
+    except importlib.metadata.PackageNotFoundError:  # pragma: no cover
+        # Importable but without metadata, e.g. added to the path by hand.
+        return "sbert scoring: available"
+    return f"sbert scoring: available (sentence-transformers {installed})"
+
+
+class AssistantGroup(click.Group):
+    """A group whose help ends with the status of the optional scoring stack."""
+
+    def format_epilog(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        formatter.write_paragraph()
+        formatter.write_text(sbert_status())
+
+
+def _print_version(ctx: click.Context, param: click.Parameter, value: bool) -> None:
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo(f"voc-assistant {__version__}")
+    click.echo(sbert_status())
+    ctx.exit()
+
+
+@click.group(cls=AssistantGroup)
+@click.option(
+    "-V",
+    "--version",
+    is_flag=True,
+    expose_value=False,
+    is_eager=True,
+    callback=_print_version,
+    help="Show the version and the status of the sbert extra, then exit.",
+)
 def cli() -> None:
     """CLI tool for vocabulary maintainers."""
 
