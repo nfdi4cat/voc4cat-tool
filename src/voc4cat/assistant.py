@@ -22,6 +22,7 @@ import click
 from Levenshtein import ratio
 
 from voc4cat import __version__, config, setup_logging, similarity
+from voc4cat.checks import running_in_ci
 
 logger = logging.getLogger(__name__)
 
@@ -222,7 +223,32 @@ def run_comparison(
         similarity.render_report(result, link_style, settings.hide_accepted),
         destination,
     )
+    _report_outcome(result, destination)
     return destination
+
+
+def _report_outcome(result: similarity.ComparisonResult, destination: Path) -> None:
+    """Fail the run in a pipeline when a pair still needs a decision.
+
+    Pairs listed in `accepted_similarity` do not count: declaring them is how
+    a repository states that they have been reviewed. The concept issues of
+    the parent check do not count either, as they are not duplicates.
+
+    Following the convention of `voc4cat check`, this is advisory locally and
+    fatal in a workflow, so that a contributor sees the report while the
+    pipeline stops on it.
+    """
+    findings = len(result.findings.reported)
+    if not findings:
+        return
+    msg = (
+        f"{findings} similarities need a decision. See {destination}. "
+        "Record the pairs you accept as accepted_similarity in the "
+        "configuration."
+    )
+    if running_in_ci():
+        raise click.ClickException(msg)
+    logger.warning("%s", msg)
 
 
 def _definition_scores(

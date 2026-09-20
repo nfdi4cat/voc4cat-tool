@@ -103,6 +103,12 @@ def run(monkeypatch):
     return invoke
 
 
+@pytest.fixture(autouse=True)
+def outside_ci(monkeypatch):
+    """Clear GITHUB_ACTIONS so the suite takes the non-CI path on gh-actions."""
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+
+
 def report_of(result, path):
     assert result.exit_code == 0, result.output
     return path.read_text(encoding="utf-8")
@@ -642,3 +648,81 @@ def test_the_definition_threshold_defaults_to_one_half(vocab, tmp_path, run):
     result = run(["check", str(vocab), "--output", str(output)])
 
     assert "Similarity threshold definitions: 0.5" in report_of(result, output)
+
+
+# === Exit code, for use in a CI pipeline ===
+
+
+@pytest.fixture
+def in_ci(monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+
+
+def test_findings_are_advisory_outside_ci(vocab, tmp_path, run, caplog):
+    """Locally the report is the output; the run itself still succeeds."""
+    with caplog.at_level(logging.WARNING):
+        result = run(["check", str(vocab), "--output", str(tmp_path / "r.md")])
+
+    assert result.exit_code == 0, result.output
+    assert "similarities" in caplog.text
+
+
+def test_findings_fail_the_run_in_ci(vocab, tmp_path, run, in_ci):
+    """With the known pairs accepted in the config, a finding is a problem."""
+    result = run(["check", str(vocab), "--output", str(tmp_path / "r.md")])
+
+    assert result.exit_code == 1
+    assert "3" in result.output
+
+
+def test_a_vocabulary_without_similarities_passes_in_ci(
+    published, tmp_path, run, in_ci
+):
+    """The parent checks report W001 and W002 here, which are not duplicates."""
+    output = tmp_path / "r.md"
+
+    result = run(["check", str(published), "--output", str(output)])
+
+    assert result.exit_code == 0, result.output
+    assert "No additional concept issues found." not in output.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_accepted_findings_do_not_fail_the_run_in_ci(
+    vocab, tmp_path, run, idranges, in_ci
+):
+    """Suppressing a known pair is what lets the pipeline go green."""
+    accepted = "".join(
+        "[[vocabs.myvocab.accepted_similarity]]\n"
+        f'concepts = ["ex:{a}", "ex:{b}"]\n'
+        'reason = "Reviewed."\n'
+        for a, b in (
+            ("0000001", "0000002"),
+            ("0000001", "0000004"),
+            ("0000002", "0000004"),
+        )
+    )
+
+    result = run(
+        [
+            "check",
+            str(vocab),
+            "--config",
+            idranges(accepted),
+            "--output",
+            str(tmp_path / "r.md"),
+        ]
+    )
+
+    assert result.exit_code == 0, result.output
+
+
+def test_the_report_is_written_even_when_the_run_fails(vocab, tmp_path, run, in_ci):
+    """The pipeline needs the report to say what went wrong."""
+    output = tmp_path / "r.md"
+
+    result = run(["check", str(vocab), "--output", str(output)])
+
+    assert result.exit_code == 1
+    assert "co-precipitation" in output.read_text(encoding="utf-8")

@@ -402,6 +402,29 @@ voc-assistant compare existing.ttl new.ttl
 voc-assistant check myvocab.ttl --method levenshtein --definitions none
 ```
 
+**Use in a CI pipeline:**
+
+`compare` screens only the concepts a submission adds, so a pull request is judged on its own additions rather than on what the vocabulary already contains.
+
+```bash
+voc-assistant compare published.ttl submitted.ttl --config idranges.toml
+```
+
+Inside a GitHub Actions workflow a pair that still needs a decision makes the run fail; locally the same pair is an advisory warning. This matches `voc4cat check --ci-pre` and `--ci-post`.
+
+:::{table}
+:align: left
+
+| Exit code | Meaning |
+|-----------|---------|
+| 0 | No pair needs a decision, or every one is recorded as `accepted_similarity` |
+| 1 | At least one pair needs a decision (only in a workflow) |
+| 2 | Usage error, such as a missing file |
+
+:::
+
+Record the pairs you have reviewed as `accepted_similarity` in `idranges.toml` (see {doc}`schemas`) to take them out of the gate. The concept issues of the parent check (W001, W002) are reported but never fail the run.
+
 ### voc4cat-merge
 
 Custom git merge driver for vocabulary files used in the GitHub action workflows. It is hardly useful locally.
