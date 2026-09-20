@@ -202,6 +202,8 @@ exclude = [
     "*.egg",
     ".*",
     "_version.py",
+    # Ruff would format Python fences in Markdown. We treat them as illustrative.
+    "*.md",
 ]
 
 # Assume Python 3.10 syntax and semantics for linting.
