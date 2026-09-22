@@ -47,7 +47,8 @@ In the xlsx templates, you express this by listing "Parent IRIs" for each concep
 
 ### Related concepts
 
-Concepts can also have non-hierarchical relationships using `skos:related`.
+Concepts can currently only have hierarchical relation.
+If you need support for non-hierarchical relationships using `skos:related` comment on [issue 389](https://github.com/nfdi4cat/voc4cat-tool/issues/389).
 
 ## The voc4cat approach
 
