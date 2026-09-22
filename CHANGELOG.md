@@ -1,31 +1,28 @@
 # Change log
 
-## Unreleased
+## Release 1.2.0 (2026-09-22)
 
 Features:
 
-- `voc-assistant` gained `--threshold-labels-certain` (default 0.98), the label score above which a pair is reported whatever its definitions say. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
-- Reviewed concept pairs can be declared as `accepted_similarity` in `idranges.toml`. They move to their own section of the report instead of competing with the pairs that still need a decision, and entries that name an unknown concept or suppress nothing are listed so that the allow-list does not rot. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
-- The concept links in a `voc-assistant` report come from the new `concept_url_template` in `idranges.toml`, which replaces a hardcoded URL of the voc4cat development documentation. Without it a concept links to its own permanent IRI. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- Reviewed concept pairs can be declared as `accepted_similarity` in `idranges.toml`. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
 - `voc-assistant` gained `--output` for the report path and `--hide-accepted` to leave the accepted similarities out. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
-- **`voc-assistant` can gate a CI pipeline.** A pair that still needs a decision makes the run exit 1 inside a GitHub Actions workflow, and stays an advisory warning locally, which is how `voc4cat check --ci-pre/--ci-post` already behave. Pairs recorded as `accepted_similarity` never fail the run, and neither do the concept issues of the parent check. `compare` is the subcommand for this, since it screens only what a submission adds. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
-- **Duplicate detection runs without sentence-transformers.** `--definitions none` scores no definitions, so `voc-assistant check --method levenshtein --definitions none` needs neither torch nor a model download. Pairs at or above `--threshold-labels-certain` are reported with their definition score marked as not scored; pairs below it cannot be judged and are counted in a warning. Levenshtein scores orthographic variants below the 0.98 default (`co-precipitation`/`coprecipitation` is 0.9677), so lower the threshold to reach them. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- **`voc-assistant` can gate a CI pipeline.** A pair that still needs a decision makes the run error (exit 1) inside a GitHub Actions workflow. Pairs recorded as `accepted_similarity` never fail the run. `compare` is the subcommand for this, since it screens only what a submission adds. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- **`voc-assistant` duplicate detection runs without sentence-transformers.** `--definitions none` scores no definitions, so `voc-assistant check --method levenshtein --definitions none` needs neither torch nor a model download. Levenshtein scores orthographic variants below the 0.98 default (for example `co-precipitation`/`coprecipitation` is 0.9677), so lower the threshold to reach them. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- `voc-assistant` gained `--threshold-labels-certain` (default 0.98), the label score above which a pair is reported whatever its definitions say. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
 
 Fixes:
 
-- **Two concepts carrying the same `skos:prefLabel` are now reported whatever their definitions say.** A pair had to pass the label *and* the definition threshold, so an exact label match with independently worded definitions was dropped. This hid a real duplicate in voc4cat. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
-- **`voc-assistant compare` reported nothing at all.** An inverted condition skipped every concept, which made the subcommand useless for the job it exists for, screening a submission against the published vocabulary. Alternate labels of added concepts were skipped by a second defect in the same place and are now screened too. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
-- A concept pair is reported once, represented by its highest-scoring combination of labels, rather than by whichever combination happened to be found first. Where the scores tie, the preferred labels are shown, because two concepts sharing a `skos:prefLabel` is a graver finding than two sharing a `skos:altLabel`. Scores within 1e-6 count as a tie: embedding the same string twice does not give bit-identical results, and that noise must not decide either the label shown or the order of rows the report prints alike. Findings are sorted by label score, then definition score. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
-- The report is written as UTF-8. It used the locale encoding, so a non-ASCII label aborted the run on Windows. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
-- `--include-alt-labels` can be switched off, via `--no-alt-labels`. It was declared as a flag defaulting to true and was therefore always true. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- **`voc-assistant`: Two concepts carrying the same `skos:prefLabel` are now reported whatever their definitions say.** A pair had to pass the label *and* the definition threshold, so an exact label match with independently worded definitions was dropped. This hid a real duplicate in voc4cat. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- `voc-assistant`: The concept links in a report now come from the new `concept_url_template` in `idranges.toml`, which replaces a hardcoded URL of the voc4cat development documentation. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- **`voc-assistant compare` reported nothing at all.** An inverted condition skipped every concept, which made the subcommand useless. Alternate labels of added concepts were skipped by a second defect in the same place and are now screened too. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
 
 Changes:
 
-- **`--threshold-defs` now defaults to 0.5, down from 0.8.** Two independently worded definitions of the same thing score low, so the old value filtered far more than it should: measured over the 600 concepts of voc4cat, it rejected every pair in the 0.90-0.98 label band, the best of which scored 0.7907. At 0.5 the same run reports 19 pairs instead of 7. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- `voc-assistant`: **`--threshold-defs` now defaults to 0.5, down from 0.8.** Two independently worded definitions of the same thing score low, so the old value filtered far more than it should: measured over the 600 concepts of voc4cat, it rejected every pair in the 0.90-0.98 label band, where the best definition score was 0.7907. At 0.5 the same run reports 19 pairs instead of 7. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
 - **The `assistant` extra is renamed `sbert` and no longer installs `voc-assistant` itself.** `levenshtein` moved to the core dependencies (7 MB), so `voc-assistant` works with a plain `pip install voc4cat`, comparing text with the Levenshtein ratio. The extra now holds only `sentence-transformers` and `torch`, which the default `--method sbert` needs. Replace `voc4cat[assistant]` with `voc4cat[sbert]`; running `--method sbert` without it fails with a message naming both the extra and the flags that avoid it. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
-- `voc-assistant` uses the logging setup of `voc4cat` instead of configuring the root logger itself when the module is imported. It gained `-v`, `-q` and `--logfile` with the meaning they have in `voc4cat`, and `-V/--version`, which names the program as `voc4cat --version` does and states whether the `sbert` extra is installed. The same line ends the help, so `voc-assistant` on its own says whether the default `--method sbert` will work. The loggers of `httpx`, `huggingface_hub`, `sentence-transformers` and `transformers` are set to WARNING: a single run logged 33 HTTP request lines at INFO, against 6 lines of its own. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
-- `click` moved from the `assistant` extra to the core dependencies, and the scoring libraries are imported where they are used. The command line layer of `voc-assistant` no longer needs the extra to be imported, running it without the extra now names what to install, and `zuban` gained `disallow_untyped_decorators`. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
+- `voc-assistant` uses the logging setup of `voc4cat` instead of configuring the root logger itself when the module is imported. [#387](https://github.com/nfdi4cat/voc4cat-tool/issues/387)
 - Correct the instructions for syncing a vocabulary repository with voc4cat-template. The documented `git fetch <url> tag v26.x` copies the tags of the template into the vocabulary repository, where they are indistinguishable from its own release tags. [#381](https://github.com/nfdi4cat/voc4cat-tool/pull/381)
+- Correct the documentation on available SKOS relations (`skos:related` is not supported). [#390](https://github.com/nfdi4cat/voc4cat-tool/pull/390)
 
 ## Release 1.1.1 (2026-08-30)
 
@@ -105,7 +102,6 @@ Changes:
 - Fix openpyxl warning about worksheet selection.
 - Fix xlsx generation to mark only one sheet as selected.
 
-
 ## Release 1.0.0 (RC2) (2025-12-27)
 
 The following changes were made to RC1 based on testing it with the voc4cat vocabulary and Skosmos 3.0.
@@ -135,7 +131,7 @@ Features:
 - **New validation profile vp4cat-5.2** based on vocpub-5.2, now the default profile.
 - **Custom profile support:** Accept custom SHACL profile files for validation via CLI path or config.
 - **Improved provenance support**
-  - **Improved citation** of the concept's origin by properties `prov:wasInfluencedBy`, `prov:hadPrimarySource` and to reference its `dct:license` and the `dct:rightsHolder`. This allows to reference the source.
+  - **Improved citation** of the concept's origin by properties `prov:wasInfluencedBy`, `prov:hadPrimarySource` and to reference its `dct:license` and the `dct:rightsHolder`. This allows referencing the source.
   - **Git blame links:** Provenance information links to git blame URLs for traceability.
   - **Dynamic `skos:historyNote`:** Auto-generated from `PROV.wasInfluencedBy` and source vocab references.
 - **Deprecation handling:** Support for `owl:deprecated`, replaced-by IRIs, and obsolete markers.
@@ -189,11 +185,11 @@ Feature:
 
 Bug fix:
 
-- Tailing comma in ChildrenIRI raises error [#277](https://github.com/nfdi4cat/voc4cat-tool/issues/277), [#278](https://github.com/nfdi4cat/voc4cat-tool/pull/278)
+- Trailing comma in ChildrenIRI raises error [#277](https://github.com/nfdi4cat/voc4cat-tool/issues/277), [#278](https://github.com/nfdi4cat/voc4cat-tool/pull/278)
 
 Change:
 
-- Remove tailing and starting spaces from prefLabel and other xlsx table cells [#281](https://github.com/nfdi4cat/voc4cat-tool/issues/281), [#282](https://github.com/nfdi4cat/voc4cat-tool/pull/282)
+- Remove trailing and leading spaces from prefLabel and other xlsx table cells [#281](https://github.com/nfdi4cat/voc4cat-tool/issues/281), [#282](https://github.com/nfdi4cat/voc4cat-tool/pull/282)
 
 ## Release 0.9.1 (2025-03-19)
 
@@ -400,7 +396,7 @@ New features:
 
 Changes:
 
-- The use of logging levels was made more consistent: Success of an operation is now logged for all operation on INFO level. [#145](https://github.com/nfdi4cat/voc4cat-tool/pull/145)
+- The use of logging levels was made more consistent: Success of an operation is now logged for all operations on INFO level. [#145](https://github.com/nfdi4cat/voc4cat-tool/pull/145)
 - The log file will now always be written to the given directory. Previously the log file directory depended on the presence of the `--outdir` option. [#144](https://github.com/nfdi4cat/voc4cat-tool/pull/144)
 
 Bug fixes:
