@@ -1,5 +1,11 @@
 # Change log
 
+## Unreleased
+
+Changes:
+
+- The project setup guide names the required status check by its new name "xlsx file removed by CI", introduced in voc4cat-template v26.10.1. [#393](https://github.com/nfdi4cat/voc4cat-tool/pull/393)
+
 ## Release 1.2.0 (2026-09-22)
 
 Features:

@@ -101,7 +101,7 @@ On GitHub this can be achieved via branch protection rules.
 Settings → Branches → Add rule for `main` (or Settings → Rules → Rulesets, which is the newer equivalent):
 
 - Require pull request reviews before merging
-- Require status checks to pass, and list `No spreadsheet in the branch history` among them
+- Require status checks to pass, and list `xlsx file removed by CI` among them
 - Do not allow bypassing the above settings
 
 The last two belong together. The pipeline removes a submitted spreadsheet from the pull request branch by itself, but it can only do so when it is able to push to the branch; when it cannot - a failed conversion, or a fork owned by an organization - GitHub still reports the pull request as mergeable. The check reports that state, and only "do not allow bypassing" keeps a repository administrator from merging past it. In a ruleset the equivalent of that setting is an empty bypass list.
