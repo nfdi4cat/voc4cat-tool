@@ -4,7 +4,7 @@ import shutil
 from unittest import mock
 
 import pytest
-from rdflib import DCTERMS, OWL, SKOS, XSD, Graph, Literal
+from rdflib import DCTERMS, OWL, RDF, SKOS, XSD, Graph, Literal
 
 from tests.test_cli import CS_CYCLES
 from voc4cat.checks import Voc4catError
@@ -25,6 +25,20 @@ NEW_CONCEPT_TURTLE = (
     "    skos:inScheme <http://example.org/test/> ;\n"
     '    skos:prefLabel "new term"@en .\n'
 )
+
+
+def _concept_files(directory):
+    """Return the turtle files below directory that declare a skos:Concept, sorted.
+
+    Split output also holds collection files, and glob order follows the
+    filesystem, so tests must not pick the first globbed file.
+    """
+    return sorted(
+        f
+        for f in directory.rglob("*.ttl")
+        if (None, RDF.type, SKOS.Concept) in Graph().parse(f, format="turtle")
+    )
+
 
 # ===== Tests for no option set =====
 
@@ -217,8 +231,7 @@ def test_prov_from_git_adds_dates(git_repo_with_split_files, monkeypatch, caplog
     assert "-> added provenance from git to" in caplog.text
 
     # Check that dct:created and dct:modified were added to a concept file
-    # Use rglob to find files in partitioned subdirectories
-    concept_files = [f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"]
+    concept_files = _concept_files(vocdir)
     assert len(concept_files) > 0
 
     graph = Graph().parse(concept_files[0], format="turtle")
@@ -299,8 +312,7 @@ def test_prov_from_git_preserves_existing_created(
     main_cli(["transform", "--prov-from-git", "--inplace", str(vocdir)])
 
     # Modify a file to add a custom dct:created date
-    # Use rglob to find files in partitioned subdirectories
-    concept_files = [f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"]
+    concept_files = _concept_files(vocdir)
     test_file = concept_files[0]
     graph = Graph().parse(test_file, format="turtle")
 
@@ -334,8 +346,7 @@ def test_prov_from_git_updates_modified(git_repo_with_split_files, monkeypatch, 
 
     # Manually set a different dct:modified date in the file
     # (simulating an old date that differs from the current git modified date)
-    # Use rglob to find files in partitioned subdirectories
-    concept_files = [f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"]
+    concept_files = _concept_files(vocdir)
     test_file = concept_files[0]
     graph = Graph().parse(test_file, format="turtle")
 
@@ -393,19 +404,13 @@ def test_prov_from_git_with_outdir(git_repo_with_split_files, monkeypatch, caplo
     assert (target_dir / "concept_scheme.ttl").exists()
 
     # Check that original files were NOT modified (no dct:created/modified)
-    # Use rglob to find files in partitioned subdirectories
-    original_concept_files = [
-        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
-    ]
+    original_concept_files = _concept_files(vocdir)
     graph_original = Graph().parse(original_concept_files[0], format="turtle")
     concept_iri = next(iter(graph_original.subjects(None, SKOS.Concept)))
     assert len(list(graph_original.objects(concept_iri, DCTERMS.created))) == 0
 
     # Check that copied files HAVE dct:created/modified
-    # Use rglob to find files in partitioned subdirectories
-    copied_concept_files = [
-        f for f in target_dir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
-    ]
+    copied_concept_files = _concept_files(target_dir)
     graph_copied = Graph().parse(copied_concept_files[0], format="turtle")
     concept_iri_copied = next(iter(graph_copied.subjects(None, SKOS.Concept)))
     assert len(list(graph_copied.objects(concept_iri_copied, DCTERMS.created))) == 1
@@ -423,8 +428,7 @@ def test_prov_from_git_parent_directory(git_repo_with_split_files, monkeypatch, 
     assert "-> added provenance from git to" in caplog.text
 
     # Check that dct:created and dct:modified were added to a concept file
-    # Use rglob to find files in partitioned subdirectories
-    concept_files = [f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"]
+    concept_files = _concept_files(vocdir)
     assert len(concept_files) > 0
 
     graph = Graph().parse(concept_files[0], format="turtle")
@@ -464,9 +468,7 @@ def test_prov_from_git_follows_renames(tmp_path, datadir, monkeypatch, caplog):
     partition_dirs = [d for d in vocdir.iterdir() if d.is_dir()]
     assert len(partition_dirs) > 0
     partition_dir = partition_dirs[0]
-    concept_files = [
-        f for f in partition_dir.glob("*.ttl") if f.name != "concept_scheme.ttl"
-    ]
+    concept_files = _concept_files(partition_dir)
     assert len(concept_files) > 0
     old_file = concept_files[0]
     new_filename = "renamed_" + old_file.name
@@ -666,9 +668,7 @@ def test_diff_base_unchanged_keeps_dates(git_repo_with_split_files, monkeypatch)
     _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
 
     # Record original dates from a concept file
-    concept_files = sorted(
-        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
-    )
+    concept_files = _concept_files(vocdir)
     test_file = concept_files[0]
     graph = Graph().parse(test_file, format="turtle")
     concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
@@ -729,9 +729,7 @@ def test_diff_base_changed_gets_git_dates(git_repo_with_split_files, monkeypatch
     _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
 
     # Get concept files
-    concept_files = sorted(
-        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
-    )
+    concept_files = _concept_files(vocdir)
     changed_file = concept_files[0]
     unchanged_file = concept_files[1]
 
@@ -884,7 +882,7 @@ def test_diff_base_base_no_dates_falls_through(git_repo_with_split_files, monkey
     )
 
     # Content is unchanged, but base has no dates -> falls through to git-history
-    concept_files = [f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"]
+    concept_files = _concept_files(vocdir)
     graph = Graph().parse(concept_files[0], format="turtle")
     concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
 
@@ -906,9 +904,7 @@ def test_diff_base_with_outdir(git_repo_with_split_files, monkeypatch):
     _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
 
     # Record dates from a concept file
-    concept_files = sorted(
-        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
-    )
+    concept_files = _concept_files(vocdir)
     test_file = concept_files[0]
     graph_orig = Graph().parse(test_file, format="turtle")
     concept_iri = next(iter(graph_orig.subjects(None, SKOS.Concept)))
@@ -937,9 +933,7 @@ def test_diff_base_with_outdir(git_repo_with_split_files, monkeypatch):
     target_dir = outdir / vocdir.name
     assert target_dir.is_dir()
 
-    copied_concept_files = sorted(
-        f for f in target_dir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
-    )
+    copied_concept_files = _concept_files(target_dir)
     assert len(copied_concept_files) > 0
 
     # Dates should match the base (HEAD) since content is unchanged
@@ -1056,9 +1050,7 @@ def test_modified_date_overrides_git_date_for_changed_concept(
     _run_git(["git", "add", "."], repo_path)
     _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
 
-    concept_files = sorted(
-        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
-    )
+    concept_files = _concept_files(vocdir)
     changed_file = concept_files[0]
 
     graph = Graph().parse(changed_file, format="turtle")
@@ -1105,9 +1097,7 @@ def test_modified_date_dates_concept_scheme_when_a_concept_changed(
     cs_before = cs_file.read_text(encoding="utf-8")
 
     # Change a concept only; this leaves concept_scheme.ttl untouched.
-    concept_files = sorted(
-        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
-    )
+    concept_files = _concept_files(vocdir)
     graph = Graph().parse(concept_files[0], format="turtle")
     concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
     graph.add((concept_iri, SKOS.note, Literal("A new note", lang="en")))
@@ -1150,9 +1140,7 @@ def test_modified_date_leaves_unchanged_concept_alone(
     _run_git(["git", "add", "."], repo_path)
     _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
 
-    concept_files = sorted(
-        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
-    )
+    concept_files = _concept_files(vocdir)
     changed_file, unchanged_file = concept_files[0], concept_files[1]
 
     graph_unch = Graph().parse(unchanged_file, format="turtle")
@@ -1234,9 +1222,7 @@ def test_modified_date_keeps_created_from_git(git_repo_with_split_files, monkeyp
     _run_git(["git", "add", "."], repo_path)
     _run_git(["git", "commit", "-m", "Add provenance"], repo_path)
 
-    concept_files = sorted(
-        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
-    )
+    concept_files = _concept_files(vocdir)
     changed_file = concept_files[0]
     graph = Graph().parse(changed_file, format="turtle")
     concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
@@ -1276,9 +1262,7 @@ def test_modified_date_ignored_for_unchanged_file_with_dateless_base(
     repo_path, vocdir = git_repo_with_split_files
     monkeypatch.chdir(repo_path)
 
-    concept_files = sorted(
-        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
-    )
+    concept_files = _concept_files(vocdir)
     test_file = concept_files[0]
     rel_path = test_file.relative_to(repo_path).as_posix()
     git_date = _run_git(
@@ -1325,9 +1309,7 @@ def test_modified_date_dates_an_uncommitted_change(
     )
 
     # Edit a concept and leave it uncommitted, as the generating job does.
-    concept_files = sorted(
-        f for f in vocdir.rglob("*.ttl") if f.name != "concept_scheme.ttl"
-    )
+    concept_files = _concept_files(vocdir)
     changed_file = concept_files[0]
     graph = Graph().parse(changed_file, format="turtle")
     concept_iri = next(iter(graph.subjects(None, SKOS.Concept)))
