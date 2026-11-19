@@ -5,7 +5,7 @@
 Changes:
 
 - The project setup guide names the required status check by its new name "xlsx file removed by CI", introduced in voc4cat-template v26.10.1. [#393](https://github.com/nfdi4cat/voc4cat-tool/pull/393)
-- A security policy (SECURITY.md) describes how to report vulnerabilities privately.
+- A security policy (SECURITY.md) describes how to report vulnerabilities privately. [#399](https://github.com/nfdi4cat/voc4cat-tool/pull/399)
 
 ## Release 1.2.0 (2026-09-22)
 
