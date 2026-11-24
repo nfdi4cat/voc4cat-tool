@@ -4,8 +4,8 @@
 
 Fixes:
 
-- **A repeated collection row no longer replaces the collection's label and definition unnoticed.** `voc4cat check` on an xlsx file now also reports a collection IRI used more than once for the same language, as it already did for concepts. The converter keeps one row per IRI and language, so the later row silently replaced the earlier one. [#402](https://github.com/nfdi4cat/voc4cat-tool/issues/402)
-- **`voc4cat check` on an xlsx file now fails (exit 1) when a check fails.** It logged the error and saved the annotated file, but exited 0, so a CI pipeline went on to convert the file. [#402](https://github.com/nfdi4cat/voc4cat-tool/issues/402)
+- `voc4cat check` reports a collection IRI used twice for the same language, as it did for concepts. The converter silently kept only the later row. [#402](https://github.com/nfdi4cat/voc4cat-tool/issues/402)
+- `voc4cat check` on an xlsx file exits 1 when a check fails; it exited 0. [#402](https://github.com/nfdi4cat/voc4cat-tool/issues/402)
 
 Changes:
 
