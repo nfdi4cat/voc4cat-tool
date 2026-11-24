@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+Fixes:
+
+- `voc4cat check` reports a collection IRI used twice for the same language, as it did for concepts. The converter silently kept only the later row. [#402](https://github.com/nfdi4cat/voc4cat-tool/issues/402)
+- `voc4cat check` on an xlsx file exits 1 when a check fails; it exited 0. [#402](https://github.com/nfdi4cat/voc4cat-tool/issues/402)
+
 Changes:
 
 - The project setup guide names the required status check by its new name "xlsx file removed by CI", introduced in voc4cat-template v26.10.1. [#393](https://github.com/nfdi4cat/voc4cat-tool/pull/393)

@@ -40,7 +40,10 @@ def test_check_xlsx_with_cell_coloring(tmp_path, caplog, cs_duplicates_xlsx):
     dst = tmp_path / test_file
     shutil.copy(cs_duplicates_xlsx, dst)
 
-    with caplog.at_level(logging.ERROR):
+    with (
+        caplog.at_level(logging.ERROR),
+        pytest.raises(Voc4catError, match="xlsx check failed"),
+    ):
         main_cli(["check", "--inplace", str(dst)])
 
     # Check that the error was logged (IRI may vary depending on the source TTL)
@@ -69,6 +72,30 @@ def test_check_xlsx_with_cell_coloring(tmp_path, caplog, cs_duplicates_xlsx):
         "Second duplicate language cell should be colored orange"
     )
 
+    wb.close()
+
+
+def test_check_xlsx_rejects_repeated_collection_language(
+    tmp_path, caplog, cs_collection_duplicates_xlsx
+):
+    """A second collection row for the same language fails the check."""
+    dst = tmp_path / "concept-scheme-collection-duplicates.xlsx"
+    shutil.copy(cs_collection_duplicates_xlsx, dst)
+
+    with (
+        caplog.at_level(logging.ERROR),
+        pytest.raises(Voc4catError, match="xlsx check failed"),
+    ):
+        main_cli(["check", "--inplace", str(dst)])
+
+    assert "Same Collection IRI" in caplog.text
+    assert 'used more than once for language "en"' in caplog.text
+
+    wb = load_workbook(dst)
+    ws = wb["Collections"]
+    expected_color = "00FFCC00"
+    for cell in ("A6", "B6", "A7", "B7"):
+        assert ws[cell].fill.start_color.rgb == expected_color, cell
     wb.close()
 
 

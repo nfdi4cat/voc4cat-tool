@@ -8,6 +8,7 @@ from pathlib import Path
 
 import openpyxl
 from openpyxl.styles import PatternFill
+from openpyxl.worksheet.worksheet import Worksheet
 
 from voc4cat import config
 from voc4cat.checks import (
@@ -24,7 +25,14 @@ from voc4cat.convert import (
     resolve_profile,
     validate_with_profile,
 )
-from voc4cat.models_v1 import CONCEPTS_READ_CONFIG, CONCEPTS_SHEET_NAME, ConceptV1
+from voc4cat.models_v1 import (
+    COLLECTIONS_READ_CONFIG,
+    COLLECTIONS_SHEET_NAME,
+    CONCEPTS_READ_CONFIG,
+    CONCEPTS_SHEET_NAME,
+    CollectionV1,
+    ConceptV1,
+)
 from voc4cat.transform import join_split_turtle
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
@@ -39,64 +47,40 @@ from voc4cat.xlsx_common import (
 logger = logging.getLogger(__name__)
 
 
-def check_xlsx(fpath: Path, outfile: Path) -> None:
+def _check_iri_language_unique(
+    ws: Worksheet, data_start_row: int, entity: str, color: PatternFill
+) -> int:
     """
-    Complex checks of the xlsx file not handled by pydantic model validation
+    Report rows of a sheet that repeat an IRI for the same language.
 
-    Checks/validation implemented here need/use information from several rows
-    and can therefore not be easily done in models.py with pydantic.
-    However, SHACL validation does also catch the problem, at least in pre-
-    liminary testing. So this function may get removed later. Doing the check
-    in xlsx has the advantage that the cell position can be added to the
-    validation message which would not work with SHACL validation.
-
-    For concepts:
-    - The "Concept IRI" must be unique. However, it can be present in several
-      rows as long as the languages in the rows with the same IRI are
-      different. This condition is fulfilled when no language is used more
-      than once per concept.
+    An IRI may be present in several rows as long as each row has a different
+    language. The converter keeps one label and definition per IRI and
+    language, so a repeated row would silently replace the data of the
+    earlier one. Both rows are colored and the number of repeats is returned.
     """
-    logger.debug("Running check of Concepts sheet for file %s", fpath)
-    wb = openpyxl.load_workbook(fpath)
-    ws = wb["Concepts"]
-    color = PatternFill("solid", start_color="00FFCC00")  # orange
-
-    # Calculate data start row dynamically using xlsx-pydantic infrastructure
-    field_analyses = XLSXFieldAnalyzer.analyze_model(ConceptV1)
-    fields = list(field_analyses.values())
-    row_calculator = XLSXRowCalculator(CONCEPTS_READ_CONFIG)
-    data_start_row = row_calculator.get_data_start_row(fields)
-
     subsequent_empty_rows = 0
-    seen_concept_iris: list[str] = []
+    seen_iris: list[str] = []
     failed_checks = 0
     # v1.0 template: data starts after header row, columns are IRI(A), Language(B)
     for row in ws.iter_rows(min_row=data_start_row, max_col=2):  # pragma: no branch
         if row[0].value and row[1].value:
-            concept_iri, lang = (
-                c.value.strip() if c.value is not None else "" for c in row
-            )
-            # Check that IRI is valid.
-            #            config.IDRANGES
-            # Check that IRI is used for exactly one concept.
-            new_concept_iri = f'"{concept_iri}"@{lang.lower()}'
-            if new_concept_iri in seen_concept_iris:
+            iri, lang = (c.value.strip() if c.value is not None else "" for c in row)
+            new_iri = f'"{iri}"@{lang.lower()}'
+            if new_iri in seen_iris:
                 failed_checks += 1
                 msg = (
-                    f'Same Concept IRI "{concept_iri}" used more than once for '
+                    f'Same {entity} IRI "{iri}" used more than once for '
                     f'language "{lang}"'
                 )
                 logger.error(msg)
                 # colorize problematic cells (columns A and B for IRI and Language)
                 row[0].fill = color
                 row[1].fill = color
-                previously_seen_in_row = data_start_row + seen_concept_iris.index(
-                    new_concept_iri
-                )
+                previously_seen_in_row = data_start_row + seen_iris.index(new_iri)
                 ws[f"A{previously_seen_in_row}"].fill = color
                 ws[f"B{previously_seen_in_row}"].fill = color
             else:
-                seen_concept_iris.append(new_concept_iri)
+                seen_iris.append(new_iri)
 
             subsequent_empty_rows = 0
 
@@ -104,19 +88,57 @@ def check_xlsx(fpath: Path, outfile: Path) -> None:
         elif subsequent_empty_rows < 2:  # noqa: PLR2004
             subsequent_empty_rows += 1
         else:
-            subsequent_empty_rows = 0
             break
 
-    if failed_checks:
+    return failed_checks
+
+
+def check_xlsx(fpath: Path, outfile: Path) -> None:
+    """
+    Complex checks of the xlsx file not handled by pydantic model validation
+
+    Checks/validation implemented here need/use information from several rows
+    and can therefore not be easily done in models.py with pydantic.
+    Doing the check in xlsx has the advantage that the cell position can be
+    added to the validation message which would not work with SHACL validation.
+
+    For concepts and collections:
+    - The IRI must be unique. However, it can be present in several rows as
+      long as the languages in the rows with the same IRI are different. This
+      condition is fulfilled when no language is used more than once per IRI.
+
+    If a check fails, the file with the problematic cells colored is saved as
+    `outfile` and a Voc4catError is raised.
+    """
+    wb = openpyxl.load_workbook(fpath)
+    color = PatternFill("solid", start_color="00FFCC00")  # orange
+
+    failed_sheet = ""
+    for sheet_name, model, read_config, entity in (
+        (CONCEPTS_SHEET_NAME, ConceptV1, CONCEPTS_READ_CONFIG, "Concept"),
+        (COLLECTIONS_SHEET_NAME, CollectionV1, COLLECTIONS_READ_CONFIG, "Collection"),
+    ):
+        logger.debug("Running check of %s sheet for file %s", sheet_name, fpath)
+        # Calculate data start row dynamically using xlsx-pydantic infrastructure
+        fields = list(XLSXFieldAnalyzer.analyze_model(model).values())
+        data_start_row = XLSXRowCalculator(read_config).get_data_start_row(fields)
+        failed = _check_iri_language_unique(
+            wb[sheet_name], data_start_row, entity, color
+        )
+        if failed and not failed_sheet:
+            failed_sheet = sheet_name
+
+    if failed_sheet:
         wb.save(outfile)
         logger.info("-> Saved file with highlighted errors as %s", outfile)
         # Extend size (length) of tables in all sheets
         adjust_all_tables_length(
             outfile,
             rows_pre_allocated=config.xlsx_rows_pre_allocated,
-            active_sheet=CONCEPTS_SHEET_NAME,
+            active_sheet=failed_sheet,
         )
-        return
+        msg = f"xlsx check failed for file: {fpath}"
+        raise Voc4catError(msg)
 
     logger.info("-> xlsx check passed for file: %s", fpath)
 

@@ -137,6 +137,30 @@ def cs_duplicates_xlsx(cs_cycles_xlsx, tmp_path_factory) -> Path:
     return output_file
 
 
+@pytest.fixture(scope="session")
+def cs_collection_duplicates_xlsx(cs_cycles_xlsx, tmp_path_factory) -> Path:
+    """Generate xlsx whose Collections sheet repeats a collection IRI and language.
+
+    The first collection row (row 6) is copied to row 7 with a different label
+    and definition, as a contributor adding a second "en" row would do.
+    """
+    output_dir = tmp_path_factory.mktemp("xlsx_collection_duplicates")
+    output_file = output_dir / "concept-scheme-collection-duplicates.xlsx"
+    shutil.copy(cs_cycles_xlsx, output_file)
+
+    wb = load_workbook(output_file)
+    ws = wb["Collections"]
+    ws.insert_rows(7)
+    for col_idx in range(1, ws.max_column + 1):
+        ws.cell(row=7, column=col_idx).value = ws.cell(row=6, column=col_idx).value
+    ws["C7"] = "another label"
+    ws["D7"] = "Another definition."
+
+    wb.save(output_file)
+    wb.close()
+    return output_file
+
+
 @pytest.fixture
 def temp_config():
     """
