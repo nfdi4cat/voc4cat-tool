@@ -1,6 +1,6 @@
 # Schemas
 
-Technical specifications for configuration and xlsx template formats.
+Technical specifications for configuration and xlsx template formats, and the SHACL profile that `voc4cat check` validates against.
 
 ## Configuration (idranges.toml)
 
@@ -265,7 +265,7 @@ homepage = "https://nfdi4cat.github.io/voc4cat/"
 catalogue_pid = "https://doi.org/10.5281/zenodo.8313340"
 documentation = "https://nfdi4cat.github.io/voc4cat/"
 issue_tracker = "https://github.com/nfdi4cat/voc4cat/issues"
-conforms_to = "https://w3id.org/nfdi4cat/vp4cat/"
+conforms_to = "https://w3id.org/nfdi4cat/vp4cat"
 
 [vocabs.voc4cat.checks]
 allow_delete = false
@@ -479,3 +479,89 @@ The prefixes come from the `idranges.toml` configuration enriched with the defau
 
 - **Use CURIEs**: Write `voc4cat:0001234` instead of full IRIs for readability
 - **Save before converting**: Make sure to save your xlsx file before running `voc4cat convert`
+
+---
+
+(vp4cat-profile)=
+## SHACL profile (vp4cat)
+
+`voc4cat check` validates turtle files against a SHACL profile.
+The default is vp4cat, a profile derived from the [vocpub profile](https://github.com/AGLDWG/vocpub-profile) of the Australian Government Linked Data Working Group (AGLDWG).
+vp4cat is published at `https://w3id.org/nfdi4cat/vp4cat`, which resolves to the current version.
+Each version also has a version IRI of the form `https://w3id.org/nfdi4cat/vp4cat/5.3/`.
+
+A vocabulary declares the profile it conforms to with `conforms_to` in `idranges.toml`, which becomes `dct:conformsTo` on the concept scheme.
+The declaration is metadata only: the profile that `voc4cat check` validates against is selected as described in {ref}`vp4cat-profile-selection`.
+
+### Bundled profiles
+
+`voc4cat check --listprofiles` lists these tokens with the paths of their files.
+
+:::{table}
+:align: left
+
+| Token | Profile |
+|-------|---------|
+| `vp4cat` | Version-neutral copy of the current vp4cat version |
+| `vp4cat-5.3` | vp4cat 5.3, based on vocpub 5.2; allows one `skos:prefLabel` per language |
+| `vp4cat-5.2` | vp4cat 5.2, based on vocpub 5.2; requires exactly one `skos:prefLabel` per concept |
+| `vocpub-5.2` | Original AGLDWG vocpub 5.2, as reference |
+| `vocpub-4.7` | Original AGLDWG vocpub 4.7, as reference |
+
+:::
+
+Up to vp4cat 5.2 the version number matched the vocpub release the profile was based on.
+From vp4cat 5.3 on, vp4cat carries its own version number.
+
+The default profile of `voc4cat check` per release of voc4cat-tool:
+
+:::{table}
+:align: left
+
+| voc4cat-tool | Default profile |
+|--------------|-----------------|
+| 1.1.0 and later | `vp4cat-5.3` |
+| 1.0.x | `vp4cat-5.2` |
+| 0.8.0 to 0.10.x | `vocpub-4.7` |
+| 0.7.x | vocpub before 3.0, no longer bundled since 1.0.0 |
+
+:::
+
+(vp4cat-profile-selection)=
+### Selecting a profile
+
+In order of precedence:
+
+1. `--profile` with a token pins a bundled profile, e.g. `--profile vp4cat-5.2`.
+   `--profile vp4cat` follows the current vp4cat version.
+   `--profile` also accepts the path of a SHACL file.
+2. `profile_local_path` in `idranges.toml` names a SHACL file, relative to `idranges.toml`, for a vocabulary.
+3. Otherwise the default profile of the installed voc4cat-tool release applies.
+
+By default any validation result fails the check, including warnings for SHOULD requirements.
+`--fail-at-level` raises the threshold, see the [CLI reference](cli.md).
+
+### Differences to vocpub
+
+vp4cat 5.3 differs from vocpub 5.2 as follows:
+
+- The profile IRI is in the NFDI4Cat namespace, `https://w3id.org/nfdi4cat/vp4cat`.
+- Requirement 2.4.3b accepts `schema:url` as an alternative to `schema:email` for persons.
+- Requirement 2.3.4 also accepts `prov:hadPrimarySource` for the origin of a concept.
+- Requirement 2.2.2 also accepts an IRI as value of `dct:provenance`.
+- `skos:prefLabel` has no `sh:maxCount`, so a concept can be labelled in several languages.
+  `sh:uniqueLang` still permits one label per language, which is the rule SKOS states.
+  vocpub keeps `sh:maxCount` in its default validator and provides `validators/validator.multilang.ttl` for the multilingual case.
+- The VocEdit SHACL UI shapes (`Shui-*`, the property groups and the `dash:` annotations) are removed.
+  They made pySHACL report every result on `skos:prefLabel` and `skos:definition` twice.
+  vocpub keeps them in a separate `validators/shui.ttl`.
+
+vp4cat 5.2 differs from vocpub 5.2 in the same points, except that it keeps `sh:maxCount 1` on `skos:prefLabel` and the UI shapes.
+
+The validation messages keep the wording of vocpub.
+For `skos:prefLabel` they still say "exactly one title", although vp4cat 5.3 accepts one label per language.
+
+### Licence
+
+The profile files in `src/voc4cat/profile/` are licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), unlike the code of voc4cat-tool, which is BSD-3-Clause licensed.
+The vocpub profile was created by [Nicholas J. Car](https://orcid.org/0000-0002-8742-7730).

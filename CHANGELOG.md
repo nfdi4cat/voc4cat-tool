@@ -6,6 +6,7 @@ Changes:
 
 - The project setup guide names the required status check by its new name "xlsx file removed by CI", introduced in voc4cat-template v26.10.1. [#393](https://github.com/nfdi4cat/voc4cat-tool/pull/393)
 - A security policy (SECURITY.md) describes how to report vulnerabilities privately. [#399](https://github.com/nfdi4cat/voc4cat-tool/pull/399)
+- The schemas reference documents the vp4cat SHACL profile: the bundled versions, the default per release, how to select a profile, the differences to vocpub and the licence of the profile files. [#400](https://github.com/nfdi4cat/voc4cat-tool/issues/400)
 
 ## Release 1.2.0 (2026-09-22)
 

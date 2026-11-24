@@ -110,6 +110,7 @@ This creates `myvocab.ttl` containing your vocabulary in SKOS format.
 voc4cat check --config idranges.toml myvocab.ttl
 ```
 
+The profile is described in {ref}`vp4cat-profile`.
 With this minimal configuration, the check reports a **violation**. This is expected and demonstrates what the vp4cat profile requires for a complete vocabulary:
 
 - **creator**: Must be an IRI (ORCID or ROR ID), not just a name
