@@ -6,7 +6,7 @@ including field analysis, serialization engine, metadata handling, and converter
 """
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Annotated
 
 import pytest
@@ -353,7 +353,7 @@ class TestXLSXConverters:
     def test_datetime_converters(self):
         """Test datetime to/from ISO string conversion."""
 
-        test_dt = datetime(2025, 6, 15, 10, 30, 0, tzinfo=timezone.utc)
+        test_dt = datetime(2025, 6, 15, 10, 30, 0, tzinfo=UTC)
         iso_str = XLSXConverters.datetime_to_iso_string(test_dt)
         assert iso_str == "2025-06-15T10:30:00"
         assert XLSXConverters.iso_string_to_datetime(iso_str) == test_dt

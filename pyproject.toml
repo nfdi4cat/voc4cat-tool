@@ -19,7 +19,7 @@ maintainers = [
 license = "BSD-3-Clause"
 license-files = [ "LICENSE" ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 keywords = ["SKOS", "vocabulary", "spreadsheet", "xlsx", "linked data", "rdf"]
 
@@ -29,11 +29,11 @@ classifiers = [
   "Environment :: Console",
   "Intended Audience :: Science/Research",
   "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
 ]
 
 dependencies = [
@@ -48,8 +48,6 @@ dependencies = [
   "pydantic >= 2.10",
   "pyshacl",
   "rdflib",
-  "tomli>=1.1.0; python_version < '3.11'",
-  "isodate >=0.7.2, <1.0.0; python_version < '3.11'",
 ]
 
 dynamic = ["version"]
@@ -206,8 +204,8 @@ exclude = [
     "*.md",
 ]
 
-# Assume Python 3.10 syntax and semantics for linting.
-target-version = "py310"
+# Assume Python 3.11 syntax and semantics for linting.
+target-version = "py311"
 
 # Same as Black.
 line-length = 88

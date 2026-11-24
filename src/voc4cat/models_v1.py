@@ -4,7 +4,7 @@ These models define the structure of the v1.0 xlsx template using XLSXMetadata
 annotations to specify column headers, SKOS meanings, and field descriptions.
 """
 
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict
@@ -32,7 +32,7 @@ class BaseModelV1(BaseModel):
 # === Obsoletion Reason Enums ===
 
 
-class ConceptObsoletionReason(str, Enum):
+class ConceptObsoletionReason(StrEnum):
     """Reasons for obsoleting a concept."""
 
     UNCLEAR = "The concept is not clearly defined and usage has been inconsistent."
@@ -43,7 +43,7 @@ class ConceptObsoletionReason(str, Enum):
     LACK_OF_EVIDENCE = "Lack of evidence that this function/process/component exists."
 
 
-class CollectionObsoletionReason(str, Enum):
+class CollectionObsoletionReason(StrEnum):
     """Reasons for obsoleting a collection."""
 
     UNCLEAR = "The collection is not clearly defined and usage has been inconsistent."
@@ -52,7 +52,7 @@ class CollectionObsoletionReason(str, Enum):
     CONVERTED_TO_CONCEPT = "This collection was converted to a concept."
 
 
-class OrderedChoice(str, Enum):
+class OrderedChoice(StrEnum):
     """Whether a collection is ordered."""
 
     YES = "Yes"
