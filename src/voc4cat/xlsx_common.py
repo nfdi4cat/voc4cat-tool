@@ -60,6 +60,10 @@ IntSeparatedConverters = tuple[Callable[[list[int]], str], Callable[[str], list[
 
 
 # Exception classes
+class XLSXImportError(ValueError):
+    """Raised when spreadsheet rows fail model validation or deserialization."""
+
+
 class XLSXSerializationError(ValueError):
     """Raised when custom serialization fails."""
 

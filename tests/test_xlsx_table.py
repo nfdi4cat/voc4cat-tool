@@ -15,6 +15,7 @@ from voc4cat.xlsx_api import export_to_xlsx, import_from_xlsx
 from voc4cat.xlsx_common import (
     MetadataToggleConfig,
     MetadataVisibility,
+    XLSXImportError,
     XLSXMetadata,
 )
 from voc4cat.xlsx_table import XLSXTableConfig
@@ -76,6 +77,35 @@ class TestTableFormat:
         """Test error handling for empty data."""
         with pytest.raises(ValueError, match="No data provided"):
             export_to_xlsx([], temp_file, format_type="table")
+
+    @pytest.mark.parametrize(
+        ("start_row", "title", "data_row"),
+        [(1, None, 2), (1, "Items", 4), (4, "Items", 7)],
+    )
+    def test_import_errors_use_spreadsheet_rows(
+        self, temp_file, start_row, title, data_row
+    ):
+        config = XLSXTableConfig(start_row=start_row, title=title)
+        export_to_xlsx(
+            [SimpleModel(name="first", value=1), SimpleModel(name="second", value=2)],
+            temp_file,
+            format_type="table",
+            config=config,
+        )
+        wb = load_workbook(temp_file)
+        ws = wb["SimpleModel"]
+        assert ws.cell(row=data_row + 1, column=2).value == 2
+        ws.cell(row=data_row + 1, column=2).value = None
+        wb.save(temp_file)
+        wb.close()
+
+        with pytest.raises(XLSXImportError, match="Import errors") as exc_info:
+            import_from_xlsx(temp_file, SimpleModel, format_type="table", config=config)
+
+        assert "sheet 'SimpleModel'" in str(exc_info.value)
+        assert f"Row {data_row + 1}: Required field 'value' is empty" in str(
+            exc_info.value
+        )
 
     def test_table_missing_sheet_error(self, temp_file):
         """Test error handling for missing sheet."""

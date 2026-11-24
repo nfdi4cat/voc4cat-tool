@@ -17,6 +17,7 @@ from voc4cat.docs import docs
 from voc4cat.gen_template import template_cmd
 from voc4cat.transform import transform
 from voc4cat.utils import ConversionError
+from voc4cat.xlsx_common import XLSXImportError
 
 logger = logging.getLogger(__name__)
 
@@ -523,7 +524,7 @@ def run_cli_app(raw_args: Sequence[str] | None = None) -> None:
         raw_args = sys.argv[1:]
     try:
         main_cli(raw_args)
-    except (Voc4catError, ConversionError) as e:
+    except (Voc4catError, ConversionError, XLSXImportError) as e:
         logger.error("Terminating with error: %s", e)  # noqa: TRY400
         sys.exit(1)
     except Exception:  # pragma: no cover

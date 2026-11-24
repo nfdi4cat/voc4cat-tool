@@ -12,8 +12,9 @@ from tests.test_cli import (
     CS_CYCLES,
 )
 from voc4cat.checks import Voc4catError
-from voc4cat.cli import main_cli
+from voc4cat.cli import main_cli, run_cli_app
 from voc4cat.convert import get_bundled_profiles
+from voc4cat.convert_v1 import rdf_to_excel_v1
 from voc4cat.utils import ConversionError
 
 CS_SIMPLE_TURTLE = "concept-scheme-simple.ttl"
@@ -70,6 +71,43 @@ def test_check_xlsx_with_cell_coloring(tmp_path, caplog, cs_duplicates_xlsx):
     )
 
     wb.close()
+
+
+@pytest.mark.parametrize("command", ["check", "convert"])
+@pytest.mark.parametrize(
+    ("sheet", "cell", "field"),
+    [
+        ("Concepts", "C7", "preferred_label"),
+        ("Concepts", "D7", "definition"),
+        ("Collections", "C7", "preferred_label"),
+        ("Collections", "D7", "definition"),
+    ],
+)
+@pytest.mark.parametrize("empty", [None, " \t "])
+def test_required_xlsx_cells_report_sheet_and_row(
+    tmp_path, datadir, caplog, temp_config, command, sheet, cell, field, empty
+):
+    dst = tmp_path / "myvocab.xlsx"
+    rdf_to_excel_v1(datadir / "v1-test-comprehensive.ttl", dst)
+    wb = load_workbook(dst)
+    assert wb[sheet][cell].value
+    wb[sheet][cell] = empty
+    wb.save(dst)
+    wb.close()
+
+    args = [command, "--config", str(datadir / "valid_idranges.toml"), str(dst)]
+    if command == "check":
+        args.append("--inplace")
+    with caplog.at_level(logging.INFO), pytest.raises(SystemExit) as exc_info:
+        run_cli_app(args)
+
+    assert exc_info.value.code == 1
+    assert f"sheet '{sheet}'" in caplog.text
+    assert f"Row 7: Required field '{field}' is empty" in caplog.text
+    assert "xlsx check passed" not in caplog.text
+    assert "Unexpected error" not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
+    assert not dst.with_suffix(".ttl").exists()
 
 
 def test_check_skos_rdf(datadir, tmp_path, caplog):

@@ -29,6 +29,7 @@ from .xlsx_common import (
     XLSXDeserializationError,
     XLSXFieldAnalyzer,
     XLSXFormatter,
+    XLSXImportError,
     XLSXProcessor,
     XLSXSerializationError,
 )
@@ -669,7 +670,8 @@ class XLSXTableFormatter(XLSXFormatter[XLSXTableConfig]):
         models = []
         errors = []
 
-        for row_idx, row_data in enumerate(data_rows, start=self.config.start_row + 1):
+        data_start_row = self.row_calculator.get_data_start_row(fields)
+        for row_idx, row_data in enumerate(data_rows, start=data_start_row):
             try:
                 model_data = self._convert_row_to_model_data(
                     row_data, fields, model_class
@@ -682,8 +684,11 @@ class XLSXTableFormatter(XLSXFormatter[XLSXTableConfig]):
                 errors.append(f"Row {row_idx}: {e}")
 
         if errors:
-            error_msg = "Import errors found:\n" + "\n".join(errors)
-            raise ValueError(error_msg)
+            error_msg = (
+                f"Import errors found in sheet '{worksheet.title}':\n"
+                + "\n".join(errors)
+            )
+            raise XLSXImportError(error_msg)
 
         return models
 

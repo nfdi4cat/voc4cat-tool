@@ -24,7 +24,13 @@ from voc4cat.convert import (
     resolve_profile,
     validate_with_profile,
 )
-from voc4cat.models_v1 import CONCEPTS_READ_CONFIG, CONCEPTS_SHEET_NAME, ConceptV1
+from voc4cat.convert_v1 import read_collections_v1, read_concepts_v1
+from voc4cat.models_v1 import (
+    COLLECTIONS_SHEET_NAME,
+    CONCEPTS_READ_CONFIG,
+    CONCEPTS_SHEET_NAME,
+    ConceptV1,
+)
 from voc4cat.transform import join_split_turtle
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
@@ -41,9 +47,9 @@ logger = logging.getLogger(__name__)
 
 def check_xlsx(fpath: Path, outfile: Path) -> None:
     """
-    Complex checks of the xlsx file not handled by pydantic model validation
+    Validate Concepts and Collections rows, then check for duplicate concept IRIs.
 
-    Checks/validation implemented here need/use information from several rows
+    The additional checks below need/use information from several rows
     and can therefore not be easily done in models.py with pydantic.
     However, SHACL validation does also catch the problem, at least in pre-
     liminary testing. So this function may get removed later. Doing the check
@@ -56,8 +62,14 @@ def check_xlsx(fpath: Path, outfile: Path) -> None:
       different. This condition is fulfilled when no language is used more
       than once per concept.
     """
-    logger.debug("Running check of Concepts sheet for file %s", fpath)
+    logger.debug("Running XLSX checks for file %s", fpath)
     wb = openpyxl.load_workbook(fpath)
+    for sheet_name, read_sheet in (
+        (CONCEPTS_SHEET_NAME, read_concepts_v1),
+        (COLLECTIONS_SHEET_NAME, read_collections_v1),
+    ):
+        if sheet_name in wb.sheetnames:
+            read_sheet(fpath)
     ws = wb["Concepts"]
     color = PatternFill("solid", start_color="00FFCC00")  # orange
 
