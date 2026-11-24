@@ -16,8 +16,8 @@ import shutil
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, TypedDict, cast
 from typing import Literal as TypingLiteral
-from typing import TypedDict, cast
 
 import curies
 from openpyxl import load_workbook
@@ -92,6 +92,7 @@ from voc4cat.models_v1 import (
 from voc4cat.utils import (
     EXCEL_FILE_ENDINGS,
     RDF_FILE_ENDINGS,
+    ConversionError,
     get_template_sheet_names,
     reorder_sheets_with_template,
 )
@@ -1777,6 +1778,32 @@ def read_concept_scheme_v1(filepath: Path) -> ConceptSchemeV1:
     )
 
 
+def _import_table(
+    filepath: Path, model: type[BaseModel], read_config: XLSXTableConfig, sheet: str
+) -> list[Any]:
+    """Read the rows of a table sheet as model instances.
+
+    Raises ConversionError naming the sheet if a row does not validate, e.g.
+    because a required cell is empty.
+    """
+    try:
+        # import_from_xlsx() returns Any because it serves several formats; the
+        # "table" format always yields a list of the requested model.
+        return cast(
+            "list[Any]",
+            import_from_xlsx(
+                filepath,
+                model,
+                format_type="table",
+                config=read_config,
+                sheet_name=sheet,
+            ),
+        )
+    except ValueError as exc:
+        msg = f'Invalid data in sheet "{sheet}" of {filepath.name}: {exc}'
+        raise ConversionError(msg) from exc
+
+
 def read_concepts_v1(filepath: Path) -> list[ConceptV1]:
     """Read Concepts from v1.0 XLSX file.
 
@@ -1786,18 +1813,7 @@ def read_concepts_v1(filepath: Path) -> list[ConceptV1]:
     Returns:
         List of ConceptV1 model instances (one per row).
     """
-    # import_from_xlsx() returns Any because it serves several formats; the
-    # "table" format always yields a list of the requested model.
-    return cast(
-        "list[ConceptV1]",
-        import_from_xlsx(
-            filepath,
-            ConceptV1,
-            format_type="table",
-            config=CONCEPTS_READ_CONFIG,
-            sheet_name=CONCEPTS_SHEET_NAME,
-        ),
-    )
+    return _import_table(filepath, ConceptV1, CONCEPTS_READ_CONFIG, CONCEPTS_SHEET_NAME)
 
 
 def read_collections_v1(filepath: Path) -> list[CollectionV1]:
@@ -1809,17 +1825,8 @@ def read_collections_v1(filepath: Path) -> list[CollectionV1]:
     Returns:
         List of CollectionV1 model instances (one per row).
     """
-    # import_from_xlsx() returns Any because it serves several formats; the
-    # "table" format always yields a list of the requested model.
-    return cast(
-        "list[CollectionV1]",
-        import_from_xlsx(
-            filepath,
-            CollectionV1,
-            format_type="table",
-            config=COLLECTIONS_READ_CONFIG,
-            sheet_name=COLLECTIONS_SHEET_NAME,
-        ),
+    return _import_table(
+        filepath, CollectionV1, COLLECTIONS_READ_CONFIG, COLLECTIONS_SHEET_NAME
     )
 
 
@@ -1832,18 +1839,7 @@ def read_mappings_v1(filepath: Path) -> list[MappingV1]:
     Returns:
         List of MappingV1 model instances (one per row).
     """
-    # import_from_xlsx() returns Any because it serves several formats; the
-    # "table" format always yields a list of the requested model.
-    return cast(
-        "list[MappingV1]",
-        import_from_xlsx(
-            filepath,
-            MappingV1,
-            format_type="table",
-            config=MAPPINGS_READ_CONFIG,
-            sheet_name=MAPPINGS_SHEET_NAME,
-        ),
-    )
+    return _import_table(filepath, MappingV1, MAPPINGS_READ_CONFIG, MAPPINGS_SHEET_NAME)
 
 
 def read_prefixes_v1(filepath: Path) -> list[PrefixV1]:
@@ -1855,18 +1851,7 @@ def read_prefixes_v1(filepath: Path) -> list[PrefixV1]:
     Returns:
         List of PrefixV1 model instances.
     """
-    # import_from_xlsx() returns Any because it serves several formats; the
-    # "table" format always yields a list of the requested model.
-    return cast(
-        "list[PrefixV1]",
-        import_from_xlsx(
-            filepath,
-            PrefixV1,
-            format_type="table",
-            config=PREFIXES_READ_CONFIG,
-            sheet_name=PREFIXES_SHEET_NAME,
-        ),
-    )
+    return _import_table(filepath, PrefixV1, PREFIXES_READ_CONFIG, PREFIXES_SHEET_NAME)
 
 
 # --- CURIE Handling ---

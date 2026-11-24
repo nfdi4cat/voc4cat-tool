@@ -4,6 +4,7 @@ import shutil
 from unittest import mock
 
 import pytest
+from openpyxl import load_workbook
 
 from voc4cat.checks import Voc4catError
 from voc4cat.cli import main_cli, run_cli_app
@@ -109,3 +110,58 @@ def test_invalid_outdir(monkeypatch, datadir, tmp_path, caplog):
     ):
         main_cli(["transform", "--outdir", str(tmp_path / "README.md"), CS_CYCLES])
     assert "Outdir must be a directory but it is a file." in caplog.text
+
+
+@pytest.mark.parametrize("command", ["check", "convert"])
+@pytest.mark.parametrize(
+    ("sheet", "edits", "field", "row"),
+    [
+        ("Concepts", {"D7": None}, "definition", 7),
+        ("Concepts", {"C7": None}, "preferred_label", 7),
+        ("Collections", {"D6": None}, "definition", 6),
+        ("Mappings", {"B6": "ex:other"}, "concept_iri", 6),
+    ],
+    ids=[
+        "concept definition",
+        "concept label",
+        "collection definition",
+        "mapping concept",
+    ],
+)
+def test_empty_required_cell_is_reported(
+    datadir,
+    tmp_path,
+    caplog,
+    temp_config,
+    cs_cycles_xlsx,
+    command,
+    sheet,
+    edits,
+    field,
+    row,
+):
+    """An empty required cell ends the command with an error naming sheet and row."""
+    # Conversion needs the vocabulary's config for the concept scheme metadata.
+    config = temp_config
+    config.load_config(datadir / "valid_idranges.toml")
+    config.IDRANGES.vocabs["concept-scheme-with-cycles"] = config.IDRANGES.vocabs.pop(
+        "myvocab"
+    )
+    config.load_config(config=config.IDRANGES)
+    xlsx = tmp_path / CS_CYCLES
+    shutil.copy(cs_cycles_xlsx, xlsx)
+    wb = load_workbook(xlsx)
+    for cell, value in edits.items():
+        wb[sheet][cell] = value
+    wb.save(xlsx)
+    wb.close()
+    outdir = tmp_path / "out"
+    outdir.mkdir()
+
+    with caplog.at_level(logging.ERROR), pytest.raises(SystemExit) as exc_info:
+        run_cli_app([command, "--outdir", str(outdir), str(xlsx)])
+
+    assert exc_info.value.code == 1
+    assert "Unexpected error" not in caplog.text
+    assert f'sheet "{sheet}"' in caplog.text
+    assert f"Row {row}: Required field '{field}' is empty" in caplog.text

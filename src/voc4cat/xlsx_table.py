@@ -669,7 +669,8 @@ class XLSXTableFormatter(XLSXFormatter[XLSXTableConfig]):
         models = []
         errors = []
 
-        for row_idx, row_data in enumerate(data_rows, start=self.config.start_row + 1):
+        data_start_row = self.row_calculator.get_data_start_row(fields)
+        for row_idx, row_data in enumerate(data_rows, start=data_start_row):
             try:
                 model_data = self._convert_row_to_model_data(
                     row_data, fields, model_class
