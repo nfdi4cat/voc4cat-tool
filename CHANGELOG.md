@@ -1,6 +1,6 @@
 # Change log
 
-## Unreleased
+## Release 1.3.0 (2026-11-24)
 
 Fixes:
 
