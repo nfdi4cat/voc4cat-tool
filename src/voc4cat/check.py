@@ -25,6 +25,11 @@ from voc4cat.convert import (
     resolve_profile,
     validate_with_profile,
 )
+from voc4cat.convert_v1 import (
+    read_collections_v1,
+    read_concepts_v1,
+    read_mappings_v1,
+)
 from voc4cat.models_v1 import (
     COLLECTIONS_READ_CONFIG,
     COLLECTIONS_SHEET_NAME,
@@ -109,7 +114,17 @@ def check_xlsx(fpath: Path, outfile: Path) -> None:
 
     If a check fails, the file with the problematic cells colored is saved as
     `outfile` and a Voc4catError is raised.
+
+    Rows that the converter cannot read, e.g. with an empty required cell,
+    raise a ConversionError naming the sheet and row before these checks run.
     """
+    for read_sheet in (
+        read_concepts_v1,
+        read_collections_v1,
+        read_mappings_v1,
+    ):
+        read_sheet(fpath)
+
     wb = openpyxl.load_workbook(fpath)
     color = PatternFill("solid", start_color="00FFCC00")  # orange
 

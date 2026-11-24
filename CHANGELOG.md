@@ -6,6 +6,7 @@ Fixes:
 
 - `voc4cat check` reports a collection IRI used twice for the same language, as it did for concepts. The converter silently kept only the later row. [#402](https://github.com/nfdi4cat/voc4cat-tool/issues/402)
 - `voc4cat check` on an xlsx file exits 1 when a check fails; it exited 0. [#402](https://github.com/nfdi4cat/voc4cat-tool/issues/402)
+- An empty required cell in the Concepts, Collections or Mappings sheet is reported by `voc4cat check`, and by `voc4cat convert` as an error naming sheet and row instead of a traceback. The row number now matches the spreadsheet. [#403](https://github.com/nfdi4cat/voc4cat-tool/issues/403)
 
 Changes:
 
