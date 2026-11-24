@@ -32,7 +32,7 @@ We recommend Skosmos for providing an API to your vocabulary or if you want as a
 
 ### Installation
 
-voc4cat is platform independent and works on Windows, Linux, and macOS. It requires Python (3.10 or newer).
+voc4cat is platform independent and works on Windows, Linux, and macOS. It requires Python (3.11 or newer).
 
 If you only want to use the command-line interface, it is strongly suggested to install with [uv tool](https://docs.astral.sh/uv/concepts/tools/) or [pipx](https://pypa.github.io/pipx/).
 Both simplify installing and managing Python command-line applications.

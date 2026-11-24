@@ -2,10 +2,10 @@
 
 import logging
 import re
-import sys
+import tomllib
 from collections import defaultdict
 from pathlib import Path
-from typing import Annotated, Any, TypedDict
+from typing import Annotated, Any, Self, TypedDict
 
 from curies import Converter
 from pydantic import (
@@ -18,14 +18,8 @@ from pydantic import (
 )
 from rdflib import Graph
 from rdflib.namespace import NamespaceManager
-from typing_extensions import Self
 
 from voc4cat.fields import ORCIDIdentifier, RORIdentifier
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 # Installation & Quickstart
 
-voc4cat requires Python 3.10 or newer and works on Windows, Linux, and macOS.
+voc4cat requires Python 3.11 or newer and works on Windows, Linux, and macOS.
 
 ## Installation
 

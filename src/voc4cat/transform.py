@@ -3,7 +3,6 @@ import logging
 import os
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -23,9 +22,6 @@ from rdflib import (
     Node,
 )
 from rdflib.query import ResultRow
-
-if sys.version_info < (3, 11):
-    import isodate
 
 from voc4cat import config
 from voc4cat.checks import Voc4catError
@@ -109,10 +105,7 @@ def _get_file_git_info(filepath: str, repo_dir: Path) -> FileGitInfo | None:
 
     def parse_commit(line: str) -> tuple[str, str, datetime]:
         name, email, date_str = line.split("\x00")
-        if sys.version_info >= (3, 11):
-            date_commit = datetime.fromisoformat(date_str)
-        else:
-            date_commit = isodate.parse_datetime(date_str)
+        date_commit = datetime.fromisoformat(date_str)
         return name, email, date_commit
 
     # First line = most recent (modified), last line = oldest following renames (created)

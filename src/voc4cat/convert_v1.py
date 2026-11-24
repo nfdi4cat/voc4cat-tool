@@ -2875,7 +2875,7 @@ def excel_to_rdf_v1(
 
     modified_date = (
         os.getenv("VOC4CAT_MODIFIED")
-        or datetime.datetime.now(tz=datetime.timezone.utc).date().isoformat()
+        or datetime.datetime.now(tz=datetime.UTC).date().isoformat()
     )
     concept_scheme.modified_date = modified_date
 

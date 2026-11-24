@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from copy import copy
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from enum import Enum
 from pathlib import Path
 from typing import (
@@ -864,7 +864,7 @@ class XLSXConverters:
             dt = datetime.fromisoformat(value)
             # If no timezone info, assume UTC
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
+                dt = dt.replace(tzinfo=UTC)
         except ValueError as e:
             msg = f"Cannot parse '{value}' as ISO datetime: {e}"
             raise ValueError(msg) from e
